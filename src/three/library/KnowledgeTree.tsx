@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
-import { type Group } from 'three'
+import { Color, type Group, type InstancedMesh, Object3D } from 'three'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -106,14 +106,9 @@ export function KnowledgeTree() {
           </mesh>
         ))}
 
-        {/* canopy — gently lit foliage, not a glowing beacon (toned right down so
-            it reads as leaves catching the lantern light, level with the room) */}
-        {leaves.map((l, i) => (
-          <mesh key={i} position={l.pos} scale={l.s}>
-            <icosahedronGeometry args={[0.7, 0]} />
-            <meshStandardMaterial color={l.color} emissive={l.emissive} emissiveIntensity={0.32} roughness={0.7} flatShading />
-          </mesh>
-        ))}
+        {/* canopy — gently lit foliage, not a glowing beacon. ONE instanced draw
+            for all ~130 leaf clusters (was 130 separate meshes + materials). */}
+        <Canopy leaves={leaves} />
 
         {/* small warm fireflies tucked in the canopy */}
         {lanterns.map((ln, i) => (
@@ -130,5 +125,43 @@ export function KnowledgeTree() {
       {/* a few floating motes around the canopy */}
       <Sparkles count={28} scale={[14, 10, 14]} position={[0, 10, 0]} size={2.4} speed={0.2} color="#ffe6b0" opacity={0.55} />
     </group>
+  )
+}
+
+interface Leaf {
+  pos: [number, number, number]
+  s: number
+  color: string
+  emissive: string
+}
+
+/** All canopy leaf clusters as a single instanced icosahedron mesh with
+ *  per-instance colour — one draw call instead of ~130. */
+function Canopy({ leaves }: { leaves: Leaf[] }) {
+  const ref = useRef<InstancedMesh>(null)
+
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const dummy = new Object3D()
+    const col = new Color()
+    leaves.forEach((l, i) => {
+      dummy.position.set(l.pos[0], l.pos[1], l.pos[2])
+      dummy.scale.setScalar(l.s)
+      dummy.rotation.set(0, 0, 0)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+      col.set(l.color)
+      mesh.setColorAt(i, col)
+    })
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  }, [leaves])
+
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, leaves.length)]}>
+      <icosahedronGeometry args={[0.7, 0]} />
+      <meshStandardMaterial emissive="#ffb24a" emissiveIntensity={0.28} roughness={0.7} flatShading />
+    </instancedMesh>
   )
 }

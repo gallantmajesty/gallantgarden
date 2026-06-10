@@ -1,5 +1,5 @@
-import { Component, Suspense, useMemo, type ReactNode } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Component, Suspense, useMemo, useRef, type ReactNode } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { AdditiveBlending, DoubleSide, MeshBasicMaterial } from 'three'
@@ -78,6 +78,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       {preset.godRays && <LightShafts />}
 
       <PlayerController />
+      <PerfLogger />
 
       {cinematic && preset.bloom && (
         <EffectComposer enableNormalPass={false}>
@@ -117,4 +118,35 @@ function LightShafts() {
       ))}
     </group>
   )
+}
+
+/**
+ * Render-statistics logger. Samples the WebGL renderer's `info` (draw calls,
+ * triangles, active programs) plus a rolling FPS average and prints a concise
+ * summary to the console — once ~2 s after the scene warms up, and then every
+ * 5 s while the on-screen FPS counter is enabled. This is how we measured the
+ * before/after of the optimization pass.
+ */
+function PerfLogger() {
+  const gl = useThree((s) => s.gl)
+  const acc = useRef({ frames: 0, time: 0, logged: false, since: 0 })
+
+  useFrame((_, dt) => {
+    const a = acc.current
+    a.frames++
+    a.time += dt
+    a.since += dt
+    if (a.since < (a.logged ? 5 : 2)) return
+    const fps = a.frames / a.since
+    const r = gl.info.render
+    const m = gl.info.memory
+    console.info(
+      `[StudyGarden perf] ${fps.toFixed(0)} fps · ${r.calls} draw calls · ${(r.triangles / 1000).toFixed(0)}k tris · ${gl.info.programs?.length ?? 0} programs · geo ${m.geometries} · tex ${m.textures}`,
+    )
+    a.frames = 0
+    a.since = 0
+    a.logged = true
+  })
+
+  return null
 }

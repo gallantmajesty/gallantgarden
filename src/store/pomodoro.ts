@@ -19,6 +19,29 @@ function mins(n: number) {
   return Math.max(1, Math.round(n)) * 60
 }
 
+// Persist the lifetime count of completed focus sessions ("study data") so a
+// refresh keeps the user's progress. The live timer itself is intentionally not
+// persisted (a half-finished countdown shouldn't resume on reload).
+const DONE_KEY = 'sg.pomo.completed'
+
+function loadCompleted(): number {
+  try {
+    const raw = localStorage.getItem(DONE_KEY)
+    const n = raw ? Number(raw) : 0
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  } catch {
+    return 0
+  }
+}
+
+function saveCompleted(n: number) {
+  try {
+    localStorage.setItem(DONE_KEY, String(n))
+  } catch {
+    /* ignore */
+  }
+}
+
 export const usePomodoro = create<PomodoroState>((set, get) => {
   const advance = () => {
     const { pomo } = useSettings.getState()
@@ -27,6 +50,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     let completed = s.completed
     if (s.mode === 'study') {
       completed += 1
+      saveCompleted(completed)
       mode = completed % 4 === 0 ? 'long' : 'break'
     } else {
       mode = 'study'
@@ -40,7 +64,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     mode: 'idle',
     remaining: 0,
     running: false,
-    completed: 0,
+    completed: loadCompleted(),
 
     toggle: () => {
       const s = get()
@@ -50,7 +74,10 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         set({ running: !s.running })
       }
     },
-    reset: () => set({ mode: 'idle', remaining: 0, running: false, completed: 0 }),
+    reset: () => {
+      saveCompleted(0)
+      set({ mode: 'idle', remaining: 0, running: false, completed: 0 })
+    },
     skip: () => advance(),
     tick: () => {
       const s = get()

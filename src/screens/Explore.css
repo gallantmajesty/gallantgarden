@@ -608,3 +608,62 @@
   z-index: 12;
   touch-action: none;
 }
+
+/* --- seated exit affordances (X + Stand up), always visible while seated --- */
+.seated-exit {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.seated-exit-x,
+.station-x {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #ffd9c0;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(120, 36, 28, 0.7);
+  border: 1px solid rgba(255, 140, 110, 0.5);
+  transition: background 0.15s, border-color 0.15s;
+}
+.seated-exit-x:hover,
+.station-x:hover {
+  background: rgba(170, 48, 36, 0.9);
+  border-color: rgba(255, 170, 140, 0.85);
+}
+/* remove-goal button revealed on hover of a goal row */
+.station-goal {
+  position: relative;
+}
+.station-goal-x {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  color: #d8c4a0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.station-goal:hover .station-goal-x {
+  opacity: 0.7;
+}
+.station-goal-x:hover {
+  opacity: 1;
+  color: #ffb0a0;
+  background: rgba(170, 48, 36, 0.5);
+}

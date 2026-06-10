@@ -56,11 +56,17 @@ export function Lanterns() {
     return [...pillarGlow, ...topPositions]
   }, [pillarGlow, topPositions])
 
+  // real point-lights are the single biggest GPU cost in forward rendering, so
+  // cap how many of the four grand lanterns actually cast light (the rest glow
+  // via emissive + bloom and read identically): none on low, two on medium, all
+  // four on high.
+  const grandLights = quality === 'low' ? 0 : quality === 'medium' ? 2 : 4
+
   return (
     <group>
       <CentreLantern y={wallH} />
       {topPositions.map((p, i) => (
-        <GrandLantern key={i} pos={p} withLight={quality !== 'low'} />
+        <GrandLantern key={i} pos={p} withLight={i < grandLights} />
       ))}
 
       {/* pillar lantern frames (cheap thin iron rings) */}

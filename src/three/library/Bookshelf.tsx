@@ -26,14 +26,42 @@ function toWorld(lx: number, lz: number, a: number, ox: number, oz: number): [nu
   return [lx * c + lz * s + ox, -lx * s + lz * c + oz]
 }
 
-/** Tall bookshelves lining the end walls + window piers, on both floors. Frames
- *  are per-unit; every book across the whole library is one instanced draw. */
+/** Tall bookshelves lining the end walls + window piers, on both floors.
+ *
+ *  PERFORMANCE: previously every shelf rendered ~10 separate meshes (back panel,
+ *  two posts and 7 boards), so ~80 shelves cost ~830 draw calls. Now the frames
+ *  for the WHOLE library are drawn as TWO instanced meshes (boards/posts +
+ *  backs) and every book is a third — three draws total instead of hundreds. */
 export function Bookshelves() {
   const placements = useMemo(() => {
     const ground = groundShelves().map((p, i) => ({ ...p, seed: 200 + i, levels: LEVELS }))
     const upper = upperShelves().map((p, i) => ({ ...p, seed: 900 + i, levels: LEVELS.slice(0, 4) }))
     return [...ground, ...upper]
   }, [])
+
+  // every wooden frame part across the hall, collected into one instanced batch
+  const frames = useMemo<BoxItem[]>(() => {
+    const items: BoxItem[] = []
+    for (const p of placements) {
+      const [ox, , oz] = p.pos
+      const y0 = p.pos[1]
+      // back panel
+      {
+        const [wx, wz] = toWorld(0, -SHELF.d / 2, p.rotY, ox, oz)
+        items.push({ pos: [wx, y0 + SHELF.h / 2, wz], size: [SHELF.w, SHELF.h, 0.08], rotY: p.rotY, color: WOOD })
+      }
+      // side posts
+      for (const sx of [-1, 1]) {
+        const [wx, wz] = toWorld((sx * SHELF.w) / 2, 0, p.rotY, ox, oz)
+        items.push({ pos: [wx, y0 + SHELF.h / 2, wz], size: [0.1, SHELF.h, SHELF.d], rotY: p.rotY, color: WOOD_HI })
+      }
+      // shelf boards (floor, each level, top)
+      for (const y of [0, ...p.levels, SHELF.h]) {
+        items.push({ pos: [ox, y0 + y - 0.03, oz], size: [SHELF.w, 0.08, SHELF.d], rotY: p.rotY, color: WOOD_HI })
+      }
+    }
+    return items
+  }, [placements])
 
   const books = useMemo<BoxItem[]>(() => {
     const items: BoxItem[] = []
@@ -61,27 +89,11 @@ export function Bookshelves() {
 
   return (
     <group>
-      {placements.map((p, i) => (
-        <group key={i} position={p.pos} rotation={[0, p.rotY, 0]}>
-          <mesh position={[0, SHELF.h / 2, -SHELF.d / 2]} castShadow receiveShadow>
-            <boxGeometry args={[SHELF.w, SHELF.h, 0.08]} />
-            <meshStandardMaterial color={WOOD} roughness={0.9} />
-          </mesh>
-          {[-1, 1].map((sx) => (
-            <mesh key={sx} position={[(sx * SHELF.w) / 2, SHELF.h / 2, 0]} castShadow receiveShadow>
-              <boxGeometry args={[0.1, SHELF.h, SHELF.d]} />
-              <meshStandardMaterial color={WOOD_HI} roughness={0.85} />
-            </mesh>
-          ))}
-          {[0, ...p.levels, SHELF.h].map((y, k) => (
-            <mesh key={k} position={[0, y - 0.03, 0]} castShadow receiveShadow>
-              <boxGeometry args={[SHELF.w, 0.08, SHELF.d]} />
-              <meshStandardMaterial color={WOOD_HI} roughness={0.85} />
-            </mesh>
-          ))}
-        </group>
-      ))}
-      <InstancedBoxes items={books} roughness={0.6} castShadow />
+      {/* frames cast shadow (big silhouettes) — but as a single instanced draw it
+          stays cheap in the shadow pass too */}
+      <InstancedBoxes items={frames} roughness={0.88} castShadow receiveShadow />
+      {/* books are tiny: skip shadow-casting to keep the shadow pass light */}
+      <InstancedBoxes items={books} roughness={0.6} />
     </group>
   )
 }

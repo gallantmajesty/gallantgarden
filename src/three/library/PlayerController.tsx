@@ -5,7 +5,7 @@ import { Group, MathUtils, type PerspectiveCamera as TPerspectiveCamera } from '
 import { HALL, PLAYER_BOUNDS } from './layout'
 import { buildCollision, isBlocked, PLAYER_RADIUS, rayHit, topSupport } from './colliders'
 import { seatAnchors } from './furniture'
-import { joystick } from './input'
+import { isTypingFocused, joystick } from './input'
 import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
 
@@ -56,6 +56,10 @@ export function PlayerController() {
   // keyboard (movement + camera-mode hotkeys)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // Text entry always wins: while an input / textarea / note editor / modal
+      // field is focused, every world hotkey is suppressed so the key (E, W,
+      // Space, …) types normally instead of driving the player.
+      if (isTypingFocused()) return
       keys.current[e.code] = true
       if (e.code === 'F1') useSettings.getState().set('cameraMode', 'first')
       if (e.code === 'F2') useSettings.getState().set('cameraMode', 'third')
@@ -77,11 +81,18 @@ export function PlayerController() {
     const up = (e: KeyboardEvent) => {
       keys.current[e.code] = false
     }
+    // If focus moves into a text field while a movement key is held, drop all
+    // held keys so the player doesn't keep walking while the user types.
+    const clearHeld = () => {
+      keys.current = {}
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('focusin', clearHeld)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('focusin', clearHeld)
     }
   }, [seats])
 

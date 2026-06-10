@@ -99,7 +99,7 @@ export function LibraryShell() {
               <meshStandardMaterial map={plaster} color={STONE} roughness={1} />
             </mesh>
             {mullionZs.map((z) => (
-              <mesh key={`mul-${s}-${z}`} position={[x, (WINDOW.sillY + WINDOW.headY) / 2, z]} castShadow>
+              <mesh key={`mul-${s}-${z}`} position={[x, (WINDOW.sillY + WINDOW.headY) / 2, z]}>
                 <boxGeometry args={[0.55, WINDOW.headY - WINDOW.sillY, 0.5]} />
                 <meshStandardMaterial color={STONE_DARK} roughness={1} />
               </mesh>
@@ -118,7 +118,7 @@ export function LibraryShell() {
                     <meshStandardMaterial map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} transparent opacity={0.92} roughness={0.4} metalness={0.1} side={DoubleSide} />
                   </mesh>
                   {/* stone tracery: sill ledge, transom bar, centre muntin */}
-                  <mesh position={[x, WINDOW.sillY + 0.06, z]} castShadow>
+                  <mesh position={[x, WINDOW.sillY + 0.06, z]}>
                     <boxGeometry args={[0.85, 0.2, step - 0.2]} />
                     <meshStandardMaterial color={STONE} roughness={1} />
                   </mesh>
@@ -139,7 +139,7 @@ export function LibraryShell() {
                     <cylinderGeometry args={[R, R, 0.68, 20, 1, false, 0, Math.PI]} />
                     <meshStandardMaterial color={STONE} roughness={1} side={DoubleSide} />
                   </mesh>
-                  <mesh position={[x, WINDOW.headY + R - 0.1, z]} castShadow>
+                  <mesh position={[x, WINDOW.headY + R - 0.1, z]}>
                     <boxGeometry args={[0.8, 0.8, 0.6]} />
                     <meshStandardMaterial color={STONE} roughness={0.95} />
                   </mesh>

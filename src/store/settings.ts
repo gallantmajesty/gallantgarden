@@ -26,8 +26,8 @@ export const QUALITY_PRESET: Record<
   }
 > = {
   low: { shadows: false, shadowMap: 0, bloom: false, godRays: false, dust: 0, particles: false, rainScale: 0.35, rainDrops: 90, forest: 50, lampLights: 0, dpr: 1, viewDistance: 150 },
-  medium: { shadows: true, shadowMap: 1024, bloom: true, godRays: false, dust: 40, particles: true, rainScale: 0.7, rainDrops: 160, forest: 120, lampLights: 3, dpr: 1.2, viewDistance: 400 },
-  high: { shadows: true, shadowMap: 1536, bloom: true, godRays: false, dust: 80, particles: true, rainScale: 1, rainDrops: 240, forest: 220, lampLights: 6, dpr: 1.5, viewDistance: 1400 },
+  medium: { shadows: true, shadowMap: 1024, bloom: true, godRays: false, dust: 30, particles: true, rainScale: 0.7, rainDrops: 140, forest: 110, lampLights: 2, dpr: 1.25, viewDistance: 400 },
+  high: { shadows: true, shadowMap: 2048, bloom: true, godRays: false, dust: 70, particles: true, rainScale: 1, rainDrops: 220, forest: 200, lampLights: 4, dpr: 1.5, viewDistance: 1400 },
 }
 
 export interface PomodoroSettings {

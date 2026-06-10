@@ -7,6 +7,7 @@ import { joystick } from '../three/library/input'
 import { useSettings, type CameraMode, type Quality } from '../store/settings'
 import { usePomodoro } from '../store/pomodoro'
 import { useWorld } from '../store/world'
+import { useDesk } from '../store/desk'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -18,6 +19,7 @@ export function Explore() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const fps = useSettings((s) => s.fps)
   const ambientOn = useSettings((s) => s.ambientOn)
+  const master = useSettings((s) => s.master)
   const set = useSettings((s) => s.set)
   useAudio()
 
@@ -64,7 +66,7 @@ export function Explore() {
           min={0}
           max={1}
           step={0.01}
-          value={useSettings.getState().master}
+          value={master}
           onChange={(e) => set('master', Number(e.target.value))}
           aria-label="Master volume"
         />
@@ -86,6 +88,7 @@ export function Explore() {
       )}
 
       <SeatPrompt />
+      <SeatedExitBar />
       <SeatedPanel />
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
@@ -128,14 +131,34 @@ function SeatPrompt() {
   )
 }
 
+/** Always-visible exit affordance while seated: a top-right X plus a dedicated
+ *  "Stand up" button, so the user is never reliant on the E hotkey (which is
+ *  also a typing key) to leave the chair. */
+function SeatedExitBar() {
+  const seat = useWorld((s) => s.seat)
+  if (seat == null) return null
+  return (
+    <div className="seated-exit">
+      <button className="sf-btn secondary" onClick={() => useWorld.getState().stand()}>
+        ⤴ Stand up
+      </button>
+      <button className="seated-exit-x" title="Stand up (leave chair)" aria-label="Stand up" onClick={() => useWorld.getState().stand()}>
+        ✕
+      </button>
+    </div>
+  )
+}
+
 function SeatedPanel() {
   const seat = useWorld((s) => s.seat)
   const { mode, remaining, running, toggle, skip, reset } = usePomodoro()
-  const [goals, setGoals] = useState<{ t: string; done: boolean }[]>([])
-  const [draft, setDraft] = useState('')
-  const [note, setNote] = useState('')
-  // 'open' = full panel · 'collapsed' = header only · 'min' = tiny floating chip
-  const [view, setView] = useState<'open' | 'collapsed' | 'min'>('open')
+  // Goals / notes / view live in the persisted desk store so they survive
+  // stand-up → sit-down and page refreshes (never cleared on stand up).
+  const goals = useDesk((s) => s.goals)
+  const draft = useDesk((s) => s.draft)
+  const note = useDesk((s) => s.note)
+  const view = useDesk((s) => s.view)
+  const desk = useDesk.getState
   if (seat == null) return null
 
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
@@ -145,14 +168,14 @@ function SeatedPanel() {
   // minimized → a small unobtrusive chip so the world is fully visible
   if (view === 'min') {
     return (
-      <button className="station-chip" onClick={() => setView('open')} title="Open your desk">
+      <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
         <span className="station-chip-dot" /> {mode === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
       </button>
     )
   }
 
   return (
-    <div className={`station ${view === 'collapsed' ? 'collapsed' : ''}`}>
+    <div className={`station ${view === 'collapsed' ? 'collapsed' : ''}`} data-no-hotkeys>
       <div className="station-head">
         <div>
           <span className="sf-pill">Study Station</span>
@@ -165,15 +188,18 @@ function SeatedPanel() {
           <button
             className="station-ctrl"
             title={view === 'collapsed' ? 'Expand' : 'Collapse'}
-            onClick={() => setView(view === 'collapsed' ? 'open' : 'collapsed')}
+            onClick={() => desk().setView(view === 'collapsed' ? 'open' : 'collapsed')}
           >
             {view === 'collapsed' ? '▴' : '▾'}
           </button>
-          <button className="station-ctrl" title="Minimize" onClick={() => setView('min')}>
+          <button className="station-ctrl" title="Minimize" onClick={() => desk().setView('min')}>
             –
           </button>
           <button className="sf-btn secondary" onClick={() => useWorld.getState().stand()}>
-            Stand up (E)
+            Stand up
+          </button>
+          <button className="station-x" title="Stand up (leave chair)" aria-label="Stand up" onClick={() => useWorld.getState().stand()}>
+            ✕
           </button>
         </div>
       </div>
@@ -204,12 +230,20 @@ function SeatedPanel() {
             {goals.length === 0 && <p className="station-empty">Add what you want to get done today.</p>}
             {goals.map((g, i) => (
               <label key={i} className={`station-goal ${g.done ? 'done' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={g.done}
-                  onChange={() => setGoals((gs) => gs.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))}
-                />
+                <input type="checkbox" checked={g.done} onChange={() => desk().toggleGoal(i)} />
                 <span>{g.t}</span>
+                <button
+                  type="button"
+                  className="station-goal-x"
+                  title="Remove"
+                  aria-label="Remove goal"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    desk().removeGoal(i)
+                  }}
+                >
+                  ×
+                </button>
               </label>
             ))}
           </div>
@@ -217,11 +251,10 @@ function SeatedPanel() {
             className="station-row"
             onSubmit={(e) => {
               e.preventDefault()
-              if (draft.trim()) setGoals((gs) => [...gs, { t: draft.trim(), done: false }])
-              setDraft('')
+              desk().addGoal(draft)
             }}
           >
-            <input className="sf-input" placeholder="New goal…" value={draft} onChange={(e) => setDraft(e.target.value)} />
+            <input className="sf-input" placeholder="New goal…" value={draft} onChange={(e) => desk().setDraft(e.target.value)} />
             <button className="sf-btn" type="submit">
               Add
             </button>
@@ -230,7 +263,7 @@ function SeatedPanel() {
 
         <div className="station-card wide">
           <h3>📝 Scratch notes</h3>
-          <textarea className="station-notes" placeholder="Jot anything down…" value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea className="station-notes" placeholder="Jot anything down…" value={note} onChange={(e) => desk().setNote(e.target.value)} />
         </div>
       </div>
     </div>

@@ -63,14 +63,14 @@ export function Decor() {
         [halfW - 1.6, halfL - 2],
       ].map(([x, z], i) => (
         <group key={`plant-${i}`} position={[x, 0, z]}>
-          <mesh position={[0, 0.5, 0]} castShadow>
+          <mesh position={[0, 0.5, 0]}>
             <cylinderGeometry args={[0.5, 0.36, 1, 16]} />
             <meshStandardMaterial color="#9c4a28" roughness={0.85} />
           </mesh>
           {Array.from({ length: 12 }, (_, k) => {
             const a = (k / 12) * Math.PI * 2
             return (
-              <mesh key={k} position={[Math.cos(a) * 0.28, 1.7, Math.sin(a) * 0.28]} rotation={[0.4, a, 0]} castShadow>
+              <mesh key={k} position={[Math.cos(a) * 0.28, 1.7, Math.sin(a) * 0.28]} rotation={[0.4, a, 0]}>
                 <coneGeometry args={[0.18, 2, 5]} />
                 <meshStandardMaterial color={k % 2 ? '#2f7a3a' : '#3f9a4a'} roughness={0.9} />
               </mesh>
@@ -86,11 +86,11 @@ export function Decor() {
             <planeGeometry args={[3, 3]} />
             <meshStandardMaterial color="#5a2030" roughness={1} side={DoubleSide} />
           </mesh>
-          <mesh position={[0, 0.45, 0]} castShadow>
+          <mesh position={[0, 0.45, 0]}>
             <boxGeometry args={[1.1, 0.5, 1]} />
             <meshStandardMaterial color="#6b4a8a" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 0.95, -0.45]} castShadow>
+          <mesh position={[0, 0.95, -0.45]}>
             <boxGeometry args={[1.1, 0.9, 0.2]} />
             <meshStandardMaterial color="#7a59a0" roughness={0.9} />
           </mesh>

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Stars } from '@react-three/drei'
 import {
@@ -74,6 +74,22 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
 
   const sunDir = useMemo(() => new Vector3(), [])
   const wnext = useRef({ t: 4, seed: 0x9e37 >>> 0 })
+
+  // When the graphics quality changes the directional shadow-map resolution, the
+  // GPU render-target was already allocated at the old size and won't resize on
+  // its own. Dispose it so three rebuilds it (the renderer auto-updates the
+  // shadow map each frame) at the new size — otherwise the "Quality" setting
+  // visibly does nothing to shadow sharpness until a full reload. (Enabling /
+  // disabling shadows wholesale is handled by the Canvas `shadows` prop.)
+  useEffect(() => {
+    const d = dir.current
+    if (!d) return
+    const size = shadowMap || 1024
+    d.shadow.mapSize.set(size, size)
+    d.shadow.map?.dispose()
+    d.shadow.map = null as unknown as typeof d.shadow.map
+    d.castShadow = quality !== 'low'
+  }, [shadowMap, quality])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
