@@ -1,0 +1,82 @@
+.tree-label {
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: #2c3b1c;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transform: translateY(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.tree-label.focused {
+  color: #fff;
+  background: linear-gradient(135deg, #ffb347, #ff8c42);
+  box-shadow: 0 6px 16px rgba(255, 140, 66, 0.5);
+  transform: scale(1.08);
+}
+.tree-label.dimmed {
+  opacity: 0.4;
+}
+
+.note3d {
+  width: 150px;
+  min-height: 120px;
+  max-height: 220px;
+  overflow: hidden;
+  padding: 14px 13px 12px;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  position: relative;
+  line-height: 1.35;
+  user-select: none;
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, transform 0.06s ease;
+}
+.note3d.editing {
+  cursor: grab;
+}
+.note3d.editing:active {
+  cursor: grabbing;
+}
+.note3d:hover {
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.note3d-pin {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff7b6b, #c0392b);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.note3d-img {
+  width: 100%;
+  border-radius: 5px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.note3d-body {
+  word-break: break-word;
+}
+.note3d-body p {
+  margin: 0 0 4px;
+}
+.note3d-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.note3d-body :last-child {
+  margin-bottom: 0;
+}
