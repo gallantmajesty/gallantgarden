@@ -365,7 +365,7 @@
   right: 18px;
   top: 50%;
   transform: translateY(-50%);
-  width: min(380px, 92vw);
+  width: min(400px, 92vw);
   max-height: 86vh;
   overflow-y: auto;
   z-index: 14;
@@ -389,19 +389,48 @@
 }
 .station-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 14px;
+}
+.station-title {
+  min-width: 0;
+}
+.station-title .sf-pill {
+  white-space: nowrap;
 }
 .station-head h2 {
   color: #ffe6b0;
   margin-top: 4px;
+  white-space: nowrap;
+  font-size: 20px;
 }
 .station-controls {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+}
+/* compact, clearly-labelled stand-up in the panel header (the one canonical
+   "leave the chair" button; the ✕ beside it does the same) */
+.station-stand {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #ffe6b0;
+  background: rgba(202, 168, 74, 0.18);
+  border: 1px solid rgba(202, 168, 74, 0.6);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.station-stand:hover {
+  background: rgba(255, 206, 84, 0.28);
+  border-color: rgba(255, 206, 84, 0.85);
 }
 .station-ctrl {
   min-width: 30px;
@@ -431,12 +460,17 @@
 .station.collapsed .station-head {
   margin-bottom: 0;
 }
-/* minimized floating chip */
-.station-chip {
+/* minimized floating chip + its compact stand-up */
+.station-min {
   position: absolute;
   right: 18px;
   bottom: 22px;
   z-index: 14;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.station-chip {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -451,6 +485,24 @@
   backdrop-filter: blur(6px);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+}
+.station-min-stand {
+  padding: 9px 14px;
+  border-radius: 999px;
+  color: #ffd9c0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  background: rgba(120, 36, 28, 0.7);
+  border: 1px solid rgba(255, 140, 110, 0.5);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.station-min-stand:hover {
+  background: rgba(170, 48, 36, 0.9);
+  border-color: rgba(255, 170, 140, 0.85);
 }
 .station-chip:hover {
   border-color: rgba(255, 206, 84, 0.8);
@@ -609,17 +661,7 @@
   touch-action: none;
 }
 
-/* --- seated exit affordances (X + Stand up), always visible while seated --- */
-.seated-exit {
-  position: absolute;
-  top: 16px;
-  right: 18px;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.seated-exit-x,
+/* --- ✕ exit affordance in the seated panel header (stands the player up) --- */
 .station-x {
   width: 34px;
   height: 34px;
@@ -635,7 +677,6 @@
   border: 1px solid rgba(255, 140, 110, 0.5);
   transition: background 0.15s, border-color 0.15s;
 }
-.seated-exit-x:hover,
 .station-x:hover {
   background: rgba(170, 48, 36, 0.9);
   border-color: rgba(255, 170, 140, 0.85);

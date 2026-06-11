@@ -1,9 +1,10 @@
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { DoubleSide, type InstancedMesh, Object3D } from 'three'
+import { DoubleSide, type InstancedMesh, type MeshStandardMaterial, Object3D, type PointLight } from 'three'
 import { HALL } from './layout'
 import { columns } from './furniture'
-import { useSettings } from '../../store/settings'
+import { env } from './env'
+import { QUALITY_PRESET, useSettings } from '../../store/settings'
 
 const IRON = '#241a12'
 const BRASS = '#caa84a'
@@ -58,9 +59,9 @@ export function Lanterns() {
 
   // real point-lights are the single biggest GPU cost in forward rendering, so
   // cap how many of the four grand lanterns actually cast light (the rest glow
-  // via emissive + bloom and read identically): none on low, two on medium, all
-  // four on high.
-  const grandLights = quality === 'low' ? 0 : quality === 'medium' ? 2 : 4
+  // via emissive + bloom and read identically): none on low, one on medium, all
+  // four on high — see QUALITY_PRESET.grandLights.
+  const grandLights = QUALITY_PRESET[quality].grandLights
 
   return (
     <group>
@@ -69,13 +70,8 @@ export function Lanterns() {
         <GrandLantern key={i} pos={p} withLight={i < grandLights} />
       ))}
 
-      {/* pillar lantern frames (cheap thin iron rings) */}
-      {pillarGlow.map((p, i) => (
-        <mesh key={`pf-${i}`} position={[p[0], p[1], p[2]]}>
-          <torusGeometry args={[0.2, 0.03, 6, 10]} />
-          <meshStandardMaterial color={IRON} metalness={0.6} roughness={0.5} />
-        </mesh>
-      ))}
+      {/* pillar lantern frames (thin iron rings) — one instanced draw for all ~72 */}
+      <PillarFrames positions={pillarGlow} />
 
       {/* all glowing cores in a single instanced draw */}
       <GlowCores positions={cores} flicker={cinematic} />
@@ -90,6 +86,12 @@ function CentreLantern({ y }: { y: number }) {
   const hangY = y - 6
   const bodyH = 5
   const r = 1.95
+  const light = useRef<PointLight>(null)
+  // the hall's hero light — warm and steady by day, noticeably brighter after
+  // dark so the nave never feels gloomy at night
+  useFrame(() => {
+    if (light.current) light.current.intensity = 30 + (1 - env.dayFactor) * 28
+  })
   return (
     <group position={[0, hangY, 0]}>
       {/* chain to the ceiling */}
@@ -140,7 +142,7 @@ function CentreLantern({ y }: { y: number }) {
       </mesh>
 
       {/* the real warm light it throws into the hall */}
-      <pointLight position={[0, 0, 0]} intensity={34} distance={60} decay={1.8} color="#ffcf9a" />
+      <pointLight ref={light} position={[0, 0, 0]} intensity={34} distance={60} decay={1.8} color="#ffcf9a" />
     </group>
   )
 }
@@ -175,6 +177,29 @@ function GrandLantern({ pos, withLight }: { pos: [number, number, number]; withL
   )
 }
 
+/** The thin iron rings framing the pillar lanterns — one instanced draw for all. */
+function PillarFrames({ positions }: { positions: [number, number, number][] }) {
+  const ref = useRef<InstancedMesh>(null)
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const dummy = new Object3D()
+    positions.forEach((p, i) => {
+      dummy.position.set(p[0], p[1], p[2])
+      dummy.rotation.set(0, 0, 0)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+    })
+    mesh.instanceMatrix.needsUpdate = true
+  }, [positions])
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length)]}>
+      <torusGeometry args={[0.2, 0.03, 6, 10]} />
+      <meshStandardMaterial color={IRON} metalness={0.6} roughness={0.5} />
+    </instancedMesh>
+  )
+}
+
 /** All small lantern cores in a single instanced draw call, flickering softly. */
 function GlowCores({ positions, flicker }: { positions: [number, number, number][]; flicker: boolean }) {
   const ref = useRef<InstancedMesh>(null)
@@ -184,6 +209,8 @@ function GlowCores({ positions, flicker }: { positions: [number, number, number]
     const mesh = ref.current
     if (!mesh) return
     const t = state.clock.elapsedTime
+    // brighten the lantern cores after dark so the hall glows
+    ;(mesh.material as MeshStandardMaterial).emissiveIntensity = 1.9 + (1 - env.dayFactor) * 1.9
     for (let i = 0; i < positions.length; i++) {
       const p = positions[i]
       const s = flicker ? 1 + Math.sin(t * 3 + i * 1.7) * 0.05 : 1

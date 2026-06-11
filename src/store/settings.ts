@@ -7,27 +7,37 @@ export type Weather = 'clear' | 'light-rain' | 'heavy-rain' | 'fog'
 /** Per-quality feature flags read by the scene to scale work to the device.
  *  Tuned for smooth FPS: lower DPR, smaller shadow maps, fewer particles and a
  *  hard cap on real point-lights (the single biggest WebGL cost). Lanterns &
- *  sconces glow via emissive + bloom instead of each being a real light. */
-export const QUALITY_PRESET: Record<
-  Quality,
-  {
-    shadows: boolean
-    shadowMap: number // directional shadow map resolution
-    bloom: boolean
-    godRays: boolean
-    dust: number
-    particles: boolean
-    rainScale: number
-    rainDrops: number // drops per side
-    forest: number
-    lampLights: number // how many desk lamps cast a real point-light
-    dpr: number
-    viewDistance: number
-  }
-> = {
-  low: { shadows: false, shadowMap: 0, bloom: false, godRays: false, dust: 0, particles: false, rainScale: 0.35, rainDrops: 90, forest: 50, lampLights: 0, dpr: 1, viewDistance: 150 },
-  medium: { shadows: true, shadowMap: 1024, bloom: true, godRays: false, dust: 30, particles: true, rainScale: 0.7, rainDrops: 140, forest: 110, lampLights: 2, dpr: 1.25, viewDistance: 400 },
-  high: { shadows: true, shadowMap: 2048, bloom: true, godRays: false, dust: 70, particles: true, rainScale: 1, rainDrops: 220, forest: 200, lampLights: 4, dpr: 1.5, viewDistance: 1400 },
+ *  sconces glow via emissive + bloom instead of each being a real light.
+ *
+ *  PERFORMANCE PASS (FPS-first): real-time lights and per-mesh ornament are the
+ *  two dominant costs on an integrated laptop GPU, so below `high` we shed both —
+ *  fewer point-lights, and ornamental sub-meshes (pillar rings, window tracery,
+ *  chandelier bulbs, distant peaks/clouds) drop out. `high` keeps full fidelity.
+ *  DPR is also auto-scaled at runtime by the PerformanceMonitor in LibraryScene,
+ *  so these dpr values are the *ceiling*, not a fixed cost. */
+export interface QualityPreset {
+  shadows: boolean
+  shadowMap: number // directional shadow map resolution (0 = off)
+  bloom: boolean
+  dust: number // floating-mote particle count (0 = off)
+  particles: boolean
+  rainScale: number
+  rainDrops: number // rain drops per side
+  forest: number // exterior pine count
+  lampLights: number // how many desk lamps cast a real point-light
+  grandLights: number // how many of the 4 grand lanterns cast a real light
+  treeLight: boolean // the Knowledge Tree's warm point-light
+  mountains: number // distant peak count
+  clouds: number // drifting cloud count
+  pillarDetail: boolean // carved rings/astragals on the pillars
+  windowDetail: boolean // molded arches, keystone & oculus on each window bay
+  dpr: number // device-pixel-ratio ceiling
+}
+
+export const QUALITY_PRESET: Record<Quality, QualityPreset> = {
+  low:    { shadows: false, shadowMap: 0,    bloom: false, dust: 0,  particles: false, rainScale: 0.3, rainDrops: 50,  forest: 35,  lampLights: 0, grandLights: 0, treeLight: false, mountains: 18, clouds: 4, pillarDetail: false, windowDetail: false, dpr: 0.85 },
+  medium: { shadows: true,  shadowMap: 1024, bloom: true,  dust: 16, particles: true,  rainScale: 0.6, rainDrops: 90,  forest: 80,  lampLights: 0, grandLights: 0, treeLight: true,  mountains: 26, clouds: 6, pillarDetail: false, windowDetail: false, dpr: 1.0 },
+  high:   { shadows: true,  shadowMap: 2048, bloom: true,  dust: 60, particles: true,  rainScale: 1,   rainDrops: 200, forest: 200, lampLights: 4, grandLights: 4, treeLight: true,  mountains: 40, clouds: 9, pillarDetail: true,  windowDetail: true,  dpr: 1.5 },
 }
 
 export interface PomodoroSettings {

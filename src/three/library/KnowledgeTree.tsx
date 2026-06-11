@@ -1,7 +1,9 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
-import { Color, type Group, type InstancedMesh, Object3D } from 'three'
+import { Color, type Group, type InstancedMesh, Object3D, type PointLight } from 'three'
+import { env } from './env'
+import { QUALITY_PRESET, useSettings } from '../../store/settings'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -19,6 +21,9 @@ function rng(seed: number) {
  */
 export function KnowledgeTree() {
   const sway = useRef<Group>(null)
+  const treeLight = useRef<PointLight>(null)
+  const quality = useSettings((s) => s.quality)
+  const preset = QUALITY_PRESET[quality]
 
   // canopy leaf clusters within a dome (deterministic)
   const leaves = useMemo(() => {
@@ -62,6 +67,8 @@ export function KnowledgeTree() {
       sway.current.rotation.z = Math.sin(t * 0.25) * 0.012
       sway.current.rotation.x = Math.cos(t * 0.21) * 0.012
     }
+    // warm the dais glow up after dark so the centrepiece reads as a soft beacon
+    if (treeLight.current) treeLight.current.intensity = 2.8 + (1 - env.dayFactor) * 4.2
   })
 
   return (
@@ -119,11 +126,13 @@ export function KnowledgeTree() {
         ))}
       </group>
 
-      {/* a soft warm wash over the dais — gentle, not a floodlight */}
-      <pointLight position={[0, 6, 0]} intensity={3.4} distance={14} decay={2.2} color="#ffcf9a" />
+      {/* a soft warm wash over the dais — gentle, not a floodlight. Gated by
+          quality (a real light is costly); on low the canopy's emissive glow
+          and the hall lanterns carry the look. */}
+      {preset.treeLight && <pointLight ref={treeLight} position={[0, 6, 0]} intensity={3.4} distance={16} decay={2.2} color="#ffcf9a" />}
 
-      {/* a few floating motes around the canopy */}
-      <Sparkles count={28} scale={[14, 10, 14]} position={[0, 10, 0]} size={2.4} speed={0.2} color="#ffe6b0" opacity={0.55} />
+      {/* a few floating motes around the canopy (only when particles are on) */}
+      {preset.particles && <Sparkles count={preset.dust > 0 ? 24 : 0} scale={[14, 10, 14]} position={[0, 10, 0]} size={2.4} speed={0.2} color="#ffe6b0" opacity={0.55} />}
     </group>
   )
 }

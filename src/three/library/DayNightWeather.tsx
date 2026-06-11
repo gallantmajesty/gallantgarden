@@ -11,7 +11,6 @@ import {
   type InstancedMesh,
   type Mesh,
   Object3D,
-  type PointLight,
   ShaderMaterial,
   Vector3,
 } from 'three'
@@ -45,7 +44,6 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
   const sun = useRef<Mesh>(null)
   const moon = useRef<Mesh>(null)
   const stars = useRef<Group>(null)
-  const bolt = useRef<PointLight>(null)
 
   const skyMat = useMemo(
     () =>
@@ -151,9 +149,15 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
       dir.current.castShadow = quality !== 'low'
     }
     if (hemi.current) {
-      // generous warm sky fill so the hall reads soft & cosy, not high-contrast
-      hemi.current.intensity = 0.28 + day * 0.3
-      ;(hemi.current.color as Color).copy(cHorizon)
+      // generous warm sky fill so the hall reads soft & cosy, not high-contrast.
+      // A storm flash is folded in here (env.lightning) instead of a dedicated
+      // point-light, so lightning costs zero extra real-time lights. After dark
+      // the fill is lifted and warmed so the interior stays cosy, never murky.
+      hemi.current.intensity = 0.42 + day * 0.26 + env.lightning * env.lightning * 1.6
+      const hc = hemi.current.color as Color
+      hc.copy(cHorizon)
+      tmp.set('#6a4a2e')
+      hc.lerp(tmp, (1 - day) * 0.5)
     }
     if (fog.current) {
       ;(fog.current.color as Color).copy(cHorizon)
@@ -183,7 +187,6 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
       w.t = 5 + (w.seed / 0xffffffff) * 16 - stormy * 3
       if (stormy > 0.55) env.lightning = 1
     }
-    if (bolt.current) bolt.current.intensity = env.lightning * env.lightning * 6
   })
 
   return (
@@ -223,8 +226,6 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
         shadow-camera-far={260}
         shadow-bias={-0.0004}
       />
-      <pointLight ref={bolt} position={[-60, 50, 0]} color="#e6efff" intensity={0} />
-
       <fogExp2 ref={fog} attach="fog" args={['#cfe2ee', 0.006]} />
 
       <Rain scale={rainScale} drops={rainDrops} />

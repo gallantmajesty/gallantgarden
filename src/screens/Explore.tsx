@@ -88,7 +88,6 @@ export function Explore() {
       )}
 
       <SeatPrompt />
-      <SeatedExitBar />
       <SeatedPanel />
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
@@ -131,24 +130,10 @@ function SeatPrompt() {
   )
 }
 
-/** Always-visible exit affordance while seated: a top-right X plus a dedicated
- *  "Stand up" button, so the user is never reliant on the E hotkey (which is
- *  also a typing key) to leave the chair. */
-function SeatedExitBar() {
-  const seat = useWorld((s) => s.seat)
-  if (seat == null) return null
-  return (
-    <div className="seated-exit">
-      <button className="sf-btn secondary" onClick={() => useWorld.getState().stand()}>
-        ⤴ Stand up
-      </button>
-      <button className="seated-exit-x" title="Stand up (leave chair)" aria-label="Stand up" onClick={() => useWorld.getState().stand()}>
-        ✕
-      </button>
-    </div>
-  )
-}
-
+/** The single source of truth for leaving a chair lives in the seated panel
+ *  header (a labelled "Stand up" button + an ✕). When the panel is minimized to
+ *  a chip, a compact "Stand up" sits beside the chip so the user is never reliant
+ *  on the E hotkey (which is also a typing key) to get up. */
 function SeatedPanel() {
   const seat = useWorld((s) => s.seat)
   const { mode, remaining, running, toggle, skip, reset } = usePomodoro()
@@ -165,26 +150,29 @@ function SeatedPanel() {
   const ss = String(remaining % 60).padStart(2, '0')
   const label = mode === 'idle' ? 'Ready' : mode === 'study' ? 'Studying' : mode === 'long' ? 'Long break' : 'Break'
 
-  // minimized → a small unobtrusive chip so the world is fully visible
+  // minimized → a small unobtrusive chip so the world is fully visible, with a
+  // compact stand-up beside it (the panel header isn't shown while minimized)
   if (view === 'min') {
     return (
-      <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
-        <span className="station-chip-dot" /> {mode === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
-      </button>
+      <div className="station-min">
+        <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
+          <span className="station-chip-dot" /> {mode === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
+        </button>
+        <button className="station-min-stand" onClick={() => useWorld.getState().stand()} title="Stand up (leave chair)">
+          ⤴ Stand up
+        </button>
+      </div>
     )
   }
 
   return (
     <div className={`station ${view === 'collapsed' ? 'collapsed' : ''}`} data-no-hotkeys>
       <div className="station-head">
-        <div>
+        <div className="station-title">
           <span className="sf-pill">Study Station</span>
           <h2>Your desk</h2>
         </div>
         <div className="station-controls">
-          <button className="station-ctrl" title="Next focus session" onClick={skip}>
-            Next ›
-          </button>
           <button
             className="station-ctrl"
             title={view === 'collapsed' ? 'Expand' : 'Collapse'}
@@ -195,8 +183,8 @@ function SeatedPanel() {
           <button className="station-ctrl" title="Minimize" onClick={() => desk().setView('min')}>
             –
           </button>
-          <button className="sf-btn secondary" onClick={() => useWorld.getState().stand()}>
-            Stand up
+          <button className="station-stand" onClick={() => useWorld.getState().stand()}>
+            ⤴ Stand up
           </button>
           <button className="station-x" title="Stand up (leave chair)" aria-label="Stand up" onClick={() => useWorld.getState().stand()}>
             ✕

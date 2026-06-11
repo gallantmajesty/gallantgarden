@@ -3,15 +3,97 @@ import { DoubleSide } from 'three'
 import { HALL, windowZs } from './layout'
 import { readingCorners } from './furniture'
 import { makeBannerTexture } from './textures'
+import { InstancedShape, type ShapeItem } from './Instanced'
 
 const GOLD = '#caa84a'
 
 /** Hanging lamps, plants, reading corners, banners, a great clock, rugs and a
- *  few elegant glowing crystals — the handcrafted clutter that fills the hall. */
+ *  few elegant glowing crystals — the handcrafted clutter that fills the hall.
+ *
+ *  PERFORMANCE: the repeated dressing (chandelier bulbs/rods/rings, potted-tree
+ *  fronds & pots, wall sconces, banner rods/cloth/tails) used to be hundreds of
+ *  individual meshes. Each repeated set is now a single instanced draw; only the
+ *  genuinely unique pieces (reading corners, clock, rugs, crystals) stay as
+ *  one-off meshes. */
 export function Decor() {
   const { halfW, halfL, wallH, balconyY } = HALL
   const corners = useMemo(() => readingCorners(), [])
   const banner = useMemo(() => makeBannerTexture(), [])
+
+  const chandPositions = useMemo<[number, number][]>(
+    () => [
+      [-9.5, -16],
+      [9.5, -16],
+      [-9.5, 16],
+      [9.5, 16],
+    ],
+    [],
+  )
+
+  // ---- instanced dressing batches ----
+  const instanced = useMemo(() => {
+    const chandBulbs: ShapeItem[] = []
+    const chandRods: ShapeItem[] = []
+    const chandRings: ShapeItem[] = []
+    const potBodies: ShapeItem[] = []
+    const fronds: ShapeItem[] = []
+    const sconceCores: ShapeItem[] = []
+    const sconceArms: ShapeItem[] = []
+    const bannerRods: ShapeItem[] = []
+    const bannerCloths: ShapeItem[] = []
+    const bannerTails: ShapeItem[] = []
+
+    // chandeliers over the two table aisles (avoiding the central tree)
+    for (const [x, z] of chandPositions) {
+      const cy = wallH - 3
+      chandRods.push({ pos: [x, cy + 1.8, z] })
+      chandRings.push({ pos: [x, cy, z], rot: [Math.PI / 2, 0, 0] })
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2
+        chandBulbs.push({ pos: [x + Math.cos(a) * 0.95, cy + 0.12, z + Math.sin(a) * 0.95] })
+      }
+    }
+
+    // corner potted trees
+    for (const [x, z] of [
+      [-halfW + 1.6, -halfL + 2],
+      [halfW - 1.6, -halfL + 2],
+      [-halfW + 1.6, halfL - 2],
+      [halfW - 1.6, halfL - 2],
+    ]) {
+      potBodies.push({ pos: [x, 0.5, z] })
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2
+        fronds.push({
+          pos: [x + Math.cos(a) * 0.28, 1.7, z + Math.sin(a) * 0.28],
+          rot: [0.4, a, 0],
+          color: k % 2 ? '#2f7a3a' : '#3f9a4a',
+        })
+      }
+    }
+
+    // warm wall sconces between the windows (glow via bloom, no light cost)
+    windowZs().forEach((z) => {
+      for (const sx of [-1, 1]) {
+        const gx = sx * (halfW - 0.7)
+        sconceCores.push({ pos: [gx, 5.4, z] })
+        sconceArms.push({ pos: [gx + sx * 0.12, 5.1, z], rot: [0, 0, sx * 0.4] })
+      }
+    })
+
+    // grand house banners hanging from the balcony
+    for (const z of [-22, -8, 8, 22]) {
+      for (const sx of [-1, 1]) {
+        const gx = sx * (HALL.halfW - HALL.balconyDepth - 0.2)
+        const gy = balconyY - 0.4
+        bannerRods.push({ pos: [gx, gy + 0.2, z], rot: [0, 0, Math.PI / 2] })
+        bannerCloths.push({ pos: [gx, gy - 2.4, z] })
+        bannerTails.push({ pos: [gx, gy - 5.1, z], rot: [0, 0, Math.PI] })
+      }
+    }
+
+    return { chandBulbs, chandRods, chandRings, potBodies, fronds, sconceCores, sconceArms, bannerRods, bannerCloths, bannerTails }
+  }, [chandPositions, halfW, halfL, wallH, balconyY])
 
   const crystals = useMemo(
     () => [
@@ -26,60 +108,27 @@ export function Decor() {
 
   return (
     <group>
-      {/* chandeliers over the two table aisles (avoiding the central tree) */}
-      {[
-        [-9.5, -16],
-        [9.5, -16],
-        [-9.5, 16],
-        [9.5, 16],
-      ].map(([x, z], i) => (
-        <group key={`chand-${i}`} position={[x, wallH - 3, z]}>
-          <mesh position={[0, 1.8, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, 1.8, 6]} />
-            <meshStandardMaterial color="#2a1c10" />
-          </mesh>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.95, 0.07, 8, 24]} />
-            <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} emissive="#3a2c10" />
-          </mesh>
-          {Array.from({ length: 8 }, (_, k) => {
-            const a = (k / 8) * Math.PI * 2
-            return (
-              <mesh key={k} position={[Math.cos(a) * 0.95, 0.12, Math.sin(a) * 0.95]}>
-                <sphereGeometry args={[0.1, 10, 10]} />
-                <meshStandardMaterial color="#fff2cf" emissive="#ffce7a" emissiveIntensity={2.2} />
-              </mesh>
-            )
-          })}
-          {/* glow only (bloom) — the four grand lanterns supply the real ceiling light */}
-        </group>
-      ))}
+      {/* chandelier frames + bulbs (glow via bloom — the grand lanterns supply the
+          real ceiling light). Each part is one instanced draw across all four. */}
+      <InstancedShape items={instanced.chandRods} color="#2a1c10">
+        <cylinderGeometry args={[0.03, 0.03, 1.8, 6]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.chandRings} color={GOLD} metalness={0.7} roughness={0.3} emissive="#3a2c10">
+        <torusGeometry args={[0.95, 0.07, 8, 24]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.chandBulbs} color="#fff2cf" emissive="#ffce7a" emissiveIntensity={2.2}>
+        <sphereGeometry args={[0.1, 10, 10]} />
+      </InstancedShape>
 
-      {/* corner potted trees */}
-      {[
-        [-halfW + 1.6, -halfL + 2],
-        [halfW - 1.6, -halfL + 2],
-        [-halfW + 1.6, halfL - 2],
-        [halfW - 1.6, halfL - 2],
-      ].map(([x, z], i) => (
-        <group key={`plant-${i}`} position={[x, 0, z]}>
-          <mesh position={[0, 0.5, 0]}>
-            <cylinderGeometry args={[0.5, 0.36, 1, 16]} />
-            <meshStandardMaterial color="#9c4a28" roughness={0.85} />
-          </mesh>
-          {Array.from({ length: 12 }, (_, k) => {
-            const a = (k / 12) * Math.PI * 2
-            return (
-              <mesh key={k} position={[Math.cos(a) * 0.28, 1.7, Math.sin(a) * 0.28]} rotation={[0.4, a, 0]}>
-                <coneGeometry args={[0.18, 2, 5]} />
-                <meshStandardMaterial color={k % 2 ? '#2f7a3a' : '#3f9a4a'} roughness={0.9} />
-              </mesh>
-            )
-          })}
-        </group>
-      ))}
+      {/* corner potted trees: pots + fronds, instanced */}
+      <InstancedShape items={instanced.potBodies} color="#9c4a28" roughness={0.85}>
+        <cylinderGeometry args={[0.5, 0.36, 1, 16]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.fronds} roughness={0.9}>
+        <coneGeometry args={[0.18, 2, 5]} />
+      </InstancedShape>
 
-      {/* reading corners: armchair + floor lamp + rug */}
+      {/* reading corners: armchair + floor lamp + rug (handful, kept per-corner) */}
       {corners.map((c, i) => (
         <group key={`corner-${i}`} position={c.pos} rotation={[0, c.rotY, 0]}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
@@ -107,28 +156,17 @@ export function Decor() {
         </group>
       ))}
 
-      {/* grand "STUDY GARDEN" house banners hanging from the balcony */}
-      {[-22, -8, 8, 22].map((z, i) =>
-        [-1, 1].map((sx) => (
-          <group key={`ban-${i}-${sx}`} position={[sx * (HALL.halfW - HALL.balconyDepth - 0.2), balconyY - 0.4, z]}>
-            {/* gold hanging rod (spans the banner width) */}
-            <mesh position={[0, 0.2, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.06, 0.06, 2.1, 8]} />
-              <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
-            </mesh>
-            {/* banner cloth */}
-            <mesh position={[0, -2.4, 0]}>
-              <planeGeometry args={[1.9, 5]} />
-              <meshStandardMaterial map={banner} emissiveMap={banner} emissive="#caa84a" emissiveIntensity={0.18} roughness={0.9} side={DoubleSide} />
-            </mesh>
-            {/* pointed tail */}
-            <mesh position={[0, -5.1, 0]} rotation={[0, 0, Math.PI]}>
-              <coneGeometry args={[0.95, 0.5, 3]} />
-              <meshStandardMaterial color="#16243c" roughness={0.9} side={DoubleSide} />
-            </mesh>
-          </group>
-        )),
-      )}
+      {/* grand "STUDY GARDEN" house banners hanging from the balcony — rod, cloth
+          and tail each instanced across all eight banners */}
+      <InstancedShape items={instanced.bannerRods} color={GOLD} metalness={0.7} roughness={0.3}>
+        <cylinderGeometry args={[0.06, 0.06, 2.1, 8]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.bannerCloths} map={banner} emissiveMap={banner} emissive="#caa84a" emissiveIntensity={0.18} roughness={0.9} side={DoubleSide}>
+        <planeGeometry args={[1.9, 5]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.bannerTails} color="#16243c" roughness={0.9} side={DoubleSide}>
+        <coneGeometry args={[0.95, 0.5, 3]} />
+      </InstancedShape>
 
       {/* great clock on the near end wall */}
       <group position={[0, 13, halfL - 0.05]} rotation={[0, Math.PI, 0]}>
@@ -162,23 +200,15 @@ export function Decor() {
         </mesh>
       ))}
 
-      {/* warm wall sconces between the windows (glow via bloom, no light cost) */}
-      {windowZs().map((z, i) =>
-        [-1, 1].map((sx) => (
-          <group key={`sconce-${i}-${sx}`} position={[sx * (HALL.halfW - 0.7), 5.4, z]}>
-            <mesh>
-              <sphereGeometry args={[0.17, 10, 10]} />
-              <meshStandardMaterial color="#fff0c8" emissive="#ffb24a" emissiveIntensity={2} />
-            </mesh>
-            <mesh position={[sx * 0.12, -0.3, 0]} rotation={[0, 0, sx * 0.4]}>
-              <cylinderGeometry args={[0.04, 0.08, 0.6, 8]} />
-              <meshStandardMaterial color="#3a2c10" metalness={0.5} roughness={0.5} />
-            </mesh>
-          </group>
-        )),
-      )}
+      {/* sconces: glowing cores + iron arms, instanced across every window pier */}
+      <InstancedShape items={instanced.sconceCores} color="#fff0c8" emissive="#ffb24a" emissiveIntensity={2}>
+        <sphereGeometry args={[0.17, 10, 10]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.sconceArms} color="#3a2c10" metalness={0.5} roughness={0.5}>
+        <cylinderGeometry args={[0.04, 0.08, 0.6, 8]} />
+      </InstancedShape>
 
-      {/* elegant glowing crystals (glow via bloom) */}
+      {/* elegant glowing crystals (glow via bloom; each a unique emissive hue) */}
       {crystals.map((cr, i) => (
         <mesh key={`cry-${i}`} position={cr.pos as [number, number, number]}>
           <octahedronGeometry args={[0.34, 0]} />

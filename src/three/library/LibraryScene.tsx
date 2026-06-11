@@ -1,18 +1,9 @@
-import { Component, Suspense, useMemo, useRef, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Sparkles } from '@react-three/drei'
+import { PerformanceMonitor, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
-import { AdditiveBlending, DoubleSide, MeshBasicMaterial } from 'three'
+import { KernelSize } from 'postprocessing'
 
-// god-ray slab material (module-level so it can be animated each frame)
-const SHAFT_MAT = new MeshBasicMaterial({
-  color: '#ffe7b0',
-  transparent: true,
-  opacity: 0,
-  blending: AdditiveBlending,
-  depthWrite: false,
-  side: DoubleSide,
-})
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
 import { Bookshelves } from './Bookshelf'
@@ -23,8 +14,7 @@ import { KnowledgeTree } from './KnowledgeTree'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
-import { env } from './env'
-import { QUALITY_PRESET } from '../../store/settings'
+import { QUALITY_PRESET, type Quality } from '../../store/settings'
 import { useSettings } from '../../store/settings'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -47,23 +37,45 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   const cinematic = useSettings((s) => s.cinematic)
   const preset = QUALITY_PRESET[quality]
 
+  // Runtime device-pixel-ratio. Starts at the quality ceiling and is auto-scaled
+  // DOWN by the PerformanceMonitor below when the GPU can't keep up (and back up
+  // when it has headroom). This is the single most reliable FPS lever on weak
+  // laptops — the same scene rendered at fewer pixels. Reset to the ceiling
+  // whenever the Quality setting changes.
+  const [dpr, setDpr] = useState(preset.dpr)
+  useEffect(() => setDpr(preset.dpr), [preset.dpr])
+  const dprFloor = 0.6
+
   return (
     <Canvas
       shadows={preset.shadows ? 'soft' : false}
-      dpr={[1, preset.dpr]}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      dpr={dpr}
+      gl={{ antialias: false, powerPreference: 'high-performance' }}
       onCreated={() => onReady?.()}
     >
+      {/* Auto-resolution governor: when the frame rate drops below the healthy
+          band we shed pixels; when it recovers we add them back. Keeps motion
+          smooth on integrated GPUs instead of locking at a fixed heavy DPR. */}
+      <PerformanceMonitor
+        bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
+        flipflops={3}
+        factor={1}
+        onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
+        onFallback={() => setDpr(dprFloor)}
+      />
+
+      <QualitySync quality={quality} shadows={preset.shadows} />
+
       <SoftBoundary>
         <Suspense fallback={null}>
           <DayNightWeather quality={quality} cinematic={cinematic} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} />
-          <Exterior count={preset.forest} />
+          <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
         </Suspense>
       </SoftBoundary>
 
       {/* warm interior fill so the hall is always cosily lit — never pitch-black
           at night — while the lanterns add the real pools of light */}
-      <ambientLight intensity={0.34} color="#ffd9a8" />
+      <ambientLight intensity={0.44} color="#ffd9a8" />
 
       <LibraryShell />
       <Bookshelves />
@@ -75,49 +87,33 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       {preset.dust > 0 && (
         <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={2.6} speed={0.16} color="#ffe6b0" opacity={0.5} />
       )}
-      {preset.godRays && <LightShafts />}
 
       <PlayerController />
       <PerfLogger />
 
       {cinematic && preset.bloom && (
-        <EffectComposer enableNormalPass={false}>
-          <Bloom luminanceThreshold={0.72} luminanceSmoothing={0.32} intensity={0.55} mipmapBlur />
-          <Vignette eskil={false} offset={0.12} darkness={0.9} />
+        // multisampling 0 disables the composer's expensive MSAA pass; the small
+        // mipmap bloom kernel keeps the lantern/window glow at a fraction of the
+        // cost of the previous full-resolution bloom.
+        <EffectComposer enableNormalPass={false} multisampling={0}>
+          <Bloom luminanceThreshold={0.75} luminanceSmoothing={0.3} intensity={0.5} kernelSize={KernelSize.SMALL} mipmapBlur />
+          <Vignette eskil={false} offset={0.14} darkness={0.85} />
         </EffectComposer>
       )}
     </Canvas>
   )
 }
 
-/** Faux volumetric god-rays: soft additive slabs slanting in through the windows,
- *  brightening with daylight and fading at night / in fog. */
-function LightShafts() {
-  const mat = SHAFT_MAT
-
-  const shafts = useMemo(() => {
-    const out: { pos: [number, number, number]; rotY: number }[] = []
-    for (const sx of [-1, 1]) {
-      for (let z = -24; z <= 24; z += 12) {
-        out.push({ pos: [sx * (HALL.halfW - 4), HALL.wallH / 2 - 1, z], rotY: sx > 0 ? -0.5 : 0.5 })
-      }
-    }
-    return out
-  }, [])
-
-  useFrame(() => {
-    mat.opacity = Math.max(0, env.dayFactor * 0.05 * (1 - env.fog * 0.7))
-  })
-
-  return (
-    <group>
-      {shafts.map((sh, i) => (
-        <mesh key={i} position={sh.pos} rotation={[0, sh.rotY, 0.3]} material={mat}>
-          <planeGeometry args={[5, HALL.wallH]} />
-        </mesh>
-      ))}
-    </group>
-  )
+/** Applies graphics-quality changes that the WebGL renderer won't pick up from a
+ *  React prop on its own — chiefly toggling the shadow map on/off live so the
+ *  "Quality" setting visibly updates the scene without a reload. */
+function QualitySync({ quality, shadows }: { quality: Quality; shadows: boolean }) {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    gl.shadowMap.enabled = shadows
+    gl.shadowMap.needsUpdate = true
+  }, [gl, shadows, quality])
+  return null
 }
 
 /**

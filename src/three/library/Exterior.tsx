@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D } from 'three'
 import { HALL } from './layout'
 import { env } from './env'
+import { InstancedShape, type ShapeItem } from './Instanced'
 
 // glowing castle-window material (module-level so it can be animated each frame)
 const CASTLE_WIN_MAT = new MeshStandardMaterial({ color: '#ffcf8a', emissive: '#ffaa44', emissiveIntensity: 1.5 })
@@ -29,7 +30,7 @@ interface Tree {
  * in the wind, distant mountains, a winding river, and a mysterious castle on a
  * far mountain whose windows glow at night. `count` scales with graphics quality.
  */
-export function Exterior({ count }: { count: number }) {
+export function Exterior({ count, mountains = 40, clouds = 9 }: { count: number; mountains?: number; clouds?: number }) {
   const trees = useMemo<Tree[]>(() => {
     const rand = rng(20260609)
     const out: Tree[] = []
@@ -48,36 +49,39 @@ export function Exterior({ count }: { count: number }) {
   return (
     <group>
       <Ground />
-      <Mountains />
+      <Mountains count={mountains} />
       <River />
       <PineForest trees={trees} />
       <DistantCastle />
-      <Clouds />
+      <Clouds count={clouds} />
     </group>
   )
 }
 
 /** Soft clouds drifting slowly across the sky — built from clustered flattened
- *  blobs (no textures) so they read as volume while staying cheap. */
-function Clouds() {
+ *  blobs (no textures) so they read as volume while staying cheap. Every puff in
+ *  the sky is ONE instanced draw call (was dozens of separate transparent meshes,
+ *  each forcing its own draw + transparency sort). */
+function Clouds({ count = 9 }: { count?: number }) {
   const ref = useRef<Group>(null)
-  const clouds = useMemo(() => {
+  const puffs = useMemo<ShapeItem[]>(() => {
     const rand = rng(5150)
-    return Array.from({ length: 9 }, () => {
-      const puffs = Array.from({ length: 4 + Math.floor(rand() * 3) }, () => ({
-        x: (rand() - 0.5) * 28,
-        y: (rand() - 0.5) * 6,
-        z: (rand() - 0.5) * 14,
-        s: 7 + rand() * 9,
-      }))
-      return {
-        x: -260 + rand() * 520,
-        y: 120 + rand() * 70,
-        z: -200 + rand() * 400,
-        puffs,
+    const out: ShapeItem[] = []
+    for (let i = 0; i < count; i++) {
+      const cx = -260 + rand() * 520
+      const cy = 120 + rand() * 70
+      const cz = -200 + rand() * 400
+      const n = 4 + Math.floor(rand() * 3)
+      for (let k = 0; k < n; k++) {
+        const s = 7 + rand() * 9
+        out.push({
+          pos: [cx + (rand() - 0.5) * 28, cy + (rand() - 0.5) * 6, cz + (rand() - 0.5) * 14],
+          scale: [s, s * 0.55, s],
+        })
       }
-    })
-  }, [])
+    }
+    return out
+  }, [count])
 
   useFrame((_, dt) => {
     if (!ref.current) return
@@ -87,16 +91,9 @@ function Clouds() {
 
   return (
     <group ref={ref}>
-      {clouds.map((c, i) => (
-        <group key={i} position={[c.x, c.y, c.z]}>
-          {c.puffs.map((p, k) => (
-            <mesh key={k} position={[p.x, p.y, p.z]} scale={[p.s, p.s * 0.55, p.s]}>
-              <sphereGeometry args={[1, 10, 8]} />
-              <meshStandardMaterial color="#c8cdd6" transparent opacity={0.5} roughness={1} depthWrite={false} />
-            </mesh>
-          ))}
-        </group>
-      ))}
+      <InstancedShape items={puffs} color="#c8cdd6" roughness={1} transparent opacity={0.5} depthWrite={false}>
+        <sphereGeometry args={[1, 10, 8]} />
+      </InstancedShape>
     </group>
   )
 }
@@ -166,48 +163,48 @@ function PineForest({ trees }: { trees: Tree[] }) {
   )
 }
 
-function Mountains() {
-  const peaks = useMemo(() => {
+function Mountains({ count = 40 }: { count?: number }) {
+  // two layered rings for depth; bluer & hazier the further out (aerial
+  // perspective). Each peak is a cone + a snow cap; the whole range collapses to
+  // TWO instanced draws (was up to ~80 separate meshes + materials).
+  const { peaks, caps } = useMemo(() => {
     const rand = rng(777)
-    // two layered rings for depth; bluer & hazier the further out (aerial perspective)
-    const out: { pos: [number, number, number]; h: number; r: number; shade: number; snow: number }[] = []
+    const peaks: ShapeItem[] = []
+    const caps: ShapeItem[] = []
+    const inner = Math.round(count * 0.55)
+    let idx = 0
     for (let ring = 0; ring < 2; ring++) {
-      const n = ring === 0 ? 22 : 18
+      const n = ring === 0 ? inner : count - inner
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + rand() * 0.18
         const rad = (ring === 0 ? 230 : 330) + rand() * 70
-        out.push({
-          pos: [Math.cos(a) * rad, -8, Math.sin(a) * rad * 0.85],
-          h: 70 + rand() * (ring === 0 ? 80 : 120),
-          r: 44 + rand() * 34,
-          shade: (ring === 0 ? 0.55 : 0.78) + rand() * 0.18,
-          snow: 0.62 + rand() * 0.12,
-        })
+        const h = 70 + rand() * (ring === 0 ? 80 : 120)
+        const r = 44 + rand() * 34
+        const shade = (ring === 0 ? 0.55 : 0.78) + rand() * 0.18
+        const snow = 0.62 + rand() * 0.12
+        const pos: [number, number, number] = [Math.cos(a) * rad, -8, Math.sin(a) * rad * 0.85]
+        const rot: [number, number, number] = [0, idx * 1.3, 0]
+        // hazy blue-grey rock fading toward the sky colour with distance
+        const cr = Math.round(96 + 70 * shade)
+        const cg = Math.round(108 + 74 * shade)
+        const cb = Math.round(128 + 84 * shade)
+        peaks.push({ pos, rot, scale: [r, h, r], color: `rgb(${cr}, ${cg}, ${cb})` })
+        const capR = r * (1 - snow + 0.06)
+        const capH = h * (1 - snow)
+        caps.push({ pos: [pos[0], pos[1] + h * (snow - 0.5), pos[2]], rot, scale: [capR, capH, capR] })
+        idx++
       }
     }
-    return out
-  }, [])
+    return { peaks, caps }
+  }, [count])
   return (
     <group>
-      {peaks.map((m, i) => {
-        // hazy blue-grey rock fading toward the sky colour with distance
-        const r = Math.round(96 + 70 * m.shade)
-        const g = Math.round(108 + 74 * m.shade)
-        const b = Math.round(128 + 84 * m.shade)
-        return (
-          <group key={i} position={m.pos} rotation={[0, i * 1.3, 0]}>
-            <mesh>
-              <coneGeometry args={[m.r, m.h, 7]} />
-              <meshStandardMaterial color={`rgb(${r}, ${g}, ${b})`} roughness={1} flatShading />
-            </mesh>
-            {/* snow cap */}
-            <mesh position={[0, m.h * (m.snow - 0.5), 0]}>
-              <coneGeometry args={[m.r * (1 - m.snow + 0.06), m.h * (1 - m.snow), 7]} />
-              <meshStandardMaterial color="#eef2f6" roughness={1} flatShading />
-            </mesh>
-          </group>
-        )
-      })}
+      <InstancedShape items={peaks} roughness={1} flatShading>
+        <coneGeometry args={[1, 1, 7]} />
+      </InstancedShape>
+      <InstancedShape items={caps} color="#eef2f6" roughness={1} flatShading>
+        <coneGeometry args={[1, 1, 7]} />
+      </InstancedShape>
     </group>
   )
 }
