@@ -19,12 +19,17 @@ function canvas(size = 256) {
   return c
 }
 
+// Crisp anisotropic filtering keeps tiled surfaces (floor, walls) sharp at
+// grazing angles instead of blurring — a "free" one-time clarity win with no
+// per-frame cost. 16 is the common GPU maximum; drivers clamp it down safely.
+const ANISO = 16
+
 function finish(c: HTMLCanvasElement, repeat: number) {
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
   tex.wrapS = tex.wrapT = RepeatWrapping
   tex.repeat.set(repeat, repeat)
-  tex.anisotropy = 4
+  tex.anisotropy = ANISO
   return tex
 }
 
@@ -62,10 +67,15 @@ export function makeWoodTexture(repeat = 8, seed = 7): CanvasTexture {
 export function makeStainedGlassTexture(seed = 5): CanvasTexture {
   const W = 256
   const H = 512
+  // Render at 2× and let the context scale, so the tall window panels stay crisp
+  // (no blocky diamonds) without touching any of the drawing maths below. This is
+  // a one-time generation cost — zero per-frame impact.
+  const SS = 2
   const c = document.createElement('canvas')
-  c.width = W
-  c.height = H
+  c.width = W * SS
+  c.height = H * SS
   const ctx = c.getContext('2d')!
+  ctx.scale(SS, SS)
   const rand = rng(seed)
 
   // jewel palette
@@ -135,7 +145,7 @@ export function makeStainedGlassTexture(seed = 5): CanvasTexture {
 
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
-  tex.anisotropy = 4
+  tex.anisotropy = ANISO
   return tex
 }
 
@@ -200,7 +210,7 @@ export function makeBannerTexture(): CanvasTexture {
 
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
-  tex.anisotropy = 4
+  tex.anisotropy = ANISO
   return tex
 }
 

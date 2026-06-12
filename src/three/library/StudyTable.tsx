@@ -220,24 +220,53 @@ function TableDressing({ pos, seed, light, quality }: { pos: [number, number, nu
             </mesh>
           </group>
 
-          {/* flower pot + plant */}
+          {/* potted plant — a proper terracotta pot (body + rim + soil) with a
+              rounded leafy bush, evenly-spaced upright leaves and a few blossoms */}
           <group position={[-0.45, topY + 0.06, dressing.potAt]}>
-            <mesh position={[0, 0.12, 0]}>
-              <cylinderGeometry args={[0.13, 0.1, 0.24, 12]} />
+            {/* tapered pot body */}
+            <mesh position={[0, 0.11, 0]}>
+              <cylinderGeometry args={[0.115, 0.085, 0.22, 20]} />
               <meshStandardMaterial color="#b5552f" roughness={0.8} />
             </mesh>
-            {[0, 1, 2, 3].map((k) => (
-              <mesh key={k} position={[Math.cos(k) * 0.06, 0.33, Math.sin(k) * 0.06]} rotation={[0.3, k, 0]}>
-                <coneGeometry args={[0.05, 0.32, 5]} />
-                <meshStandardMaterial color="#3f8a3f" roughness={0.9} />
-              </mesh>
-            ))}
-            {[0.5, 2.2].map((k) => (
-              <mesh key={`fl-${k}`} position={[Math.cos(k) * 0.07, 0.42, Math.sin(k) * 0.07]}>
-                <sphereGeometry args={[0.045, 8, 8]} />
-                <meshStandardMaterial color={k > 1 ? '#e8794a' : '#e6b84a'} roughness={0.8} />
-              </mesh>
-            ))}
+            {/* flared rim lip */}
+            <mesh position={[0, 0.225, 0]}>
+              <cylinderGeometry args={[0.13, 0.115, 0.04, 20]} />
+              <meshStandardMaterial color="#9c4525" roughness={0.8} />
+            </mesh>
+            {/* dark soil disc */}
+            <mesh position={[0, 0.244, 0]}>
+              <cylinderGeometry args={[0.108, 0.108, 0.02, 16]} />
+              <meshStandardMaterial color="#2e2016" roughness={1} />
+            </mesh>
+            {/* rounded leafy mound */}
+            <mesh position={[0, 0.33, 0]} scale={[1, 0.78, 1]}>
+              <icosahedronGeometry args={[0.12, 0]} />
+              <meshStandardMaterial color="#3f8a3f" roughness={0.9} flatShading />
+            </mesh>
+            {/* upright leaves, evenly spaced and leaning outward */}
+            {Array.from({ length: 6 }, (_, k) => {
+              const a = (k / 6) * Math.PI * 2
+              return (
+                <mesh
+                  key={k}
+                  position={[Math.cos(a) * 0.075, 0.35, Math.sin(a) * 0.075]}
+                  rotation={[Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6]}
+                >
+                  <coneGeometry args={[0.032, 0.2, 5]} />
+                  <meshStandardMaterial color={k % 2 ? '#3f8a3f' : '#4fa24a'} roughness={0.9} />
+                </mesh>
+              )
+            })}
+            {/* a few blossoms, evenly spaced on top */}
+            {Array.from({ length: 3 }, (_, k) => {
+              const a = (k / 3) * Math.PI * 2 + 0.5
+              return (
+                <mesh key={`fl-${k}`} position={[Math.cos(a) * 0.06, 0.43, Math.sin(a) * 0.06]}>
+                  <sphereGeometry args={[0.034, 8, 8]} />
+                  <meshStandardMaterial color={k === 0 ? '#e8794a' : k === 1 ? '#e6b84a' : '#e85a7a'} roughness={0.8} />
+                </mesh>
+              )
+            })}
           </group>
 
           {/* hourglass */}

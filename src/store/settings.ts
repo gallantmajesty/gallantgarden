@@ -35,9 +35,9 @@ export interface QualityPreset {
 }
 
 export const QUALITY_PRESET: Record<Quality, QualityPreset> = {
-  low:    { shadows: false, shadowMap: 0,    bloom: false, dust: 0,  particles: false, rainScale: 0.3, rainDrops: 50,  forest: 35,  lampLights: 0, grandLights: 0, treeLight: false, mountains: 18, clouds: 4, pillarDetail: false, windowDetail: false, dpr: 0.85 },
-  medium: { shadows: true,  shadowMap: 1024, bloom: true,  dust: 16, particles: true,  rainScale: 0.6, rainDrops: 90,  forest: 80,  lampLights: 0, grandLights: 0, treeLight: true,  mountains: 26, clouds: 6, pillarDetail: false, windowDetail: false, dpr: 1.0 },
-  high:   { shadows: true,  shadowMap: 2048, bloom: true,  dust: 60, particles: true,  rainScale: 1,   rainDrops: 200, forest: 200, lampLights: 4, grandLights: 4, treeLight: true,  mountains: 40, clouds: 9, pillarDetail: true,  windowDetail: true,  dpr: 1.5 },
+  low:    { shadows: false, shadowMap: 0,    bloom: false, dust: 0,  particles: false, rainScale: 0.3, rainDrops: 50,  forest: 35,  lampLights: 0, grandLights: 0, treeLight: false, mountains: 18, clouds: 4, pillarDetail: false, windowDetail: false, dpr: 1.0 },
+  medium: { shadows: true,  shadowMap: 1024, bloom: true,  dust: 16, particles: true,  rainScale: 0.6, rainDrops: 90,  forest: 80,  lampLights: 0, grandLights: 0, treeLight: true,  mountains: 26, clouds: 6, pillarDetail: false, windowDetail: false, dpr: 1.25 },
+  high:   { shadows: true,  shadowMap: 2048, bloom: true,  dust: 60, particles: true,  rainScale: 1,   rainDrops: 200, forest: 200, lampLights: 4, grandLights: 4, treeLight: true,  mountains: 40, clouds: 9, pillarDetail: true,  windowDetail: true,  dpr: 2.0 },
 }
 
 export interface PomodoroSettings {

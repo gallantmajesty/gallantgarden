@@ -12,6 +12,17 @@ import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
+/** A phone (or phone-sized touch device). Explore World is a keyboard + mouse,
+ *  GPU-heavy experience, so we steer these visitors to a real desktop. We detect
+ *  by user-agent AND by a coarse pointer on a small screen, so "Request desktop
+ *  site" on a phone (which fakes a wide viewport) is still caught via the UA. */
+const isPhone =
+  typeof navigator !== 'undefined' &&
+  (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent) ||
+    (typeof window !== 'undefined' &&
+      window.matchMedia('(pointer: coarse)').matches &&
+      Math.min(window.screen?.width ?? 9999, window.screen?.height ?? 9999) < 820))
+
 export function Explore() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
@@ -30,6 +41,7 @@ export function Explore() {
 
   return (
     <div className="explore-root">
+      <DesktopGate />
       <LibraryScene onReady={() => setReady(true)} />
       <PomodoroTicker />
 
@@ -105,6 +117,32 @@ export function Explore() {
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------- desktop gate */
+
+/** A soft, full-screen notice for phone visitors: Explore World is built for a
+ *  real desktop (keyboard, mouse, a proper GPU). They can still tap "Explore
+ *  anyway", but they're warned the experience will be rough on a phone. */
+function DesktopGate() {
+  const [dismissed, setDismissed] = useState(false)
+  if (!isPhone || dismissed) return null
+  return (
+    <div className="desktop-gate">
+      <div className="desktop-gate-card">
+        <div className="desktop-gate-icon">🖥️</div>
+        <h2>Best on a desktop</h2>
+        <p>
+          <b>Explore World</b> is a full 3D study realm — it needs a keyboard, a mouse and a real
+          computer&rsquo;s graphics to run smoothly. On a phone it will feel cramped and may stutter.
+        </p>
+        <p className="desktop-gate-tip">Open <b>studyforest</b> on a laptop or desktop for the real experience.</p>
+        <button className="sf-btn" onClick={() => setDismissed(true)}>
+          Explore anyway
+        </button>
+      </div>
     </div>
   )
 }

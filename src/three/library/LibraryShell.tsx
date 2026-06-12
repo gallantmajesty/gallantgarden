@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { DoubleSide, type MeshStandardMaterial, type Texture } from 'three'
 import { HALL, WINDOW, windowStep, windowZs } from './layout'
-import { balconyPlatforms, columns, staircases } from './furniture'
+import { balconyPlatforms, columns, GALLERY_FRONT_Z, staircases } from './furniture'
 import { makePlasterTexture, makeStainedGlassTexture, makeWoodTexture } from './textures'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { env } from './env'
@@ -44,17 +44,17 @@ export function LibraryShell() {
     [beamZs, wallH, halfW],
   )
 
-  // balcony balusters along the inner edges
+  // balcony balusters along the inner edges (only where there is gallery floor —
+  // the near-end atrium is open, so no railing floats there)
   const balusters = useMemo<BoxItem[]>(() => {
     const items: BoxItem[] = []
     const innerX = halfW - balconyDepth
-    for (let z = -halfL + 1; z <= halfL - 1; z += 0.7) {
+    for (let z = -halfL + 1; z <= GALLERY_FRONT_Z; z += 0.7) {
       items.push({ pos: [innerX, balconyY + 0.6, z], size: [0.1, 1.2, 0.1] })
       items.push({ pos: [-innerX, balconyY + 0.6, z], size: [0.1, 1.2, 0.1] })
     }
     const innerZ = halfL - balconyDepth
     for (let x = -halfW + 1; x <= halfW - 1; x += 0.7) {
-      items.push({ pos: [x, balconyY + 0.6, innerZ], size: [0.1, 1.2, 0.1] })
       items.push({ pos: [x, balconyY + 0.6, -innerZ], size: [0.1, 1.2, 0.1] })
     }
     return items
@@ -101,19 +101,18 @@ export function LibraryShell() {
           <meshStandardMaterial map={balconyWood} color="#b89058" roughness={0.8} />
         </mesh>
       ))}
-      {/* top rails */}
+      {/* top rails — side rails run only over the galleries (stop at the open
+          atrium); a single far-end rail (the near end is open) */}
       {[-1, 1].map((s) => (
-        <mesh key={`railx-${s}`} position={[s * (halfW - balconyDepth), balconyY + 1.25, 0]}>
-          <boxGeometry args={[0.18, 0.18, halfL * 2 - 1]} />
+        <mesh key={`railx-${s}`} position={[s * (halfW - balconyDepth), balconyY + 1.25, (GALLERY_FRONT_Z - (halfL - 1)) / 2]}>
+          <boxGeometry args={[0.18, 0.18, GALLERY_FRONT_Z + halfL - 1]} />
           <meshStandardMaterial color={TRIM} roughness={0.7} />
         </mesh>
       ))}
-      {[-1, 1].map((s) => (
-        <mesh key={`railz-${s}`} position={[0, balconyY + 1.25, s * (halfL - balconyDepth)]}>
-          <boxGeometry args={[halfW * 2 - 1, 0.18, 0.18]} />
-          <meshStandardMaterial color={TRIM} roughness={0.7} />
-        </mesh>
-      ))}
+      <mesh position={[0, balconyY + 1.25, -(halfL - balconyDepth)]}>
+        <boxGeometry args={[halfW * 2 - 1, 0.18, 0.18]} />
+        <meshStandardMaterial color={TRIM} roughness={0.7} />
+      </mesh>
       <InstancedBoxes items={balusters} color={STONE_DARK} roughness={0.8} castShadow />
 
       {/* grand staircases with stringers, carved banisters, newels & lanterns */}
@@ -261,6 +260,7 @@ type StairData = { side: number; steps: { pos: [number, number, number]; size: [
 function Staircases({ stairs, wood }: { stairs: StairData[]; wood: Texture }) {
   const data = useMemo(() => {
     const steps: ShapeItem[] = []
+    const nosings: ShapeItem[] = []
     const stringers: ShapeItem[] = []
     const handrails: ShapeItem[] = []
     const balusters: BoxItem[] = []
@@ -283,7 +283,14 @@ function Staircases({ stairs, wood }: { stairs: StairData[]; wood: Texture }) {
       const midZ = (zB + zT) / 2
       const railY = (yB + yT) / 2 + 1.05
 
-      for (const stp of sc.steps) steps.push({ pos: stp.pos, scale: stp.size })
+      for (const stp of sc.steps) {
+        steps.push({ pos: stp.pos, scale: stp.size })
+        // a bright nosing strip along each tread's leading edge so every step
+        // reads as a distinct, sharp step instead of merging into a ramp
+        const frontZ = stp.pos[2] + stp.size[2] / 2
+        const topY = stp.pos[1] + stp.size[1] / 2
+        nosings.push({ pos: [stp.pos[0], topY + 0.005, frontZ - 0.03], scale: [stp.size[0] + 0.06, 0.06, 0.12] })
+      }
 
       for (const sx of [-1, 1]) {
         const rx = x + sx * (halfW - 0.12)
@@ -302,12 +309,16 @@ function Staircases({ stairs, wood }: { stairs: StairData[]; wood: Texture }) {
         }
       }
     }
-    return { steps, stringers, handrails, balusters, newels, lanterns }
+    return { steps, nosings, stringers, handrails, balusters, newels, lanterns }
   }, [stairs])
 
   return (
     <group>
       <InstancedShape items={data.steps} map={wood} color="#a9803f" roughness={0.8} castShadow receiveShadow>
+        <boxGeometry />
+      </InstancedShape>
+      {/* bright tread nosings — make each step edge crisp and legible */}
+      <InstancedShape items={data.nosings} color="#d8b06a" roughness={0.5} metalness={0.1}>
         <boxGeometry />
       </InstancedShape>
       <InstancedShape items={data.stringers} color="#6b4a25" roughness={0.85}>

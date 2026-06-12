@@ -36,6 +36,8 @@ export function Decor() {
     const chandRods: ShapeItem[] = []
     const chandRings: ShapeItem[] = []
     const potBodies: ShapeItem[] = []
+    const potRims: ShapeItem[] = []
+    const trunks: ShapeItem[] = []
     const fronds: ShapeItem[] = []
     const sconceCores: ShapeItem[] = []
     const sconceArms: ShapeItem[] = []
@@ -54,7 +56,9 @@ export function Decor() {
       }
     }
 
-    // corner potted trees
+    // corner potted trees — terracotta pot + rim, a short trunk, and a full
+    // leafy canopy built from two evenly-spaced rings of outward-leaning fronds
+    // plus an upright crown (was a single spiky ring that read as a starburst).
     for (const [x, z] of [
       [-halfW + 1.6, -halfL + 2],
       [halfW - 1.6, -halfL + 2],
@@ -62,14 +66,24 @@ export function Decor() {
       [halfW - 1.6, halfL - 2],
     ]) {
       potBodies.push({ pos: [x, 0.5, z] })
-      for (let k = 0; k < 12; k++) {
-        const a = (k / 12) * Math.PI * 2
-        fronds.push({
-          pos: [x + Math.cos(a) * 0.28, 1.7, z + Math.sin(a) * 0.28],
-          rot: [0.4, a, 0],
-          color: k % 2 ? '#2f7a3a' : '#3f9a4a',
-        })
+      potRims.push({ pos: [x, 1.02, z] })
+      trunks.push({ pos: [x, 1.3, z] })
+      const rings = [
+        { y: 1.65, r: 0.42, n: 9, s: 0.62, lean: 0.95 },
+        { y: 2.15, r: 0.3, n: 7, s: 0.5, lean: 0.6 },
+      ]
+      for (const ring of rings) {
+        for (let k = 0; k < ring.n; k++) {
+          const a = (k / ring.n) * Math.PI * 2
+          fronds.push({
+            pos: [x + Math.cos(a) * ring.r, ring.y, z + Math.sin(a) * ring.r],
+            rot: [Math.sin(a) * ring.lean, -a, -Math.cos(a) * ring.lean],
+            scale: ring.s,
+            color: k % 2 ? '#2f7a3a' : '#3f9a4a',
+          })
+        }
       }
+      fronds.push({ pos: [x, 2.55, z], rot: [0, 0, 0], scale: 0.5, color: '#3f9a4a' })
     }
 
     // warm wall sconces between the windows (glow via bloom, no light cost)
@@ -92,7 +106,7 @@ export function Decor() {
       }
     }
 
-    return { chandBulbs, chandRods, chandRings, potBodies, fronds, sconceCores, sconceArms, bannerRods, bannerCloths, bannerTails }
+    return { chandBulbs, chandRods, chandRings, potBodies, potRims, trunks, fronds, sconceCores, sconceArms, bannerRods, bannerCloths, bannerTails }
   }, [chandPositions, halfW, halfL, wallH, balconyY])
 
   const crystals = useMemo(
@@ -120,9 +134,16 @@ export function Decor() {
         <sphereGeometry args={[0.1, 10, 10]} />
       </InstancedShape>
 
-      {/* corner potted trees: pots + fronds, instanced */}
+      {/* corner potted trees: pot body + flared rim + trunk + leafy fronds, each
+          one instanced draw across all four corners */}
       <InstancedShape items={instanced.potBodies} color="#9c4a28" roughness={0.85}>
-        <cylinderGeometry args={[0.5, 0.36, 1, 16]} />
+        <cylinderGeometry args={[0.5, 0.36, 1, 20]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.potRims} color="#7d3a1f" roughness={0.85}>
+        <cylinderGeometry args={[0.56, 0.5, 0.16, 20]} />
+      </InstancedShape>
+      <InstancedShape items={instanced.trunks} color="#6b4a28" roughness={0.9}>
+        <cylinderGeometry args={[0.09, 0.13, 0.8, 8]} />
       </InstancedShape>
       <InstancedShape items={instanced.fronds} roughness={0.9}>
         <coneGeometry args={[0.18, 2, 5]} />

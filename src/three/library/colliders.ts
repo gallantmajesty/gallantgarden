@@ -6,6 +6,7 @@
 
 import { HALL } from './layout'
 import {
+  GALLERY_FRONT_Z,
   SHELF,
   TABLE,
   balconyPlatforms,
@@ -69,7 +70,9 @@ export function buildCollision(): Collision {
   //      balcony walkway is never blocked) ----
   for (const t of [...groundTables(), ...upperTables()]) {
     const baseY = t.pos[1]
-    blockers.push(box(t.pos[0], t.pos[2], TABLE.w / 2 + 0.12, TABLE.l / 2 + 0.12, baseY, baseY + TABLE.h))
+    // collider matches the visible table top exactly (no extra padding) so the
+    // player can brush right past it — the 0.36 player radius is the only buffer.
+    blockers.push(box(t.pos[0], t.pos[2], TABLE.w / 2, TABLE.l / 2, baseY, baseY + TABLE.h))
   }
 
   // ---- bookshelves (ground only block the ground player) ----
@@ -115,14 +118,16 @@ export function buildCollision(): Collision {
     }
   }
 
-  // ---- balcony railings (waist-high blockers ringing the inner edge) ----
+  // ---- balcony railings (waist-high blockers along the gallery inner edges) ----
+  // The near end is the open atrium, so the side rails stop at GALLERY_FRONT_Z
+  // and there is no near-end rail — only the far end.
   const railTop = balconyY + 1.25
+  const sideZc = (GALLERY_FRONT_Z - (halfL - 1)) / 2
+  const sideZh = (GALLERY_FRONT_Z + (halfL - 1)) / 2
   for (const sx of [-1, 1]) {
-    blockers.push(box(sx * (halfW - balconyDepth), 0, 0.18, halfL - balconyDepth, balconyY, railTop))
+    blockers.push(box(sx * (halfW - balconyDepth), sideZc, 0.18, sideZh, balconyY, railTop))
   }
-  for (const sz of [-1, 1]) {
-    blockers.push(box(0, sz * (halfL - balconyDepth), halfW - balconyDepth, 0.18, balconyY, railTop))
-  }
+  blockers.push(box(0, -(halfL - balconyDepth), halfW - balconyDepth, 0.18, balconyY, railTop))
 
   cached = { blockers, surfaces }
   return cached

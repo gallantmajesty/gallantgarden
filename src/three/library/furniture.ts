@@ -30,7 +30,8 @@ export interface Seat {
 
 const CHAIR_CZ = [-TABLE.l / 2 + 1.4, -TABLE.l / 6, TABLE.l / 6, TABLE.l / 2 - 1.4]
 
-/** Every sittable seat in the hall (ground + upper), matching the rendered chairs. */
+/** Every sittable seat in the hall (ground + upper): the desk chairs plus the
+ *  soft reading-corner armchairs, each matching its rendered chair. */
 export function seatAnchors(): Seat[] {
   const out: Seat[] = []
   let id = 0
@@ -41,6 +42,11 @@ export function seatAnchors(): Seat[] {
         out.push({ id: id++, pos: [tx + sx * (TABLE.w / 2 + 0.5), ty, tz + cz], yaw: sx === 1 ? Math.PI / 2 : -Math.PI / 2 })
       }
     }
+  }
+  // reading-corner armchairs — sit back and face out into the hall. The chair is
+  // drawn at the corner origin facing local +z, so the camera yaw is rotY − π.
+  for (const c of readingCorners()) {
+    out.push({ id: id++, pos: [c.pos[0], c.pos[1], c.pos[2]], yaw: c.rotY - Math.PI })
   }
   return out
 }
@@ -71,9 +77,10 @@ export function readingCorners(): Placement[] {
     { pos: [x, 0, -HALL.halfL + 5], rotY: -Math.PI / 2 },
     { pos: [-x, 0, HALL.halfL - 5], rotY: Math.PI / 2 },
     { pos: [x, 0, HALL.halfL - 5], rotY: -Math.PI / 2 },
-    // upper viewing galleries overlooking the hall
-    { pos: [-ux, HALL.balconyY, 30], rotY: -Math.PI / 2 },
-    { pos: [ux, HALL.balconyY, -30], rotY: Math.PI / 2 },
+    // upper viewing galleries overlooking the hall (kept clear of the open
+    // near-end stairwell, z ≳ 22)
+    { pos: [-ux, HALL.balconyY, 12], rotY: -Math.PI / 2 },
+    { pos: [ux, HALL.balconyY, -8], rotY: Math.PI / 2 },
   ]
 }
 
@@ -99,15 +106,13 @@ export function groundShelves(): Placement[] {
   return out
 }
 
-/** Upper-gallery shelves against the end walls. */
+/** Upper-gallery shelves against the far end wall (the near end is the open
+ *  double-height atrium over the stairwell, so it has no upper floor). */
 export function upperShelves(): Placement[] {
   const out: Placement[] = []
-  for (const sz of [-1, 1]) {
-    const z = sz * (HALL.halfL - 0.5)
-    const rotY = sz === 1 ? Math.PI : 0
-    for (let x = -HALL.halfW + 4; x <= HALL.halfW - 4; x += SHELF.w + 0.2) {
-      out.push({ pos: [x, HALL.balconyY, z], rotY })
-    }
+  const z = -(HALL.halfL - 0.5)
+  for (let x = -HALL.halfW + 4; x <= HALL.halfW - 4; x += SHELF.w + 0.2) {
+    out.push({ pos: [x, HALL.balconyY, z], rotY: 0 })
   }
   return out
 }
@@ -142,15 +147,24 @@ export function staircases(): { side: number; steps: Step[] }[] {
   })
 }
 
-/** Walkable balcony ring (two long sides + two ends). Returns platform boxes. */
+/** z where the two long side galleries stop, leaving the near end open as a
+ *  double-height entrance atrium that the staircases sweep up into. The stair
+ *  tops land here. */
+export const GALLERY_FRONT_Z = 22
+
+/** Walkable balcony gallery — a U around the far end + both long sides. The near
+ *  end (+z) is intentionally open (no platform) so the grand staircases are fully
+ *  visible climbing from the entrance floor up to the gallery. */
 export function balconyPlatforms(): { pos: [number, number, number]; size: [number, number, number] }[] {
   const { halfW, halfL, balconyY, balconyDepth } = HALL
-  const sideLen = halfL * 2 - 1
   const endW = halfW * 2 - 1
+  const sideX = halfW - balconyDepth / 2
+  const sideZ0 = -(halfL - 0.5)
+  const sideLen = GALLERY_FRONT_Z - sideZ0
+  const sideCz = (sideZ0 + GALLERY_FRONT_Z) / 2
   return [
-    { pos: [-(halfW - balconyDepth / 2), balconyY, 0], size: [balconyDepth, 0.5, sideLen] },
-    { pos: [halfW - balconyDepth / 2, balconyY, 0], size: [balconyDepth, 0.5, sideLen] },
+    { pos: [-sideX, balconyY, sideCz], size: [balconyDepth, 0.5, sideLen] },
+    { pos: [sideX, balconyY, sideCz], size: [balconyDepth, 0.5, sideLen] },
     { pos: [0, balconyY, -(halfL - balconyDepth / 2)], size: [endW, 0.5, balconyDepth] },
-    { pos: [0, balconyY, halfL - balconyDepth / 2], size: [endW, 0.5, balconyDepth] },
   ]
 }
