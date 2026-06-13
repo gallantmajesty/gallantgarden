@@ -5,6 +5,7 @@ import { Lobby } from './screens/Lobby'
 import { StickyEntry } from './screens/StickyEntry'
 import { Forest } from './screens/Forest'
 import { Explore } from './screens/Explore'
+import { TaskMagnet } from './screens/TaskMagnet'
 import { Placeholder } from './screens/Placeholder'
 import { LoadingVeil } from './components/LoadingVeil'
 
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/sticky" element={<StickyEntry />} />
       <Route path="/sticky/forest" element={<Forest />} />
       <Route path="/explore" element={<Explore />} />
+      <Route path="/magnet" element={<TaskMagnet />} />
       <Route
         path="/sticky/casual"
         element={

@@ -17,9 +17,9 @@ interface LobbyObject {
 const OBJECTS: LobbyObject[] = [
   { key: 'sticky', label: 'Sticky Notes', caption: 'Grow your note forest', icon: 'note', route: '/sticky' },
   { key: 'explore', label: 'Explore World', caption: 'Enter the International Realm', icon: 'globe', route: '/explore' },
+  { key: 'magnet', label: 'Task Magnet', caption: 'Your private life HQ', icon: 'magnet', route: '/magnet' },
   { key: 'self', label: 'Self Notes', caption: 'A quiet journal', icon: 'book', soon: true },
   { key: 'focus', label: 'Focus Timer', caption: 'Beat procrastination', icon: 'clock', soon: true },
-  { key: 'soon', label: 'Coming Soon', caption: 'New magic brewing', icon: 'star', soon: true },
 ]
 
 export function Lobby() {
@@ -147,6 +147,7 @@ function Glyph({ name }: { name: string }) {
     book: 'M4 4h11a3 3 0 013 3v13H7a3 3 0 01-3-3z M18 20a3 3 0 00-3-3H4',
     clock: 'M12 2a10 10 0 100 20 10 10 0 000-20z M12 7v5l3 3',
     star: 'M12 3l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.4l6-.9z',
+    magnet: 'M5 3v7a7 7 0 0014 0V3h-4v7a3 3 0 01-6 0V3z M5 3h4 M15 3h4',
     people: 'M8 11a3 3 0 100-6 3 3 0 000 6z M2 20a6 6 0 0112 0 M17 11a3 3 0 100-6 M16 14a6 6 0 016 6',
     face: 'M12 2a10 10 0 100 20 10 10 0 000-20z M9 10h.01 M15 10h.01 M8 15a4 4 0 008 0',
     gear: 'M12 8a4 4 0 100 8 4 4 0 000-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2',
