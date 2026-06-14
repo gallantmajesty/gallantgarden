@@ -221,7 +221,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
       <div className="mg-rooms">
         {[
           { v: 'goals', icon: 'target', label: 'Goals & Dreams', sub: `${data.goals.length} active` },
-          { v: 'journal', icon: 'journal', label: 'Journal', sub: `${data.journal.length} entries` },
+          { v: 'habits', icon: 'fire', label: 'Habits', sub: `${data.habits.length} tracked` },
           { v: 'sanctuary', icon: 'vault', label: 'Sanctuary', sub: `${data.ideas.length} ideas` },
           { v: 'themes', icon: 'palette', label: 'Personalize', sub: `${data.unlockedThemes.length} themes` },
         ].map((r) => (

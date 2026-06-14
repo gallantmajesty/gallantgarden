@@ -6,12 +6,12 @@ import { getTheme } from '../lib/magnet/themes'
 import { levelProgress } from '../lib/magnet/types'
 import { ThemeBackdrop } from '../components/magnet/ThemeBackdrop'
 import { Icon } from '../components/magnet/Icon'
+import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { Dashboard } from '../components/magnet/views/Dashboard'
 import { TasksView } from '../components/magnet/views/TasksView'
 import { AnalyticsView } from '../components/magnet/views/AnalyticsView'
 import { GoalsView } from '../components/magnet/views/GoalsView'
 import { HabitsView } from '../components/magnet/views/HabitsView'
-import { JournalView } from '../components/magnet/views/JournalView'
 import { SanctuaryView } from '../components/magnet/views/SanctuaryView'
 import { ThemesView } from '../components/magnet/views/ThemesView'
 import './TaskMagnet.css'
@@ -22,19 +22,19 @@ export type MagnetView =
   | 'analytics'
   | 'goals'
   | 'habits'
-  | 'journal'
   | 'sanctuary'
   | 'themes'
 
-const NAV: { key: MagnetView; label: string; icon: string }[] = [
+// Top-level rooms use the custom watercolour PNG icons where one fits; the
+// dashboard keeps the crisp inline line-icon (no matching PNG in the set).
+const NAV: { key: MagnetView; label: string; icon: string; png?: PngIconName }[] = [
   { key: 'dashboard', label: 'Headquarters', icon: 'home' },
-  { key: 'tasks', label: 'Tasks', icon: 'check' },
-  { key: 'analytics', label: 'Analytics', icon: 'chart' },
-  { key: 'goals', label: 'Goals & Dreams', icon: 'target' },
-  { key: 'habits', label: 'Habits', icon: 'fire' },
-  { key: 'journal', label: 'Journal', icon: 'journal' },
-  { key: 'sanctuary', label: 'Sanctuary', icon: 'vault' },
-  { key: 'themes', label: 'Personalize', icon: 'palette' },
+  { key: 'tasks', label: 'Tasks', icon: 'check', png: 'tasks' },
+  { key: 'analytics', label: 'Analytics', icon: 'chart', png: 'analytics' },
+  { key: 'goals', label: 'Goals & Dreams', icon: 'target', png: 'goals' },
+  { key: 'habits', label: 'Habits', icon: 'fire', png: 'habits' },
+  { key: 'sanctuary', label: 'Sanctuary', icon: 'vault', png: 'achievements' },
+  { key: 'themes', label: 'Personalize', icon: 'palette', png: 'settings' },
 ]
 
 export function TaskMagnet() {
@@ -121,7 +121,11 @@ export function TaskMagnet() {
                 setNavOpen(false)
               }}
             >
-              <Icon name={n.icon} size={20} />
+              {n.png ? (
+                <PngIcon name={n.png} size={24} className="mg-navpng" />
+              ) : (
+                <Icon name={n.icon} size={20} />
+              )}
               <span>{n.label}</span>
             </button>
           ))}
@@ -160,7 +164,6 @@ export function TaskMagnet() {
           {view === 'analytics' && <AnalyticsView />}
           {view === 'goals' && <GoalsView />}
           {view === 'habits' && <HabitsView />}
-          {view === 'journal' && <JournalView />}
           {view === 'sanctuary' && <SanctuaryView />}
           {view === 'themes' && <ThemesView />}
         </div>

@@ -121,7 +121,6 @@ export function computeStreak(data: MagnetData, now: Date): number {
   for (const t of data.tasks) if (t.done && t.completedAt) active.add(dayKey(new Date(t.completedAt)))
   for (const f of data.focus) active.add(f.date)
   for (const h of data.habits) for (const d of h.history) active.add(d)
-  for (const j of data.journal) active.add(j.date)
 
   let streak = 0
   // allow today to be empty (streak continues from yesterday)

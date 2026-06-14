@@ -3,23 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { SceneBackground } from '../components/SceneBackground'
 import { Modal } from '../components/Modal'
+import { PngIcon, type PngIconName } from '../components/PngIcon'
 import './Lobby.css'
 
 interface LobbyObject {
   key: string
   label: string
   caption: string
-  icon: string
+  png: PngIconName
   route?: string
   soon?: boolean
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'sticky', label: 'Sticky Notes', caption: 'Grow your note forest', icon: 'note', route: '/sticky' },
-  { key: 'explore', label: 'Explore World', caption: 'Enter the International Realm', icon: 'globe', route: '/explore' },
-  { key: 'magnet', label: 'Task Magnet', caption: 'Your private life HQ', icon: 'magnet', route: '/magnet' },
-  { key: 'self', label: 'Self Notes', caption: 'A quiet journal', icon: 'book', soon: true },
-  { key: 'focus', label: 'Focus Timer', caption: 'Beat procrastination', icon: 'clock', soon: true },
+  { key: 'sticky', label: 'Sticky Notes', caption: 'Grow your note forest', png: 'notes', route: '/sticky' },
+  { key: 'realm', label: 'Realm', caption: 'Step into a shared study world', png: 'realm', route: '/realm' },
+  { key: 'magnet', label: 'Task Magnet', caption: 'Your private productivity HQ', png: 'tasks', route: '/magnet' },
+  { key: 'focus', label: 'Focus Timer', caption: 'Beat procrastination', png: 'focus-timer', soon: true },
 ]
 
 export function Lobby() {
@@ -80,7 +80,7 @@ export function Lobby() {
               onClick={() => pick(o)}
             >
               <div className="lobby-object-orb">
-                <Glyph name={o.icon} />
+                <PngIcon name={o.png} size={64} alt={o.label} />
               </div>
               <div className="lobby-object-label">{o.label}</div>
               <div className="lobby-object-caption">{o.caption}</div>

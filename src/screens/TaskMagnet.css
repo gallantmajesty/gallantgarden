@@ -177,6 +177,17 @@
   transition: background 0.15s, color 0.15s;
 }
 .mg-navitem:hover { background: var(--mg-panel-soft); color: var(--mg-text); }
+/* watercolour PNG nav icons: round soft tile so they sit neatly in the rail,
+   and stay legible on the active gradient (a faint backing) */
+.mg-navpng {
+  border-radius: 8px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12));
+}
+.mg-navitem.active .mg-navpng {
+  background: rgba(255, 255, 255, 0.82);
+  padding: 1px;
+}
 .mg-navitem.active {
   color: #fff;
   background: linear-gradient(135deg, var(--mg-accent), var(--mg-accent2));
@@ -731,31 +742,6 @@
 .mg-habitcell { width: 16px; height: 16px; border-radius: 5px; background: var(--mg-panel-soft); border: 1px solid var(--mg-border); }
 .mg-habitcell.filled { background: var(--mg-tag); border-color: transparent; }
 .mg-habitcell.today { box-shadow: 0 0 0 2px var(--mg-accent); }
-
-/* ============================================================================
-   JOURNAL
-   ============================================================================ */
-.mg-journal-compose { padding: 18px; }
-.mg-moodpick { display: flex; flex-direction: column; gap: 8px; }
-.mg-moods { display: flex; gap: 8px; flex-wrap: wrap; }
-.mg-mood {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 8px 14px; border-radius: 12px;
-  border: 1px solid var(--mg-border); background: var(--mg-panel-soft);
-  cursor: pointer; transition: border-color 0.15s, transform 0.12s;
-}
-.mg-mood:hover { transform: translateY(-2px); }
-.mg-mood.active { border-color: var(--mg-accent); box-shadow: 0 0 0 2px var(--mg-accent); }
-.mg-mood-emoji { font-size: 22px; }
-.mg-mood-word { font-size: 11px; color: var(--mg-text-soft); font-weight: 600; }
-.mg-journal-list { display: flex; flex-direction: column; gap: 12px; }
-.mg-journal-entry { padding: 16px; }
-.mg-journal-entry-head { display: flex; align-items: center; gap: 12px; }
-.mg-journal-entry-head > div { flex: 1; }
-.mg-journal-entry-head strong { display: block; font-size: 15px; }
-.mg-journal-entry-head small { font-size: 12px; color: var(--mg-text-soft); }
-.mg-journal-mood { font-size: 26px; }
-.mg-journal-text { margin-top: 10px; font-size: 13px; color: var(--mg-text-soft); line-height: 1.6; white-space: pre-wrap; }
 
 /* ============================================================================
    SANCTUARY

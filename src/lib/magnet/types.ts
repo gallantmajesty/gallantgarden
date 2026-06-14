@@ -69,15 +69,6 @@ export interface Habit {
   createdAt: string
 }
 
-export interface JournalEntry {
-  id: string
-  date: string // yyyy-mm-dd
-  mood: number // 1..5
-  title: string
-  body: string
-  createdAt: string
-}
-
 export interface Idea {
   id: string
   text: string
@@ -114,7 +105,6 @@ export interface MagnetData {
   projects: Project[]
   goals: Goal[]
   habits: Habit[]
-  journal: JournalEntry[]
   ideas: Idea[]
   vision: VisionCard[]
   focus: FocusSession[]
@@ -156,7 +146,6 @@ export const PRIORITY_META: Record<Priority, { label: string; color: string; wei
 export const XP_PER_TASK = 12
 export const XP_PER_FOCUS_MIN = 1
 export const XP_PER_HABIT = 8
-export const XP_PER_JOURNAL = 10
 export const XP_PER_MILESTONE = 25
 
 export function levelForXp(xp: number): number {

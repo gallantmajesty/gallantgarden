@@ -4,12 +4,10 @@ import {
   XP_PER_TASK,
   XP_PER_FOCUS_MIN,
   XP_PER_HABIT,
-  XP_PER_JOURNAL,
   XP_PER_MILESTONE,
   type MagnetData,
   type Task,
   type Goal,
-  type JournalEntry,
   type VisionCard,
   type Achievement,
   type Priority,
@@ -44,7 +42,6 @@ function emptyData(): MagnetData {
     projects: [],
     goals: [],
     habits: [],
-    journal: [],
     ideas: [],
     vision: [],
     focus: [],
@@ -69,6 +66,9 @@ function load(userId: string): MagnetData {
     // merge over defaults so new fields added later are always present
     const base = emptyData()
     const merged: MagnetData = { ...base, ...parsed }
+    // Personal Diary was removed for privacy: purge any previously-stored
+    // journal entries so sensitive content never lingers in local storage.
+    delete (merged as Record<string, unknown>).journal
     // make sure starter themes are always owned
     merged.unlockedThemes = Array.from(new Set([...STARTER_THEME_IDS, ...(parsed.unlockedThemes ?? [])]))
     return merged
@@ -111,10 +111,6 @@ interface MagnetState {
   addHabit: (title: string, icon: string, color: string) => void
   deleteHabit: (id: string) => void
   toggleHabitToday: (id: string) => void
-
-  // journal
-  addJournal: (entry: { mood: number; title: string; body: string }) => void
-  deleteJournal: (id: string) => void
 
   // ideas / vision / brain dump
   addIdea: (text: string) => void
@@ -380,22 +376,6 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const habits = d.habits.map((h) => (h.id === id ? { ...h, history } : h))
         return award({ ...d, habits }, has ? -XP_PER_HABIT : XP_PER_HABIT)
       }),
-
-    // ---------- journal ----------
-    addJournal: ({ mood, title, body }) =>
-      commit((d) => {
-        const entry: JournalEntry = {
-          id: uid('jr'),
-          date: todayKey(),
-          mood,
-          title,
-          body,
-          createdAt: nowIso(),
-        }
-        return award({ ...d, journal: [entry, ...d.journal] }, XP_PER_JOURNAL)
-      }),
-
-    deleteJournal: (id) => commit((d) => ({ ...d, journal: d.journal.filter((j) => j.id !== id) })),
 
     // ---------- ideas / vision / brain dump ----------
     addIdea: (text) =>
