@@ -177,7 +177,7 @@ export function Decor() {
         </group>
       ))}
 
-      {/* grand "STUDY GARDEN" house banners hanging from the balcony — rod, cloth
+      {/* grand "FOCUS LILY" house banners hanging from the balcony — rod, cloth
           and tail each instanced across all eight banners */}
       <InstancedShape items={instanced.bannerRods} color={GOLD} metalness={0.7} roughness={0.3}>
         <cylinderGeometry args={[0.06, 0.06, 2.1, 8]} />

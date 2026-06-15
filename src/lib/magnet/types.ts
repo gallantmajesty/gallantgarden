@@ -112,7 +112,7 @@ export interface MagnetData {
   brainDump: string
   subjects: string[]
 
-  // progression / connection to Study Forest
+  // progression / connection to Focus Lily
   xp: number
   unlockedThemes: string[]
 

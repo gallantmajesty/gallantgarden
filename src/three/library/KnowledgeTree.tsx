@@ -14,7 +14,7 @@ function rng(seed: number) {
 }
 
 /**
- * The Knowledge Tree — Study Garden's centrepiece and visual identity. A great
+ * The Knowledge Tree — Focus Lily's centrepiece and visual identity. A great
  * trunk rises through the centre of the hall into a broad canopy of softly
  * glowing leaves, ringed by floating motes and lanterns. Elegant and warm, not
  * a flashy game prop. Sways almost imperceptibly.

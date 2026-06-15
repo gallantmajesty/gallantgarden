@@ -4,6 +4,8 @@ import { useAuth } from '../store/auth'
 import { SceneBackground } from '../components/SceneBackground'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
+import { LobbySettings } from '../components/settings/LobbySettings'
+import { hasUserRun, markUserRun } from '../lib/runOnce'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -25,9 +27,21 @@ const OBJECTS: LobbyObject[] = [
 export function Lobby() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'avatar' | 'account'>(null)
+  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'account'>(null)
+  // First-time onboarding: shown once per user (persisted via the run-once
+  // system in the user's cloud profile, so it never repeats across devices).
+  // Lobby only mounts once a user exists (App gates on !user), so we can decide
+  // at mount via a lazy initializer — no effect / cascading render needed.
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => !!user && !hasUserRun(user.id, 'onboarding.v1'),
+  )
 
   const displayName = user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
+
+  function finishOnboarding() {
+    setShowOnboarding(false)
+    if (user) void markUserRun(user.id, 'onboarding.v1')
+  }
 
   function pick(o: LobbyObject) {
     if (o.soon || !o.route) {
@@ -55,7 +69,7 @@ export function Lobby() {
           <span className="lobby-avatar-dot" />
           <span className="lobby-chip-name">{displayName}</span>
         </button>
-        <button className="lobby-round" title="Customize avatar" onClick={() => setPanel('avatar')}>
+        <button className="lobby-round" title="Customize avatar" onClick={() => navigate('/avatar')}>
           <Glyph name="face" />
         </button>
         <button className="lobby-round" title="Settings" onClick={() => setPanel('settings')}>
@@ -97,7 +111,7 @@ export function Lobby() {
             ['Invite Friends', 'Share a magic link', 'people'],
             ['Friends', 'See who is studying', 'face'],
             ['Controls', 'How to move & interact', 'gear'],
-            ['Info', 'About StudyForest', 'star'],
+            ['Info', 'About Focus Lily', 'star'],
             ['Help', 'Tips & support', 'book'],
           ].map(([t, s, g]) => (
             <button key={t} className="menu-item" onClick={() => setPanel(null)}>
@@ -122,18 +136,24 @@ export function Lobby() {
         </button>
       </Modal>
 
-      <Modal open={panel === 'settings'} title="Settings" onClose={() => setPanel(null)}>
-        <p className="panel-hint">
-          Graphics quality, audio, and control bindings will live here. For now, StudyForest
-          auto-tunes itself to stay smooth.
-        </p>
-      </Modal>
+      {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
 
-      <Modal open={panel === 'avatar'} title="Customize Avatar" onClose={() => setPanel(null)} width={520}>
-        <p className="panel-hint">
-          Head, hair, body size and outfit colors — full avatar customization is coming with the
-          3D lobby. Your choices will save to your profile.
-        </p>
+      {/* ---------- first-time onboarding (run-once) ---------- */}
+      <Modal open={showOnboarding} title={`Welcome to Focus Lily, ${displayName}!`} onClose={finishOnboarding}>
+        <div className="account-box">
+          <p className="panel-hint" style={{ marginBottom: 12 }}>
+            Focus Lily is your calm, magical study world. Here's how to begin:
+          </p>
+          <ul className="onboard-list">
+            <li>🌳 <strong>Sticky Notes</strong> — plant trees and grow your note forest.</li>
+            <li>🌍 <strong>Realm</strong> — step into a shared 3D study world.</li>
+            <li>🧲 <strong>Task Magnet</strong> — your private productivity HQ.</li>
+            <li>⚙️ <strong>Settings</strong> — tune visuals, performance, and controls anytime.</li>
+          </ul>
+        </div>
+        <button className="sf-btn" style={{ width: '100%', marginTop: 16 }} onClick={finishOnboarding}>
+          Start exploring
+        </button>
       </Modal>
     </div>
   )

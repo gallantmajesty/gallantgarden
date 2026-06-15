@@ -150,7 +150,7 @@ export function makeStainedGlassTexture(seed = 5): CanvasTexture {
 }
 
 /** A hanging house banner: deep navy field, gold border, a glowing gold crest
- *  (eight-point star over a leaf) and "STUDY GARDEN" lettering — like the
+ *  (eight-point star over a leaf) and "FOCUS LILY" lettering — like the
  *  reference hall's banners. */
 export function makeBannerTexture(): CanvasTexture {
   const W = 128
@@ -197,8 +197,8 @@ export function makeBannerTexture(): CanvasTexture {
   ctx.fillStyle = '#e7c45f'
   ctx.textAlign = 'center'
   ctx.font = 'bold 19px Georgia, serif'
-  ctx.fillText('STUDY', W / 2, 168)
-  ctx.fillText('GARDEN', W / 2, 192)
+  ctx.fillText('FOCUS', W / 2, 168)
+  ctx.fillText('LILY', W / 2, 192)
 
   // a few decorative dots down the lower field
   ctx.fillStyle = 'rgba(231,196,95,0.7)'

@@ -1,6 +1,20 @@
-# React + TypeScript + Vite
+# Focus Lily
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Focus Lily** is a calm, magical world for focused study — plant trees, grow your
+notes, and stay in flow inside a beautiful 3D realm. Built with React + TypeScript +
+Vite, with an [InsForge](https://insforge.dev) backend (database, auth, storage).
+
+## Authentication
+
+Sign-in uses InsForge OAuth (Google, GitHub, Microsoft) over the PKCE flow with
+secure httpOnly-cookie sessions, plus an email/password fallback. Provider client
+IDs and secrets are configured server-side in InsForge — never in the client bundle.
+See [`docs/OAUTH_SETUP.md`](docs/OAUTH_SETUP.md) for the exact setup steps and the
+callback URLs to register with each provider.
+
+## Tooling
+
+This project uses Vite for dev/build with HMR and ESLint.
 
 Currently, two official plugins are available:
 

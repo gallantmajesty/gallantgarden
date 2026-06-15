@@ -1,5 +1,5 @@
 /* ============================================================
-   StudyForest theme — warm, magical, "Clash of Clans" storybook
+   Focus Lily theme — warm, magical, "Clash of Clans" storybook
    ============================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -14,8 +14,12 @@
   --wood-light: #a9703f;
   --parchment: #f6e8c8;
   --parchment-dark: #e9d3a0;
-  --gold: #ffce54;
-  --gold-dark: #e6a817;
+  /* Accent is driven by the active theme preset (set on <html> by
+     applyVisualSettings); the literals are the default "Forest" preset. */
+  --accent: #ffce54;
+  --accent-dark: #e6a817;
+  --gold: var(--accent, #ffce54);
+  --gold-dark: var(--accent-dark, #e6a817);
   --ink: #3a2a17;
   --ink-soft: #6b5740;
   --stone: #cfd8dc;
@@ -55,6 +59,34 @@ body,
 
 body {
   overflow: hidden;
+}
+
+/* ---------- user visual settings (applied via data-* on <html>) ---------- */
+
+/* Brightness multiplier — applied to the app root so the 3D canvas and all
+   overlays dim/brighten together. */
+#root {
+  filter: brightness(var(--app-brightness, 1));
+}
+
+/* Dark mode: re-map the warm parchment palette to a dark, legible one. Panels
+   (.sf-panel) and ink text follow these vars, so the whole UI flips. */
+:root[data-theme='dark'] {
+  --parchment: #2a2118;
+  --parchment-dark: #1d160f;
+  --ink: #f3e7cf;
+  --ink-soft: #c9b48c;
+  --stone: #3a4046;
+  color-scheme: dark;
+}
+
+/* Reduce motion / animations-off: collapse all non-essential motion. */
+:root[data-reduce-motion='true'] *,
+:root[data-animations='off'] * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
 
 h1,

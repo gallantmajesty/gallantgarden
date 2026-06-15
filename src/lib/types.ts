@@ -63,19 +63,15 @@ export interface StickyNote {
   updated_at: string
 }
 
-export interface AvatarConfig {
-  head?: string
-  hair?: string
-  hairColor?: string
-  skin?: string
-  bodySize?: 'small' | 'medium' | 'large'
-  outfitColor?: string
-}
+// The full, versioned avatar description lives in src/avatar/config.ts (it owns
+// the catalogs, defaults, and shared-material cache). Re-exported here so schema
+// mirrors that reference a profile's avatar have a single import site.
+export type { AvatarConfig } from '../avatar/config'
 
 export interface Profile {
   id: string
   display_name: string
-  avatar: AvatarConfig
+  avatar: import('../avatar/config').AvatarConfig
   settings: Record<string, unknown>
   created_at: string
   updated_at: string

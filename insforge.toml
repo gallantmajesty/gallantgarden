@@ -1,5 +1,11 @@
 [auth]
-allowed_redirect_urls = []
+# Origins allowed as OAuth `redirectTo` targets. The client passes
+# window.location.origin, so every origin Focus Lily is served from must be
+# listed here. Add your production domain(s) alongside the local dev origin.
+allowed_redirect_urls = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+]
 require_email_verification = false
 verify_email_method = "code"
 reset_password_method = "code"

@@ -8,6 +8,10 @@ import { seatAnchors } from './furniture'
 import { isTypingFocused, joystick } from './input'
 import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
+import { AvatarRig, type AvatarRigHandle } from '../../avatar/AvatarRig'
+import { AvatarAnimator } from '../../avatar/AvatarAnimator'
+import type { Locomotion } from '../../avatar/animation'
+import { useAvatar } from '../../avatar/store'
 
 const SEAT_RANGE = 2.0
 const SEAT_EYE = 1.16
@@ -30,6 +34,10 @@ export function PlayerController() {
   const gl = useThree((s) => s.gl)
   const camRef = useRef<TPerspectiveCamera>(null)
   const avatarRef = useRef<Group>(null)
+  const rigHandle = useRef<AvatarRigHandle>(null)
+  // Live locomotion fed to the avatar animator each frame (no React re-renders).
+  const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0 })
+  const avatarConfig = useAvatar((s) => s.config)
   const keys = useRef<Record<string, boolean>>({})
   const collision = useMemo(() => buildCollision(), [])
   const seats = useMemo(() => seatAnchors(), [])
@@ -265,16 +273,15 @@ export function PlayerController() {
     if (av) {
       av.visible = mode !== 'first'
       av.position.set(st.x, st.y, st.z)
+      const prevYaw = av.rotation.y
       av.rotation.y = MathUtils.lerp(av.rotation.y, st.faceYaw, 1 - Math.pow(0.001, dt))
-      const swing = moving ? Math.sin(st.bob * 3) * 0.5 : 0
-      const legL = av.children[3] as Group | undefined
-      const legR = av.children[4] as Group | undefined
-      const armL = av.children[1] as Group | undefined
-      const armR = av.children[2] as Group | undefined
-      if (legL) legL.rotation.x = swing
-      if (legR) legR.rotation.x = -swing
-      if (armL) armL.rotation.x = -swing
-      if (armR) armR.rotation.x = swing
+      // feed the procedural animator: horizontal speed drives the gait, grounded
+      // / vy drive jump+land, and the smoothed facing delta drives turn-lean.
+      const l = loco.current
+      l.speed = Math.hypot(st.vx, st.vz)
+      l.grounded = st.grounded
+      l.vy = st.vy
+      l.turnRate = dt > 0 ? (av.rotation.y - prevYaw) / dt : 0
     }
 
     // ---- nearest sittable seat (for the "Press E to sit" prompt) ----
@@ -297,53 +304,13 @@ export function PlayerController() {
   return (
     <>
       <PerspectiveCamera ref={camRef} makeDefault fov={72} near={0.08} far={1400} rotation-order="YXZ" />
-      <Avatar ref={avatarRef} />
+      {/* The player's body: a procedural rig driven by the shared AvatarAnimator.
+          Hidden in first-person (toggled each frame). The animator is a sibling
+          driver (renders nothing) and reads `loco` every frame. */}
+      <group ref={avatarRef} visible={false}>
+        <AvatarRig ref={rigHandle} config={avatarConfig} />
+      </group>
+      <AvatarAnimator rig={rigHandle} locomotion={loco} lod="near" />
     </>
-  )
-}
-
-/** A simple blocky student avatar (visible only in third / front views). */
-function Avatar({ ref }: { ref: React.Ref<Group> }) {
-  return (
-    <group ref={ref} visible={false}>
-      {/* 0 head */}
-      <mesh position={[0, 1.5, 0]} castShadow>
-        <boxGeometry args={[0.42, 0.42, 0.42]} />
-        <meshStandardMaterial color="#e8c9a0" roughness={0.8} />
-      </mesh>
-      {/* 1 arm L */}
-      <group position={[-0.32, 1.25, 0]}>
-        <mesh position={[0, -0.3, 0]} castShadow>
-          <boxGeometry args={[0.18, 0.62, 0.18]} />
-          <meshStandardMaterial color="#5a3a6e" roughness={0.85} />
-        </mesh>
-      </group>
-      {/* 2 arm R */}
-      <group position={[0.32, 1.25, 0]}>
-        <mesh position={[0, -0.3, 0]} castShadow>
-          <boxGeometry args={[0.18, 0.62, 0.18]} />
-          <meshStandardMaterial color="#5a3a6e" roughness={0.85} />
-        </mesh>
-      </group>
-      {/* 3 leg L */}
-      <group position={[-0.13, 0.7, 0]}>
-        <mesh position={[0, -0.35, 0]} castShadow>
-          <boxGeometry args={[0.2, 0.7, 0.2]} />
-          <meshStandardMaterial color="#34507a" roughness={0.9} />
-        </mesh>
-      </group>
-      {/* 4 leg R */}
-      <group position={[0.13, 0.7, 0]}>
-        <mesh position={[0, -0.35, 0]} castShadow>
-          <boxGeometry args={[0.2, 0.7, 0.2]} />
-          <meshStandardMaterial color="#34507a" roughness={0.9} />
-        </mesh>
-      </group>
-      {/* 5 torso */}
-      <mesh position={[0, 1.05, 0]} castShadow>
-        <boxGeometry args={[0.5, 0.66, 0.28]} />
-        <meshStandardMaterial color="#6e3050" roughness={0.85} />
-      </mesh>
-    </group>
   )
 }

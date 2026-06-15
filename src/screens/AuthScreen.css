@@ -97,3 +97,74 @@
   font-size: 19px;
   padding: 14px;
 }
+
+/* ---------- OAuth providers (primary sign-in) ---------- */
+.auth-oauth {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.auth-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  color: #2b2b2b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+.auth-oauth-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+.auth-oauth-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.auth-oauth-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.auth-oauth-btn.github {
+  background: #1b1f24;
+  color: #fff;
+  border-color: #1b1f24;
+}
+.auth-oauth-btn.microsoft {
+  background: #fff;
+  color: #2b2b2b;
+}
+.auth-oauth-icon {
+  flex: none;
+}
+
+.auth-email-toggle {
+  display: inline-block;
+  margin: 4px auto 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 0.85;
+}
+.auth-email-toggle:hover {
+  opacity: 1;
+}
+
+/* When the email fallback is open, give the tabs a little breathing room. */
+.auth-oauth + .auth-error + .auth-email-toggle + .auth-tabs,
+.auth-email-toggle + .auth-tabs {
+  margin-top: 16px;
+}

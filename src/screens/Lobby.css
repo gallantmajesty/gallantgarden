@@ -261,6 +261,21 @@
   line-height: 1.6;
 }
 
+.onboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboard-list li {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .glyph {
   width: 20px;
   height: 20px;

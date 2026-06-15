@@ -1,5 +1,5 @@
 {
-  "name": "studyforest",
+  "name": "focus-lily",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -46,7 +46,7 @@
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "description": "Focus Lily — a calm, magical world for focused study.",
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",

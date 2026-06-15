@@ -137,7 +137,7 @@ function PerfLogger() {
     const r = gl.info.render
     const m = gl.info.memory
     console.info(
-      `[StudyGarden perf] ${fps.toFixed(0)} fps · ${r.calls} draw calls · ${(r.triangles / 1000).toFixed(0)}k tris · ${gl.info.programs?.length ?? 0} programs · geo ${m.geometries} · tex ${m.textures}`,
+      `[FocusLily perf] ${fps.toFixed(0)} fps · ${r.calls} draw calls · ${(r.triangles / 1000).toFixed(0)}k tris · ${gl.info.programs?.length ?? 0} programs · geo ${m.geometries} · tex ${m.textures}`,
     )
     a.frames = 0
     a.since = 0
