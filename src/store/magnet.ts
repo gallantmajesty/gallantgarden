@@ -68,7 +68,7 @@ function load(userId: string): MagnetData {
     const merged: MagnetData = { ...base, ...parsed }
     // Personal Diary was removed for privacy: purge any previously-stored
     // journal entries so sensitive content never lingers in local storage.
-    delete (merged as Record<string, unknown>).journal
+    delete (merged as unknown as Record<string, unknown>).journal
     // make sure starter themes are always owned
     merged.unlockedThemes = Array.from(new Set([...STARTER_THEME_IDS, ...(parsed.unlockedThemes ?? [])]))
     return merged
@@ -261,7 +261,9 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const tasks = d.tasks.map((t) =>
           t.id === id ? { ...t, done: nowDone, completedAt: nowDone ? nowIso() : null } : t,
         )
-        const awarded = award({ ...d, tasks }, nowDone ? XP_PER_TASK : -XP_PER_TASK)
+        // Non-punishing game layer: completing earns XP, but un-checking never
+        // takes it away (no penalties, no level loss) — the world only grows.
+        const awarded = award({ ...d, tasks }, nowDone ? XP_PER_TASK : 0)
         return awarded
       }),
 
@@ -354,7 +356,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const doneCount = milestones.filter((m) => m.done).length
         const progress = milestones.length ? Math.round((doneCount / milestones.length) * 100) : goal.progress
         const goals = d.goals.map((g) => (g.id === goalId ? { ...g, milestones, progress } : g))
-        return award({ ...d, goals }, becomingDone ? XP_PER_MILESTONE : -XP_PER_MILESTONE)
+        // never deduct XP when un-checking a milestone (non-punishing)
+        return award({ ...d, goals }, becomingDone ? XP_PER_MILESTONE : 0)
       }),
 
     // ---------- habits ----------
@@ -374,7 +377,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const has = habit.history.includes(key)
         const history = has ? habit.history.filter((x) => x !== key) : [...habit.history, key]
         const habits = d.habits.map((h) => (h.id === id ? { ...h, history } : h))
-        return award({ ...d, habits }, has ? -XP_PER_HABIT : XP_PER_HABIT)
+        // un-marking a habit doesn't subtract XP (non-punishing)
+        return award({ ...d, habits }, has ? 0 : XP_PER_HABIT)
       }),
 
     // ---------- ideas / vision / brain dump ----------

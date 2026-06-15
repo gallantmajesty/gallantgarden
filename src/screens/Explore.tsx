@@ -4,27 +4,19 @@ import { LibraryScene } from '../three/library/LibraryScene'
 import { LoadingVeil } from '../components/LoadingVeil'
 import { useAudio } from '../audio/useAudio'
 import { joystick } from '../three/library/input'
-import { useSettings, type CameraMode, type Quality } from '../store/settings'
+import { useSettings, FOCUS_PRESETS, MAX_FOCUS_MIN, MIN_FOCUS_MIN, type CameraMode, type Quality } from '../store/settings'
 import { usePomodoro } from '../store/pomodoro'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
+import { useRealm } from '../store/realm'
+import { Icon } from '../components/magnet/Icon'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
-/** A phone (or phone-sized touch device). Explore World is a keyboard + mouse,
- *  GPU-heavy experience, so we steer these visitors to a real desktop. We detect
- *  by user-agent AND by a coarse pointer on a small screen, so "Request desktop
- *  site" on a phone (which fakes a wide viewport) is still caught via the UA. */
-const isPhone =
-  typeof navigator !== 'undefined' &&
-  (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent) ||
-    (typeof window !== 'undefined' &&
-      window.matchMedia('(pointer: coarse)').matches &&
-      Math.min(window.screen?.width ?? 9999, window.screen?.height ?? 9999) < 820))
-
 export function Explore() {
   const navigate = useNavigate()
+  const realm = useRealm((s) => s.active)
   const [ready, setReady] = useState(false)
   const [hint, setHint] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -41,7 +33,6 @@ export function Explore() {
 
   return (
     <div className="explore-root">
-      <DesktopGate />
       <LibraryScene onReady={() => setReady(true)} />
       <PomodoroTicker />
 
@@ -53,10 +44,12 @@ export function Explore() {
 
       {/* top-left: lobby + realm + fps */}
       <div className="explore-topleft">
-        <button className="sf-btn secondary" onClick={() => navigate('/')}>
-          ← Lobby
+        <button className="sf-btn secondary" onClick={() => navigate('/realm')}>
+          ‹ Realms
         </button>
-        <span className="sf-pill">International Realm</span>
+        <span className="sf-pill">{realm ? realm.name : 'Realm'}</span>
+        {realm?.kind === 'global' && <span className="sf-pill realm-kind">Global</span>}
+        {realm?.kind === 'custom' && <span className="sf-pill realm-kind">Private</span>}
         {fps && <FpsMeter />}
       </div>
 
@@ -94,7 +87,7 @@ export function Explore() {
       {hint && (
         <div className="explore-hint" onPointerDown={() => setHint(false)}>
           {isTouch
-            ? 'Drag to look · joystick to walk · ⬆ to jump'
+            ? 'Drag to look · joystick to walk · tap Jump'
             : 'Drag to look · WASD move · Shift run · Space jump · F1/F2/F3 views'}
         </div>
       )}
@@ -113,36 +106,10 @@ export function Explore() {
             onPointerUp={() => (joystick.jump = false)}
             onPointerCancel={() => (joystick.jump = false)}
           >
-            ⤒
+            Jump
           </button>
         </>
       )}
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------- desktop gate */
-
-/** A soft, full-screen notice for phone visitors: Explore World is built for a
- *  real desktop (keyboard, mouse, a proper GPU). They can still tap "Explore
- *  anyway", but they're warned the experience will be rough on a phone. */
-function DesktopGate() {
-  const [dismissed, setDismissed] = useState(false)
-  if (!isPhone || dismissed) return null
-  return (
-    <div className="desktop-gate">
-      <div className="desktop-gate-card">
-        <div className="desktop-gate-icon">🖥️</div>
-        <h2>Best on a desktop</h2>
-        <p>
-          <b>Explore World</b> is a full 3D study realm — it needs a keyboard, a mouse and a real
-          computer&rsquo;s graphics to run smoothly. On a phone it will feel cramped and may stutter.
-        </p>
-        <p className="desktop-gate-tip">Open <b>studyforest</b> on a laptop or desktop for the real experience.</p>
-        <button className="sf-btn" onClick={() => setDismissed(true)}>
-          Explore anyway
-        </button>
-      </div>
     </div>
   )
 }
@@ -232,7 +199,7 @@ function SeatedPanel() {
 
       <div className="station-grid">
         <div className="station-card">
-          <h3>⏱ Focus timer</h3>
+          <h3><Icon name="clock" size={16} /> Focus timer</h3>
           <div className={`station-timer ${mode}`}>
             <span className="station-mode">{label}</span>
             <span className="station-time">{mode === 'idle' ? '25:00' : `${mm}:${ss}`}</span>
@@ -251,7 +218,7 @@ function SeatedPanel() {
         </div>
 
         <div className="station-card">
-          <h3>🎯 Daily goals</h3>
+          <h3><Icon name="target" size={16} /> Daily goals</h3>
           <div className="station-goals">
             {goals.length === 0 && <p className="station-empty">Add what you want to get done today.</p>}
             {goals.map((g, i) => (
@@ -288,7 +255,7 @@ function SeatedPanel() {
         </div>
 
         <div className="station-card wide">
-          <h3>📝 Scratch notes</h3>
+          <h3><Icon name="note" size={16} /> Scratch notes</h3>
           <textarea className="station-notes" placeholder="Jot anything down…" value={note} onChange={(e) => desk().setNote(e.target.value)} />
         </div>
       </div>
@@ -318,10 +285,10 @@ function PomodoroChip() {
       <span className="explore-pomo-label">{label}</span>
       <span className="explore-pomo-time">{mode === 'idle' ? '25:00' : `${mm}:${ss}`}</span>
       <button className="explore-pomo-btn" onClick={toggle} title={running ? 'Pause' : 'Start'}>
-        {running ? '❚❚' : '▶'}
+        <Icon name={running ? 'pause' : 'play'} size={15} />
       </button>
       <button className="explore-pomo-btn" onClick={skip} title="Skip">
-        ⏭
+        <Icon name="skip" size={15} />
       </button>
     </div>
   )
@@ -378,7 +345,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="settings-body">
-          <Section title="🎮 Graphics">
+          <Section title="Graphics">
             <Seg<Quality>
               label="Quality"
               value={s.quality}
@@ -393,16 +360,16 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
           </Section>
 
-          <Section title="⏱ Pomodoro">
-            <Stepper label="Study (min)" value={s.pomo.study} onChange={(v) => s.setPomo({ study: v })} min={5} max={90} step={5} />
-            <Stepper label="Break (min)" value={s.pomo.break} onChange={(v) => s.setPomo({ break: v })} min={1} max={30} step={1} />
-            <Stepper label="Long break (min)" value={s.pomo.longBreak} onChange={(v) => s.setPomo({ longBreak: v })} min={5} max={45} step={5} />
+          <Section title="Focus timer">
+            <FocusLength value={s.pomo.study} onChange={(v) => s.setPomo({ study: v })} />
+            <Stepper label="Break (min)" value={s.pomo.break} onChange={(v) => s.setPomo({ break: v })} min={1} max={60} step={1} />
+            <Stepper label="Long break (min)" value={s.pomo.longBreak} onChange={(v) => s.setPomo({ longBreak: v })} min={5} max={90} step={5} />
             <Toggle label="Auto-start next session" value={s.pomo.autoStart} onChange={(v) => s.setPomo({ autoStart: v })} />
             <Toggle label="Notification sound" value={s.pomo.sound} onChange={(v) => s.setPomo({ sound: v })} />
             <Toggle label="Show timer on screen" value={s.pomo.showTimer} onChange={(v) => s.setPomo({ showTimer: v })} />
           </Section>
 
-          <Section title="🎵 Audio">
+          <Section title="Audio">
             <Slider label="Master volume" value={s.master} onChange={(v) => s.set('master', v)} />
             <Slider label="Ambient music" value={s.ambientVol} onChange={(v) => s.set('ambientVol', v)} />
             <Slider label="Rain / weather" value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
@@ -410,7 +377,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle label="Rain sounds" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
           </Section>
 
-          <Section title="🌦 World">
+          <Section title="World">
             <Seg
               label="Weather"
               value={s.weatherAuto ? 'auto' : s.weather}
@@ -433,7 +400,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Slider label="Time speed" value={s.timeSpeed / 4} onChange={(v) => s.set('timeSpeed', Math.max(0.1, v * 4))} />
           </Section>
 
-          <Section title="🖥 View & Accessibility">
+          <Section title="View & Accessibility">
             <Seg<CameraMode>
               label="Camera"
               value={s.cameraMode}
@@ -495,6 +462,38 @@ function Stepper({ label, value, onChange, min, max, step }: { label: string; va
         <button onClick={() => onChange(Math.min(max, value + step))}>+</button>
       </span>
     </label>
+  )
+}
+
+/** Study-length picker: quick recommended presets plus a Custom mode whose
+ *  stepper reaches up to MAX_FOCUS_MIN so 6–8h study blocks are possible. */
+function FocusLength({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const isPreset = (FOCUS_PRESETS as readonly number[]).includes(value)
+  const fmt = (m: number) =>
+    m >= 60 ? (m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`) : `${m}m`
+  return (
+    <div className="set-focus">
+      <span className="set-focus-label">Study length</span>
+      <div className="set-focus-presets">
+        {FOCUS_PRESETS.map((p) => (
+          <button key={p} className={value === p ? 'on' : ''} onClick={() => onChange(p)}>
+            {fmt(p)}
+          </button>
+        ))}
+        <button className={!isPreset ? 'on' : ''} onClick={() => onChange(isPreset ? 240 : value)}>
+          Custom
+        </button>
+      </div>
+      <div className="set-focus-custom">
+        <button onClick={() => onChange(Math.max(MIN_FOCUS_MIN, value - 5))} aria-label="Shorter">
+          −
+        </button>
+        <b>{fmt(value)}</b>
+        <button onClick={() => onChange(Math.min(MAX_FOCUS_MIN, value + 5))} aria-label="Longer">
+          +
+        </button>
+      </div>
+    </div>
   )
 }
 

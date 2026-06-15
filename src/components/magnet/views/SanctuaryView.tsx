@@ -2,9 +2,24 @@ import { useState } from 'react'
 import { useMagnet } from '../../../store/magnet'
 import { SectionHead, Panel, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
+import { PngIcon, type PngIconName } from '../../PngIcon'
 
-const VISION_EMOJI = ['🎯', '🏆', '🌍', '🎓', '💡', '🔥', '🌱', '✨', '🚀', '💪', '📚', '🧠', '🏡', '💼', '❤️']
+// Vision-board symbols use the Focus Lily PNG icon set instead of emojis.
+const VISION_ICONS: PngIconName[] = [
+  'goals', 'achievements', 'streaks', 'habits', 'study-rooms',
+  'realm', 'lotus', 'focus-timer', 'notes', 'tasks', 'calendar', 'analytics',
+]
 const VISION_COLORS = ['#9a6cff', '#ff6f9c', '#46d6a0', '#ffb454', '#4fd1e0', '#b76cff']
+
+// Render a stored vision symbol. New cards store a PNG icon name; older cards may
+// still hold a raw emoji string — fall back to showing that as text so nothing
+// is lost.
+function VisionSymbol({ value, size = 30 }: { value: string; size?: number }) {
+  if ((VISION_ICONS as string[]).includes(value)) {
+    return <PngIcon name={value as PngIconName} size={size} />
+  }
+  return <span className="mg-visioncard-emoji">{value}</span>
+}
 
 export function SanctuaryView() {
   const data = useMagnet((s) => s.data)
@@ -19,7 +34,7 @@ export function SanctuaryView() {
   const [visionOpen, setVisionOpen] = useState(false)
   const [vTitle, setVTitle] = useState('')
   const [vNote, setVNote] = useState('')
-  const [vEmoji, setVEmoji] = useState(VISION_EMOJI[0])
+  const [vEmoji, setVEmoji] = useState<string>(VISION_ICONS[0])
   const [vColor, setVColor] = useState(VISION_COLORS[0])
 
   const ideas = [...data.ideas].sort((a, b) => Number(b.pinned) - Number(a.pinned))
@@ -38,7 +53,7 @@ export function SanctuaryView() {
     addVision({ title: t, note: vNote.trim(), emoji: vEmoji, color: vColor })
     setVTitle('')
     setVNote('')
-    setVEmoji(VISION_EMOJI[0])
+    setVEmoji(VISION_ICONS[0])
     setVColor(VISION_COLORS[0])
     setVisionOpen(false)
   }
@@ -115,7 +130,7 @@ export function SanctuaryView() {
                 <button className="mg-visioncard-del" onClick={() => deleteVision(v.id)} aria-label="Delete">
                   <Icon name="close" size={13} />
                 </button>
-                <span className="mg-visioncard-emoji">{v.emoji}</span>
+                <span className="mg-visioncard-emoji"><VisionSymbol value={v.emoji} size={32} /></span>
                 <strong>{v.title}</strong>
                 {v.note && <p>{v.note}</p>}
               </div>
@@ -161,14 +176,14 @@ export function SanctuaryView() {
           </Field>
           <Field label="Symbol">
             <div className="mg-emojipick">
-              {VISION_EMOJI.map((em) => (
+              {VISION_ICONS.map((ic) => (
                 <button
                   type="button"
-                  key={em}
-                  className={`mg-emojiopt ${vEmoji === em ? 'active' : ''}`}
-                  onClick={() => setVEmoji(em)}
+                  key={ic}
+                  className={`mg-emojiopt ${vEmoji === ic ? 'active' : ''}`}
+                  onClick={() => setVEmoji(ic)}
                 >
-                  {em}
+                  <PngIcon name={ic} size={26} />
                 </button>
               ))}
             </div>

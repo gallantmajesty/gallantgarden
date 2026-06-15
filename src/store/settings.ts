@@ -49,6 +49,13 @@ export interface PomodoroSettings {
   showTimer: boolean
 }
 
+// Focus sessions can run long — some students study in 6–8h blocks. Recommended
+// presets stay quick to pick, but Custom lets the duration go all the way up to
+// MAX_FOCUS_MIN so the timer never forces an artificially short session.
+export const FOCUS_PRESETS = [25, 45, 60, 90, 120, 180] as const
+export const MAX_FOCUS_MIN = 480 // 8 hours
+export const MIN_FOCUS_MIN = 5
+
 interface SettingsState {
   // graphics
   quality: Quality

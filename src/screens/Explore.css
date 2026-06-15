@@ -30,6 +30,10 @@
   gap: 12px;
   z-index: 10;
 }
+.realm-kind {
+  background: var(--grass-dark);
+  border-color: #3c7a2c;
+}
 .explore-fps {
   font-family: var(--display);
   font-weight: 700;
@@ -288,6 +292,62 @@
   min-width: 28px;
   text-align: center;
   color: #fff;
+}
+.set-focus {
+  padding: 6px 0;
+}
+.set-focus-label {
+  display: block;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: #ecdcc0;
+  margin-bottom: 8px;
+}
+.set-focus-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.set-focus-presets button {
+  flex: 1 0 auto;
+  min-width: 52px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: #ecdcc0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(233, 211, 160, 0.25);
+  transition: all 0.15s;
+}
+.set-focus-presets button.on {
+  color: #1a120a;
+  background: linear-gradient(180deg, #ffe08a, var(--gold));
+  border-color: var(--gold-dark);
+  box-shadow: 0 0 14px rgba(255, 206, 84, 0.4);
+}
+.set-focus-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+.set-focus-custom button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #ffe6b0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(233, 211, 160, 0.3);
+  font-size: 18px;
+}
+.set-focus-custom b {
+  min-width: 78px;
+  text-align: center;
+  color: #fff;
+  font-size: 16px;
 }
 .set-seg {
   display: flex;

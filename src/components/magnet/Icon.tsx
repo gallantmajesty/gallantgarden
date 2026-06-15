@@ -36,6 +36,10 @@ const PATHS: Record<string, string> = {
   close: 'M6 6l12 12 M18 6L6 18',
   vault: 'M4 5h16v14H4z M8 9a4 4 0 100 6 M16 9v6 M16 12h-2',
   globe: 'M12 2a10 10 0 100 20 10 10 0 000-20z M2 12h20 M12 2c3 3 3 17 0 20 M12 2c-3 3-3 17 0 20',
+  play: 'M7 5l12 7-12 7z',
+  pause: 'M8 5v14 M16 5v14',
+  skip: 'M6 5l9 7-9 7z M18 5v14',
+  note: 'M5 3h11l3 3v15H5z M9 8h6 M9 12h6 M9 16h4',
 }
 
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {
