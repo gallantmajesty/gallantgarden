@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(20, 25, 15, 0.45);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
   display: grid;
   place-items: center;
@@ -27,7 +27,7 @@
 }
 .modal-head h2 {
   font-size: 22px;
-  color: var(--wood-dark);
+  color: var(--ink);
 }
 
 .modal-close {

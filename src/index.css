@@ -26,8 +26,33 @@
   --danger: #e25b4b;
   --magic: #8a6cff;
 
+  /* ---- semantic surfaces (theme-aware; flip in dark mode below) ----
+     Any raised element that sits ON a panel — menu rows, dropdown chips,
+     list items, popovers, inputs — should use these instead of hardcoding
+     a light cream, so it stays legible in both themes. */
+  --surface: #fffdf6;
+  --surface-2: #fff3d6;
+  --surface-hover: #ffffff;
+  --surface-border: rgba(122, 74, 38, 0.2);
+  --surface-ink: #5c3518;
+  --surface-ink-soft: #6b5740;
+  --chip-bg: rgba(122, 74, 38, 0.12);
+  --scrim: rgba(20, 25, 15, 0.45);
+  --field-bg: #fffdf6;
+  --field-ink: #2a2018;
+
   --panel-shadow: 0 10px 0 rgba(0, 0, 0, 0.18), 0 18px 30px rgba(0, 0, 0, 0.28);
   --btn-shadow: 0 5px 0 var(--gold-dark), 0 9px 14px rgba(0, 0, 0, 0.25);
+
+  /* ---- water-morphism (frosted aqua glass over the ambient video) ---- */
+  --glass-fill: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(186, 226, 245, 0.16));
+  --glass-fill-strong: linear-gradient(135deg, rgba(255, 255, 255, 0.46), rgba(190, 228, 246, 0.24));
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(16px) saturate(160%);
+  --glass-shadow: 0 10px 34px rgba(8, 46, 74, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -14px 30px rgba(120, 190, 225, 0.12);
+  --glass-shadow-hover: 0 18px 44px rgba(8, 46, 74, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -14px 30px rgba(120, 190, 225, 0.16);
 
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --display: 'Baloo 2', system-ui, sans-serif;
@@ -77,6 +102,18 @@ body {
   --ink: #f3e7cf;
   --ink-soft: #c9b48c;
   --stone: #3a4046;
+  /* raised surfaces in dark mode: warm dark tones with light ink, so menus,
+     dropdowns and inputs never flash bright white. */
+  --surface: #352b20;
+  --surface-2: #3d3225;
+  --surface-hover: #453829;
+  --surface-border: rgba(233, 211, 160, 0.18);
+  --surface-ink: #f3e7cf;
+  --surface-ink-soft: #c9b48c;
+  --chip-bg: rgba(233, 211, 160, 0.14);
+  --scrim: rgba(0, 0, 0, 0.58);
+  --field-bg: #241d15;
+  --field-ink: #f3e7cf;
   color-scheme: dark;
 }
 
@@ -115,45 +152,142 @@ button {
   position: relative;
 }
 
-/* chunky storybook button */
+/* ---------------------------------------------------------------------------
+   Primary button — "enchanted crystal". A layered, theme-tinted action button:
+   a polished gradient face with an inset top sheen and inner base shadow for
+   depth, a hairline accent rim, a soft floating drop shadow, and a diagonal
+   light-sweep that glides across on hover. Tints itself entirely from --accent,
+   so it re-skins with the active theme while staying high-contrast and elegant.
+   --------------------------------------------------------------------------- */
 .sf-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   font-family: var(--display);
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--ink);
-  background: linear-gradient(180deg, #ffe08a, var(--gold));
-  border: 3px solid var(--wood);
-  border-radius: 16px;
-  padding: 12px 22px;
-  box-shadow: var(--btn-shadow);
-  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
-  letter-spacing: 0.3px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.4px;
+  color: #23180c;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 76%, #ffffff) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 82%, #000000) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent-dark) 75%, #000000 0%);
+  border-radius: 14px;
+  padding: 12px 24px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -10px 16px rgba(0, 0, 0, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    0 2px 4px rgba(0, 0, 0, 0.16);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition:
+    transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1),
+    box-shadow 0.25s ease,
+    filter 0.2s ease;
+}
+/* gliding light sweep */
+.sf-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+  transform: translateX(-130%);
+  transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 2;
 }
 .sf-btn:hover {
-  filter: brightness(1.05);
+  transform: translateY(-2px);
+  filter: brightness(1.05) saturate(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -10px 16px rgba(0, 0, 0, 0.12),
+    0 12px 26px rgba(0, 0, 0, 0.28),
+    0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 8px 30px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.sf-btn:hover::after {
+  transform: translateX(130%);
 }
 .sf-btn:active {
-  transform: translateY(5px);
-  box-shadow: 0 0 0 var(--gold-dark), 0 3px 6px rgba(0, 0, 0, 0.25);
+  transform: translateY(1px) scale(0.99);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.25),
+    0 3px 10px rgba(0, 0, 0, 0.22);
 }
+.sf-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 8px 22px rgba(0, 0, 0, 0.25);
+}
+
+/* secondary — refined neutral surface, same depth language; flips with theme */
 .sf-btn.secondary {
-  background: linear-gradient(180deg, #eef3f5, var(--stone));
-  box-shadow: 0 5px 0 #9aa7ac, 0 9px 14px rgba(0, 0, 0, 0.2);
+  color: var(--surface-ink);
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--surface-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 6px 14px rgba(0, 0, 0, 0.16),
+    0 1px 3px rgba(0, 0, 0, 0.12);
+  text-shadow: none;
 }
-.sf-btn.secondary:active {
-  box-shadow: 0 0 0 #9aa7ac;
+.sf-btn.secondary:hover {
+  background: linear-gradient(180deg, var(--surface-hover), var(--surface));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 20px rgba(0, 0, 0, 0.2);
 }
+
+/* ghost — frosted outline for use directly over the photo background */
 .sf-btn.ghost {
-  background: rgba(255, 255, 255, 0.18);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: none;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
+.sf-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
 .sf-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+.sf-btn:disabled::after {
+  display: none;
+}
+
+/* water-morphism button — liquid glass action button for the realm/mood flows */
+.sf-btn.water {
+  color: var(--ink);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.sf-btn.water:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.04);
+  box-shadow: var(--glass-shadow-hover);
+}
+.sf-btn.water:active {
+  transform: translateY(1px);
+  box-shadow: var(--glass-shadow);
 }
 
 .sf-input {
@@ -162,14 +296,16 @@ button {
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 3px solid var(--wood-light);
-  background: #fffdf6;
-  color: var(--ink);
+  border: 2px solid var(--surface-border);
+  background: var(--field-bg);
+  /* field surface + ink both flip with the theme, so inputs stay legible in
+     dark mode instead of forcing a bright cream field. */
+  color: var(--field-ink);
   outline: none;
 }
 .sf-input:focus {
-  border-color: var(--gold-dark);
-  box-shadow: 0 0 0 3px rgba(255, 206, 84, 0.4);
+  border-color: var(--accent-dark);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .sf-label {
@@ -182,16 +318,20 @@ button {
   text-align: left;
 }
 
-/* floating little badge */
+/* floating little badge — accent chip, adapts to the active theme */
 .sf-pill {
   font-family: var(--display);
-  font-weight: 700;
-  font-size: 13px;
-  background: var(--wood);
-  color: var(--parchment);
-  padding: 4px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  padding: 4px 13px;
   border-radius: 999px;
-  border: 2px solid var(--wood-dark);
+  border: 1px solid color-mix(in srgb, var(--accent-dark) 60%, #000 0%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* ---------- custom watercolour PNG icons (Focus Lily set) ---------- */
@@ -203,6 +343,66 @@ button {
   -webkit-user-drag: none;
   /* the art already carries soft shading; keep edges crisp at small sizes */
   image-rendering: auto;
+}
+
+/* ---------- water-morphism utilities ---------- */
+
+/* Frosted aqua-glass surface. Anything with this class reads as liquid glass
+   floating over the ambient video: translucent fill, backdrop blur, a bright
+   rim light, and a slow drifting sheen across the top. */
+.water-glass {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  overflow: hidden;
+}
+/* moving liquid sheen */
+.water-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.28) 46%,
+    rgba(255, 255, 255, 0.05) 58%,
+    transparent 72%
+  );
+  background-size: 250% 250%;
+  animation: glass-sheen 9s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+/* soft caustic glow blob, top-left rim */
+.water-glass::after {
+  content: '';
+  position: absolute;
+  top: -45%;
+  left: -22%;
+  width: 60%;
+  height: 80%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 62%);
+  filter: blur(8px);
+  opacity: 0.5;
+  mix-blend-mode: screen;
+}
+/* keep real content crisply above the sheen + glow */
+.water-glass > * {
+  position: relative;
+  z-index: 1;
+}
+.water-glass.strong {
+  background: var(--glass-fill-strong);
+}
+
+@keyframes glass-sheen {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
 }
 
 @keyframes floaty {

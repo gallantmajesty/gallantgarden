@@ -10,6 +10,9 @@
   top: 18px;
   left: 18px;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .lobby-topright {
   position: absolute;
@@ -31,11 +34,13 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  background: rgba(255, 253, 246, 0.92);
-  border: 3px solid var(--wood);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
   padding: 6px 14px 6px 7px;
-  box-shadow: 0 4px 0 var(--wood-dark);
+  box-shadow: var(--glass-shadow);
   font-family: var(--display);
   font-weight: 700;
   color: var(--wood-dark);
@@ -44,7 +49,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffe08a, var(--gold-dark));
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, #fff), var(--accent-dark));
   border: 2px solid var(--wood);
 }
 .lobby-chip-name {
@@ -53,6 +58,54 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.lobby-chip-flag {
+  width: 1.5em;
+  line-height: 1.12em;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  flex: none;
+}
+.lobby-chip-rank {
+  margin-left: -1px;
+}
+.lobby-chip-rank img {
+  display: block;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+/* Web Customization — premium glass pill in the top bar */
+.lobby-webcustom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px 0 13px;
+  border-radius: 999px;
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  color: var(--wood-dark);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+.lobby-webcustom .glyph {
+  width: 20px;
+  height: 20px;
+  color: var(--accent-dark);
+}
+.lobby-webcustom:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow-hover);
+  filter: brightness(1.04);
+}
+.lobby-webcustom:active {
+  transform: translateY(1px);
+}
 
 .lobby-round {
   width: 44px;
@@ -60,9 +113,11 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 253, 246, 0.92);
-  border: 3px solid var(--wood);
-  box-shadow: 0 4px 0 var(--wood-dark);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   color: var(--wood-dark);
 }
 .lobby-round:hover {
@@ -97,11 +152,13 @@
 .lobby-welcome h1 {
   font-size: 40px;
   margin: 10px 0 4px;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5);
+  /* white halo + soft drop so the brand-dark text stays legible over the video */
+  text-shadow: 0 1px 14px rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.28);
 }
 .lobby-welcome p {
   color: var(--ink-soft);
-  font-weight: 500;
+  font-weight: 600;
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.7);
 }
 
 .lobby-objects {
@@ -116,9 +173,11 @@
   width: 168px;
   padding: 20px 14px 16px;
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 253, 246, 0.96), rgba(246, 232, 200, 0.96));
-  border: 3px solid var(--wood);
-  box-shadow: 0 7px 0 var(--wood-dark), 0 14px 22px rgba(0, 0, 0, 0.22);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   text-align: center;
   position: relative;
   animation: pop-in 0.4s ease both;
@@ -126,11 +185,11 @@
 }
 .lobby-object:hover {
   transform: translateY(-6px);
-  box-shadow: 0 11px 0 var(--wood-dark), 0 20px 26px rgba(0, 0, 0, 0.26);
+  box-shadow: var(--glass-shadow-hover);
 }
 .lobby-object:active {
   transform: translateY(2px);
-  box-shadow: 0 3px 0 var(--wood-dark);
+  box-shadow: var(--glass-shadow);
 }
 .lobby-object.soon {
   filter: saturate(0.85);
@@ -143,10 +202,10 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  /* soft cream backing so the watercolour PNG art reads cleanly */
-  background: radial-gradient(circle at 38% 30%, #fffdf6, #f1e7d0);
-  border: 3px solid var(--wood);
-  box-shadow: inset 0 -3px 7px rgba(122, 74, 38, 0.18);
+  /* translucent bubble backing so the watercolour PNG art floats on glass */
+  background: radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.55), rgba(190, 228, 246, 0.16));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(90, 160, 200, 0.18);
   color: var(--wood-dark);
   overflow: hidden;
   animation: floaty 6s ease-in-out infinite;
@@ -198,12 +257,12 @@
   text-align: left;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(255, 253, 246, 0.7);
-  border: 2px solid rgba(122, 74, 38, 0.2);
+  background: var(--surface);
+  border: 2px solid var(--surface-border);
   transition: background 0.12s ease;
 }
 .menu-item:hover {
-  background: #fffdf6;
+  background: var(--surface-hover);
 }
 .menu-item-icon {
   width: 38px;
@@ -222,7 +281,7 @@
 .menu-item span strong {
   display: block;
   font-family: var(--display);
-  color: var(--wood-dark);
+  color: var(--surface-ink);
   font-size: 15px;
 }
 .menu-item span small {
@@ -234,8 +293,8 @@
   font-size: 11px;
   font-weight: 700;
   font-family: var(--display);
-  color: var(--ink-soft);
-  background: rgba(122, 74, 38, 0.12);
+  color: var(--surface-ink-soft);
+  background: var(--chip-bg);
   padding: 3px 9px;
   border-radius: 999px;
 }
@@ -248,7 +307,7 @@
   font-family: var(--display);
   font-weight: 800;
   font-size: 22px;
-  color: var(--wood-dark);
+  color: var(--ink);
 }
 .account-email {
   color: var(--ink-soft);

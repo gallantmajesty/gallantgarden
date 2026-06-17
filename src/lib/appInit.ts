@@ -1,5 +1,7 @@
 import type { AuthUser } from '../store/auth'
 import { snapshotSettings, useSettings } from '../store/settings'
+import { useProfile } from '../store/profile'
+import { useSocial } from '../store/social'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
 import { globalRunOnce, userRunOnce } from './runOnce'
 
@@ -32,6 +34,15 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   useSettings.getState().hydrateFromCloud(cloud.app)
   useSettings.getState().bindCloud(user.id)
 
+  // 2b. Hydrate the onboarding/profile store from the same cloud document. This
+  //     finishes before `loading` flips false (auth awaits runUserInit), so the
+  //     onboarding gate reads `onboarded` with no default-then-swap flash.
+  await useProfile.getState().hydrate(user.id)
+
+  // 2c. Hydrate the social graph (who I follow + my counts) so Follow buttons
+  //     and the profile header render correct state immediately. Non-blocking.
+  void useSocial.getState().hydrate(user.id)
+
   // 3. One-time per-user seeding: create the profile row with the current
   //    settings the first time we ever see this account.
   await userRunOnce(user.id, 'profile-seed.v1', async () => {
@@ -42,5 +53,7 @@ export async function runUserInit(user: AuthUser): Promise<void> {
 /** Tear down per-user state on sign-out so the next user starts clean. */
 export function runUserTeardown(): void {
   useSettings.getState().unbindCloud()
+  useProfile.getState().reset()
+  useSocial.getState().reset()
   clearProfileSettingsCache()
 }

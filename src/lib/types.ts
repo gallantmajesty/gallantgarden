@@ -71,10 +71,86 @@ export type { AvatarConfig } from '../avatar/config'
 export interface Profile {
   id: string
   display_name: string
+  /** globally-unique handle (lowercase). Null until the user claims one. */
+  username: string | null
+  /** rank id (mirror of settings.onboarding.rank), promoted to a column so the
+   *  public view can expose it. */
+  rank: string | null
+  /** ISO alpha-2 country code (UPPERCASE), the one public onboarding field. */
+  country: string | null
+  /** optional uploaded profile picture URL (storage `avatars` bucket). */
+  avatar_url: string | null
   avatar: import('../avatar/config').AvatarConfig
+  /** intentionally-public profile blob (see ProfilePublic). */
+  public_profile: ProfilePublic
   settings: Record<string, unknown>
   created_at: string
   updated_at: string
+}
+
+/** A single off-platform link shown on a profile. */
+export interface SocialLink {
+  label: string
+  url: string
+}
+
+/** The intentionally-public profile blob (stored as profiles.public_profile
+ *  jsonb, exposed verbatim through the public_profiles view). Everything here is
+ *  safe for any authenticated user to read. */
+export interface ProfilePublic {
+  bio: string
+  favoriteSubject: string
+  studySchedule: string
+  studyInterests: string[]
+  /** banner design id (see BANNERS catalog in lib/banners.ts). */
+  banner: string
+  socialLinks: SocialLink[]
+}
+
+export const EMPTY_PROFILE_PUBLIC: ProfilePublic = {
+  bio: '',
+  favoriteSubject: '',
+  studySchedule: '',
+  studyInterests: [],
+  banner: 'aurora',
+  socialLinks: [],
+}
+
+/** Parse a raw `public_profile` jsonb value into a well-formed ProfilePublic. */
+export function parseProfilePublic(raw: unknown): ProfilePublic {
+  if (!raw || typeof raw !== 'object') return { ...EMPTY_PROFILE_PUBLIC }
+  const o = raw as Record<string, unknown>
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const strArr = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  const links = Array.isArray(o.socialLinks)
+    ? (o.socialLinks as unknown[])
+        .map((l) => (l && typeof l === 'object' ? (l as Record<string, unknown>) : {}))
+        .filter((l) => typeof l.url === 'string' && l.url)
+        .map((l) => ({ label: str(l.label) || str(l.url), url: str(l.url) }))
+    : []
+  return {
+    bio: str(o.bio),
+    favoriteSubject: str(o.favoriteSubject),
+    studySchedule: str(o.studySchedule),
+    studyInterests: strArr(o.studyInterests),
+    banner: str(o.banner) || EMPTY_PROFILE_PUBLIC.banner,
+    socialLinks: links,
+  }
+}
+
+/** A row of the `public_profiles` view — the safe, cross-user-readable shape.
+ *  NEVER contains age, email, or the private settings jsonb. */
+export interface PublicProfile {
+  id: string
+  username: string | null
+  display_name: string
+  avatar: import('../avatar/config').AvatarConfig
+  avatar_url: string | null
+  country: string | null
+  rank: string | null
+  public_profile: ProfilePublic
+  created_at: string
 }
 
 // Hard limits from the product spec.

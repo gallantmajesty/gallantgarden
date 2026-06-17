@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { SceneBackground } from '../components/SceneBackground'
 import './StickyEntry.css'
 
 export function StickyEntry() {
@@ -7,8 +6,6 @@ export function StickyEntry() {
 
   return (
     <div className="sticky-entry-root">
-      <SceneBackground />
-
       <button className="sf-btn secondary back-btn" onClick={() => navigate('/')}>
         ← Lobby
       </button>
@@ -21,7 +18,7 @@ export function StickyEntry() {
         </div>
 
         <div className="sticky-choices">
-          <button className="sticky-choice tree" onClick={() => navigate('/sticky/forest')}>
+          <button className="sticky-choice water-glass tree" onClick={() => navigate('/sticky/forest')}>
             <div className="choice-art choice-art-tree">
               <span className="tree-canopy" />
               <span className="tree-trunk" />
@@ -34,7 +31,7 @@ export function StickyEntry() {
             <span className="choice-cta">Enter the Forest →</span>
           </button>
 
-          <button className="sticky-choice casual" onClick={() => navigate('/sticky/casual')}>
+          <button className="sticky-choice water-glass casual" onClick={() => navigate('/sticky/casual')}>
             <div className="choice-art choice-art-casual">
               <span className="casual-row" />
               <span className="casual-row" />

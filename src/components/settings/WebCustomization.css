@@ -1,0 +1,246 @@
+/* Web Customization — the theme/background/accent/font controls embedded in the
+   main Settings drawer's "Theme" tab. Highlights pick up the live --accent;
+   surfaces stay deep neutral for guaranteed readability across every theme. */
+
+.wc-section {
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.wc-section:first-child {
+  padding-top: 4px;
+}
+.wc-h3 {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 70%, #ffffff);
+  margin: 0 0 12px;
+}
+
+/* ---------------------------------------------------------------- themes */
+.wc-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.wc-theme-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 14px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.wc-theme-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+.wc-theme-card.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 10px 26px rgba(0, 0, 0, 0.5);
+}
+.wc-theme-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 30%, rgba(0, 0, 0, 0.72) 100%);
+}
+.wc-theme-meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.wc-theme-emoji {
+  font-size: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.wc-theme-name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+.wc-theme-card.soon {
+  cursor: not-allowed;
+  filter: grayscale(0.4) brightness(0.7);
+  background: linear-gradient(160deg, #2a323a, #1a2026);
+}
+.wc-soon-tag,
+.wc-tick {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #e7eef4;
+}
+.wc-tick {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  background: var(--accent);
+  color: #10151a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.wc-tick.small {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+.wc-mood {
+  margin: 12px 0 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: #c2d0dc;
+}
+
+/* ------------------------------------------------------------ backgrounds */
+.wc-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.wc-bg-thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.wc-bg-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+.wc-bg-thumb.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+.wc-bg-label {
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.85);
+}
+
+/* ---------------------------------------------------------------- accent */
+.wc-accents {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wc-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  position: relative;
+}
+.wc-swatch:hover {
+  transform: scale(1.1);
+}
+.wc-swatch.on {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.wc-swatch-auto {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #2a3340, #161c24);
+}
+.wc-auto-label {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
+  color: #e7eef4;
+}
+.wc-swatch-custom {
+  display: grid;
+  place-items: center;
+  background: conic-gradient(from 0deg, #ff6f9c, #ffce54, #34b06a, #7fb8e6, #c89bff, #ff6f9c);
+  overflow: hidden;
+}
+.wc-swatch-custom input[type='color'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+.wc-swatch-plus {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 20px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.wc-reset {
+  margin-top: 12px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: #cdd9e3;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 8px 14px;
+  transition: background 0.15s ease;
+}
+.wc-reset:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+/* live preview of the chosen font colour, drawn on the drawer surface */
+.wc-preview-line {
+  margin: 14px 0 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.wc-note,
+.wc-foot {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: #93a3b2;
+  line-height: 1.5;
+}
+.wc-note {
+  margin: 10px 0 0;
+}
+.wc-foot {
+  padding: 16px 0 0;
+}

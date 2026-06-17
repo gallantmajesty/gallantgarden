@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { LoadingVeil } from '../components/LoadingVeil'
@@ -10,6 +10,11 @@ import { usePomodoro } from '../store/pomodoro'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
 import { useRealm } from '../store/realm'
+import { useAuth } from '../store/auth'
+import { useProfile } from '../store/profile'
+import { GLOBAL_ROOMS, mockOccupancy } from '../lib/realm'
+import { mockRoster } from '../lib/presenceMock'
+import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { Icon } from '../components/magnet/Icon'
 import './Explore.css'
 
@@ -93,6 +98,8 @@ export function Explore() {
         </div>
       )}
 
+      <RoomRoster />
+
       <SeatPrompt />
       <SeatedPanel />
 
@@ -110,6 +117,63 @@ export function Explore() {
             Jump
           </button>
         </>
+      )}
+    </div>
+  )
+}
+
+/* ----------------------------------------------------------------- roster */
+
+/**
+ * "In this room" — the public-lobby player list. For Global realms it shows the
+ * current user plus a stable mock roster (real presence sync isn't wired yet,
+ * see realm.ts). Every entry renders ONLY the public fields via PublicPlayerTag:
+ * country flag, username, rank badge — never age, email, name, or provider.
+ */
+function RoomRoster() {
+  const { user } = useAuth()
+  const country = useProfile((s) => s.data.country)
+  const rank = useProfile((s) => s.data.rank)
+  const realm = useRealm((s) => s.active)
+  const [open, setOpen] = useState(true)
+
+  const roster = useMemo<PublicPlayer[]>(() => {
+    if (realm?.kind !== 'global' || !realm.roomId) return []
+    const room = GLOBAL_ROOMS.find((r) => r.id === realm.roomId)
+    const seed = room?.seed ?? 1
+    // room occupancy includes us; fill the rest from the mock roster
+    const others = Math.max(0, mockOccupancy(seed) - 1)
+    return mockRoster(seed, others)
+  }, [realm])
+
+  if (realm?.kind !== 'global') return null
+
+  const self: PublicPlayer = {
+    username: user?.profile?.name || user?.email?.split('@')[0] || 'You',
+    country,
+    rank,
+  }
+  const total = roster.length + 1
+
+  return (
+    <div className={`room-roster ${open ? 'open' : ''}`}>
+      <button className="room-roster-head" onClick={() => setOpen((v) => !v)}>
+        <span className="room-roster-dot" />
+        In this room <strong>{total}</strong>
+        <span className="room-roster-chev">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="room-roster-list">
+          <div className="room-roster-row me">
+            <PublicPlayerTag player={self} size="sm" />
+            <span className="room-roster-you">You</span>
+          </div>
+          {roster.map((p: PublicPlayer, i: number) => (
+            <div key={`${p.username}-${i}`} className="room-roster-row">
+              <PublicPlayerTag player={p} size="sm" />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

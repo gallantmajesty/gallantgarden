@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth, type OAuthProvider } from '../store/auth'
-import { SceneBackground } from '../components/SceneBackground'
 import './AuthScreen.css'
 
 type Mode = 'in' | 'up'
@@ -49,8 +48,6 @@ export function AuthScreen() {
 
   return (
     <div className="auth-root">
-      <SceneBackground />
-
       <div className="auth-card sf-panel">
         <div className="auth-crest">
           <span className="auth-crest-glyph" />

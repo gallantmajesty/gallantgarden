@@ -1,0 +1,77 @@
+.stat-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  transition: transform 0.16s ease, box-shadow 0.2s ease;
+}
+/* glowing accent rim along the left edge */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--stat-accent, var(--accent));
+  box-shadow: 0 0 14px var(--stat-accent, var(--accent));
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2),
+    0 0 0 1px color-mix(in srgb, var(--stat-accent, var(--accent)) 40%, transparent);
+}
+
+.stat-card-icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--stat-accent, var(--accent));
+  background: color-mix(in srgb, var(--stat-accent, var(--accent)) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stat-accent, var(--accent)) 35%, transparent);
+}
+
+.stat-card-body {
+  min-width: 0;
+}
+.stat-card-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--surface-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-card-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--surface-ink);
+  opacity: 0.92;
+  margin-top: 1px;
+}
+.stat-card-sub {
+  font-size: 11px;
+  color: var(--surface-ink-soft);
+  margin-top: 1px;
+}
+
+/* not-yet-tracked metric — present but clearly pending, no fake number */
+.stat-card.soon {
+  opacity: 0.72;
+}
+.stat-card.soon .stat-card-value {
+  color: var(--surface-ink-soft);
+}
+.stat-card.soon .stat-card-sub {
+  font-style: italic;
+}

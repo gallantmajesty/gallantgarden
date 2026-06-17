@@ -1,0 +1,60 @@
+/* Public player identity tag: flag · username · rank badge. Neutral surface so
+   it reads on any theme/background. */
+
+.ppt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.fl-flag,
+.ppt-flag {
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.3);
+  flex: none;
+}
+
+.ppt-sm .ppt-flag {
+  width: 1.1em;
+  line-height: 0.825em;
+}
+.ppt-md .ppt-flag {
+  width: 1.33em;
+  line-height: 1em;
+}
+
+.ppt-name {
+  font-family: var(--display, inherit);
+  font-weight: 700;
+  color: var(--ink, #f3e7cf);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ppt-sm .ppt-name {
+  font-size: 13px;
+}
+.ppt-md .ppt-name {
+  font-size: 15px;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.rank-badge img {
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+.rank-badge.with-name {
+  gap: 8px;
+}
+.rank-badge-name {
+  font-family: var(--display, inherit);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--rank, var(--accent, #ffce54));
+  letter-spacing: 0.3px;
+}

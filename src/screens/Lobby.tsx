@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
-import { SceneBackground } from '../components/SceneBackground'
+import { useProfile } from '../store/profile'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
+import { Flag } from '../components/Flag'
+import { RankBadge } from '../components/RankBadge'
 import { LobbySettings } from '../components/settings/LobbySettings'
-import { hasUserRun, markUserRun } from '../lib/runOnce'
+import { FriendsPanel } from '../components/FriendsPanel'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -25,23 +27,13 @@ const OBJECTS: LobbyObject[] = [
 ]
 
 export function Lobby() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'account'>(null)
-  // First-time onboarding: shown once per user (persisted via the run-once
-  // system in the user's cloud profile, so it never repeats across devices).
-  // Lobby only mounts once a user exists (App gates on !user), so we can decide
-  // at mount via a lazy initializer — no effect / cascading render needed.
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => !!user && !hasUserRun(user.id, 'onboarding.v1'),
-  )
+  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends'>(null)
+  const country = useProfile((s) => s.data.country)
+  const rank = useProfile((s) => s.data.rank)
 
   const displayName = user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
-
-  function finishOnboarding() {
-    setShowOnboarding(false)
-    if (user) void markUserRun(user.id, 'onboarding.v1')
-  }
 
   function pick(o: LobbyObject) {
     if (o.soon || !o.route) {
@@ -54,21 +46,20 @@ export function Lobby() {
 
   return (
     <div className="lobby-root">
-      <SceneBackground />
-
-      {/* ---------- top-left: Interact ---------- */}
+      {/* ---------- top-left: profile + Interact ---------- */}
       <div className="lobby-topleft">
+        <button className="lobby-chip" onClick={() => navigate('/profile')} title="Your profile">
+          {country ? <Flag code={country} className="lobby-chip-flag" /> : <span className="lobby-avatar-dot" />}
+          <span className="lobby-chip-name">{displayName}</span>
+          <RankBadge rankId={rank} size={22} className="lobby-chip-rank" />
+        </button>
         <button className="sf-btn ghost lobby-iconbtn" onClick={() => setPanel('interact')}>
           <Glyph name="people" /> Interact
         </button>
       </div>
 
-      {/* ---------- top-right: account / settings / avatar ---------- */}
+      {/* ---------- top-right: avatar / settings ---------- */}
       <div className="lobby-topright">
-        <button className="lobby-chip" onClick={() => setPanel('account')}>
-          <span className="lobby-avatar-dot" />
-          <span className="lobby-chip-name">{displayName}</span>
-        </button>
         <button className="lobby-round" title="Customize avatar" onClick={() => navigate('/avatar')}>
           <Glyph name="face" />
         </button>
@@ -89,7 +80,7 @@ export function Lobby() {
           {OBJECTS.map((o, i) => (
             <button
               key={o.key}
-              className={`lobby-object ${o.soon ? 'soon' : ''}`}
+              className={`lobby-object water-glass ${o.soon ? 'soon' : ''}`}
               style={{ animationDelay: `${i * 70}ms` }}
               onClick={() => pick(o)}
             >
@@ -107,9 +98,21 @@ export function Lobby() {
       {/* ---------- panels ---------- */}
       <Modal open={panel === 'interact'} title="Interact" onClose={() => setPanel(null)}>
         <div className="menu-list">
+          <button className="menu-item" onClick={() => setPanel('friends')}>
+            <span className="menu-item-icon"><Glyph name="people" /></span>
+            <span>
+              <strong>Friends</strong>
+              <small>Find explorers & follow them</small>
+            </span>
+          </button>
+          <button className="menu-item" onClick={() => navigate('/profile')}>
+            <span className="menu-item-icon"><Glyph name="face" /></span>
+            <span>
+              <strong>Your Profile</strong>
+              <small>Customize your study base</small>
+            </span>
+          </button>
           {[
-            ['Invite Friends', 'Share a magic link', 'people'],
-            ['Friends', 'See who is studying', 'face'],
             ['Controls', 'How to move & interact', 'gear'],
             ['Info', 'About Focus Lily', 'star'],
             ['Help', 'Tips & support', 'book'],
@@ -126,35 +129,9 @@ export function Lobby() {
         </div>
       </Modal>
 
-      <Modal open={panel === 'account'} title="Your Account" onClose={() => setPanel(null)}>
-        <div className="account-box">
-          <div className="account-name">{displayName}</div>
-          <div className="account-email">{user?.email}</div>
-        </div>
-        <button className="sf-btn secondary" style={{ width: '100%', marginTop: 16 }} onClick={signOut}>
-          Sign Out
-        </button>
-      </Modal>
+      {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
 
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
-
-      {/* ---------- first-time onboarding (run-once) ---------- */}
-      <Modal open={showOnboarding} title={`Welcome to Focus Lily, ${displayName}!`} onClose={finishOnboarding}>
-        <div className="account-box">
-          <p className="panel-hint" style={{ marginBottom: 12 }}>
-            Focus Lily is your calm, magical study world. Here's how to begin:
-          </p>
-          <ul className="onboard-list">
-            <li>🌳 <strong>Sticky Notes</strong> — plant trees and grow your note forest.</li>
-            <li>🌍 <strong>Realm</strong> — step into a shared 3D study world.</li>
-            <li>🧲 <strong>Task Magnet</strong> — your private productivity HQ.</li>
-            <li>⚙️ <strong>Settings</strong> — tune visuals, performance, and controls anytime.</li>
-          </ul>
-        </div>
-        <button className="sf-btn" style={{ width: '100%', marginTop: 16 }} onClick={finishOnboarding}>
-          Start exploring
-        </button>
-      </Modal>
     </div>
   )
 }
@@ -171,6 +148,8 @@ function Glyph({ name }: { name: string }) {
     people: 'M8 11a3 3 0 100-6 3 3 0 000 6z M2 20a6 6 0 0112 0 M17 11a3 3 0 100-6 M16 14a6 6 0 016 6',
     face: 'M12 2a10 10 0 100 20 10 10 0 000-20z M9 10h.01 M15 10h.01 M8 15a4 4 0 008 0',
     gear: 'M12 8a4 4 0 100 8 4 4 0 000-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2',
+    palette:
+      'M12 3a9 9 0 100 18 2.5 2.5 0 002.5-2.5 2 2 0 01.5-1.4 2 2 0 011.5-.6H18a3 3 0 003-3A9 9 0 0012 3z M7.5 11.5h.01 M10 7.5h.01 M14.5 7.5h.01',
   }
   return (
     <svg className="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"

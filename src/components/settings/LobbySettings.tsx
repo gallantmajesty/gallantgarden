@@ -10,12 +10,14 @@ import {
   type ThemePreset,
 } from '../../store/settings'
 import { Section, Seg, Slider, Toggle } from './controls'
+import { WebCustomizationContent } from './WebCustomization'
 import './LobbySettings.css'
 
-type Tab = 'visual' | 'performance' | 'controls'
+type Tab = 'visual' | 'theme' | 'performance' | 'controls'
 
 const TABS: [Tab, string][] = [
   ['visual', 'Visual'],
+  ['theme', 'Theme'],
   ['performance', 'Performance'],
   ['controls', 'Controls'],
 ]
@@ -99,6 +101,8 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
               </Section>
             </>
           )}
+
+          {tab === 'theme' && <WebCustomizationContent />}
 
           {tab === 'performance' && (
             <>

@@ -597,3 +597,79 @@
 .desktop-gate-card .sf-btn {
   margin-top: 6px;
 }
+
+/* ---------- in-room player roster (public lobby display) ---------- */
+.room-roster {
+  position: absolute;
+  top: 76px;
+  right: 18px;
+  width: 232px;
+  z-index: 9;
+  background: rgba(18, 14, 10, 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  overflow: hidden;
+  color: #f3e7cf;
+}
+.room-roster-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 13px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #f3e7cf;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+}
+.room-roster-head strong {
+  color: var(--accent, #ffce54);
+}
+.room-roster-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5fd16a;
+  box-shadow: 0 0 8px #5fd16a;
+  flex: none;
+}
+.room-roster-chev {
+  margin-left: auto;
+  opacity: 0.7;
+  font-size: 11px;
+}
+.room-roster-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.room-roster-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 7px;
+  border-radius: 9px;
+}
+.room-roster-row.me {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.room-roster-row .ppt-name {
+  color: #f3e7cf;
+}
+.room-roster-you {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent, #ffce54);
+  flex: none;
+}

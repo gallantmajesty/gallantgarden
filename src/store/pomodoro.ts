@@ -9,6 +9,7 @@ interface PomodoroState {
   remaining: number // seconds
   running: boolean
   completed: number // finished study sessions
+  totalFocusMin: number // lifetime focused minutes (sum of completed study blocks)
   toggle: () => void
   reset: () => void
   skip: () => void
@@ -23,10 +24,11 @@ function mins(n: number) {
 // refresh keeps the user's progress. The live timer itself is intentionally not
 // persisted (a half-finished countdown shouldn't resume on reload).
 const DONE_KEY = 'sg.pomo.completed'
+const MIN_KEY = 'sg.pomo.totalmin'
 
-function loadCompleted(): number {
+function loadNum(key: string): number {
   try {
-    const raw = localStorage.getItem(DONE_KEY)
+    const raw = localStorage.getItem(key)
     const n = raw ? Number(raw) : 0
     return Number.isFinite(n) && n >= 0 ? n : 0
   } catch {
@@ -34,13 +36,16 @@ function loadCompleted(): number {
   }
 }
 
-function saveCompleted(n: number) {
+function saveNum(key: string, n: number) {
   try {
-    localStorage.setItem(DONE_KEY, String(n))
+    localStorage.setItem(key, String(n))
   } catch {
     /* ignore */
   }
 }
+
+const loadCompleted = () => loadNum(DONE_KEY)
+const saveCompleted = (n: number) => saveNum(DONE_KEY, n)
 
 export const usePomodoro = create<PomodoroState>((set, get) => {
   const advance = () => {
@@ -48,16 +53,20 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     const s = get()
     let mode: PomoMode
     let completed = s.completed
+    let totalFocusMin = s.totalFocusMin
     if (s.mode === 'study') {
       completed += 1
       saveCompleted(completed)
+      // credit the just-finished study block toward lifetime focus minutes
+      totalFocusMin += Math.max(1, Math.round(pomo.study))
+      saveNum(MIN_KEY, totalFocusMin)
       mode = completed % 4 === 0 ? 'long' : 'break'
     } else {
       mode = 'study'
     }
     const remaining = mode === 'study' ? mins(pomo.study) : mode === 'long' ? mins(pomo.longBreak) : mins(pomo.break)
     if (pomo.sound) getAmbient().chime()
-    set({ mode, completed, remaining, running: pomo.autoStart })
+    set({ mode, completed, totalFocusMin, remaining, running: pomo.autoStart })
   }
 
   return {
@@ -65,6 +74,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     remaining: 0,
     running: false,
     completed: loadCompleted(),
+    totalFocusMin: loadNum(MIN_KEY),
 
     toggle: () => {
       const s = get()
@@ -76,7 +86,8 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     },
     reset: () => {
       saveCompleted(0)
-      set({ mode: 'idle', remaining: 0, running: false, completed: 0 })
+      saveNum(MIN_KEY, 0)
+      set({ mode: 'idle', remaining: 0, running: false, completed: 0, totalFocusMin: 0 })
     },
     skip: () => advance(),
     tick: () => {

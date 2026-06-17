@@ -33,12 +33,13 @@
 .realm-head h1 {
   font-size: 34px;
   margin: 10px 0 4px;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 14px rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.28);
 }
 .realm-head p {
   color: var(--ink-soft);
-  font-weight: 500;
+  font-weight: 600;
   max-width: 540px;
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.7);
 }
 
 /* ---- choose: two big cards ---- */
@@ -53,20 +54,22 @@
   width: 320px;
   padding: 26px 22px 22px;
   border-radius: 22px;
-  background: linear-gradient(180deg, rgba(255, 253, 246, 0.97), rgba(246, 232, 200, 0.97));
-  border: 3px solid var(--wood);
-  box-shadow: 0 7px 0 var(--wood-dark), 0 14px 22px rgba(0, 0, 0, 0.22);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   text-align: center;
   animation: pop-in 0.4s ease both;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .realm-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 11px 0 var(--wood-dark), 0 20px 26px rgba(0, 0, 0, 0.26);
+  box-shadow: var(--glass-shadow-hover);
 }
 .realm-card:active {
   transform: translateY(2px);
-  box-shadow: 0 3px 0 var(--wood-dark);
+  box-shadow: var(--glass-shadow);
 }
 .realm-card-orb {
   width: 104px;
@@ -75,9 +78,9 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 38% 30%, #fffdf6, #ecdfc4);
-  border: 3px solid var(--wood);
-  box-shadow: inset 0 -3px 7px rgba(122, 74, 38, 0.18);
+  background: radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.55), rgba(190, 228, 246, 0.16));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(90, 160, 200, 0.18);
   overflow: hidden;
 }
 .realm-card-orb .png-icon {
@@ -114,9 +117,11 @@
   gap: 14px;
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(255, 253, 246, 0.95);
-  border: 3px solid var(--wood);
-  box-shadow: 0 4px 0 var(--wood-dark);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   animation: pop-in 0.3s ease both;
 }
 .realm-room.full {
@@ -130,8 +135,8 @@
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: radial-gradient(circle at 38% 30%, #fffdf6, #ecdfc4);
-  border: 2px solid var(--wood);
+  background: radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.55), rgba(190, 228, 246, 0.16));
+  border: 1px solid rgba(255, 255, 255, 0.55);
 }
 .realm-room-body {
   flex: 1;
@@ -226,15 +231,18 @@
   gap: 12px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: rgba(255, 253, 246, 0.9);
-  border: 2px solid var(--wood);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   font-family: var(--display);
   font-weight: 700;
   color: var(--wood-dark);
-  transition: background 0.12s ease;
+  transition: filter 0.12s ease;
 }
 .realm-mine-item:hover {
-  background: #fffdf6;
+  filter: brightness(1.08);
 }
 .realm-mine-go {
   margin-left: auto;
@@ -247,4 +255,5 @@
   max-width: 520px;
   text-align: center;
   font-style: italic;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.6);
 }

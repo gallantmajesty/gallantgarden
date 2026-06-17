@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SceneBackground } from '../components/SceneBackground'
 import { PngIcon } from '../components/PngIcon'
 import { useRealm, type CustomRealm } from '../store/realm'
 import { GLOBAL_ROOMS, ROOM_CAPACITY, mockOccupancy } from '../lib/realm'
@@ -14,8 +13,6 @@ export function Realm() {
 
   return (
     <div className="realm-root">
-      <SceneBackground />
-
       <div className="realm-topleft">
         <button className="sf-btn ghost" onClick={() => (mode === 'choose' ? navigate('/') : setMode('choose'))}>
           ‹ {mode === 'choose' ? 'Lobby' : 'Realm'}
@@ -43,7 +40,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
       </header>
 
       <div className="realm-cards">
-        <button className="realm-card" onClick={() => onPick('global')}>
+        <button className="realm-card water-glass" onClick={() => onPick('global')}>
           <div className="realm-card-orb">
             <PngIcon name="study-rooms" size={72} alt="Global Realm" />
           </div>
@@ -52,7 +49,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <span className="realm-card-cta">Browse rooms ›</span>
         </button>
 
-        <button className="realm-card" onClick={() => onPick('custom')}>
+        <button className="realm-card water-glass" onClick={() => onPick('custom')}>
           <div className="realm-card-orb">
             <PngIcon name="realm" size={72} alt="Custom Realm" />
           </div>
@@ -97,7 +94,7 @@ function GlobalRealm() {
           const full = r.here >= ROOM_CAPACITY
           const pct = Math.round((r.here / ROOM_CAPACITY) * 100)
           return (
-            <div key={r.id} className={`realm-room ${full ? 'full' : ''}`}>
+            <div key={r.id} className={`realm-room water-glass ${full ? 'full' : ''}`}>
               <div className="realm-room-icon">
                 <PngIcon name="study-rooms" size={40} alt="" />
               </div>
@@ -113,7 +110,7 @@ function GlobalRealm() {
                   <span style={{ width: `${pct}%` }} />
                 </div>
               </div>
-              <button className="sf-btn realm-join" disabled={full} onClick={() => join(r.id, r.name, full)}>
+              <button className="sf-btn water realm-join" disabled={full} onClick={() => join(r.id, r.name, full)}>
                 {full ? 'Full' : 'Join'}
               </button>
             </div>
@@ -162,7 +159,7 @@ function CustomRealm() {
           maxLength={40}
           autoFocus
         />
-        <button className="sf-btn" type="submit">
+        <button className="sf-btn water" type="submit">
           Create &amp; enter
         </button>
       </form>
