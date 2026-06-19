@@ -1,83 +1,101 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSettings } from '../store/settings'
 import './IntroVeil.css'
 
-// Clash-of-Clans-style opening scene. On a fresh page load this overlay sits on
-// top of everything and plays an intro video while the app boots underneath.
+// Clash-of-Clans-style opening scene. On a page load this overlay sits on top of
+// everything and plays the lotus-logo intro while the app boots underneath.
 //
-// It dismisses on whichever of these comes first, after a short minimum beat so
-// the scene always registers even on a warm/cached load:
-//   • the lobby is ready to open  → cut the video wherever it is and fade out
-//   • the video finishes on its own → fade out (and if the app is somehow still
-//     not ready, hold the last frame until it is, then fade)
+// The video is SILENT in the web app — the file ships with no audio track and the
+// element is muted, so there is nothing to turn down and no audio control in the
+// lobby settings.
 //
-// Sound plays by DEFAULT, at the master volume from the lobby settings — that's
-// the one place users turn it down or off (Settings → Audio). There is no on-
-// screen sound prompt; if the browser blocks autoplay-with-audio we simply start
-// muted and unmute on the user's first interaction anywhere.
+// Two flavours, chosen from how the page was loaded:
+//   • Fresh open / new tab (navigate) → play from the very start so you see the
+//     whole build-up (black → the logo igniting), for a ~4–5s taste.
+//   • Refresh / reload                → skip the build-up and drop straight into
+//     the settled logo scene for a shorter ~2–3s taste.
+//
+// It dismisses once that taste has played AND the app is ready to paint (auth
+// resolved, profile loaded). If the PC is slow and the app isn't ready yet, the
+// video simply keeps playing past its window until readiness lands — and if it
+// reaches the end first, it holds on the last glowing frame until then. So the
+// intro never cuts to a half-built lobby.
 //
 // Once faded it unmounts itself, so it costs nothing for the rest of the session
 // and never replays on in-app navigation (App, and therefore this, stays mounted).
 
-const MIN_SHOWN_MS = 1500 // smallest taste of the intro before readiness may cut it
+// How long into the clip the logo has fully formed and is just glowing — the
+// "logo scene" we jump to on a refresh.
+const LOGO_SCENE_START = 2.5 // seconds
 const FADE_MS = 650
+
+// Minimum on-screen taste before readiness is allowed to cut the scene. Longer on
+// a fresh open (we want the whole build-up); shorter on a refresh (logo only).
+const FRESH_WINDOW_MS = 4500
+const RELOAD_WINDOW_MS = 2500
+
+// True when this page came up via a browser refresh/reload (vs. a fresh open or a
+// new tab). Uses the Navigation Timing API; defaults to "fresh" if unavailable.
+function isReload(): boolean {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as
+      | PerformanceNavigationTiming
+      | undefined
+    return nav?.type === 'reload'
+  } catch {
+    return false
+  }
+}
 
 export function IntroVeil({ ready }: { ready: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  // Snapshot the master volume once: the opening scene shouldn't chase slider
-  // changes mid-play, and the lobby settings are the canonical control.
-  const masterRef = useRef(useSettings.getState().master)
-  const [minElapsed, setMinElapsed] = useState(false)
-  const [videoEnded, setVideoEnded] = useState(false)
+  // Decide fresh-vs-reload once, on mount — it can't change for this page life.
+  const reloadRef = useRef(isReload())
+  const windowMs = reloadRef.current ? RELOAD_WINDOW_MS : FRESH_WINDOW_MS
+
+  const [windowDone, setWindowDone] = useState(false)
   const [skipped, setSkipped] = useState(false)
   const [gone, setGone] = useState(false)
 
-  // A deliberate skip leaves at once; otherwise we wait out the minimum beat and
-  // then go as soon as the lobby is ready or the video has played out. Derived,
-  // not stored, so the fade starts the same render the condition flips.
-  const leaving = skipped || (minElapsed && (ready || videoEnded))
+  // Leave on a deliberate skip, or once the taste has played AND the app is ready.
+  // If ready lands early (fast boot) we still hold for the window; if it lands late
+  // (slow boot) the window is long gone and we leave the moment readiness arrives.
+  const leaving = skipped || (windowDone && ready)
 
-  // Minimum-on-screen timer so a near-instant boot still shows the opening beat.
-  useEffect(() => {
-    const t = setTimeout(() => setMinElapsed(true), MIN_SHOWN_MS)
-    return () => clearTimeout(t)
-  }, [])
+  // On a refresh, jump straight to the settled logo before the first paint, so the
+  // build-up never flashes. On a fresh open we start at 0 (the default).
+  const onLoadedMetadata = () => {
+    const v = videoRef.current
+    if (v && reloadRef.current) v.currentTime = LOGO_SCENE_START
+  }
 
-  // Play with sound on by default. Try unmuted first; if the browser blocks it
-  // (no user gesture yet), start muted and unmute on the first interaction.
+  // Always muted — the clip has no audio track and the web app plays it silent.
+  // Start the on-screen window timer when playback actually begins, so the ~2–3s /
+  // ~4–5s taste is measured against what the user really sees, not the boot clock.
+  const startedRef = useRef(false)
+  const onPlaying = () => {
+    if (startedRef.current) return
+    startedRef.current = true
+    setTimeout(() => setWindowDone(true), windowMs)
+  }
+
   useEffect(() => {
     const v = videoRef.current
     if (!v) return
-    const vol = masterRef.current
-    const soundOn = vol > 0
-    v.volume = vol
-    v.muted = !soundOn
-    v.play().catch(() => {
-      v.muted = true
-      v.play().catch(() => {})
-    })
-
-    if (!soundOn) return
-    const unmute = () => {
-      if (v.muted && masterRef.current > 0) {
-        v.muted = false
-        v.volume = masterRef.current
-        v.play().catch(() => {})
+    v.muted = true
+    v.play().catch(() => {})
+    // Safety net: if 'playing' never fires (e.g. autoplay quirk), still open the
+    // window from mount so the scene can't get stuck on screen.
+    const t = setTimeout(() => {
+      if (!startedRef.current) {
+        startedRef.current = true
+        setWindowDone(true)
       }
-      teardown()
-    }
-    const teardown = () => {
-      window.removeEventListener('pointerdown', unmute)
-      window.removeEventListener('keydown', unmute)
-    }
-    window.addEventListener('pointerdown', unmute)
-    window.addEventListener('keydown', unmute)
-    return teardown
-  }, [])
+    }, windowMs + 800)
+    return () => clearTimeout(t)
+  }, [windowMs])
 
   // Once the fade-out begins, unmount after it finishes so the overlay costs
-  // nothing for the rest of the session. (setState here lives in a timeout
-  // callback, not the effect body, so it triggers no cascading render.)
+  // nothing for the rest of the session.
   useEffect(() => {
     if (!leaving) return
     const t = setTimeout(() => setGone(true), FADE_MS)
@@ -97,9 +115,11 @@ export function IntroVeil({ ready }: { ready: boolean }) {
         className="intro-video"
         src="/intro.mp4"
         autoPlay
+        muted
         playsInline
         preload="auto"
-        onEnded={() => setVideoEnded(true)}
+        onLoadedMetadata={onLoadedMetadata}
+        onPlaying={onPlaying}
       />
       <div className="intro-vignette" />
       <button

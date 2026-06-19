@@ -1,0 +1,172 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { insforge } from '../lib/insforge'
+import './AvatarCropper.css'
+
+// Interactive avatar crop/zoom editor. Opens after the user picks an image:
+// they zoom (slider or wheel) and drag to position the photo inside a circular
+// frame, then "Use photo" renders the visible square to a 512×512 canvas, uploads
+// it to the `avatars` bucket, and hands the URL back. The image is always kept
+// covering the frame, so there are never empty gaps.
+
+const VIEW = 320 // on-screen square viewport (CSS px)
+const OUT = 512 // exported image size (px)
+const MIN_ZOOM = 1
+const MAX_ZOOM = 4
+
+export function AvatarCropper({
+  file,
+  onCancel,
+  onDone,
+}: {
+  file: File
+  onCancel: () => void
+  onDone: (url: string) => void
+}) {
+  const imgRef = useRef<HTMLImageElement | null>(null)
+  const [src, setSrc] = useState('')
+  const [nat, setNat] = useState<{ w: number; h: number } | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [busy, setBusy] = useState(false)
+  const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+
+  // Load the picked file into an <img> via an object URL (revoked on unmount).
+  useEffect(() => {
+    const url = URL.createObjectURL(file)
+    setSrc(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
+  // cover-fit scale at zoom 1, then the actual on-screen scale
+  const baseScale = nat ? Math.max(VIEW / nat.w, VIEW / nat.h) : 1
+  const displayScale = baseScale * zoom
+
+  // Keep the image covering the frame: clamp the pan so no edge moves inside.
+  const clamp = useCallback(
+    (o: { x: number; y: number }) => {
+      if (!nat) return { x: 0, y: 0 }
+      const maxX = Math.max(0, (nat.w * displayScale - VIEW) / 2)
+      const maxY = Math.max(0, (nat.h * displayScale - VIEW) / 2)
+      return {
+        x: Math.min(maxX, Math.max(-maxX, o.x)),
+        y: Math.min(maxY, Math.max(-maxY, o.y)),
+      }
+    },
+    [nat, displayScale],
+  )
+
+  useEffect(() => {
+    setOffset((o) => clamp(o))
+  }, [clamp])
+
+  function onPointerDown(e: React.PointerEvent) {
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    drag.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y }
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (!drag.current) return
+    const next = {
+      x: drag.current.ox + (e.clientX - drag.current.x),
+      y: drag.current.oy + (e.clientY - drag.current.y),
+    }
+    setOffset(clamp(next))
+  }
+  function onPointerUp() {
+    drag.current = null
+  }
+  function onWheel(e: React.WheelEvent) {
+    const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)))
+    setZoom(z)
+  }
+
+  async function confirm() {
+    const img = imgRef.current
+    if (!img || !nat) return
+    setBusy(true)
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = OUT
+      canvas.height = OUT
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const k = OUT / VIEW
+      ctx.fillStyle = '#1c140c'
+      ctx.fillRect(0, 0, OUT, OUT)
+      // Reproduce exactly what the viewport shows: image centered + panned.
+      const dw = nat.w * displayScale
+      const dh = nat.h * displayScale
+      const left = VIEW / 2 + offset.x - dw / 2
+      const top = VIEW / 2 + offset.y - dh / 2
+      ctx.drawImage(img, left * k, top * k, dw * k, dh * k)
+
+      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.92))
+      if (!blob) return
+      const out = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+      const { data, error } = await insforge.storage.from('avatars').uploadAuto(out)
+      if (!error && data?.url) onDone(data.url)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="cropper-scrim" onPointerDown={onCancel}>
+      <div className="cropper-card" onPointerDown={(e) => e.stopPropagation()}>
+        <h3 className="cropper-title">Position your photo</h3>
+
+        <div
+          className="cropper-view"
+          style={{ width: VIEW, height: VIEW }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onWheel={onWheel}
+        >
+          {src && (
+            <img
+              ref={imgRef}
+              src={src}
+              alt=""
+              draggable={false}
+              className="cropper-img"
+              onLoad={(e) => {
+                const el = e.currentTarget
+                setNat({ w: el.naturalWidth, h: el.naturalHeight })
+              }}
+              style={{
+                width: nat ? nat.w * displayScale : 'auto',
+                height: nat ? nat.h * displayScale : 'auto',
+                transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`,
+              }}
+            />
+          )}
+          <span className="cropper-ring" />
+        </div>
+
+        <label className="cropper-zoom">
+          <span>Zoom</span>
+          <input
+            type="range"
+            min={MIN_ZOOM}
+            max={MAX_ZOOM}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+          />
+        </label>
+
+        <p className="cropper-hint">Drag to move • scroll or use the slider to zoom</p>
+
+        <div className="cropper-actions">
+          <button className="sf-btn secondary" onClick={onCancel} disabled={busy}>
+            Cancel
+          </button>
+          <button className="sf-btn" onClick={confirm} disabled={busy || !nat}>
+            {busy ? 'Saving…' : 'Use photo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

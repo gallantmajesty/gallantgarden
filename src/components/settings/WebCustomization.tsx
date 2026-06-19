@@ -149,9 +149,6 @@ export function WebCustomizationContent() {
             <span className="wc-swatch-plus">+</span>
           </label>
         </div>
-        <p className="wc-preview-line" style={{ color: fontColor ?? 'var(--wood-dark)' }}>
-          The quick brown fox — preview text
-        </p>
       </section>
 
       <p className="wc-foot">

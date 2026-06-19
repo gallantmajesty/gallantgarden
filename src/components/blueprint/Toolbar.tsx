@@ -10,7 +10,7 @@ interface ToolbarProps {
 }
 
 const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
-  { shape: 'sticky', label: '🗒 Sticky', bg: '#fbf7ee' },
+  { shape: 'sticky', label: '🗒 Sticky', bg: '#262019' },
   { shape: 'rounded', label: '▢ Card', bg: 'var(--mg-panel,#ffffff)' },
   { shape: 'circle', label: '◯ Bubble', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.1)' },
   { shape: 'hexagon', label: '⬡ Hex', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.12)' },
@@ -62,7 +62,7 @@ export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) 
 
   return (
     <header className="bp-toolbar bp-surface">
-      <button className="sf-btn secondary tiny" onClick={() => navigate('/')}>← Lobby</button>
+      <button className="sf-btn secondary tiny" onClick={() => navigate('/sticky')}>← Sticky Notes</button>
 
       <div className="bp-toolbar-board">
         <input className="bp-title-input" value={title} onChange={(e) => setTitle(e.target.value)} />

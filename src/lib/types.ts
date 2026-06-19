@@ -104,6 +104,10 @@ export interface ProfilePublic {
   studyInterests: string[]
   /** banner design id (see BANNERS catalog in lib/banners.ts). */
   banner: string
+  /** optional uploaded banner image URL — when set it overrides the gradient. */
+  bannerImage: string | null
+  /** vertical focus of the banner image, as object-position Y % (0–100). */
+  bannerPos: number
   socialLinks: SocialLink[]
 }
 
@@ -113,6 +117,8 @@ export const EMPTY_PROFILE_PUBLIC: ProfilePublic = {
   studySchedule: '',
   studyInterests: [],
   banner: 'aurora',
+  bannerImage: null,
+  bannerPos: 50,
   socialLinks: [],
 }
 
@@ -121,6 +127,7 @@ export function parseProfilePublic(raw: unknown): ProfilePublic {
   if (!raw || typeof raw !== 'object') return { ...EMPTY_PROFILE_PUBLIC }
   const o = raw as Record<string, unknown>
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback)
   const strArr = (v: unknown) =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
   const links = Array.isArray(o.socialLinks)
@@ -135,6 +142,8 @@ export function parseProfilePublic(raw: unknown): ProfilePublic {
     studySchedule: str(o.studySchedule),
     studyInterests: strArr(o.studyInterests),
     banner: str(o.banner) || EMPTY_PROFILE_PUBLIC.banner,
+    bannerImage: str(o.bannerImage) || null,
+    bannerPos: Math.min(100, Math.max(0, num(o.bannerPos, 50))),
     socialLinks: links,
   }
 }

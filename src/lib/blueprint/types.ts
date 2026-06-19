@@ -255,9 +255,9 @@ export function defaultNoteStyle(): NoteStyle {
   return {
     shape: 'sticky',
     bgKind: 'solid',
-    bgColor: '#fbf7ee', // warm evidence-card paper, reads clean on the dark wall
-    gradient: 'linear-gradient(135deg, #fffdf6, #f3ead8)',
-    borderColor: 'rgba(40,30,20,0.16)',
+    bgColor: '#262019', // warm dark paper, light ink — reads clean on the wall
+    gradient: 'linear-gradient(135deg, #2c261d, #1e1a14)',
+    borderColor: 'rgba(255,245,225,0.14)',
     borderWidth: 1,
     radius: 6,
     shadow: 0.55,
@@ -266,7 +266,7 @@ export function defaultNoteStyle(): NoteStyle {
     font: FONT_OPTIONS[0].value,
     fontSize: 16,
     fontWeight: 500,
-    textColor: '#2c2418',
+    textColor: '#f2ece0',
     align: 'left',
     lineHeight: 1.45,
     underline: false,
@@ -287,8 +287,8 @@ export const NOTE_PRESETS: NotePreset[] = [
   {
     id: 'evidence',
     name: 'Evidence',
-    swatch: '#fbf7ee',
-    patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#fbf7ee', borderColor: 'rgba(40,30,20,0.16)', borderWidth: 1, radius: 6, shadow: 0.55, glow: 0, textColor: '#2c2418' },
+    swatch: '#262019',
+    patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#262019', borderColor: 'rgba(255,245,225,0.14)', borderWidth: 1, radius: 6, shadow: 0.55, glow: 0, textColor: '#f2ece0' },
   },
   {
     id: 'index',

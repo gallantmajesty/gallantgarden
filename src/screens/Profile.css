@@ -75,13 +75,46 @@
   left: 14px;
   bottom: 14px;
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-wrap: wrap;
-  max-width: 70%;
+  max-width: 76%;
   padding: 8px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(8px);
+}
+.pf-banner-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pf-banner-upload {
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pf-banner-upload:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.pf-banner-pos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+.pf-banner-pos input {
+  flex: 1;
+  accent-color: #fff;
 }
 .pf-banner-swatch {
   width: 34px;

@@ -27,6 +27,7 @@ import { Flag } from '../components/Flag'
 import { Icon } from '../components/magnet/Icon'
 import { RankBadge } from '../components/RankBadge'
 import { ProfileAvatar } from '../components/ProfileAvatar'
+import { AvatarCropper } from '../components/AvatarCropper'
 import { FollowButton } from '../components/FollowButton'
 import { StatCard } from '../components/StatCard'
 import { UserListModal } from '../components/UserListModal'
@@ -223,7 +224,16 @@ function ProfileBody({
         <header className="pf-header sf-panel">
           <div
             className="pf-banner"
-            style={{ background: banner.css, ['--banner-glow' as string]: banner.glow }}
+            style={
+              view.pub.bannerImage
+                ? {
+                    backgroundImage: `url(${view.pub.bannerImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: `center ${view.pub.bannerPos}%`,
+                    ['--banner-glow' as string]: banner.glow,
+                  }
+                : { background: banner.css, ['--banner-glow' as string]: banner.glow }
+            }
           >
             {isOwn && editing && <BannerPicker view={view} />}
           </div>
@@ -445,20 +455,14 @@ function IdentityEditor({ view }: { view: ProfileView }) {
 
 function AvatarUpload() {
   const setAvatarUrl = useProfile((s) => s.setAvatarUrl)
-  const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // The picked file opens the crop/zoom editor; it handles the upload itself.
+  const [pending, setPending] = useState<File | null>(null)
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    setBusy(true)
-    try {
-      const { data, error } = await insforge.storage.from('avatars').uploadAuto(file)
-      if (!error && data?.url) await setAvatarUrl(data.url)
-    } finally {
-      setBusy(false)
-      if (inputRef.current) inputRef.current.value = ''
-    }
+    if (file) setPending(file)
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   return (
@@ -466,18 +470,21 @@ function AvatarUpload() {
       <button
         className="pf-avatar-upload"
         onClick={() => inputRef.current?.click()}
-        disabled={busy}
         title="Change picture"
       >
         <Icon name="edit" size={16} />
       </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={onFile}
-      />
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+      {pending && (
+        <AvatarCropper
+          file={pending}
+          onCancel={() => setPending(null)}
+          onDone={async (url) => {
+            await setAvatarUrl(url)
+            setPending(null)
+          }}
+        />
+      )}
     </>
   )
 }
@@ -486,17 +493,59 @@ function AvatarUpload() {
 
 function BannerPicker({ view }: { view: ProfileView }) {
   const savePublic = useProfile((s) => s.savePublic)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const hasImage = !!view.pub.bannerImage
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (inputRef.current) inputRef.current.value = ''
+    if (!file) return
+    setBusy(true)
+    try {
+      const { data, error } = await insforge.storage.from('avatars').uploadAuto(file)
+      if (!error && data?.url) savePublic({ bannerImage: data.url, bannerPos: 50 })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="pf-banner-picker" onClick={(e) => e.stopPropagation()}>
-      {BANNERS.map((b) => (
+      <div className="pf-banner-swatches">
         <button
-          key={b.id}
-          className={`pf-banner-swatch ${view.pub.banner === b.id ? 'on' : ''}`}
-          style={{ background: b.css }}
-          title={b.name}
-          onClick={() => savePublic({ banner: b.id })}
-        />
-      ))}
+          className="pf-banner-upload"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          title="Upload your own banner"
+        >
+          {busy ? '…' : '⤓ Upload'}
+        </button>
+        {BANNERS.map((b) => (
+          <button
+            key={b.id}
+            className={`pf-banner-swatch ${!hasImage && view.pub.banner === b.id ? 'on' : ''}`}
+            style={{ background: b.css }}
+            title={b.name}
+            onClick={() => savePublic({ banner: b.id, bannerImage: null })}
+          />
+        ))}
+        <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+      </div>
+
+      {hasImage && (
+        <label className="pf-banner-pos">
+          <span>Position</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={view.pub.bannerPos}
+            onChange={(e) => savePublic({ bannerPos: Number(e.target.value) })}
+          />
+        </label>
+      )}
     </div>
   )
 }

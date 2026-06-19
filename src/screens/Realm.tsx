@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PngIcon } from '../components/PngIcon'
 import { useRealm, type CustomRealm } from '../store/realm'
+import { useSettings } from '../store/settings'
+import { Section, Slider, Toggle } from '../components/settings/controls'
 import { GLOBAL_ROOMS, ROOM_CAPACITY, mockOccupancy } from '../lib/realm'
 import './Realm.css'
 
@@ -10,6 +12,7 @@ type Mode = 'choose' | 'global' | 'custom'
 export function Realm() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('choose')
+  const [audioOpen, setAudioOpen] = useState(false)
 
   return (
     <div className="realm-root">
@@ -19,10 +22,48 @@ export function Realm() {
         </button>
       </div>
 
+      <div className="realm-topright">
+        <button className="sf-btn ghost" onClick={() => setAudioOpen(true)}>
+          ♪ Audio
+        </button>
+      </div>
+
       <div className="realm-stage">
         {mode === 'choose' && <RealmChoose onPick={setMode} />}
         {mode === 'global' && <GlobalRealm />}
         {mode === 'custom' && <CustomRealm />}
+      </div>
+
+      {audioOpen && <AudioPanel onClose={() => setAudioOpen(false)} />}
+    </div>
+  )
+}
+
+/* ----------------------------------------------------------------- audio panel
+ * The Sound controls used to live in the Lobby settings drawer; they now live
+ * here, since this is where the realm/scene ambience plays. Reuses the shared
+ * settings drawer chrome + control primitives (controls.tsx / controls.css) so
+ * it looks and behaves exactly like the old panel. */
+function AudioPanel({ onClose }: { onClose: () => void }) {
+  const s = useSettings()
+  return (
+    <div className="settings-scrim" onPointerDown={onClose}>
+      <div className="settings-panel" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="settings-head">
+          <h2>Audio</h2>
+          <button className="settings-x" onClick={onClose} aria-label="Close audio">
+            ✕
+          </button>
+        </div>
+        <div className="settings-body">
+          <Section title="Sound">
+            <Slider label="Master volume" value={s.master} onChange={(v) => s.set('master', v)} />
+            <Toggle label="Ambient music" value={s.ambientOn} onChange={(v) => s.set('ambientOn', v)} />
+            <Slider label="Ambient level" value={s.ambientVol} onChange={(v) => s.set('ambientVol', v)} />
+            <Toggle label="Rain / weather" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
+            <Slider label="Rain / weather level" value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
+          </Section>
+        </div>
       </div>
     </div>
   )
