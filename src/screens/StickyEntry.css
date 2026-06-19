@@ -51,23 +51,29 @@
   width: 320px;
   max-width: 88vw;
   padding: 24px;
-  border-radius: 24px;
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  border-radius: 22px;
+  background: var(--mg-panel, rgba(255, 255, 255, 0.9));
+  border: 1px solid var(--mg-border, rgba(20, 30, 60, 0.12));
+  box-shadow: 0 12px 30px rgba(20, 30, 60, 0.14);
   text-align: center;
-  transition: transform 0.13s ease, box-shadow 0.13s ease;
+  transition: transform 0.13s ease, box-shadow 0.13s ease, border-color 0.13s ease;
   animation: pop-in 0.4s ease both;
 }
-.sticky-choice:hover {
-  transform: translateY(-7px);
-  box-shadow: var(--glass-shadow-hover);
+.sticky-choice:hover:not(:disabled) {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(20, 30, 60, 0.2);
+  border-color: var(--mg-accent, #8a6cff);
 }
-.sticky-choice:active {
-  transform: translateY(2px);
-  box-shadow: var(--glass-shadow);
+.sticky-choice:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.sticky-choice.soon {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.soon-tag {
+  color: var(--ink-soft, #6b7488) !important;
+  font-weight: 700;
 }
 .sticky-choice h2 {
   font-size: 24px;
@@ -95,42 +101,39 @@
   position: relative;
   overflow: hidden;
 }
-.choice-art-tree {
-  background: linear-gradient(180deg, #bfe9ff, #d9f0c8);
+.choice-art-custom {
+  background: radial-gradient(circle at 50% 40%, #2c3242, #1b1f2b);
 }
-.tree-canopy {
+.custom-note {
   position: absolute;
-  bottom: 26px;
+  width: 40px;
+  height: 34px;
+  border-radius: 3px;
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.35);
+}
+.custom-note::before {
+  /* pin */
+  content: '';
+  position: absolute;
+  top: -4px;
   left: 50%;
-  width: 96px;
-  height: 96px;
-  margin-left: -48px;
-  border-radius: 50% 50% 46% 46%;
-  background: radial-gradient(circle at 38% 30%, #8fd06a, var(--grass-dark));
-  box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.18);
-  animation: floaty 6s ease-in-out infinite;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #c23b3b);
 }
-.tree-trunk {
+.custom-note.c1 { background: #ffe27a; top: 26px; left: 38px; transform: rotate(-7deg); }
+.custom-note.c2 { background: #a8e6cf; top: 30px; right: 40px; transform: rotate(6deg); }
+.custom-note.c3 { background: #ffaaa5; bottom: 18px; left: 50%; margin-left: -20px; transform: rotate(-3deg); }
+.custom-string {
   position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 20px;
-  height: 40px;
-  margin-left: -10px;
-  background: linear-gradient(90deg, var(--wood-dark), var(--wood-light));
-  border-radius: 4px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255, 90, 90, 0.9), rgba(255, 140, 70, 0.9));
+  transform-origin: left center;
 }
-.tree-note {
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transform: rotate(-6deg);
-}
-.tree-note.n1 { background: #ffe27a; bottom: 60px; left: 46%; }
-.tree-note.n2 { background: #a8e6cf; bottom: 84px; left: 56%; transform: rotate(8deg); }
-.tree-note.n3 { background: #ffaaa5; bottom: 48px; left: 56%; transform: rotate(4deg); }
+.custom-string.s1 { top: 46px; left: 74px; width: 120px; transform: rotate(10deg); }
+.custom-string.s2 { top: 52px; left: 84px; width: 100px; transform: rotate(56deg); }
 
 .choice-art-casual {
   background: linear-gradient(180deg, #fff3d6, #ffe6c0);

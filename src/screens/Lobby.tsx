@@ -20,7 +20,7 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'sticky', label: 'Sticky Notes', caption: 'Grow your note forest', png: 'notes', route: '/sticky' },
+  { key: 'sticky', label: 'Sticky Notes', caption: 'Your visual thinking space', png: 'notes', route: '/sticky' },
   { key: 'realm', label: 'Realm', caption: 'Step into a shared study world', png: 'realm', route: '/realm' },
   { key: 'magnet', label: 'Task Magnet', caption: 'Your private productivity HQ', png: 'tasks', route: '/magnet' },
   { key: 'focus', label: 'Focus Timer', caption: 'Beat procrastination', png: 'focus-timer', soon: true },

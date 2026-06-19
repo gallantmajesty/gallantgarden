@@ -13,11 +13,12 @@ import { Section, Seg, Slider, Toggle } from './controls'
 import { WebCustomizationContent } from './WebCustomization'
 import './LobbySettings.css'
 
-type Tab = 'visual' | 'theme' | 'performance' | 'controls'
+type Tab = 'visual' | 'theme' | 'audio' | 'performance' | 'controls'
 
 const TABS: [Tab, string][] = [
   ['visual', 'Visual'],
   ['theme', 'Theme'],
+  ['audio', 'Audio'],
   ['performance', 'Performance'],
   ['controls', 'Controls'],
 ]
@@ -103,6 +104,39 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
           )}
 
           {tab === 'theme' && <WebCustomizationContent />}
+
+          {tab === 'audio' && (
+            <Section title="Sound">
+              <Slider
+                label="Master volume"
+                value={s.master}
+                onChange={(v) => s.set('master', v)}
+              />
+              <Toggle
+                label="Ambient music"
+                value={s.ambientOn}
+                onChange={(v) => s.set('ambientOn', v)}
+              />
+              <Slider
+                label="Ambient level"
+                value={s.ambientVol}
+                onChange={(v) => s.set('ambientVol', v)}
+              />
+              <Toggle
+                label="Rain / weather"
+                value={s.rainOn}
+                onChange={(v) => s.set('rainOn', v)}
+              />
+              <Slider
+                label="Rain / weather level"
+                value={s.rainVol}
+                onChange={(v) => s.set('rainVol', v)}
+              />
+              <p className="fl-set-note">
+                Master volume also sets the opening video's sound — turn it to zero to mute it.
+              </p>
+            </Section>
+          )}
 
           {tab === 'performance' && (
             <>

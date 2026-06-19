@@ -6,17 +6,17 @@ import { applyVisualSettings, useSettings } from './store/settings'
 import { useWebTheme } from './store/webTheme'
 import { applyWebTheme } from './lib/webThemes'
 import { WebBackground } from './components/WebBackground'
+import { IntroVeil } from './components/IntroVeil'
 import { AuthScreen } from './screens/AuthScreen'
 import { Onboarding } from './screens/Onboarding'
 import { Lobby } from './screens/Lobby'
+import { Blueprint } from './screens/Blueprint'
 import { StickyEntry } from './screens/StickyEntry'
-import { Forest } from './screens/Forest'
 import { Explore } from './screens/Explore'
 import { Realm } from './screens/Realm'
 import { TaskMagnet } from './screens/TaskMagnet'
 import { Profile } from './screens/Profile'
 import { AvatarCreator } from './screens/AvatarCreator'
-import { Placeholder } from './screens/Placeholder'
 import { LoadingVeil } from './components/LoadingVeil'
 import { DesktopOnly, useIsDesktop } from './components/DesktopOnly'
 
@@ -50,11 +50,18 @@ export default function App() {
   // "request desktop site" mode) are blocked entirely; the app never mounts.
   if (!isDesktop) return <DesktopOnly />
 
+  // The opening scene plays over the boot. It cuts the moment the lobby (or auth
+  // screen) is ready to paint — i.e. auth has resolved and, if signed in, the
+  // profile has loaded — so the video stops "wherever it is" the instant we can
+  // open the lobby, just like Clash of Clans.
+  const appReady = !loading && (!user || profileReady)
+
   // The background is mounted once, above the auth/loading/router branch, so it
   // persists across every navigation and never remounts (zero flash).
   return (
     <>
       <WebBackground />
+      <IntroVeil ready={appReady} />
       {loading ? (
         <LoadingVeil />
       ) : !user ? (
@@ -67,22 +74,13 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Lobby />} />
           <Route path="/sticky" element={<StickyEntry />} />
-          <Route path="/sticky/forest" element={<Forest />} />
+          <Route path="/blueprint" element={<Blueprint />} />
           <Route path="/realm" element={<Realm />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/magnet" element={<TaskMagnet />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/u/:username" element={<Profile />} />
           <Route path="/avatar" element={<AvatarCreator />} />
-          <Route
-            path="/sticky/casual"
-            element={
-              <Placeholder
-                title="Casual Notes & Flashcards"
-                note="A fast searchable list of all your notes plus flashcards is coming right after the forest."
-              />
-            }
-          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
