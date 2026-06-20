@@ -60,7 +60,7 @@ export function Lobby() {
 
       {/* ---------- top-right: avatar / settings ---------- */}
       <div className="lobby-topright">
-        <button className="lobby-round" title="Customize avatar" onClick={() => navigate('/avatar')}>
+        <button className="lobby-round" title="Choose character" onClick={() => navigate('/avatar')}>
           <Glyph name="face" />
         </button>
         <button className="lobby-round" title="Settings" onClick={() => setPanel('settings')}>

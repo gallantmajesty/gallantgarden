@@ -8,8 +8,7 @@ import { seatAnchors } from './furniture'
 import { isTypingFocused, joystick } from './input'
 import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
-import { AvatarRig, type AvatarRigHandle } from '../../avatar/AvatarRig'
-import { AvatarAnimator } from '../../avatar/AvatarAnimator'
+import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
 import { useAvatar } from '../../avatar/store'
 
@@ -34,10 +33,9 @@ export function PlayerController() {
   const gl = useThree((s) => s.gl)
   const camRef = useRef<TPerspectiveCamera>(null)
   const avatarRef = useRef<Group>(null)
-  const rigHandle = useRef<AvatarRigHandle>(null)
   // Live locomotion fed to the avatar animator each frame (no React re-renders).
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0 })
-  const avatarConfig = useAvatar((s) => s.config)
+  const characterId = useAvatar((s) => s.config.characterId)
   const keys = useRef<Record<string, boolean>>({})
   const collision = useMemo(() => buildCollision(), [])
   const seats = useMemo(() => seatAnchors(), [])
@@ -72,6 +70,14 @@ export function PlayerController() {
       if (e.code === 'F1') useSettings.getState().set('cameraMode', 'first')
       if (e.code === 'F2') useSettings.getState().set('cameraMode', 'third')
       if (e.code === 'F3') useSettings.getState().set('cameraMode', 'front')
+      // F5 cycles first -> front -> third (Minecraft-style), preventing refresh
+      if (e.code === 'F5') {
+        e.preventDefault()
+        const order = ['first', 'front', 'third'] as const
+        const cur = useSettings.getState().cameraMode
+        const next = order[(order.indexOf(cur) + 1) % order.length]
+        useSettings.getState().set('cameraMode', next)
+      }
       if (e.code === 'KeyE' || e.code === 'Escape') {
         const w = useWorld.getState()
         if (w.seat != null) w.stand()
@@ -304,13 +310,13 @@ export function PlayerController() {
   return (
     <>
       <PerspectiveCamera ref={camRef} makeDefault fov={72} near={0.08} far={1400} rotation-order="YXZ" />
-      {/* The player's body: a procedural rig driven by the shared AvatarAnimator.
-          Hidden in first-person (toggled each frame). The animator is a sibling
-          driver (renders nothing) and reads `loco` every frame. */}
+      {/* The player's body: the chosen pre-built character, animated in-world by
+          its own baked locomotion clips (CharacterAvatar reads `loco` every
+          frame). Hidden in first-person (toggled each frame). Falls back to a
+          procedural rig until the character's .glb is baked in. */}
       <group ref={avatarRef} visible={false}>
-        <AvatarRig ref={rigHandle} config={avatarConfig} />
+        <CharacterAvatar characterId={characterId} locomotion={loco} />
       </group>
-      <AvatarAnimator rig={rigHandle} locomotion={loco} lod="near" />
     </>
   )
 }

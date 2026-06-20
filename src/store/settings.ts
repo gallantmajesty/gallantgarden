@@ -171,7 +171,7 @@ const DEFAULTS: SettingsData = {
   fps: false,
   animations: true,
   reduceMotion: false,
-  cameraMode: 'first',
+  cameraMode: 'third', // see your chosen character by default (Roblox-style)
   sensitivity: 1,
   invertY: false,
   master: 0.8,

@@ -1,27 +1,35 @@
 import { create } from 'zustand'
 import {
-  DEFAULT_AVATAR,
-  normalizeAvatar,
-  randomizeAvatar,
-  type AvatarConfig,
-} from './config'
+  DEFAULT_CHARACTER_CONFIG,
+  normalizeCharacter,
+  type CharacterConfig,
+} from './characters'
 
-// Avatar config store. Persists to localStorage immediately (same pattern as the
-// settings/realm stores) and is structured so that switching to InsForge profile
-// persistence later is a one-function change inside `save()`.
+// Character choice store. Persists to localStorage immediately (same pattern as
+// the settings/realm stores) and is structured so that switching to InsForge
+// profile persistence later is a one-function change inside `save()`.
+//
+// Reads the legacy v1 key as a fallback so players who customized an avatar
+// before the character system are migrated to the closest character instead of
+// being reset.
 
-const KEY = 'sf.avatar.v1'
+const KEY = 'sf.character.v1'
+const LEGACY_KEY = 'sf.avatar.v1'
 
-function load(): AvatarConfig {
+function load(): CharacterConfig {
   try {
     const raw = localStorage.getItem(KEY)
-    return raw ? normalizeAvatar(JSON.parse(raw) as Partial<AvatarConfig>) : { ...DEFAULT_AVATAR }
+    if (raw) return normalizeCharacter(JSON.parse(raw) as Partial<CharacterConfig>)
+    // migrate a pre-existing v1 procedural avatar, if any
+    const legacy = localStorage.getItem(LEGACY_KEY)
+    if (legacy) return normalizeCharacter(JSON.parse(legacy))
+    return { ...DEFAULT_CHARACTER_CONFIG }
   } catch {
-    return { ...DEFAULT_AVATAR }
+    return { ...DEFAULT_CHARACTER_CONFIG }
   }
 }
 
-function persist(cfg: AvatarConfig) {
+function persist(cfg: CharacterConfig) {
   try {
     localStorage.setItem(KEY, JSON.stringify(cfg))
   } catch {
@@ -30,10 +38,9 @@ function persist(cfg: AvatarConfig) {
 }
 
 interface AvatarState {
-  config: AvatarConfig
-  /** patch a single field (instant apply in the creator) */
-  patch: <K extends keyof AvatarConfig>(key: K, value: AvatarConfig[K]) => void
-  randomize: () => void
+  config: CharacterConfig
+  /** select a character by id (instant apply in the chooser) */
+  pick: (characterId: string) => void
   reset: () => void
   /** Commit the current config. Today = localStorage; later = InsForge upsert.
    *  This is the single choke-point for backend persistence. */
@@ -43,20 +50,14 @@ interface AvatarState {
 export const useAvatar = create<AvatarState>((set, get) => ({
   config: load(),
 
-  patch: (key, value) => {
-    const config = { ...get().config, [key]: value }
-    set({ config })
-    persist(config)
-  },
-
-  randomize: () => {
-    const config = randomizeAvatar()
+  pick: (characterId) => {
+    const config: CharacterConfig = { ...get().config, characterId }
     set({ config })
     persist(config)
   },
 
   reset: () => {
-    const config = { ...DEFAULT_AVATAR }
+    const config = { ...DEFAULT_CHARACTER_CONFIG }
     set({ config })
     persist(config)
   },
@@ -65,7 +66,7 @@ export const useAvatar = create<AvatarState>((set, get) => ({
     const config = get().config
     persist(config)
     // FUTURE (InsForge): upsert into a `profiles` table keyed by auth.uid():
-    //   await insforge.from('profiles').upsert([{ id: userId, avatar: config }])
-    // The shape is already a plain JSON-serializable AvatarConfig.
+    //   await insforge.from('profiles').upsert([{ id: userId, character: config }])
+    // The shape is already a plain JSON-serializable CharacterConfig.
   },
 }))

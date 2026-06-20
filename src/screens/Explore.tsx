@@ -94,11 +94,13 @@ export function Explore() {
         <div className="explore-hint" onPointerDown={() => setHint(false)}>
           {isTouch
             ? 'Drag to look · joystick to walk · tap Jump'
-            : 'Drag to look · WASD move · Shift run · Space jump · F1/F2/F3 views'}
+            : 'Drag to look · WASD move · Shift run · Space jump · F5 / buttons to switch view'}
         </div>
       )}
 
       <RoomRoster />
+
+      <CameraSwitch />
 
       <SeatPrompt />
       <SeatedPanel />
@@ -175,6 +177,40 @@ function RoomRoster() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------- camera view */
+
+/**
+ * Minecraft-style camera switch (First · Front · Third), always visible so the
+ * player can see their character without hunting for hotkeys. Mirrors F1/F2/F3
+ * and the F5 cycle handled in PlayerController. Hidden while seated (the desk
+ * locks the view).
+ */
+const CAM_MODES: { id: CameraMode; label: string }[] = [
+  { id: 'first', label: 'First' },
+  { id: 'front', label: 'Front' },
+  { id: 'third', label: 'Third' },
+]
+
+function CameraSwitch() {
+  const mode = useSettings((s) => s.cameraMode)
+  const set = useSettings((s) => s.set)
+  const seat = useWorld((s) => s.seat)
+  if (seat != null) return null
+  return (
+    <div className="explore-cam">
+      {CAM_MODES.map((m) => (
+        <button
+          key={m.id}
+          className={`explore-cam-btn ${mode === m.id ? 'on' : ''}`}
+          onClick={() => set('cameraMode', m.id)}
+        >
+          {m.label}
+        </button>
+      ))}
     </div>
   )
 }

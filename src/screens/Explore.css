@@ -165,6 +165,41 @@
   animation: pop-in 0.4s ease both;
 }
 
+/* ---------- camera view switch (Minecraft-style) ---------- */
+.explore-cam {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: rgba(20, 14, 8, 0.55);
+  border: 1px solid rgba(202, 168, 74, 0.35);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.explore-cam-btn {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: #f6e8c8;
+  background: transparent;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.explore-cam-btn:hover { background: rgba(202, 168, 74, 0.18); }
+.explore-cam-btn.on {
+  background: linear-gradient(180deg, #d8b25a, #b8923a);
+  color: #1a1206;
+  box-shadow: 0 2px 8px rgba(180, 140, 50, 0.5);
+}
+
 /* ---------- settings panel ---------- */
 /* Settings drawer + control-primitive styles now live in
    components/settings/controls.css (shared with the Lobby settings panel). */
