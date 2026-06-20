@@ -21,7 +21,7 @@
   height: 84px;
   margin: -62px auto 6px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #ffe08a, var(--gold));
+  background: linear-gradient(180deg, #fffdf6, #f6e8c8);
   border: 4px solid var(--wood);
   box-shadow: 0 6px 0 var(--wood-dark), 0 12px 20px rgba(0, 0, 0, 0.3);
   display: grid;
@@ -29,13 +29,10 @@
   animation: floaty 5s ease-in-out infinite;
 }
 .auth-crest-glyph {
-  width: 40px;
-  height: 40px;
-  background: var(--wood);
-  -webkit-mask: center / contain no-repeat
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2c1 3 4 5 4 9a4 4 0 0 1-8 0c0-4 3-6 4-9z'/><rect x='11' y='13' width='2' height='9'/></svg>");
-  mask: center / contain no-repeat
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2c1 3 4 5 4 9a4 4 0 0 1-8 0c0-4 3-6 4-9z'/><rect x='11' y='13' width='2' height='9'/></svg>");
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(58, 42, 23, 0.25));
 }
 
 .auth-title {

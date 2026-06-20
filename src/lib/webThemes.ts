@@ -66,6 +66,41 @@ export interface WebTheme {
 // ----------------------------------------------------------------------------
 
 export const WEB_THEMES: WebTheme[] = [
+  // ---------------------------------------------------------------- Fantasy
+  {
+    id: 'fantasy',
+    name: 'Fantasy',
+    emoji: '🏛️',
+    mood: 'Silent ruins, drifting fog and one shaft of ancient light.',
+    dark: true,
+    accents: ['#c2a878', '#9aa7b8', '#d8c49a'],
+    backgrounds: [
+      { id: 'silent-ruins', label: 'Silent Ruins', src: '/themes/fantasy-silent-ruins.jpg' },
+    ],
+    palette: {
+      accent: '#c2a878',
+      accentDark: '#94794d',
+      accent2: '#d8c49a',
+      glassFill: 'linear-gradient(135deg, rgba(150,146,138,0.18), rgba(30,28,26,0.40))',
+      glassFillStrong: 'linear-gradient(135deg, rgba(168,162,150,0.28), rgba(34,32,30,0.54))',
+      glassBorder: 'rgba(210,200,182,0.42)',
+      glassShadow:
+        '0 12px 36px rgba(6,5,4,0.55), inset 0 1px 0 rgba(236,230,218,0.42), inset 0 -14px 30px rgba(120,104,72,0.18)',
+      glassShadowHover:
+        '0 20px 50px rgba(6,5,4,0.65), inset 0 1px 0 rgba(236,230,218,0.52), inset 0 -14px 30px rgba(120,104,72,0.24)',
+      ink: '#f1eee7',
+      inkSoft: '#c6c1b6',
+      onGlass: '#f7f3ea',
+      woodSolid: '#4a463f',
+      panelTop: 'rgba(38,36,34,0.91)',
+      panelBot: 'rgba(22,21,20,0.93)',
+      scrim:
+        'linear-gradient(180deg, rgba(8,7,6,0.40) 0%, rgba(10,9,8,0.14) 45%, rgba(6,5,4,0.52) 100%)',
+      glowA: 'rgba(194,168,120,0.24)',
+      glowB: 'rgba(154,167,184,0.18)',
+    },
+  },
+
   // ----------------------------------------------------------------- Forest
   {
     id: 'forest',
@@ -178,12 +213,11 @@ export const WEB_THEMES: WebTheme[] = [
 /** Placeholder themes shown as "coming soon" in the picker. */
 export const WEB_THEMES_SOON: { id: string; name: string; emoji: string }[] = [
   { id: 'sakura', name: 'Sakura', emoji: '🌸' },
-  { id: 'celestial', name: 'Celestial', emoji: '✨' },
   { id: 'ember', name: 'Ember', emoji: '🔥' },
 ]
 
-export const DEFAULT_WEB_THEME_ID = 'forest'
-export const DEFAULT_WEB_BG_ID = 'viking-lake'
+export const DEFAULT_WEB_THEME_ID = 'rain'
+export const DEFAULT_WEB_BG_ID = 'moonlit-oak'
 
 /** Quick text-colour choices for the font-colour picker (plus "Auto" = null and
  *  a custom colour wheel, handled in the UI). */

@@ -50,7 +50,7 @@ export function AuthScreen() {
     <div className="auth-root">
       <div className="auth-card sf-panel">
         <div className="auth-crest">
-          <span className="auth-crest-glyph" />
+          <img className="auth-crest-glyph" src="/icons/focus-lily-logo.png" alt="Focus Lily" />
         </div>
         <h1 className="auth-title">Focus Lily</h1>
         <p className="auth-sub">
