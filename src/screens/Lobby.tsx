@@ -8,6 +8,7 @@ import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
+import { useFriends } from '../store/friends'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -32,6 +33,7 @@ export function Lobby() {
   const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends'>(null)
   const country = useProfile((s) => s.data.country)
   const rank = useProfile((s) => s.data.rank)
+  const incomingCount = useFriends((s) => s.incoming.length)
 
   const displayName = user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
 
@@ -55,6 +57,7 @@ export function Lobby() {
         </button>
         <button className="sf-btn ghost lobby-iconbtn" onClick={() => setPanel('interact')}>
           <Glyph name="people" /> Interact
+          {incomingCount > 0 && <span className="lobby-dot" />}
         </button>
       </div>
 
@@ -102,8 +105,9 @@ export function Lobby() {
             <span className="menu-item-icon"><Glyph name="people" /></span>
             <span>
               <strong>Friends</strong>
-              <small>Find explorers & follow them</small>
+              <small>Requests, friends & explorers</small>
             </span>
+            {incomingCount > 0 && <span className="menu-badge">{incomingCount}</span>}
           </button>
           <button className="menu-item" onClick={() => navigate('/profile')}>
             <span className="menu-item-icon"><Glyph name="face" /></span>

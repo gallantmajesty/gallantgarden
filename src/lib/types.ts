@@ -160,8 +160,72 @@ export interface PublicProfile {
   rank: string | null
   public_profile: ProfilePublic
   created_at: string
+  /** presence (from the chat migration); null/absent before it's applied. */
+  last_seen_at?: string | null
+  study_status?: StudyStatus
 }
 
 // Hard limits from the product spec.
 export const MAX_TREES = 20
 export const MAX_NOTES_PER_TREE = 1000
+
+// ============================================================================
+// Chat system (friend-only messaging). Mirrors migrations/*_add-chat-system.sql.
+// ============================================================================
+
+/** Study/presence status a user broadcasts. 'focus' silences their chat popups. */
+export type StudyStatus = 'available' | 'studying' | 'focus' | 'break' | 'offline'
+
+export const STUDY_STATUS_LABEL: Record<StudyStatus, string> = {
+  available: 'Available',
+  studying: 'Studying',
+  focus: 'Focus session',
+  break: 'Taking a break',
+  offline: 'Offline',
+}
+
+/** A friend request row, joined with the other party's public profile. */
+export interface FriendRequest {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
+}
+
+/** A conversation (DM or group). */
+export interface Conversation {
+  id: string
+  kind: 'dm' | 'group'
+  title: string | null
+  icon_url: string | null
+  created_by: string
+  dm_key: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** A single chat message. */
+export interface Message {
+  id: string
+  conversation_id: string
+  sender_id: string
+  body: string
+  created_at: string
+}
+
+/** A member row (read cursor lives here). */
+export interface ConversationMember {
+  conversation_id: string
+  user_id: string
+  role: 'owner' | 'member'
+  last_read_at: string
+  joined_at: string
+}
+
+export type ReportReason = 'spam' | 'harassment' | 'inappropriate'
+
+/** Max members in a group conversation (v1). */
+export const MAX_GROUP_MEMBERS = 20
+/** A user counts as "online" if seen within this window. */
+export const ONLINE_WINDOW_MS = 90_000

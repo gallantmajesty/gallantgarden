@@ -16,6 +16,7 @@ import { GLOBAL_ROOMS, mockOccupancy } from '../lib/realm'
 import { mockRoster } from '../lib/presenceMock'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { Icon } from '../components/magnet/Icon'
+import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -104,6 +105,9 @@ export function Explore() {
 
       <SeatPrompt />
       <SeatedPanel />
+
+      {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
+      <LibraryFriendsPanel />
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
 

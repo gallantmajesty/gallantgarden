@@ -20,6 +20,26 @@
   background: linear-gradient(180deg, var(--accent), var(--accent-dark));
   border-color: var(--accent-dark);
 }
+.fp-tab {
+  position: relative;
+  font-size: 13px;
+  padding: 9px 4px;
+}
+.fp-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: #e0556b;
+  vertical-align: middle;
+}
 
 .fp-search {
   margin-bottom: 12px;
@@ -81,4 +101,32 @@
   flex: none;
   padding: 7px 16px;
   font-size: 13px;
+}
+.fp-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.fp-row-friend {
+  flex: none;
+  padding: 7px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.fp-section {
+  margin: 10px 2px 2px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.fp-pending {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding: 7px 12px;
 }

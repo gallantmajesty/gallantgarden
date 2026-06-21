@@ -1,5 +1,5 @@
 import { insforge } from './insforge'
-import { parseProfilePublic, type PublicProfile } from './types'
+import { parseProfilePublic, type PublicProfile, type StudyStatus } from './types'
 
 // Social graph helpers — follow/unfollow plus the read paths that power profile
 // pages, followers/following lists, mutual detection and friend search. All
@@ -19,10 +19,16 @@ function mapPublic(row: Record<string, unknown>): PublicProfile {
     rank: (row.rank as string | null) ?? null,
     public_profile: parseProfilePublic(row.public_profile),
     created_at: (row.created_at as string) ?? '',
+    last_seen_at: (row.last_seen_at as string | null) ?? null,
+    study_status: (row.study_status as StudyStatus | undefined) ?? 'offline',
   }
 }
 
-const PUBLIC_COLS = 'id, username, display_name, avatar, avatar_url, country, rank, public_profile, created_at'
+// NOTE: last_seen_at/study_status only exist after the chat migration is applied.
+// PostgREST tolerates selecting them once present; before that, callers should
+// have the migration applied (see migrations/*_add-chat-system.sql).
+const PUBLIC_COLS =
+  'id, username, display_name, avatar, avatar_url, country, rank, public_profile, created_at, last_seen_at, study_status'
 
 // ---------------------------------------------------------------- follow edges
 

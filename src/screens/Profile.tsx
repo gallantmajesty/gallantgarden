@@ -29,6 +29,7 @@ import { RankBadge } from '../components/RankBadge'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { AvatarCropper } from '../components/AvatarCropper'
 import { FollowButton } from '../components/FollowButton'
+import { AddFriendButton } from '../components/AddFriendButton'
 import { StatCard } from '../components/StatCard'
 import { UserListModal } from '../components/UserListModal'
 import './Profile.css'
@@ -292,7 +293,10 @@ function ProfileBody({
                   {editing ? 'Done' : 'Customize'}
                 </button>
               ) : (
-                <FollowButton targetId={view.id} />
+                <>
+                  <AddFriendButton targetId={view.id} />
+                  <FollowButton targetId={view.id} />
+                </>
               )}
               <ShareButton username={view.username} />
             </div>
