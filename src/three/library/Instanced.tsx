@@ -80,6 +80,10 @@ export interface ShapeItem {
   pos: [number, number, number]
   /** full Euler rotation (X, Y, Z). */
   rot?: [number, number, number]
+  /** pre-composed orientation as a quaternion [x, y, z, w]. Takes precedence over
+   *  `rot` — used when an instance's world rotation is a composition of a parent
+   *  group rotation and a local rotation that can't be expressed as one Euler. */
+  quat?: [number, number, number, number]
   /** uniform scale, or per-axis scale. */
   scale?: number | [number, number, number]
   /** per-instance diffuse tint (multiplies the base material colour). If you set
@@ -143,8 +147,12 @@ export function InstancedShape({
     let tinted = false
     items.forEach((it, i) => {
       dummy.position.set(it.pos[0], it.pos[1], it.pos[2])
-      const r = it.rot ?? [0, 0, 0]
-      dummy.rotation.set(r[0], r[1], r[2])
+      if (it.quat) {
+        dummy.quaternion.set(it.quat[0], it.quat[1], it.quat[2], it.quat[3])
+      } else {
+        const r = it.rot ?? [0, 0, 0]
+        dummy.rotation.set(r[0], r[1], r[2])
+      }
       const s = it.scale ?? 1
       if (typeof s === 'number') dummy.scale.setScalar(s)
       else dummy.scale.set(s[0], s[1], s[2])

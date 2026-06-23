@@ -168,6 +168,37 @@
   font-size: 15px;
 }
 
+/* ---- developer-only experimental realm card: small + pinned to the bottom ---- */
+.realm-card-dev {
+  /* forced onto its own row below Global/Custom, and kept visually minor */
+  flex-basis: 100%;
+  width: auto;
+  max-width: 360px;
+  margin: 0 auto;
+  order: 99;
+  padding: 14px 18px 16px;
+  opacity: 0.92;
+}
+.realm-card-dev .realm-card-orb-sm {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 8px;
+}
+.realm-card-dev h2 {
+  font-size: 17px;
+}
+.realm-card-dev p {
+  font-size: 12.5px;
+  min-height: 0;
+  margin: 6px 0 10px;
+}
+.realm-dev-tag {
+  display: inline-block;
+  margin-bottom: 10px;
+  background: rgba(120, 90, 40, 0.16);
+  color: var(--wood-dark);
+}
+
 /* ---- global room list ---- */
 .realm-rooms {
   width: 100%;

@@ -1,8 +1,8 @@
-import { Fragment, useMemo } from 'react'
-import { DoubleSide } from 'three'
+import { useMemo } from 'react'
+import { DoubleSide, Euler, Quaternion } from 'three'
 import { groundTables, TABLE, upperTables } from './furniture'
 import { useScenePreset } from '../../store/quality'
-import { InstancedBoxes, type BoxItem } from './Instanced'
+import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 
 const WOOD = '#5c3a1d'
 const WOOD_DARK = '#3a2410'
@@ -103,214 +103,330 @@ export function StudyTables() {
       <InstancedBoxes items={frames} roughness={0.55} metalness={0.05} castShadow receiveShadow />
       <InstancedBoxes items={chairs} roughness={0.75} />
 
-      {tables.map((t, i) => (
-        <TableDressing key={t.idx} pos={t.pos} seed={t.seed} rich={rich} full={full} light={Number.isFinite(litStep) && i % litStep === 0} />
-      ))}
+      {/* ALL desk dressing across the hall as a fixed handful of instanced draws
+          (was ~42 loose meshes PER table → ~670 draw calls at high). */}
+      <DeskDressing tables={tables} rich={rich} full={full} />
+
+      {/* the few real banker's-lamp point-lights stay per-table (their budget is
+          capped by lampLights); only the meshes were the draw-call problem */}
+      {tables.map((t, i) =>
+        Number.isFinite(litStep) && i % litStep === 0 ? (
+          <pointLight
+            key={t.idx}
+            position={[t.pos[0] + 0.55, t.pos[1] + TABLE.h + 0.06 + 0.32, t.pos[2] - TABLE.l / 2 + 1.3]}
+            intensity={5}
+            distance={6.5}
+            decay={2}
+            color="#ffd2a0"
+          />
+        ) : null,
+      )}
     </group>
   )
 }
 
-/** The per-table "hero" props — the signature banker's lamp plus, on higher
- *  quality, the lived-in clutter (books, mug, plant, hourglass…). None of it
- *  casts shadows; the structure above already grounds the tables. */
-function TableDressing({ pos, seed, light, rich, full }: { pos: [number, number, number]; seed: number; light: boolean; rich: boolean; full: boolean }) {
-  const topY = TABLE.h
-  const { l: L } = TABLE
-  const rand = useMemo(() => rng(seed), [seed])
+// reusable temporaries for composing a parent-Y + local rotation into one
+// quaternion (used for the few clutter parts that sit inside a rotated group).
+const _qA = new Quaternion()
+const _qB = new Quaternion()
+const _eul = new Euler()
+function composeYLocal(yaw: number, lx: number, ly: number, lz: number): [number, number, number, number] {
+  _qA.setFromEuler(_eul.set(0, yaw, 0))
+  _qB.setFromEuler(_eul.set(lx, ly, lz))
+  _qA.multiply(_qB)
+  return [_qA.x, _qA.y, _qA.z, _qA.w]
+}
 
-  const dressing = useMemo(() => {
-    const r = rng(seed + 7)
-    return {
-      books: Array.from({ length: 3 }, (_, k) => ({
+interface TableInfo {
+  pos: [number, number, number]
+  seed: number
+  idx: number
+}
+
+/**
+ * Every table's "hero" dressing — banker's lamp, stacked books and (at high) the
+ * lived-in clutter (bottle, mug, open book, potted plant, hourglass, notebook) —
+ * rendered as instanced batches across the WHOLE hall instead of dozens of loose
+ * meshes per table. Geometry, positions and per-table randomisation are identical
+ * to the old per-table version (same seeds), so the look is unchanged; only the
+ * draw-call count collapses. None of it casts shadows (the table structure
+ * already grounds everything).
+ */
+function DeskDressing({ tables, rich, full }: { tables: TableInfo[]; rich: boolean; full: boolean }) {
+  const b = useMemo(() => {
+    const lampBases: ShapeItem[] = []
+    const lampStems: ShapeItem[] = []
+    const lampShades: ShapeItem[] = []
+    const lampBulbs: ShapeItem[] = []
+
+    const bookCovers: BoxItem[] = []
+    const bookPages: BoxItem[] = []
+    const bookSpines: BoxItem[] = []
+
+    const bottleBodies: ShapeItem[] = []
+    const bottleWaters: ShapeItem[] = []
+    const bottleCorks: ShapeItem[] = []
+    const mugBodies: ShapeItem[] = []
+    const mugInners: ShapeItem[] = []
+    const mugHandles: ShapeItem[] = []
+    const openLeaves: ShapeItem[] = []
+    const plantBodies: ShapeItem[] = []
+    const plantRims: ShapeItem[] = []
+    const plantSoils: ShapeItem[] = []
+    const plantMounds: ShapeItem[] = []
+    const plantLeaves: ShapeItem[] = []
+    const plantBlossoms: ShapeItem[] = []
+    const hourCaps: BoxItem[] = []
+    const hourGlass: ShapeItem[] = []
+    const hourSand: ShapeItem[] = []
+    const noteBooks: BoxItem[] = []
+    const notePages: BoxItem[] = []
+    const noteQuills: ShapeItem[] = []
+
+    const L = TABLE.l
+
+    for (const t of tables) {
+      const [tx, ty, tz] = t.pos
+      const topY = ty + TABLE.h
+
+      // ---- banker's lamp (every table, every quality) ----
+      const lx = tx + 0.55
+      const ly = topY + 0.06
+      const lz = tz - L / 2 + 1.3
+      lampBases.push({ pos: [lx, ly + 0.025, lz] })
+      lampStems.push({ pos: [lx, ly + 0.2, lz] })
+      lampShades.push({ pos: [lx, ly + 0.4, lz], rot: [Math.PI / 2, 0, 0] })
+      lampBulbs.push({ pos: [lx, ly + 0.36, lz] })
+
+      // ---- deterministic dressing rng (identical sequence to the old code so
+      //      every book/prop lands in exactly the same spot). The full sequence
+      //      is always advanced even when a tier isn't rendered, so openAt and
+      //      the open-book rotation never shift between quality levels. ----
+      const r = rng(t.seed + 7)
+      const bookParams = Array.from({ length: 3 }, (_, k) => ({
         z: -L / 2 + 1.4 + k * (L / 4),
         x: (r() - 0.5) * 0.5,
         rot: (r() - 0.5) * 0.6,
         color: BOOK_COLORS[Math.floor(r() * BOOK_COLORS.length)],
         h: 0.1 + r() * 0.06,
-      })),
-      openAt: -L / 2 + 1 + r() * (L - 2),
-      potAt: L / 2 - 1.4,
+      }))
+      const openAt = -L / 2 + 1 + r() * (L - 2)
+      const potAt = L / 2 - 1.4
+      const obRot = rng(t.seed)() * 0.6 - 0.3
+
+      // ---- stacked books (medium + high) ----
+      if (rich) {
+        for (const bk of bookParams) {
+          const baseX = tx + bk.x
+          const baseZ = tz + bk.z
+          const baseY = topY + 0.06
+          bookCovers.push({ pos: [baseX, baseY + bk.h / 2, baseZ], size: [0.37, bk.h, 0.27], rotY: bk.rot, color: bk.color })
+          {
+            const [rx, rz] = rot(0.005, 0, bk.rot)
+            bookPages.push({ pos: [baseX + rx, baseY + bk.h / 2, baseZ + rz], size: [0.33, bk.h * 0.7, 0.235], rotY: bk.rot })
+          }
+          {
+            const [rx, rz] = rot(-0.186, 0, bk.rot)
+            bookSpines.push({ pos: [baseX + rx, baseY + bk.h / 2, baseZ + rz], size: [0.012, bk.h * 0.3, 0.16], rotY: bk.rot })
+          }
+        }
+      }
+
+      // ---- lived-in clutter (high only) ----
+      if (full) {
+        // glass water bottle (body + water + cork)
+        {
+          const ox = tx + 0.6
+          const oy = topY + 0.06
+          const oz = tz - L / 6
+          bottleBodies.push({ pos: [ox, oy + 0.16, oz] })
+          bottleWaters.push({ pos: [ox, oy + 0.12, oz] })
+          bottleCorks.push({ pos: [ox, oy + 0.36, oz] })
+        }
+        // ceramic mug (body + inner + handle)
+        {
+          const ox = tx - 0.55
+          const oy = topY + 0.06
+          const oz = tz + L / 5
+          mugBodies.push({ pos: [ox, oy + 0.08, oz] })
+          mugInners.push({ pos: [ox, oy + 0.1, oz] })
+          mugHandles.push({ pos: [ox + 0.09, oy + 0.08, oz], rot: [0, 0, Math.PI / 2] })
+        }
+        // open book (two leaves) — leaves sit inside a Y-rotated group
+        {
+          const ox = tx - 0.4
+          const oy = topY + 0.07
+          const oz = tz + openAt
+          for (const [lhx, color, tilt] of [
+            [-0.16, '#f4ead0', 0.18],
+            [0.16, '#efe2c4', -0.18],
+          ] as const) {
+            const [rx, rz] = rot(lhx, 0, obRot)
+            openLeaves.push({ pos: [ox + rx, oy, oz + rz], quat: composeYLocal(obRot, -0.12, 0, tilt), color })
+          }
+        }
+        // potted plant
+        {
+          const ox = tx - 0.45
+          const oy = topY + 0.06
+          const oz = tz + potAt
+          plantBodies.push({ pos: [ox, oy + 0.11, oz] })
+          plantRims.push({ pos: [ox, oy + 0.225, oz] })
+          plantSoils.push({ pos: [ox, oy + 0.244, oz] })
+          plantMounds.push({ pos: [ox, oy + 0.33, oz], scale: [1, 0.78, 1] })
+          for (let k = 0; k < 6; k++) {
+            const a = (k / 6) * Math.PI * 2
+            plantLeaves.push({
+              pos: [ox + Math.cos(a) * 0.075, oy + 0.35, oz + Math.sin(a) * 0.075],
+              rot: [Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6],
+              color: k % 2 ? '#3f8a3f' : '#4fa24a',
+            })
+          }
+          for (let k = 0; k < 3; k++) {
+            const a = (k / 3) * Math.PI * 2 + 0.5
+            plantBlossoms.push({
+              pos: [ox + Math.cos(a) * 0.06, oy + 0.43, oz + Math.sin(a) * 0.06],
+              color: k === 0 ? '#e8794a' : k === 1 ? '#e6b84a' : '#e85a7a',
+            })
+          }
+        }
+        // hourglass (caps + two glass cones + sand)
+        {
+          const ox = tx + 0.62
+          const oy = topY + 0.06
+          const oz = tz + L / 6
+          hourCaps.push({ pos: [ox, oy + 0.015, oz], size: [0.18, 0.03, 0.18] })
+          hourCaps.push({ pos: [ox, oy + 0.27, oz], size: [0.18, 0.03, 0.18] })
+          hourGlass.push({ pos: [ox, oy + 0.11, oz] })
+          hourGlass.push({ pos: [ox, oy + 0.18, oz], rot: [Math.PI, 0, 0] })
+          hourSand.push({ pos: [ox, oy + 0.095, oz] })
+        }
+        // notebook + quill (inside a Y-rotated group)
+        {
+          const ox = tx - 0.55
+          const oy = topY + 0.07
+          const oz = tz - L / 6
+          noteBooks.push({ pos: [ox, oy, oz], size: [0.42, 0.05, 0.3], rotY: 0.4 })
+          notePages.push({ pos: [ox, oy + 0.031, oz], size: [0.36, 0.01, 0.25], rotY: 0.4 })
+          const [qx, qz] = rot(0.05, 0, 0.4)
+          noteQuills.push({ pos: [ox + qx, oy + 0.08, oz + qz], quat: composeYLocal(0.4, 0, 0, 0.5) })
+        }
+      }
     }
-  }, [seed, L])
+
+    return {
+      lampBases, lampStems, lampShades, lampBulbs,
+      bookCovers, bookPages, bookSpines,
+      bottleBodies, bottleWaters, bottleCorks, mugBodies, mugInners, mugHandles, openLeaves,
+      plantBodies, plantRims, plantSoils, plantMounds, plantLeaves, plantBlossoms,
+      hourCaps, hourGlass, hourSand, noteBooks, notePages, noteQuills,
+    }
+  }, [tables, rich, full])
 
   return (
-    <group position={pos}>
-      {/* classic green banker's lamp — the signature look, on at every quality */}
-      <group position={[0.55, topY + 0.06, -L / 2 + 1.3]}>
-        <mesh position={[0, 0.025, 0]}>
-          <cylinderGeometry args={[0.14, 0.16, 0.05, 16]} />
-          <meshStandardMaterial color="#caa84a" metalness={0.7} roughness={0.3} />
-        </mesh>
-        <mesh position={[0, 0.2, 0]}>
-          <cylinderGeometry args={[0.022, 0.028, 0.36, 10]} />
-          <meshStandardMaterial color="#caa84a" metalness={0.7} roughness={0.3} />
-        </mesh>
-        <mesh position={[0, 0.4, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.14, 0.14, 0.42, 20, 1, true, 0, Math.PI]} />
-          <meshStandardMaterial color="#1f6b3a" emissive="#2f8a52" emissiveIntensity={0.5} metalness={0.2} roughness={0.35} side={DoubleSide} />
-        </mesh>
-        <mesh position={[0, 0.36, 0]}>
-          <sphereGeometry args={[0.06, 10, 10]} />
-          <meshStandardMaterial color="#fff3d2" emissive="#ffcf8a" emissiveIntensity={2.4} />
-        </mesh>
-        {light && <pointLight position={[0, 0.32, 0]} intensity={5} distance={6.5} decay={2} color="#ffd2a0" />}
-      </group>
+    <group>
+      {/* banker's lamp — base, stem, green shade, glowing bulb */}
+      <InstancedShape items={b.lampBases} color="#caa84a" metalness={0.7} roughness={0.3}>
+        <cylinderGeometry args={[0.14, 0.16, 0.05, 16]} />
+      </InstancedShape>
+      <InstancedShape items={b.lampStems} color="#caa84a" metalness={0.7} roughness={0.3}>
+        <cylinderGeometry args={[0.022, 0.028, 0.36, 10]} />
+      </InstancedShape>
+      <InstancedShape items={b.lampShades} color="#1f6b3a" emissive="#2f8a52" emissiveIntensity={0.5} metalness={0.2} roughness={0.35} side={DoubleSide}>
+        <cylinderGeometry args={[0.14, 0.14, 0.42, 20, 1, true, 0, Math.PI]} />
+      </InstancedShape>
+      <InstancedShape items={b.lampBulbs} color="#fff3d2" emissive="#ffcf8a" emissiveIntensity={2.4}>
+        <sphereGeometry args={[0.06, 10, 10]} />
+      </InstancedShape>
 
-      {/* stacked books (medium + high) */}
-      {rich &&
-        dressing.books.map((b, k) => (
-          <group key={k} position={[b.x, topY + 0.06, b.z]} rotation={[0, b.rot, 0]}>
-            <mesh position={[0, b.h / 2, 0]}>
-              <boxGeometry args={[0.37, b.h, 0.27]} />
-              <meshStandardMaterial color={b.color} roughness={0.5} metalness={0.05} />
-            </mesh>
-            <mesh position={[0.005, b.h / 2, 0]}>
-              <boxGeometry args={[0.33, b.h * 0.7, 0.235]} />
-              <meshStandardMaterial color="#efe2c0" roughness={0.95} />
-            </mesh>
-            <mesh position={[-0.186, b.h / 2, 0]}>
-              <boxGeometry args={[0.012, b.h * 0.3, 0.16]} />
-              <meshStandardMaterial color="#caa84a" metalness={0.6} roughness={0.35} emissive="#3a2c10" emissiveIntensity={0.3} />
-            </mesh>
-          </group>
-        ))}
+      {/* stacked books — per-instance colour/size */}
+      {b.bookCovers.length > 0 && <InstancedBoxes items={b.bookCovers} roughness={0.5} metalness={0.05} />}
+      {b.bookPages.length > 0 && <InstancedBoxes items={b.bookPages} color="#efe2c0" roughness={0.95} />}
+      {b.bookSpines.length > 0 && <InstancedBoxes items={b.bookSpines} color="#caa84a" metalness={0.6} roughness={0.35} emissive="#3a2c10" emissiveIntensity={0.3} />}
 
-      {/* the rest of the lived-in clutter — high quality only */}
-      {full && (
-        <Fragment>
-          {/* glass water bottle with a cork cap */}
-          <group position={[0.6, topY + 0.06, -L / 6]}>
-            <mesh position={[0, 0.16, 0]}>
-              <cylinderGeometry args={[0.07, 0.07, 0.32, 14]} />
-              <meshStandardMaterial color="#bfe0e8" transparent opacity={0.45} roughness={0.15} metalness={0.2} />
-            </mesh>
-            <mesh position={[0, 0.12, 0]}>
-              <cylinderGeometry args={[0.055, 0.055, 0.2, 12]} />
-              <meshStandardMaterial color="#7fb6d6" transparent opacity={0.7} roughness={0.1} />
-            </mesh>
-            <mesh position={[0, 0.36, 0]}>
-              <cylinderGeometry args={[0.045, 0.05, 0.08, 10]} />
-              <meshStandardMaterial color="#7a5230" roughness={0.85} />
-            </mesh>
-          </group>
+      {/* water bottle */}
+      {b.bottleBodies.length > 0 && (
+        <>
+          <InstancedShape items={b.bottleBodies} color="#bfe0e8" transparent opacity={0.45} roughness={0.15} metalness={0.2}>
+            <cylinderGeometry args={[0.07, 0.07, 0.32, 14]} />
+          </InstancedShape>
+          <InstancedShape items={b.bottleWaters} color="#7fb6d6" transparent opacity={0.7} roughness={0.1}>
+            <cylinderGeometry args={[0.055, 0.055, 0.2, 12]} />
+          </InstancedShape>
+          <InstancedShape items={b.bottleCorks} color="#7a5230" roughness={0.85}>
+            <cylinderGeometry args={[0.045, 0.05, 0.08, 10]} />
+          </InstancedShape>
+        </>
+      )}
 
-          {/* ceramic mug */}
-          <group position={[-0.55, topY + 0.06, L / 5]}>
-            <mesh position={[0, 0.08, 0]}>
-              <cylinderGeometry args={[0.075, 0.065, 0.16, 14]} />
-              <meshStandardMaterial color="#e8e0d4" roughness={0.7} />
-            </mesh>
-            <mesh position={[0, 0.1, 0]}>
-              <cylinderGeometry args={[0.06, 0.06, 0.02, 12]} />
-              <meshStandardMaterial color="#5b3a22" roughness={0.6} />
-            </mesh>
-            <mesh position={[0.09, 0.08, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <torusGeometry args={[0.045, 0.012, 6, 12]} />
-              <meshStandardMaterial color="#e8e0d4" roughness={0.7} />
-            </mesh>
-          </group>
+      {/* mug */}
+      {b.mugBodies.length > 0 && (
+        <>
+          <InstancedShape items={b.mugBodies} color="#e8e0d4" roughness={0.7}>
+            <cylinderGeometry args={[0.075, 0.065, 0.16, 14]} />
+          </InstancedShape>
+          <InstancedShape items={b.mugInners} color="#5b3a22" roughness={0.6}>
+            <cylinderGeometry args={[0.06, 0.06, 0.02, 12]} />
+          </InstancedShape>
+          <InstancedShape items={b.mugHandles} color="#e8e0d4" roughness={0.7}>
+            <torusGeometry args={[0.045, 0.012, 6, 12]} />
+          </InstancedShape>
+        </>
+      )}
 
-          {/* open book */}
-          <group position={[-0.4, topY + 0.07, dressing.openAt]} rotation={[0, rand() * 0.6 - 0.3, 0]}>
-            <mesh rotation={[-0.12, 0, 0.18]} position={[-0.16, 0, 0]}>
-              <boxGeometry args={[0.32, 0.02, 0.42]} />
-              <meshStandardMaterial color="#f4ead0" roughness={0.9} side={DoubleSide} />
-            </mesh>
-            <mesh rotation={[-0.12, 0, -0.18]} position={[0.16, 0, 0]}>
-              <boxGeometry args={[0.32, 0.02, 0.42]} />
-              <meshStandardMaterial color="#efe2c4" roughness={0.9} side={DoubleSide} />
-            </mesh>
-          </group>
+      {/* open book leaves — per-instance colour, composed rotation */}
+      {b.openLeaves.length > 0 && (
+        <InstancedShape items={b.openLeaves} roughness={0.9} side={DoubleSide}>
+          <boxGeometry args={[0.32, 0.02, 0.42]} />
+        </InstancedShape>
+      )}
 
-          {/* potted plant — a proper terracotta pot (body + rim + soil) with a
-              rounded leafy bush, evenly-spaced upright leaves and a few blossoms */}
-          <group position={[-0.45, topY + 0.06, dressing.potAt]}>
-            {/* tapered pot body */}
-            <mesh position={[0, 0.11, 0]}>
-              <cylinderGeometry args={[0.115, 0.085, 0.22, 20]} />
-              <meshStandardMaterial color="#b5552f" roughness={0.8} />
-            </mesh>
-            {/* flared rim lip */}
-            <mesh position={[0, 0.225, 0]}>
-              <cylinderGeometry args={[0.13, 0.115, 0.04, 20]} />
-              <meshStandardMaterial color="#9c4525" roughness={0.8} />
-            </mesh>
-            {/* dark soil disc */}
-            <mesh position={[0, 0.244, 0]}>
-              <cylinderGeometry args={[0.108, 0.108, 0.02, 16]} />
-              <meshStandardMaterial color="#2e2016" roughness={1} />
-            </mesh>
-            {/* rounded leafy mound */}
-            <mesh position={[0, 0.33, 0]} scale={[1, 0.78, 1]}>
-              <icosahedronGeometry args={[0.12, 0]} />
-              <meshStandardMaterial color="#3f8a3f" roughness={0.9} flatShading />
-            </mesh>
-            {/* upright leaves, evenly spaced and leaning outward */}
-            {Array.from({ length: 6 }, (_, k) => {
-              const a = (k / 6) * Math.PI * 2
-              return (
-                <mesh
-                  key={k}
-                  position={[Math.cos(a) * 0.075, 0.35, Math.sin(a) * 0.075]}
-                  rotation={[Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6]}
-                >
-                  <coneGeometry args={[0.032, 0.2, 5]} />
-                  <meshStandardMaterial color={k % 2 ? '#3f8a3f' : '#4fa24a'} roughness={0.9} />
-                </mesh>
-              )
-            })}
-            {/* a few blossoms, evenly spaced on top */}
-            {Array.from({ length: 3 }, (_, k) => {
-              const a = (k / 3) * Math.PI * 2 + 0.5
-              return (
-                <mesh key={`fl-${k}`} position={[Math.cos(a) * 0.06, 0.43, Math.sin(a) * 0.06]}>
-                  <sphereGeometry args={[0.034, 8, 8]} />
-                  <meshStandardMaterial color={k === 0 ? '#e8794a' : k === 1 ? '#e6b84a' : '#e85a7a'} roughness={0.8} />
-                </mesh>
-              )
-            })}
-          </group>
+      {/* potted plant */}
+      {b.plantBodies.length > 0 && (
+        <>
+          <InstancedShape items={b.plantBodies} color="#b5552f" roughness={0.8}>
+            <cylinderGeometry args={[0.115, 0.085, 0.22, 20]} />
+          </InstancedShape>
+          <InstancedShape items={b.plantRims} color="#9c4525" roughness={0.8}>
+            <cylinderGeometry args={[0.13, 0.115, 0.04, 20]} />
+          </InstancedShape>
+          <InstancedShape items={b.plantSoils} color="#2e2016" roughness={1}>
+            <cylinderGeometry args={[0.108, 0.108, 0.02, 16]} />
+          </InstancedShape>
+          <InstancedShape items={b.plantMounds} color="#3f8a3f" roughness={0.9} flatShading>
+            <icosahedronGeometry args={[0.12, 0]} />
+          </InstancedShape>
+          <InstancedShape items={b.plantLeaves} roughness={0.9}>
+            <coneGeometry args={[0.032, 0.2, 5]} />
+          </InstancedShape>
+          <InstancedShape items={b.plantBlossoms} roughness={0.8}>
+            <sphereGeometry args={[0.034, 8, 8]} />
+          </InstancedShape>
+        </>
+      )}
 
-          {/* hourglass */}
-          <group position={[0.62, topY + 0.06, L / 6]}>
-            <mesh position={[0, 0.015, 0]}>
-              <boxGeometry args={[0.18, 0.03, 0.18]} />
-              <meshStandardMaterial color="#5a3d22" roughness={0.7} />
-            </mesh>
-            <mesh position={[0, 0.27, 0]}>
-              <boxGeometry args={[0.18, 0.03, 0.18]} />
-              <meshStandardMaterial color="#5a3d22" roughness={0.7} />
-            </mesh>
-            <mesh position={[0, 0.11, 0]}>
-              <coneGeometry args={[0.07, 0.12, 12]} />
-              <meshStandardMaterial color="#cfe0e8" transparent opacity={0.4} roughness={0.1} />
-            </mesh>
-            <mesh position={[0, 0.18, 0]} rotation={[Math.PI, 0, 0]}>
-              <coneGeometry args={[0.07, 0.12, 12]} />
-              <meshStandardMaterial color="#cfe0e8" transparent opacity={0.4} roughness={0.1} />
-            </mesh>
-            <mesh position={[0, 0.095, 0]}>
-              <coneGeometry args={[0.055, 0.08, 10]} />
-              <meshStandardMaterial color="#d8b46a" roughness={0.9} />
-            </mesh>
-          </group>
+      {/* hourglass */}
+      {b.hourCaps.length > 0 && (
+        <>
+          <InstancedBoxes items={b.hourCaps} color="#5a3d22" roughness={0.7} />
+          <InstancedShape items={b.hourGlass} color="#cfe0e8" transparent opacity={0.4} roughness={0.1}>
+            <coneGeometry args={[0.07, 0.12, 12]} />
+          </InstancedShape>
+          <InstancedShape items={b.hourSand} color="#d8b46a" roughness={0.9}>
+            <coneGeometry args={[0.055, 0.08, 10]} />
+          </InstancedShape>
+        </>
+      )}
 
-          {/* notebook with a quill */}
-          <group position={[-0.55, topY + 0.07, -L / 6]} rotation={[0, 0.4, 0]}>
-            <mesh>
-              <boxGeometry args={[0.42, 0.05, 0.3]} />
-              <meshStandardMaterial color="#3a5c7a" roughness={0.6} />
-            </mesh>
-            <mesh position={[0, 0.031, 0]}>
-              <boxGeometry args={[0.36, 0.01, 0.25]} />
-              <meshStandardMaterial color="#f4ead0" roughness={0.95} />
-            </mesh>
-            <mesh position={[0.05, 0.08, 0]} rotation={[0, 0, 0.5]}>
-              <cylinderGeometry args={[0.005, 0.012, 0.34, 6]} />
-              <meshStandardMaterial color="#e8e2d2" roughness={0.7} />
-            </mesh>
-          </group>
-        </Fragment>
+      {/* notebook + quill */}
+      {b.noteBooks.length > 0 && (
+        <>
+          <InstancedBoxes items={b.noteBooks} color="#3a5c7a" roughness={0.6} />
+          <InstancedBoxes items={b.notePages} color="#f4ead0" roughness={0.95} />
+          <InstancedShape items={b.noteQuills} color="#e8e2d2" roughness={0.7}>
+            <cylinderGeometry args={[0.005, 0.012, 0.34, 6]} />
+          </InstancedShape>
+        </>
       )}
     </group>
   )

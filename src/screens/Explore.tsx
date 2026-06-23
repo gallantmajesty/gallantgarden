@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
+import { WaterfallScene } from '../three/waterfall/WaterfallScene'
 import { LoadingVeil } from '../components/LoadingVeil'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
@@ -23,7 +24,7 @@ import { useDesk } from '../store/desk'
 import { useRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
-import { REALM_PRESENCE_LIVE } from '../lib/realm'
+import { REALM_PRESENCE_LIVE, waterfallEnabled } from '../lib/realm'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
@@ -69,14 +70,25 @@ export function Explore() {
     wasSeated.current = seat != null
   }, [seat])
 
+  const isWaterfall = realm?.world === 'waterfall'
+
+  // Experimental-realm route guard. If someone reaches the Waterfall route while
+  // it is hidden (public build, no dev access) — e.g. a stale link or a manual
+  // navigation — show an under-development screen instead of the scene. The scene
+  // and all its code stay intact; it simply isn't rendered until re-enabled.
+  // Placed after every hook above so the rules of hooks are never broken.
+  if (isWaterfall && !waterfallEnabled()) {
+    return <WaterfallUnavailable />
+  }
+
   return (
     <div className="explore-root">
-      <LibraryScene onReady={() => setReady(true)} />
+      {isWaterfall ? <WaterfallScene onReady={() => setReady(true)} /> : <LibraryScene onReady={() => setReady(true)} />}
       <PomodoroTicker />
 
       {!ready && (
         <div className="explore-veil">
-          <LoadingVeil label="Entering the library…" />
+          <LoadingVeil label={isWaterfall ? 'Entering the falls…' : 'Entering the library…'} />
         </div>
       )}
 
@@ -187,6 +199,34 @@ export function Explore() {
           {perfMode ? '⚡ Performance Mode · Ctrl+F to exit' : 'Tab to show UI'}
         </button>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------- experimental realm gate */
+
+/**
+ * Shown when the Waterfall route is reached while the realm is hidden (launch
+ * build with no dev access). Keeps the realm's code/assets fully intact — this
+ * is purely the public-facing "not yet available" wall. Leaving clears the
+ * active realm so the player returns cleanly to the lobby.
+ */
+function WaterfallUnavailable() {
+  const navigate = useNavigate()
+  function toLobby() {
+    useRealm.getState().leave()
+    navigate('/')
+  }
+  return (
+    <div className="explore-root waterfall-wip">
+      <div className="wip-card water-glass">
+        <div className="wip-emoji" aria-hidden>🚧</div>
+        <h1>Waterfall Realm</h1>
+        <p>This realm is currently under development and is not yet available.</p>
+        <button className="sf-btn water wip-back" onClick={toLobby}>
+          Return to Lobby
+        </button>
+      </div>
     </div>
   )
 }

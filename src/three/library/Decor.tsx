@@ -1,11 +1,29 @@
 import { useMemo } from 'react'
-import { DoubleSide } from 'three'
+import { DoubleSide, Euler, Quaternion } from 'three'
 import { HALL, windowZs } from './layout'
 import { readingCorners } from './furniture'
 import { makeBannerTexture } from './textures'
 import { InstancedShape, type ShapeItem } from './Instanced'
 
 const GOLD = '#caa84a'
+
+// helpers for instancing the reading corners (each corner is a Y-rotated group)
+const _q1 = new Quaternion()
+const _q2 = new Quaternion()
+const _eul = new Euler()
+/** world offset of a local (x,z) under a Y-rotation of `a` (Three's convention). */
+function rotXZ(lx: number, lz: number, a: number): [number, number] {
+  const c = Math.cos(a)
+  const s = Math.sin(a)
+  return [lx * c + lz * s, -lx * s + lz * c]
+}
+/** compose a group Y-rotation with a child local Euler into one quaternion. */
+function composeYLocal(yaw: number, lx: number, ly: number, lz: number): [number, number, number, number] {
+  _q1.setFromEuler(_eul.set(0, yaw, 0))
+  _q2.setFromEuler(_eul.set(lx, ly, lz))
+  _q1.multiply(_q2)
+  return [_q1.x, _q1.y, _q1.z, _q1.w]
+}
 
 /** Hanging lamps, plants, reading corners, banners, a great clock, rugs and a
  *  few elegant glowing crystals — the handcrafted clutter that fills the hall.
@@ -109,6 +127,32 @@ export function Decor() {
     return { chandBulbs, chandRods, chandRings, potBodies, potRims, trunks, fronds, sconceCores, sconceArms, bannerRods, bannerCloths, bannerTails }
   }, [chandPositions, halfW, halfL, wallH, balconyY])
 
+  // reading-corner soft seating (armchair + floor lamp + rug) for all corners as
+  // instanced batches — was ~5 loose meshes per corner.
+  const cornerBatches = useMemo(() => {
+    const rugs: ShapeItem[] = []
+    const seats: ShapeItem[] = []
+    const backs: ShapeItem[] = []
+    const poles: ShapeItem[] = []
+    const shades: ShapeItem[] = []
+    for (const c of corners) {
+      const [cx, cy, cz] = c.pos
+      const a = c.rotY
+      rugs.push({ pos: [cx, cy + 0.02, cz], quat: composeYLocal(a, -Math.PI / 2, 0, 0) })
+      seats.push({ pos: [cx, cy + 0.45, cz], rot: [0, a, 0] })
+      {
+        const [rx, rz] = rotXZ(0, -0.45, a)
+        backs.push({ pos: [cx + rx, cy + 0.95, cz + rz], rot: [0, a, 0] })
+      }
+      {
+        const [rx, rz] = rotXZ(1.1, 0.6, a)
+        poles.push({ pos: [cx + rx, cy + 0.9, cz + rz] })
+        shades.push({ pos: [cx + rx, cy + 1.85, cz + rz] })
+      }
+    }
+    return { rugs, seats, backs, poles, shades }
+  }, [corners])
+
   const crystals = useMemo(
     () => [
       { pos: [-14, 4, -18], c: '#8a6cff' },
@@ -149,33 +193,23 @@ export function Decor() {
         <coneGeometry args={[0.18, 2, 5]} />
       </InstancedShape>
 
-      {/* reading corners: armchair + floor lamp + rug (handful, kept per-corner) */}
-      {corners.map((c, i) => (
-        <group key={`corner-${i}`} position={c.pos} rotation={[0, c.rotY, 0]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-            <planeGeometry args={[3, 3]} />
-            <meshStandardMaterial color="#5a2030" roughness={1} side={DoubleSide} />
-          </mesh>
-          <mesh position={[0, 0.45, 0]}>
-            <boxGeometry args={[1.1, 0.5, 1]} />
-            <meshStandardMaterial color="#6b4a8a" roughness={0.9} />
-          </mesh>
-          <mesh position={[0, 0.95, -0.45]}>
-            <boxGeometry args={[1.1, 0.9, 0.2]} />
-            <meshStandardMaterial color="#7a59a0" roughness={0.9} />
-          </mesh>
-          <group position={[1.1, 0, 0.6]}>
-            <mesh position={[0, 0.9, 0]}>
-              <cylinderGeometry args={[0.04, 0.05, 1.8, 8]} />
-              <meshStandardMaterial color="#caa84a" metalness={0.5} roughness={0.4} />
-            </mesh>
-            <mesh position={[0, 1.85, 0]}>
-              <coneGeometry args={[0.28, 0.35, 16, 1, true]} />
-              <meshStandardMaterial color="#e9d3a0" emissive="#ffd98a" emissiveIntensity={1.6} side={DoubleSide} />
-            </mesh>
-          </group>
-        </group>
-      ))}
+      {/* reading corners: armchair (seat + back) + floor lamp (pole + shade) +
+          rug, each one instanced draw across every corner */}
+      <InstancedShape items={cornerBatches.rugs} color="#5a2030" roughness={1} side={DoubleSide}>
+        <planeGeometry args={[3, 3]} />
+      </InstancedShape>
+      <InstancedShape items={cornerBatches.seats} color="#6b4a8a" roughness={0.9}>
+        <boxGeometry args={[1.1, 0.5, 1]} />
+      </InstancedShape>
+      <InstancedShape items={cornerBatches.backs} color="#7a59a0" roughness={0.9}>
+        <boxGeometry args={[1.1, 0.9, 0.2]} />
+      </InstancedShape>
+      <InstancedShape items={cornerBatches.poles} color="#caa84a" metalness={0.5} roughness={0.4}>
+        <cylinderGeometry args={[0.04, 0.05, 1.8, 8]} />
+      </InstancedShape>
+      <InstancedShape items={cornerBatches.shades} color="#e9d3a0" emissive="#ffd98a" emissiveIntensity={1.6} side={DoubleSide}>
+        <coneGeometry args={[0.28, 0.35, 16, 1, true]} />
+      </InstancedShape>
 
       {/* grand "FOCUS LILY" house banners hanging from the balcony — rod, cloth
           and tail each instanced across all eight banners */}

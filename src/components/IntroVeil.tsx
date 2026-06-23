@@ -118,20 +118,19 @@ export function IntroVeil({ ready }: { ready: boolean }) {
         muted
         playsInline
         preload="auto"
+        // Render purely as an embedded decorative logo, never as a standalone
+        // media file: suppress the browser's hover affordances — the
+        // Picture-in-Picture toggle and the Remote-Playback / "cast / open
+        // externally" button — that Chrome/Edge show on any large playing
+        // <video>. (No `controls`, so there's no native control bar to hide.)
+        disablePictureInPicture
+        disableRemotePlayback
+        controlsList="nodownload noplaybackrate noremoteplayback"
+        onContextMenu={(e) => e.preventDefault()}
         onLoadedMetadata={onLoadedMetadata}
         onPlaying={onPlaying}
       />
       <div className="intro-vignette" />
-      <button
-        type="button"
-        className="intro-skip"
-        onClick={(e) => {
-          e.stopPropagation()
-          setSkipped(true)
-        }}
-      >
-        Skip ›
-      </button>
     </div>
   )
 }

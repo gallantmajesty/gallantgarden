@@ -20,6 +20,41 @@
   z-index: 30;
 }
 
+/* ---------- experimental realm: under-development wall ---------- */
+.waterfall-wip {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 30%, #1a2230, #0d0a07 70%);
+}
+.wip-card {
+  max-width: 420px;
+  margin: 24px;
+  padding: 36px 32px 30px;
+  border-radius: 22px;
+  text-align: center;
+  animation: pop-in 0.4s ease both;
+}
+.wip-emoji {
+  font-size: 52px;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+.wip-card h1 {
+  font-family: var(--display);
+  font-size: 26px;
+  color: #fff;
+  margin: 0 0 10px;
+}
+.wip-card p {
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0 0 22px;
+  line-height: 1.5;
+}
+.wip-back {
+  margin: 0 auto;
+}
+
 /* ---------- top-left ---------- */
 .explore-topleft {
   position: absolute;

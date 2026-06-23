@@ -53,6 +53,67 @@ export function useIsDesktop(): boolean {
   return desktop
 }
 
+/** True when the document is currently in fullscreen (incl. the WebKit prefix). */
+function isFullscreen(): boolean {
+  const d = document as Document & { webkitFullscreenElement?: Element | null }
+  return !!(d.fullscreenElement || d.webkitFullscreenElement)
+}
+
+/**
+ * Mobile fullscreen prompt. Focus Lily now opens on phones & tablets too, but the
+ * 3D study world is best with the browser chrome out of the way — so before the
+ * app opens we ask the visitor to enter fullscreen, and if they leave fullscreen
+ * we prompt them again. Desktop visitors never see this (App only mounts it when
+ * the device isn't a desktop). On browsers without the Fullscreen API (notably
+ * iPhone Safari) we let them through rather than trap them.
+ */
+export function MobileFullscreenGate() {
+  const [needsFullscreen, setNeedsFullscreen] = useState(!isFullscreen())
+
+  // Re-prompt whenever the user drops out of fullscreen.
+  useEffect(() => {
+    const sync = () => setNeedsFullscreen(!isFullscreen())
+    document.addEventListener('fullscreenchange', sync)
+    document.addEventListener('webkitfullscreenchange', sync as EventListener)
+    return () => {
+      document.removeEventListener('fullscreenchange', sync)
+      document.removeEventListener('webkitfullscreenchange', sync as EventListener)
+    }
+  }, [])
+
+  if (!needsFullscreen) return null
+
+  const enter = () => {
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void
+    }
+    if (!el.requestFullscreen && !el.webkitRequestFullscreen) {
+      // Fullscreen API unsupported (e.g. iPhone Safari) — don't block the user.
+      setNeedsFullscreen(false)
+      return
+    }
+    const req = el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen?.()
+    // On success the fullscreenchange listener hides the gate; on rejection
+    // (e.g. gesture lost) hide it anyway so the prompt can't get stuck.
+    Promise.resolve(req)
+      .then(() => setNeedsFullscreen(false))
+      .catch(() => setNeedsFullscreen(false))
+  }
+
+  return (
+    <div className="fs-gate">
+      <div className="fs-gate-card">
+        <img className="fs-gate-logo" src="/icons/focus-lily-logo.png" alt="Focus Lily" width={72} height={72} />
+        <h1>Use fullscreen</h1>
+        <p>Focus Lily works best in fullscreen on mobile. Tap below to go fullscreen and start your session.</p>
+        <button type="button" className="fs-gate-btn" onClick={enter}>
+          Enter fullscreen
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /** Full-screen block shown to phone / tablet visitors. The main application is
  *  never mounted behind it. */
 export function DesktopOnly() {

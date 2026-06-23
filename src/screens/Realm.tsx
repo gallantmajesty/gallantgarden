@@ -9,7 +9,7 @@ import { useAvatar } from '../avatar/store'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
 import { Section, Slider, Toggle } from '../components/settings/controls'
-import { GLOBAL_ROOMS, REALM_PRESENCE_LIVE } from '../lib/realm'
+import { GLOBAL_ROOMS, REALM_PRESENCE_LIVE, ENABLE_WATERFALL_REALM, isDevAccess } from '../lib/realm'
 import './Realm.css'
 
 type Mode = 'choose' | 'global' | 'custom'
@@ -77,16 +77,45 @@ function AudioPanel({ onClose }: { onClose: () => void }) {
 /* ------------------------------------------------------------ choose flavour */
 
 function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
+  const navigate = useNavigate()
+  const enterFlagship = useRealm((s) => s.enterFlagship)
+
+  // The Waterfall Realm is still experimental. It is shown as the prominent
+  // flagship card ONLY once it is publicly enabled (ENABLE_WATERFALL_REALM). While
+  // that flag is off it is hidden from users entirely — developers (?dev=1) still
+  // reach it through a small, clearly-labelled box pinned to the bottom.
+  const waterfallPublic = ENABLE_WATERFALL_REALM
+  const waterfallDev = !ENABLE_WATERFALL_REALM && isDevAccess()
+
+  function enterWaterfall() {
+    if (!waterfallPublic && !waterfallDev) return // never enter while hidden
+    enterFlagship('waterfall', 'Waterfall Realm')
+    navigate('/explore')
+  }
+
   return (
     <>
       <header className="realm-head">
         <CharacterOrb />
         <span className="sf-pill">Realm</span>
         <h1>Choose your study world</h1>
-        <p>Join a shared public room, or open a private realm of your own.</p>
+        <p>Step into a flagship world, join a shared public room, or open a private realm of your own.</p>
       </header>
 
       <div className="realm-cards">
+        {/* flagship: the Waterfall Realm — only when publicly enabled */}
+        {waterfallPublic && (
+          <button className="realm-card water-glass realm-card-flagship" onClick={enterWaterfall}>
+            <div className="realm-card-orb">
+              <PngIcon name="realm" size={72} alt="Waterfall Realm" />
+            </div>
+            <span className="sf-pill realm-kind">Flagship</span>
+            <h2>Waterfall Realm</h2>
+            <p>A bright daytime paradise — a giant waterfall, a turquoise lake and five campfire camps to study and hang out around.</p>
+            <span className="realm-card-cta">Enter the falls ›</span>
+          </button>
+        )}
+
         <button className="realm-card water-glass" onClick={() => onPick('global')}>
           <div className="realm-card-orb">
             <PngIcon name="study-rooms" size={72} alt="Global Realm" />
@@ -104,6 +133,20 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <p>Create a private world that&rsquo;s just yours. Invite friends later.</p>
           <span className="realm-card-cta">Create realm ›</span>
         </button>
+
+        {/* developer-only access to the hidden experimental realm: small, last,
+            and clearly tagged so it never reads as a production world */}
+        {waterfallDev && (
+          <button className="realm-card water-glass realm-card-dev" onClick={enterWaterfall}>
+            <span className="sf-pill realm-kind realm-dev-tag">Experimental · Dev</span>
+            <div className="realm-card-orb realm-card-orb-sm">
+              <PngIcon name="realm" size={44} alt="Waterfall Realm" />
+            </div>
+            <h2>Waterfall Realm</h2>
+            <p>Hidden from users while it&rsquo;s being optimized. Visible to you via dev access.</p>
+            <span className="realm-card-cta">Enter (dev) ›</span>
+          </button>
+        )}
       </div>
     </>
   )

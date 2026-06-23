@@ -43,7 +43,23 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   // whenever the Quality setting changes.
   const [dpr, setDpr] = useState(preset.dpr)
   useEffect(() => setDpr(preset.dpr), [preset.dpr])
-  const dprFloor = 0.6
+  // Floor kept high (0.85) so that even when the governor *does* engage the
+  // image stays close to sharp — a full drop to 0.6 read as a visible blur.
+  const dprFloor = 0.85
+
+  // Warm-up gate. The first few seconds after entering the realm are dominated
+  // by one-time stalls (Suspense asset loads, shader/program compilation,
+  // texture uploads, EffectComposer warm-up). Those frame-time spikes look like
+  // a struggling GPU to the PerformanceMonitor, so if it samples during that
+  // window it permanently sheds pixels right as the scene is about to settle —
+  // the "sharp at first, then blurry a few seconds in" bug. We hold the governor
+  // back until the scene has had time to warm up, so it only ever judges
+  // steady-state performance.
+  const [govReady, setGovReady] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setGovReady(true), 8000)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
     <Canvas
@@ -54,14 +70,18 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
     >
       {/* Auto-resolution governor: when the frame rate drops below the healthy
           band we shed pixels; when it recovers we add them back. Keeps motion
-          smooth on integrated GPUs instead of locking at a fixed heavy DPR. */}
-      <PerformanceMonitor
-        bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
-        flipflops={3}
-        factor={1}
-        onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
-        onFallback={() => setDpr(dprFloor)}
-      />
+          smooth on integrated GPUs instead of locking at a fixed heavy DPR.
+          Mounted only after the warm-up window so transient load-time stalls
+          can't trigger a permanent downscale. */}
+      {govReady && (
+        <PerformanceMonitor
+          bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
+          flipflops={3}
+          factor={1}
+          onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
+          onFallback={() => setDpr(dprFloor)}
+        />
+      )}
 
       <QualitySync shadows={preset.shadows} />
       <TextureQualitySync anisotropy={preset.anisotropy} />

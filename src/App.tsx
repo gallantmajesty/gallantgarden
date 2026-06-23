@@ -19,7 +19,7 @@ import { Profile } from './screens/Profile'
 import { AvatarCreator } from './screens/AvatarCreator'
 import { ShotHarness } from './screens/ShotHarness' // TEMP: torso-review screenshots
 import { LoadingVeil } from './components/LoadingVeil'
-import { DesktopOnly, useIsDesktop } from './components/DesktopOnly'
+import { MobileFullscreenGate, useIsDesktop } from './components/DesktopOnly'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -47,9 +47,9 @@ export default function App() {
     }
   }, [])
 
-  // Focus Lily is a desktop-only platform — phones and tablets (and phones in
-  // "request desktop site" mode) are blocked entirely; the app never mounts.
-  if (!isDesktop) return <DesktopOnly />
+  // Focus Lily now opens on phones & tablets too. Mobile visitors aren't blocked;
+  // instead a fullscreen prompt (MobileFullscreenGate, rendered below) asks them
+  // to enter fullscreen before starting and re-prompts if they leave it.
 
   // TEMP (torso review): a no-auth screenshot harness. Remove with ShotHarness.
   if (window.location.pathname === '/__shot') return <ShotHarness />
@@ -66,6 +66,9 @@ export default function App() {
     <>
       <WebBackground />
       <IntroVeil ready={appReady} />
+      {/* mobile only: ask the visitor to enter fullscreen before starting, and
+          re-prompt if they leave it. Desktop never mounts this. */}
+      {!isDesktop && <MobileFullscreenGate />}
       {loading ? (
         <LoadingVeil />
       ) : !user ? (

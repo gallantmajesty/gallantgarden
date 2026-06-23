@@ -1,12 +1,18 @@
 import { create } from 'zustand'
 import type { RealmKind } from '../lib/realm'
 
-/** The realm the player is currently inside (drives the label in the 3D scene
- *  and, later, which presence channel to join). `null` = not in a realm yet. */
+/** Which 3D world a realm renders. Defaults to the great Library; the Waterfall
+ *  Realm is the second flagship world. */
+export type RealmWorld = 'library' | 'waterfall'
+
+/** The realm the player is currently inside (drives the label in the 3D scene,
+ *  which world to render, and — later — which presence channel to join). `null` =
+ *  not in a realm yet. */
 export interface ActiveRealm {
   kind: RealmKind
   name: string
   roomId?: string // set for Global rooms
+  world: RealmWorld
 }
 
 /** A private world the student created. Persisted locally so their custom realms
@@ -22,6 +28,9 @@ interface RealmState {
   active: ActiveRealm | null
   custom: CustomRealm[]
   enterGlobal: (roomId: string, name: string) => void
+  /** Drop into a flagship world (the Library hub default is 'library'; the
+   *  Waterfall Realm is 'waterfall'). */
+  enterFlagship: (world: RealmWorld, name: string) => void
   createCustom: (name: string) => CustomRealm
   enterCustom: (realm: CustomRealm) => void
   leave: () => void
@@ -53,7 +62,9 @@ export const useRealm = create<RealmState>((set, get) => ({
   active: null,
   custom: loadCustom(),
 
-  enterGlobal: (roomId, name) => set({ active: { kind: 'global', name, roomId } }),
+  enterGlobal: (roomId, name) => set({ active: { kind: 'global', name, roomId, world: 'library' } }),
+
+  enterFlagship: (world, name) => set({ active: { kind: 'global', name, world } }),
 
   createCustom: (name) => {
     counter += 1
@@ -68,7 +79,7 @@ export const useRealm = create<RealmState>((set, get) => ({
     return realm
   },
 
-  enterCustom: (realm) => set({ active: { kind: 'custom', name: realm.name, roomId: realm.id } }),
+  enterCustom: (realm) => set({ active: { kind: 'custom', name: realm.name, roomId: realm.id, world: 'library' } }),
 
   leave: () => set({ active: null }),
 }))

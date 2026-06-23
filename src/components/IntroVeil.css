@@ -24,6 +24,11 @@
   object-position: center;
   user-select: none;
   -webkit-user-drag: none;
+  /* Decorative only: it must behave like an embedded logo, never a clickable
+     media file. Disabling pointer events stops the browser's media hover
+     controls (PiP / external-playback) from appearing and lets clicks fall
+     through to the .intro-veil overlay, which handles click-to-skip. */
+  pointer-events: none;
 }
 
 /* gentle edge darkening so the scene reads as framed, not a raw clip */
@@ -32,27 +37,4 @@
   inset: 0;
   pointer-events: none;
   background: radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(3, 8, 5, 0.55) 100%);
-}
-
-/* unobtrusive skip affordance, bottom-right */
-.intro-skip {
-  position: absolute;
-  right: 22px;
-  bottom: 20px;
-  padding: 8px 16px;
-  font: 600 13px/1 var(--display, system-ui), sans-serif;
-  letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(12, 22, 16, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  backdrop-filter: blur(6px);
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
-  opacity: 0.78;
-}
-.intro-skip:hover {
-  background: rgba(20, 36, 26, 0.6);
-  transform: translateY(-1px);
-  opacity: 1;
 }

@@ -53,3 +53,64 @@
   margin-top: 18px;
   opacity: 0.85;
 }
+
+/* ---------- mobile fullscreen prompt (MobileFullscreenGate) ---------- */
+/* Sits above the intro veil (z 9999) so the fullscreen tap is the very first
+   interaction on a phone/tablet. */
+.fs-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(107, 191, 79, 0.22), transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(122, 74, 38, 0.28), transparent 60%),
+    linear-gradient(160deg, #2c3a24, #1c1510);
+  text-align: center;
+}
+.fs-gate-card {
+  max-width: 420px;
+  padding: 34px 28px 28px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 253, 246, 0.97), rgba(246, 232, 200, 0.97));
+  border: 4px solid var(--wood);
+  box-shadow: 0 12px 0 var(--wood-dark), 0 22px 40px rgba(0, 0, 0, 0.4);
+  animation: pop-in 0.45s ease both;
+}
+.fs-gate-logo {
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(58, 42, 23, 0.25));
+  margin-bottom: 12px;
+}
+.fs-gate-card h1 {
+  font-size: 24px;
+  color: var(--wood-dark);
+  margin-bottom: 10px;
+}
+.fs-gate-card p {
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.55;
+  font-family: var(--sans);
+  margin-bottom: 22px;
+}
+.fs-gate-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  font-family: var(--display, system-ui), sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--grass, #6bbf4f), var(--grass-dark, #4e9a36));
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 0 var(--grass-dark, #3f7f2c), 0 10px 18px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.fs-gate-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 var(--grass-dark, #3f7f2c), 0 6px 12px rgba(0, 0, 0, 0.3);
+}
