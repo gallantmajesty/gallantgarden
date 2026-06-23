@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
+import type { Material, Mesh, Texture } from 'three'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -14,8 +15,7 @@ import { KnowledgeTree } from './KnowledgeTree'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
-import { QUALITY_PRESET, type Quality } from '../../store/settings'
-import { useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -33,9 +33,8 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean 
  * post-processing — scaling all of it to the chosen graphics quality.
  */
 export function LibraryScene({ onReady }: { onReady?: () => void }) {
-  const quality = useSettings((s) => s.quality)
-  const cinematic = useSettings((s) => s.cinematic)
-  const preset = QUALITY_PRESET[quality]
+  // The merged quality budget (user's six axes + transient Ctrl+F perf override).
+  const preset = useScenePreset()
 
   // Runtime device-pixel-ratio. Starts at the quality ceiling and is auto-scaled
   // DOWN by the PerformanceMonitor below when the GPU can't keep up (and back up
@@ -64,11 +63,12 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         onFallback={() => setDpr(dprFloor)}
       />
 
-      <QualitySync quality={quality} shadows={preset.shadows} />
+      <QualitySync shadows={preset.shadows} />
+      <TextureQualitySync anisotropy={preset.anisotropy} />
 
       <SoftBoundary>
         <Suspense fallback={null}>
-          <DayNightWeather quality={quality} cinematic={cinematic} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} />
+          <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} />
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
         </Suspense>
       </SoftBoundary>
@@ -91,7 +91,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       <PlayerController />
       <PerfLogger />
 
-      {cinematic && preset.bloom && (
+      {preset.bloom && (
         // multisampling 0 disables the composer's expensive MSAA pass; the small
         // mipmap bloom kernel keeps the lantern/window glow at a fraction of the
         // cost of the previous full-resolution bloom.
@@ -107,12 +107,43 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
 /** Applies graphics-quality changes that the WebGL renderer won't pick up from a
  *  React prop on its own — chiefly toggling the shadow map on/off live so the
  *  "Quality" setting visibly updates the scene without a reload. */
-function QualitySync({ quality, shadows }: { quality: Quality; shadows: boolean }) {
+function QualitySync({ shadows }: { shadows: boolean }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
     gl.shadowMap.enabled = shadows
     gl.shadowMap.needsUpdate = true
-  }, [gl, shadows, quality])
+  }, [gl, shadows])
+  return null
+}
+
+/**
+ * Applies the Texture Quality axis live by re-setting anisotropic filtering on
+ * every texture already in the scene. Textures are generated once (textures.ts)
+ * with max anisotropy; lowering the axis trades a little grazing-angle sharpness
+ * for fill-rate. Walks the graph on change only — never per frame. Clamped to the
+ * GPU's reported maximum so a request of 16 is safe everywhere.
+ */
+const TEX_KEYS = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap'] as const
+function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    const max = gl.capabilities.getMaxAnisotropy()
+    const a = Math.min(anisotropy, max)
+    scene.traverse((o) => {
+      const mat = (o as Mesh).material as Material | Material[] | undefined
+      if (!mat) return
+      for (const m of Array.isArray(mat) ? mat : [mat]) {
+        for (const key of TEX_KEYS) {
+          const tex = (m as unknown as Record<string, Texture | null>)[key]
+          if (tex && tex.isTexture && tex.anisotropy !== a) {
+            tex.anisotropy = a
+            tex.needsUpdate = true
+          }
+        }
+      }
+    })
+  }, [anisotropy, gl, scene])
   return null
 }
 

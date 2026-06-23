@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { LoadingVeil } from '../components/LoadingVeil'
 import { useAudio } from '../audio/useAudio'
-import { joystick } from '../three/library/input'
-import { useSettings, type CameraMode, type Quality } from '../store/settings'
+import { joystick, isTypingFocused } from '../three/library/input'
+import {
+  useSettings,
+  MIN_BRIGHTNESS,
+  MAX_BRIGHTNESS,
+  type CameraMode,
+  type Quality,
+  type ShadowQuality,
+  type PostQuality,
+  type TextureQuality,
+  type QualityPresetName,
+} from '../store/settings'
+import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
 import { usePomodoro } from '../store/pomodoro'
 import { useWorld } from '../store/world'
@@ -12,8 +23,7 @@ import { useDesk } from '../store/desk'
 import { useRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
-import { GLOBAL_ROOMS, mockOccupancy } from '../lib/realm'
-import { mockRoster } from '../lib/presenceMock'
+import { REALM_PRESENCE_LIVE } from '../lib/realm'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
@@ -30,13 +40,34 @@ export function Explore() {
   const fps = useSettings((s) => s.fps)
   const ambientOn = useSettings((s) => s.ambientOn)
   const master = useSettings((s) => s.master)
+  const brightness = useSettings((s) => s.brightness)
   const set = useSettings((s) => s.set)
+  // Transient view state: Tab hides every widget; Ctrl+F enters Performance Mode.
+  const hidden = useHud((s) => s.widgetsHidden)
+  const perfMode = useHud((s) => s.perfMode)
   useAudio()
+  useExploreShortcuts()
 
   useEffect(() => {
     const t = window.setTimeout(() => setHint(false), 8000)
     return () => window.clearTimeout(t)
   }, [])
+
+  // Enter a realm in Third-person so the player always sees their own character —
+  // never spawn body-less in First-person. (They can switch to First afterward.)
+  useEffect(() => {
+    if (useSettings.getState().cameraMode === 'first') set('cameraMode', 'third')
+  }, [set])
+
+  // Auto-minimize the desk whenever the player sits down, so the seated avatar (and
+  // its sitting animation) stays visible behind a small chip rather than the full
+  // Study Station panel. The player taps the chip to expand the desk when studying.
+  const seat = useWorld((s) => s.seat)
+  const wasSeated = useRef(false)
+  useEffect(() => {
+    if (seat != null && !wasSeated.current) useDesk.getState().setView('min')
+    wasSeated.current = seat != null
+  }, [seat])
 
   return (
     <div className="explore-root">
@@ -49,92 +80,191 @@ export function Explore() {
         </div>
       )}
 
-      {/* top-left: lobby + realm + fps */}
-      <div className="explore-topleft">
-        <button className="sf-btn secondary" onClick={() => navigate('/realm')}>
-          ‹ Realms
-        </button>
-        <span className="sf-pill">{realm ? realm.name : 'Realm'}</span>
-        {realm?.kind === 'global' && <span className="sf-pill realm-kind">Global</span>}
-        {realm?.kind === 'custom' && <span className="sf-pill realm-kind">Private</span>}
-        {fps && <FpsMeter />}
-      </div>
+      {/* Every widget lives behind this gate — Tab (or Performance Mode) hides the
+          whole HUD so the world becomes the sole focus. */}
+      {!hidden && (
+        <>
+          {/* top-left: clean realm identity + fps */}
+          <div className="explore-topleft">
+            <button className="explore-back" onClick={() => navigate('/realm')} title="Back to realms">
+              ‹ Realms
+            </button>
+            <span className="sf-pill">{realm ? realm.name : 'Realm'}</span>
+            {realm?.kind === 'global' && <span className="sf-pill realm-kind">Global</span>}
+            {realm?.kind === 'custom' && <span className="sf-pill realm-kind">Private</span>}
+            {fps && <FpsMeter />}
+          </div>
 
-      {/* top-center: pomodoro */}
-      <PomodoroChip />
+          {/* top-center: pomodoro */}
+          <PomodoroChip />
 
-      {/* top-right: music quick + settings */}
-      <div className="explore-topright">
-        <button
-          className={`explore-iconbtn ${ambientOn ? 'on' : ''}`}
-          onClick={() => set('ambientOn', !ambientOn)}
-          title={ambientOn ? 'Mute ambience' : 'Play ambience'}
-        >
-          <MusicGlyph on={ambientOn} />
-        </button>
-        <input
-          className="explore-vol"
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={master}
-          onChange={(e) => set('master', Number(e.target.value))}
-          aria-label="Master volume"
-        />
-        <button
-          className={`explore-iconbtn gear ${settingsOpen ? 'on' : ''}`}
-          onClick={() => setSettingsOpen((v) => !v)}
-          title="Settings"
-        >
-          <GearGlyph />
-        </button>
-      </div>
+          {/* top-right: compact bar — audio · brightness · menu */}
+          <div className="explore-topbar">
+            <button
+              className={`explore-iconbtn ${ambientOn ? 'on' : ''}`}
+              onClick={() => set('ambientOn', !ambientOn)}
+              title={ambientOn ? 'Mute ambience' : 'Play ambience'}
+            >
+              <MusicGlyph on={ambientOn} />
+            </button>
+            <input
+              className="explore-mini"
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={master}
+              onChange={(e) => set('master', Number(e.target.value))}
+              aria-label="Master volume"
+              title="Volume"
+            />
+            <span className="explore-bar-sep" />
+            <SunGlyph />
+            <input
+              className="explore-mini"
+              type="range"
+              min={MIN_BRIGHTNESS}
+              max={MAX_BRIGHTNESS}
+              step={0.02}
+              value={brightness}
+              onChange={(e) => set('brightness', Number(e.target.value))}
+              aria-label="Brightness"
+              title="Brightness"
+            />
+            <button
+              className={`explore-iconbtn gear ${settingsOpen ? 'on' : ''}`}
+              onClick={() => setSettingsOpen((v) => !v)}
+              title="Settings"
+            >
+              <GearGlyph />
+            </button>
+          </div>
 
-      {hint && (
-        <div className="explore-hint" onPointerDown={() => setHint(false)}>
-          {isTouch
-            ? 'Drag to look · joystick to walk · tap Jump'
-            : 'Drag to look · WASD move · Shift run · Space jump · F5 / buttons to switch view'}
-        </div>
+          {hint && (
+            <div className="explore-hint" onPointerDown={() => setHint(false)}>
+              {isTouch
+                ? 'Drag to look · joystick to walk · tap Jump'
+                : 'Drag to look · WASD move · 1/2/3 view · Tab hide UI · Ctrl+F performance'}
+            </div>
+          )}
+
+          <RoomRoster />
+
+          <CameraSwitch />
+
+          <SeatPrompt />
+          <SeatedPanel />
+
+          {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
+          <LibraryFriendsPanel />
+
+          {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+
+          {isTouch && (
+            <>
+              <Joystick />
+              <button
+                className="explore-jump"
+                onPointerDown={() => (joystick.jump = true)}
+                onPointerUp={() => (joystick.jump = false)}
+                onPointerCancel={() => (joystick.jump = false)}
+              >
+                Jump
+              </button>
+            </>
+          )}
+        </>
       )}
 
-      <RoomRoster />
-
-      <CameraSwitch />
-
-      <SeatPrompt />
-      <SeatedPanel />
-
-      {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
-      <LibraryFriendsPanel />
-
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
-
-      {isTouch && (
-        <>
-          <Joystick />
-          <button
-            className="explore-jump"
-            onPointerDown={() => (joystick.jump = true)}
-            onPointerUp={() => (joystick.jump = false)}
-            onPointerCancel={() => (joystick.jump = false)}
-          >
-            Jump
-          </button>
-        </>
+      {/* The escape-hatch chip — the ONLY thing visible while widgets are hidden,
+          so there's always a way back. */}
+      {hidden && (
+        <button
+          className={`explore-restore ${perfMode ? 'perf' : ''}`}
+          onClick={() => useHud.getState().setWidgetsHidden(false)}
+          title={perfMode ? 'Exit Performance Mode (Ctrl+F)' : 'Show UI (Tab)'}
+        >
+          {perfMode ? '⚡ Performance Mode · Ctrl+F to exit' : 'Tab to show UI'}
+        </button>
       )}
     </div>
   )
 }
 
+/* --------------------------------------------------------- global shortcuts */
+
+/**
+ * Explore-only keyboard shortcuts that operate at the DOM level (fullscreen +
+ * widget visibility), separate from the in-canvas movement keys in
+ * PlayerController:
+ *   Tab     — hide / show all widgets
+ *   Ctrl+F  — toggle Performance Mode (fullscreen + perf quality + hidden UI)
+ *   Esc     — leave Performance Mode / restore widgets
+ *   F11     — native fullscreen (left to the browser)
+ * The transient HUD state is force-reset on unmount so it never leaks to other
+ * screens.
+ */
+function useExploreShortcuts() {
+  useEffect(() => {
+    const hud = useHud.getState
+    const enterPerf = () => {
+      hud().setPerfMode(true)
+      hud().setWidgetsHidden(true)
+      if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(() => {})
+    }
+    const exitPerf = () => {
+      hud().setPerfMode(false)
+      hud().setWidgetsHidden(false)
+      if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => {})
+    }
+
+    const onKey = (e: KeyboardEvent) => {
+      // Ctrl/Cmd+F → toggle Performance Mode (suppress the browser find bar)
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
+        e.preventDefault()
+        if (hud().perfMode) exitPerf()
+        else enterPerf()
+        return
+      }
+      // Tab → hide/show widgets (but let it tab between fields while typing)
+      if (e.code === 'Tab' && !isTypingFocused()) {
+        e.preventDefault()
+        hud().toggleWidgets()
+        return
+      }
+      if (e.code === 'Escape') {
+        if (hud().perfMode) exitPerf()
+        else if (hud().widgetsHidden) hud().setWidgetsHidden(false)
+      }
+    }
+    // Exiting fullscreen by any means (Esc, F11) drops Performance Mode too.
+    const onFsChange = () => {
+      if (!document.fullscreenElement && hud().perfMode) {
+        hud().setPerfMode(false)
+        hud().setWidgetsHidden(false)
+      }
+    }
+
+    window.addEventListener('keydown', onKey)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('fullscreenchange', onFsChange)
+      hud().setPerfMode(false)
+      hud().setWidgetsHidden(false)
+    }
+  }, [])
+}
+
 /* ----------------------------------------------------------------- roster */
 
 /**
- * "In this room" — the public-lobby player list. For Global realms it shows the
- * current user plus a stable mock roster (real presence sync isn't wired yet,
- * see realm.ts). Every entry renders ONLY the public fields via PublicPlayerTag:
- * country flag, username, rank badge — never age, email, name, or provider.
+ * "In this room" — the live roster for a Global realm. There is NO fake data: we
+ * only ever show the signed-in user (rendered with their real public fields) and,
+ * because realm presence isn't implemented yet, an honest "no other students
+ * online" note. When a realtime presence channel lands, push remote players into
+ * `others` and the count/list update for free. Every entry renders ONLY the
+ * public fields via PublicPlayerTag: country flag, username, rank badge.
  */
 function RoomRoster() {
   const { user } = useAuth()
@@ -143,15 +273,6 @@ function RoomRoster() {
   const realm = useRealm((s) => s.active)
   const [open, setOpen] = useState(true)
 
-  const roster = useMemo<PublicPlayer[]>(() => {
-    if (realm?.kind !== 'global' || !realm.roomId) return []
-    const room = GLOBAL_ROOMS.find((r) => r.id === realm.roomId)
-    const seed = room?.seed ?? 1
-    // room occupancy includes us; fill the rest from the mock roster
-    const others = Math.max(0, mockOccupancy(seed) - 1)
-    return mockRoster(seed, others)
-  }, [realm])
-
   if (realm?.kind !== 'global') return null
 
   const self: PublicPlayer = {
@@ -159,7 +280,9 @@ function RoomRoster() {
     country,
     rank,
   }
-  const total = roster.length + 1
+  // No presence backend → no remote players. Never fabricate a roster.
+  const others: PublicPlayer[] = REALM_PRESENCE_LIVE ? [] : []
+  const total = others.length + 1
 
   return (
     <div className={`room-roster ${open ? 'open' : ''}`}>
@@ -174,11 +297,18 @@ function RoomRoster() {
             <PublicPlayerTag player={self} size="sm" />
             <span className="room-roster-you">You</span>
           </div>
-          {roster.map((p: PublicPlayer, i: number) => (
+          {others.map((p: PublicPlayer, i: number) => (
             <div key={`${p.username}-${i}`} className="room-roster-row">
               <PublicPlayerTag player={p} size="sm" />
             </div>
           ))}
+          {others.length === 0 && (
+            <p className="room-roster-empty">
+              No other students online yet.
+              <br />
+              <span>Shared realms (seeing each other live) aren’t implemented yet.</span>
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -188,10 +318,10 @@ function RoomRoster() {
 /* ------------------------------------------------------------- camera view */
 
 /**
- * Minecraft-style camera switch (First · Front · Third), always visible so the
- * player can see their character without hunting for hotkeys. Mirrors F1/F2/F3
- * and the F5 cycle handled in PlayerController. Hidden while seated (the desk
- * locks the view).
+ * Minecraft-style camera switch (First · Front · Third), always visible — including
+ * while seated — so the player can freely change view without hunting for hotkeys.
+ * Mirrors F1/F2/F3 and the F5 cycle handled in PlayerController. Sitting stays in
+ * third-person by default; First gives the seat-eye view (see PlayerController).
  */
 const CAM_MODES: { id: CameraMode; label: string }[] = [
   { id: 'first', label: 'First' },
@@ -202,19 +332,78 @@ const CAM_MODES: { id: CameraMode; label: string }[] = [
 function CameraSwitch() {
   const mode = useSettings((s) => s.cameraMode)
   const set = useSettings((s) => s.set)
-  const seat = useWorld((s) => s.seat)
-  if (seat != null) return null
   return (
     <div className="explore-cam">
       {CAM_MODES.map((m) => (
         <button
           key={m.id}
           className={`explore-cam-btn ${mode === m.id ? 'on' : ''}`}
+          data-cam={m.id}
           onClick={() => set('cameraMode', m.id)}
         >
           {m.label}
         </button>
       ))}
+      <FirstPersonHint />
+    </div>
+  )
+}
+
+/** One-time onboarding nudge: the first time the player EVER sits, a glowing arrow
+ *  points at the First-person button for 15s so they discover the seat-eye view
+ *  (the default stays third-person). Shows once ever — gated by a persisted flag —
+ *  and dismisses early if they switch to First or stand up. */
+const FP_HINT_KEY = 'sg.hint.firstPersonSit.v1'
+function fpHintSeen(): boolean {
+  try {
+    return localStorage.getItem(FP_HINT_KEY) === '1'
+  } catch {
+    return true // storage blocked: treat as seen so we never nag
+  }
+}
+function markFpHintSeen(): void {
+  try {
+    localStorage.setItem(FP_HINT_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+function FirstPersonHint() {
+  const seat = useWorld((s) => s.seat)
+  const mode = useSettings((s) => s.cameraMode)
+  const [show, setShow] = useState(false)
+  const wasSeated = useRef(false)
+
+  // arm on the first sit transition ever (and burn the one-time flag immediately)
+  useEffect(() => {
+    const seated = seat != null
+    if (seated && !wasSeated.current && !fpHintSeen()) {
+      setShow(true)
+      markFpHintSeen()
+    }
+    wasSeated.current = seated
+  }, [seat])
+
+  // auto-hide after 15s
+  useEffect(() => {
+    if (!show) return
+    const t = window.setTimeout(() => setShow(false), 15000)
+    return () => window.clearTimeout(t)
+  }, [show])
+
+  // followed the hint (switched to First) or stood up → dismiss immediately
+  useEffect(() => {
+    if (show && (mode === 'first' || seat == null)) setShow(false)
+  }, [show, mode, seat])
+
+  if (!show) return null
+  return (
+    <div className="explore-fp-hint" role="status">
+      <span className="explore-fp-arrow" aria-hidden>
+        ←
+      </span>
+      <span className="explore-fp-label">Try First-person to look around</span>
     </div>
   )
 }
@@ -452,16 +641,77 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="settings-body">
           <Section title="Graphics">
             <Seg<Quality>
-              label="Quality"
+              label="Overall quality"
               value={s.quality}
               options={[
                 ['low', 'Low'],
                 ['medium', 'Medium'],
                 ['high', 'High'],
+                ['custom', 'Custom'],
               ]}
-              onChange={(v) => s.set('quality', v)}
+              // Picking a named preset seeds all six axes; 'Custom' is a status
+              // shown when an axis was hand-tuned — clicking it is a no-op.
+              onChange={(v) => {
+                if (v !== 'custom') s.applyQualityPreset(v as QualityPresetName)
+              }}
             />
-            <Toggle label="Cinematic effects (bloom + fog)" value={s.cinematic} onChange={(v) => s.set('cinematic', v)} />
+            <Slider
+              label="Resolution scale"
+              display={`${Math.round(s.resolutionScale * 100)}%`}
+              value={s.resolutionScale}
+              min={0.5}
+              max={1}
+              step={0.05}
+              onChange={(v) => s.setQualityAxis('resolutionScale', v)}
+            />
+            <Slider
+              label="View distance"
+              display={`${Math.round(s.viewDistance * 100)}%`}
+              value={s.viewDistance}
+              min={0.6}
+              max={1}
+              step={0.05}
+              onChange={(v) => s.setQualityAxis('viewDistance', v)}
+            />
+            <Seg<ShadowQuality>
+              label="Shadow quality"
+              value={s.shadowQuality}
+              options={[
+                ['off', 'Off'],
+                ['low', 'Low'],
+                ['high', 'High'],
+              ]}
+              onChange={(v) => s.setQualityAxis('shadowQuality', v)}
+            />
+            <Seg<PostQuality>
+              label="Post-processing (bloom + fog)"
+              value={s.postProcessing}
+              options={[
+                ['off', 'Off'],
+                ['low', 'Low'],
+                ['high', 'High'],
+              ]}
+              onChange={(v) => s.setQualityAxis('postProcessing', v)}
+            />
+            <Seg<TextureQuality>
+              label="Texture quality"
+              value={s.textureQuality}
+              options={[
+                ['low', 'Low'],
+                ['medium', 'Medium'],
+                ['high', 'High'],
+              ]}
+              onChange={(v) => s.setQualityAxis('textureQuality', v)}
+            />
+            <Slider
+              label="Mesh detail · LOD bias"
+              display={s.lodBias.toFixed(2)}
+              value={s.lodBias}
+              min={0}
+              max={1.5}
+              step={0.25}
+              onChange={(v) => s.setQualityAxis('lodBias', v)}
+            />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
           </Section>
 
@@ -475,35 +725,16 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           </Section>
 
           <Section title="Audio">
-            <Slider label="Master volume" value={s.master} onChange={(v) => s.set('master', v)} />
-            <Slider label="Ambient music" value={s.ambientVol} onChange={(v) => s.set('ambientVol', v)} />
-            <Slider label="Rain / weather" value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
+            <Slider label="Master volume" display={`${Math.round(s.master * 100)}%`} value={s.master} onChange={(v) => s.set('master', v)} />
+            <Slider label="Ambient music" display={`${Math.round(s.ambientVol * 100)}%`} value={s.ambientVol} onChange={(v) => s.set('ambientVol', v)} />
+            <Slider label="Rain / weather" display={`${Math.round(s.rainVol * 100)}%`} value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
             <Toggle label="Ambient music" value={s.ambientOn} onChange={(v) => s.set('ambientOn', v)} />
             <Toggle label="Rain sounds" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
           </Section>
 
-          <Section title="World">
-            <Seg
-              label="Weather"
-              value={s.weatherAuto ? 'auto' : s.weather}
-              options={[
-                ['auto', 'Auto'],
-                ['clear', 'Clear'],
-                ['light-rain', 'Light'],
-                ['heavy-rain', 'Storm'],
-                ['fog', 'Fog'],
-              ]}
-              onChange={(v) => {
-                if (v === 'auto') s.set('weatherAuto', true)
-                else {
-                  s.set('weatherAuto', false)
-                  s.set('weather', v as typeof s.weather)
-                }
-              }}
-            />
-            <Toggle label="Pause day / night cycle" value={s.timePaused} onChange={(v) => s.set('timePaused', v)} />
-            <Slider label="Time speed" value={s.timeSpeed / 4} onChange={(v) => s.set('timeSpeed', Math.max(0.1, v * 4))} />
-          </Section>
+          {/* The "World" section (weather / day-night / time speed) was removed —
+              the realm's atmosphere is now fixed for everyone (auto weather +
+              day-night), so there is nothing per-user to tune here. */}
 
           <Section title="View & Accessibility">
             <Seg<CameraMode>
@@ -516,7 +747,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               ]}
               onChange={(v) => s.set('cameraMode', v)}
             />
-            <Slider label="Look sensitivity" value={(s.sensitivity - 0.2) / 1.8} onChange={(v) => s.set('sensitivity', 0.2 + v * 1.8)} />
+            <Slider label="Look sensitivity" display={`${Math.round(s.sensitivity * 100)}%`} value={(s.sensitivity - 0.2) / 1.8} onChange={(v) => s.set('sensitivity', 0.2 + v * 1.8)} />
             <Toggle label="Invert mouse Y" value={s.invertY} onChange={(v) => s.set('invertY', v)} />
             <button className="settings-fs" onClick={toggleFullscreen}>
               {fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
@@ -585,6 +816,15 @@ function MusicGlyph({ on }: { on: boolean }) {
       <circle cx="6" cy="18" r="3" />
       <circle cx="16" cy="16" r="3" />
       {!on && <line x1="3" y1="3" x2="21" y2="21" />}
+    </svg>
+  )
+}
+
+function SunGlyph() {
+  return (
+    <svg className="explore-sun" viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2 M12 20v2 M2 12h2 M20 12h2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M19.1 4.9l-1.4 1.4 M6.3 17.7l-1.4 1.4" />
     </svg>
   )
 }

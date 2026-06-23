@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { Color, type Group, type InstancedMesh, Object3D, type PointLight } from 'three'
 import { env } from './env'
-import { QUALITY_PRESET, useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -22,8 +22,7 @@ function rng(seed: number) {
 export function KnowledgeTree() {
   const sway = useRef<Group>(null)
   const treeLight = useRef<PointLight>(null)
-  const quality = useSettings((s) => s.quality)
-  const preset = QUALITY_PRESET[quality]
+  const preset = useScenePreset()
 
   // canopy leaf clusters within a dome (deterministic)
   const leaves = useMemo(() => {

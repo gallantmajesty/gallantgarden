@@ -17,6 +17,7 @@ import { Realm } from './screens/Realm'
 import { TaskMagnet } from './screens/TaskMagnet'
 import { Profile } from './screens/Profile'
 import { AvatarCreator } from './screens/AvatarCreator'
+import { ShotHarness } from './screens/ShotHarness' // TEMP: torso-review screenshots
 import { LoadingVeil } from './components/LoadingVeil'
 import { DesktopOnly, useIsDesktop } from './components/DesktopOnly'
 
@@ -49,6 +50,9 @@ export default function App() {
   // Focus Lily is a desktop-only platform — phones and tablets (and phones in
   // "request desktop site" mode) are blocked entirely; the app never mounts.
   if (!isDesktop) return <DesktopOnly />
+
+  // TEMP (torso review): a no-auth screenshot harness. Remove with ShotHarness.
+  if (window.location.pathname === '/__shot') return <ShotHarness />
 
   // The opening scene plays over the boot. It cuts the moment the lobby (or auth
   // screen) is ready to paint — i.e. auth has resolved and, if signed in, the

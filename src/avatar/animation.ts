@@ -19,6 +19,9 @@ export interface Locomotion {
   vy: number
   /** signed turn rate (rad/sec) for body-led turning lean */
   turnRate: number
+  /** true while the player occupies a chair — drives the seated sit pose in-world
+   *  (the editor preview uses the `preview === 'sit'` override instead) */
+  seated: boolean
 }
 
 // Reference walk speed matching PlayerController (WALK 4.6). gaitSpeed is a
@@ -44,12 +47,13 @@ export function idlePose(t: number): Pose {
     hips: { x: 0, z: -sway * 0.018, y: sway * 0.018 },
     neck: { x: -0.02, y: headDrift * 0.05 },
     head: { y: headDrift * 0.045, x: breath * 0.01 },
-    // arms rest near the sides (small z keeps them just clear of the hips),
-    // forearm carries a gentle constant bend so it never reads as a stiff rod
-    armUpperL: { x: 0.04 + breath * 0.012, z: 0.06 + sway * 0.012 },
-    armUpperR: { x: 0.04 + breath * 0.012, z: -0.06 - sway * 0.012 },
-    armLowerL: { x: 0.12, z: 0.05 },
-    armLowerR: { x: 0.12, z: -0.05 },
+    // arms rest with a slight OUTWARD splay (negative z = out for L, positive = out
+    // for R) so the chunkier chibi torso never intersects them; forearm carries a
+    // gentle constant bend so it never reads as a stiff rod
+    armUpperL: { x: 0.03 + breath * 0.012, z: -0.12 + sway * 0.01 },
+    armUpperR: { x: 0.03 + breath * 0.012, z: 0.12 - sway * 0.01 },
+    armLowerL: { x: 0.16, z: -0.04 },
+    armLowerR: { x: 0.16, z: 0.04 },
     legUpperL: { x: 0 },
     legUpperR: { x: 0 },
   }
@@ -157,16 +161,125 @@ export function landPose(k: number): Pose {
   }
 }
 
-/** A simple friendly wave used by the creator preview only — raised right arm,
- *  hand rocking from the elbow while the left arm rests naturally. */
+/** A friendly wave: the right arm goes UP and OUT to the side (never across the
+ *  face), the hand rocking from the elbow, while the left arm rests naturally.
+ *  Face stays fully visible. */
 export function wavePose(t: number): Pose {
   const w = Math.sin(t * 5)
   return {
-    armUpperR: { x: -2.5, z: -0.5 + w * 0.06 },
-    armLowerR: { x: 0.5, z: -0.35 + w * 0.5 },
-    armUpperL: { x: 0.04, z: -0.06 },
-    armLowerL: { x: 0.14, z: -0.05 },
-    head: { y: 0.1, z: 0.03 },
-    chest: { y: -0.05 },
+    // up and out to the right (positive z = outward for the right arm)
+    armUpperR: { x: -2.35, z: 0.34 },
+    armLowerR: { x: 0.25, z: 0.22 + w * 0.45 },
+    // left arm rests with the same gentle outward splay as idle
+    armUpperL: { x: 0.03, z: -0.12 },
+    armLowerL: { x: 0.16, z: -0.04 },
+    head: { y: 0.08, x: -0.03 },
+    chest: { y: -0.04 },
+  }
+}
+
+/* ----------------------------------------------------------------- emotes */
+// Creator emote-bar poses. Same critically-damped driver as everything else, so
+// they read as looping idle-style emotes rather than authored clips. Used only by
+// the editor preview today; the in-world emote wheel can reuse them later.
+// Rule for every emote: never cross the arms through the torso, never cover the
+// face. (Outward splay = negative z for the L arm, positive z for the R arm.)
+
+/** Happy / cheer: both arms raised up-and-out in a little bounce. Face visible. */
+export function happyPose(t: number): Pose {
+  const b = Math.sin(t * 6)
+  return {
+    hips: { x: 0.01 },
+    chest: { x: -0.04 + b * 0.03 },
+    head: { x: -0.05, y: Math.sin(t * 3) * 0.06 },
+    // up and out to the sides (a relaxed "V"), no crossing in front of the chest
+    armUpperL: { x: -2.0 + b * 0.12, z: -0.4 },
+    armUpperR: { x: -2.0 + b * 0.12, z: 0.4 },
+    armLowerL: { x: 0.35, z: -0.1 },
+    armLowerR: { x: 0.35, z: 0.1 },
+  }
+}
+
+/** Celebrate: both arms thrown up high in a "yes!" with an alternating shake. */
+export function celebratePose(t: number): Pose {
+  const s = Math.sin(t * 7)
+  return {
+    hips: { x: -0.04 },
+    spine: { x: -0.06 },
+    chest: { x: -0.05, y: s * 0.05 },
+    head: { x: -0.12 },
+    // arms straight up; a small inward lean meets the hands ABOVE the head (clear
+    // of the face), with a lively shake
+    armUpperL: { x: -2.85, z: 0.22 + s * 0.08 },
+    armUpperR: { x: -2.85, z: -0.22 - s * 0.08 },
+    armLowerL: { x: 0.2, z: 0.12 },
+    armLowerR: { x: 0.2, z: -0.12 },
+  }
+}
+
+/** Sit: thighs forward, knees bent, torso upright, hands resting on the thighs.
+ *  Pose only — the in-world chair anchoring / auto-stand is a separate system.
+ *  The driver lowers the root when this pose is active so it reads as seated. */
+export function sitPose(t: number): Pose {
+  const breath = Math.sin(t * 1.2)
+  return {
+    // a relaxed seated posture: a touch of forward lean over the lap, torso upright
+    hips: { x: 0.06 },
+    spine: { x: 0.03 },
+    chest: { x: 0.03 + breath * 0.015 },
+    head: { x: -0.06, y: breath * 0.03 },
+    // thighs swing forward to ~horizontal, shins drop to vertical, feet rest flat-ish
+    legUpperL: { x: -1.48, z: 0.05 },
+    legUpperR: { x: -1.48, z: -0.05 },
+    legLowerL: { x: 1.55 },
+    legLowerR: { x: 1.55 },
+    footL: { x: 0.18 },
+    footR: { x: 0.18 },
+    // upper arms hang down beside the torso with only a touch of forward swing and a
+    // small outward splay — so the elbows sit BESIDE the hips, never raised/floating
+    // or swung behind the back. The forearms then bend well forward and settle
+    // slightly INWARD so each hand comes to rest on its thigh (hands visible, no
+    // elbow-through-torso, face fully clear).
+    // (z: negative = outward for L / positive = outward for R, so inward flips sign.)
+    armUpperL: { x: -0.5, z: -0.1 },
+    armUpperR: { x: -0.5, z: 0.1 },
+    armLowerL: { x: 1.0, z: 0.12 },
+    armLowerR: { x: 1.0, z: -0.12 },
+  }
+}
+
+/** Seated AT A DESK (in-world). Like {@link sitPose} but the torso leans gently
+ *  forward over the desk and the arms reach FORWARD so the hands rest on the
+ *  desktop in front of the body (studying posture) rather than on the lap. Used by
+ *  the animator when `loco.seated` is true; the editor "Sit" emote keeps the lap
+ *  pose (no desk there). The driver applies the same root drop so it reads seated. */
+export function deskSitPose(t: number): Pose {
+  const breath = Math.sin(t * 1.2)
+  return {
+    // Torso stays UPRIGHT (only a whisper of breathing). A forward hunch opens a
+    // gap between the top hem and the waistband — which reads as "clothes
+    // detached" — so we keep the spine vertical and let only the ARMS reach the
+    // desk. The chibi desk is around seated elbow height, so this still looks like
+    // studying without tipping the whole body over the lap.
+    hips: { x: 0.02 },
+    spine: { x: 0.01 },
+    chest: { x: 0.02 + breath * 0.012 },
+    head: { x: 0.02, y: breath * 0.025 },
+    // thighs forward to ~horizontal, shins down, feet flat (same seating as sitPose)
+    legUpperL: { x: -1.48, z: 0.05 },
+    legUpperR: { x: -1.48, z: -0.05 },
+    legLowerL: { x: 1.55 },
+    legLowerR: { x: 1.55 },
+    footL: { x: 0.18 },
+    footR: { x: 0.18 },
+    // arms reach FORWARD to the desk: upper arms hang down-and-slightly-forward
+    // beside the torso (elbows stay at the sides, never behind the back), and the
+    // forearms swing well forward to ~horizontal so the hands come to rest out in
+    // front on the desktop. A small inward z brings the hands together over the
+    // work surface. (z: + = inward for L, − = inward for R.)
+    armUpperL: { x: -0.58, z: -0.06 },
+    armUpperR: { x: -0.58, z: 0.06 },
+    armLowerL: { x: 1.32, z: 0.1 },
+    armLowerR: { x: 1.32, z: -0.1 },
   }
 }

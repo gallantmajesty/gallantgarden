@@ -9,6 +9,20 @@ import { StatusDot } from './StatusDot'
 
 const EMOJI = ['😀', '😅', '😂', '🥰', '😎', '🤔', '👍', '🙌', '🎉', '🔥', '💪', '📚', '✅', '☕', '🌿', '✨', '😴', '😭', '❤️', '🙏']
 
+// Persisted chat-window size. Desktop users asked for a bigger, resizable
+// window; the choice survives refreshes (per-device) so it isn't reset each open.
+type ChatSize = 'sm' | 'md' | 'lg'
+const SIZE_KEY = 'sf.chat.size.v1'
+const SIZES: { id: ChatSize; label: string }[] = [
+  { id: 'sm', label: 'S' },
+  { id: 'md', label: 'M' },
+  { id: 'lg', label: 'L' },
+]
+function loadChatSize(): ChatSize {
+  const v = (typeof localStorage !== 'undefined' && localStorage.getItem(SIZE_KEY)) as ChatSize | null
+  return v === 'sm' || v === 'md' || v === 'lg' ? v : 'md'
+}
+
 // Lightweight DM window for the library. Glassmorphism, emoji, read receipts,
 // infinite scroll. Polls the open conversation every 3s (v1 delivery). When a
 // focus session is active the window stays usable but never pops or sounds —
@@ -27,6 +41,16 @@ export function ChatWindow() {
   const [text, setText] = useState('')
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [size, setSize] = useState<ChatSize>(loadChatSize)
+
+  function changeSize(next: ChatSize) {
+    setSize(next)
+    try {
+      localStorage.setItem(SIZE_KEY, next)
+    } catch {
+      /* storage blocked — keep the in-memory choice */
+    }
+  }
   const listRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevLen = useRef(0)
@@ -77,7 +101,7 @@ export function ChatWindow() {
   }
 
   return (
-    <section className="lcw">
+    <section className={`lcw lcw-${size}`}>
       <header className="lcw-head">
         {friend && (
           <span className="lcw-head-av">
@@ -90,6 +114,19 @@ export function ChatWindow() {
             <StatusDot status={status} size={7} /> {STUDY_STATUS_LABEL[status]}
           </span>
         </span>
+        <div className="lcw-size" role="group" aria-label="Chat size">
+          {SIZES.map((s) => (
+            <button
+              key={s.id}
+              className={`lcw-size-btn ${size === s.id ? 'on' : ''}`}
+              onClick={() => changeSize(s.id)}
+              title={`${s.id === 'sm' ? 'Small' : s.id === 'md' ? 'Medium' : 'Large'} chat`}
+              aria-pressed={size === s.id}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <button className="lcw-ico" onClick={() => setMenuOpen((v) => !v)} title="More" aria-label="More">⋯</button>
         <button className="lcw-ico" onClick={() => useChat.getState().closeChat()} title="Close" aria-label="Close">✕</button>
         {menuOpen && friendId && <SafetyMenu targetId={friendId} onClose={() => setMenuOpen(false)} />}

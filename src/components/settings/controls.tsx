@@ -50,6 +50,7 @@ export function Slider({
   min = 0,
   max = 1,
   step = 0.01,
+  display,
 }: {
   label: string
   value: number
@@ -57,20 +58,30 @@ export function Slider({
   min?: number
   max?: number
   step?: number
+  /** optional read-out shown in the value pill (e.g. "80%"); omit to hide it */
+  display?: string
 }) {
+  // Fill the track up to the current value so the slider reads as a gauge, not a
+  // bare line. Exposed as a CSS var the stylesheet paints into the track gradient.
+  const pct = max > min ? Math.round(((value - min) / (max - min)) * 100) : 0
   return (
-    <label className="set-row">
-      <span>{label}</span>
+    <div className="set-slider">
+      <div className="set-slider-head">
+        <span>{label}</span>
+        {display !== undefined && <span className="set-slider-val">{display}</span>}
+      </div>
       <input
+        className="set-range"
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
         aria-label={label}
+        style={{ ['--fill' as string]: `${pct}%` }}
         onChange={(e) => onChange(Number(e.target.value))}
       />
-    </label>
+    </div>
   )
 }
 

@@ -10,26 +10,28 @@ import { useFrame } from '@react-three/fiber'
 import { useAnimations, useGLTF } from '@react-three/drei'
 import { Box3, type AnimationAction, type Object3D } from 'three'
 import { SkeletonUtils } from 'three-stdlib'
-import { characterById, type Character } from './characters'
+import { BASE_BODY } from './baseBody'
 import { AvatarRig, type AvatarRigHandle } from './AvatarRig'
 import { AvatarAnimator } from './AvatarAnimator'
 import { gaitAmount, type Locomotion } from './animation'
+import type { AvatarConfig } from './config'
 
-// A pre-built character rendered from its baked .glb (mesh + locomotion clips).
-// Two modes:
+// The ONE customizable base body, rendered from its baked .glb (mesh + clips) and
+// customized via the live AvatarConfig. Two modes:
 //   • animated (realm/world): a Locomotion ref drives clip selection + crossfade
 //     every frame — idle ⇄ walk ⇄ run, jump while airborne.
-//   • static (chooser/preview): no Locomotion → holds a single calm idle frame,
-//     i.e. NO preview animation, per the brief.
+//   • static (editor/preview): no Locomotion → holds a single calm idle frame.
 //
-// Until the character's .glb is dropped into /models/avatars, a ModelBoundary +
-// Suspense fallback renders the deterministic procedural rig (config.ts) so the
-// app is never broken — exactly the tree system's graceful-degrade contract.
+// Until `/models/avatars/base.glb` is baked, a ModelBoundary + Suspense fallback
+// renders the deterministic procedural rig (AvatarRig), driven by the SAME
+// AvatarConfig — so customization is fully live with zero art, and the glb later
+// drops in behind this boundary without touching callers.
 
 const AVATAR_DIR = '/models/avatars'
 
 interface CharacterAvatarProps {
-  characterId: string
+  /** the live look to render (skin / hair / eyes / clothing styles + colours) */
+  config: AvatarConfig
   /** live locomotion source; omit for a static (non-animated) display */
   locomotion?: React.RefObject<Locomotion>
 }
@@ -45,16 +47,14 @@ class ModelBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   }
 }
 
-export function CharacterAvatar({ characterId, locomotion }: CharacterAvatarProps) {
-  const character = characterById(characterId)
-
-  // Fallback = the procedural rig in this character's signature look. When a
-  // locomotion ref is present we also mount the procedural animator so the
-  // fallback still walks in-world; static previews stay still.
+export function CharacterAvatar({ config, locomotion }: CharacterAvatarProps) {
+  // Fallback = the procedural rig in the player's live look. When a locomotion ref
+  // is present we also mount the procedural animator so the fallback walks
+  // in-world; static previews stay still.
   const fallbackRig = useRef<AvatarRigHandle>(null)
   const fallback = (
-    <group scale={character.scale} position={[0, character.yOffset, 0]}>
-      <AvatarRig ref={fallbackRig} config={character.fallback} />
+    <group scale={BASE_BODY.scale} position={[0, BASE_BODY.yOffset, 0]}>
+      <AvatarRig ref={fallbackRig} config={config} />
       {locomotion && <AvatarAnimator rig={fallbackRig} locomotion={locomotion} lod="near" />}
     </group>
   )
@@ -62,13 +62,13 @@ export function CharacterAvatar({ characterId, locomotion }: CharacterAvatarProp
   return (
     <ModelBoundary fallback={fallback}>
       <Suspense fallback={fallback}>
-        <GLBCharacter character={character} locomotion={locomotion} />
+        <GLBCharacter locomotion={locomotion} />
       </Suspense>
     </ModelBoundary>
   )
 }
 
-/* ------------------------------------------------------------- glb character */
+/* ------------------------------------------------------------- glb base body */
 
 /** Resolve a baked clip by fuzzy name so the bake script's exact naming doesn't
  *  have to be perfect (e.g. "Walking", "mixamo.com|walk" both match 'walk'). */
@@ -78,14 +78,8 @@ function findAction(actions: Record<string, AnimationAction | null>, want: strin
   return hit ? actions[hit] ?? null : null
 }
 
-function GLBCharacter({
-  character,
-  locomotion,
-}: {
-  character: Character
-  locomotion?: React.RefObject<Locomotion>
-}) {
-  const { scene, animations } = useGLTF(`${AVATAR_DIR}/${character.model}`)
+function GLBCharacter({ locomotion }: { locomotion?: React.RefObject<Locomotion> }) {
+  const { scene, animations } = useGLTF(`${AVATAR_DIR}/${BASE_BODY.model}`)
 
   // SkeletonUtils.clone (NOT Object3D.clone) so each instance gets its own
   // skeleton — plain clone leaves skinned meshes bound to the original bones,
@@ -102,8 +96,8 @@ function GLBCharacter({
     return c
   }, [scene])
 
-  // Ground-align: shift so the model's feet sit at y=0 (Mixamo origins vary, and
-  // the chooser/world both place the avatar with feet on the floor).
+  // Ground-align: shift so the model's feet sit at y=0 (export origins vary, and
+  // the editor/world both place the avatar with feet on the floor).
   const groundY = useMemo(() => {
     cloned.updateMatrixWorld(true)
     const box = new Box3().setFromObject(cloned)
@@ -125,10 +119,8 @@ function GLBCharacter({
 
   const current = useRef<AnimationAction | null>(null)
 
-  // Start on idle. With a locomotion ref (in-world) idle plays and the frame
-  // loop takes over. Without one (chooser preview) we freeze idle on a natural
-  // mid-pose: a relaxed standing pose, never the splayed T-pose, and with no
-  // motion — i.e. "no preview animation" but still lifelike.
+  // Start on idle. With a locomotion ref (in-world) idle plays and the frame loop
+  // takes over. Without one (editor preview) we freeze idle on a natural mid-pose.
   useEffect(() => {
     const start = clips.idle ?? clips.walk ?? Object.values(actions)[0] ?? null
     if (start) {
@@ -152,8 +144,8 @@ function GLBCharacter({
     current.current = next
   }
 
-  // Animated mode: pick a clip from locomotion every frame. Without a
-  // locomotion ref we never touch the action again — it holds the idle pose.
+  // Animated mode: pick a clip from locomotion every frame. Without a locomotion
+  // ref we never touch the action again — it holds the idle pose.
   useFrame(() => {
     if (!locomotion) return
     const loco = locomotion.current
@@ -171,8 +163,8 @@ function GLBCharacter({
   return (
     <primitive
       object={cloned}
-      scale={character.scale}
-      position={[0, character.yOffset + groundY * character.scale, 0]}
+      scale={BASE_BODY.scale}
+      position={[0, BASE_BODY.yOffset + groundY * BASE_BODY.scale, 0]}
     />
   )
 }

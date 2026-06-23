@@ -37,7 +37,7 @@ function smooth(x: number) {
  * stars, all global lights, and fog imperatively through refs (no per-frame
  * re-renders), and renders rain through the windows + streaks on the glass.
  */
-export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rainDrops }: { quality: string; cinematic: boolean; rainScale: number; shadowMap: number; rainDrops: number }) {
+export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rainDrops }: { shadows: boolean; fog: boolean; rainScale: number; shadowMap: number; rainDrops: number }) {
   const dir = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
   const fog = useRef<FogExp2>(null)
@@ -86,8 +86,8 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
     d.shadow.mapSize.set(size, size)
     d.shadow.map?.dispose()
     d.shadow.map = null as unknown as typeof d.shadow.map
-    d.castShadow = quality !== 'low'
-  }, [shadowMap, quality])
+    d.castShadow = shadows
+  }, [shadowMap, shadows])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
@@ -146,7 +146,7 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
       dir.current.intensity = day * 0.34 * (1 - env.fog * 0.55)
       tmp.set('#ffe1b2').lerp(cDusk, dusk * 0.7)
       dir.current.color.copy(tmp)
-      dir.current.castShadow = quality !== 'low'
+      dir.current.castShadow = shadows
     }
     if (hemi.current) {
       // generous warm sky fill so the hall reads soft & cosy, not high-contrast.
@@ -161,7 +161,7 @@ export function DayNightWeather({ quality, cinematic, rainScale, shadowMap, rain
     }
     if (fog.current) {
       ;(fog.current.color as Color).copy(cHorizon)
-      fog.current.density = cinematic ? 0.004 + env.fog * 0.022 + (1 - day) * 0.004 : 0.0016
+      fog.current.density = fogOn ? 0.004 + env.fog * 0.022 + (1 - day) * 0.004 : 0.0016
     }
 
     // ---- sun / moon / stars ----

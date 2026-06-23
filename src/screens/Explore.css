@@ -99,26 +99,48 @@
   background: rgba(255, 206, 84, 0.2);
 }
 
-/* ---------- top-right cluster ---------- */
-.explore-topright {
+/* ---------- top-left: compact back pill ---------- */
+.explore-back {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  color: #f6e8c8;
+  background: rgba(20, 14, 8, 0.6);
+  border: 1px solid rgba(202, 168, 74, 0.4);
+  padding: 6px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.explore-back:hover {
+  background: rgba(202, 168, 74, 0.2);
+  border-color: rgba(255, 206, 84, 0.7);
+  transform: translateY(-1px);
+}
+
+/* ---------- top-right: compact bar (audio · brightness · menu) ---------- */
+.explore-topbar {
   position: absolute;
   top: 18px;
   right: 18px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   background: rgba(20, 14, 8, 0.55);
   border: 2px solid rgba(202, 168, 74, 0.4);
   border-radius: 999px;
-  padding: 7px 12px;
+  padding: 6px 11px;
   backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   z-index: 10;
 }
 .explore-iconbtn {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   color: #e9d3a0;
   background: rgba(255, 255, 255, 0.06);
@@ -139,10 +161,52 @@
   border-color: rgba(255, 206, 84, 0.55);
   box-shadow: 0 0 10px rgba(255, 206, 84, 0.3);
 }
-.explore-vol {
-  width: 84px;
+.explore-mini {
+  width: 66px;
   accent-color: var(--gold);
   cursor: pointer;
+}
+.explore-bar-sep {
+  width: 1px;
+  height: 22px;
+  background: rgba(233, 211, 160, 0.3);
+}
+.explore-sun {
+  color: #ffd98a;
+  flex: none;
+}
+
+/* ---------- hidden-UI restore chip (escape hatch) ---------- */
+.explore-restore {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  color: #f6e8c8;
+  background: rgba(20, 14, 8, 0.5);
+  border: 1px solid rgba(202, 168, 74, 0.35);
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s, border-color 0.2s;
+}
+.explore-restore:hover {
+  opacity: 1;
+  background: rgba(20, 14, 8, 0.7);
+  border-color: rgba(255, 206, 84, 0.6);
+}
+.explore-restore.perf {
+  color: #ffe6b0;
+  border-color: rgba(255, 206, 84, 0.55);
+  box-shadow: 0 0 14px rgba(255, 206, 84, 0.3);
+  opacity: 0.85;
 }
 
 /* ---------- hint ---------- */
@@ -165,39 +229,89 @@
   animation: pop-in 0.4s ease both;
 }
 
-/* ---------- camera view switch (Minecraft-style) ---------- */
+/* ---------- camera view switch (vertical, docked at the left edge) ---------- */
 .explore-cam {
   position: absolute;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 5px;
+  padding: 6px;
   background: rgba(20, 14, 8, 0.55);
   border: 1px solid rgba(202, 168, 74, 0.35);
-  border-radius: 999px;
-  backdrop-filter: blur(6px);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   z-index: 10;
 }
 .explore-cam-btn {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
   color: #f6e8c8;
   background: transparent;
   border: none;
-  padding: 7px 16px;
-  border-radius: 999px;
+  width: 72px;
+  padding: 9px 6px;
+  border-radius: 11px;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 .explore-cam-btn:hover { background: rgba(202, 168, 74, 0.18); }
 .explore-cam-btn.on {
-  background: linear-gradient(180deg, #d8b25a, #b8923a);
+  background: linear-gradient(180deg, #ffe08a, var(--gold));
   color: #1a1206;
   box-shadow: 0 2px 8px rgba(180, 140, 50, 0.5);
+}
+
+/* ---------- first-person onboarding hint ---------- */
+/* Anchored to the cam-switch column (its positioned ancestor): a glowing,
+   left-pointing arrow beside the FIRST button (the top item), shown once for 15s. */
+.explore-fp-hint {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 6px; /* matches the cam-column padding so it lines up with the First button */
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  white-space: nowrap;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff7e3;
+  background: linear-gradient(180deg, rgba(122, 82, 214, 0.95), rgba(90, 58, 170, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 18px rgba(150, 110, 255, 0.6);
+  z-index: 12;
+  animation: fp-hint-pulse 1.3s ease-in-out infinite;
+}
+.explore-fp-arrow {
+  font-size: 22px;
+  line-height: 1;
+  display: inline-block;
+  animation: fp-hint-nudge 1s ease-in-out infinite;
+}
+@keyframes fp-hint-pulse {
+  0%, 100% { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 14px rgba(150, 110, 255, 0.45); }
+  50%      { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 28px rgba(170, 130, 255, 0.95); }
+}
+@keyframes fp-hint-nudge {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(-5px); }
+}
+/* honour reduced-motion / animations-off (set on <html> by applyVisualSettings) */
+:root[data-animations='off'] .explore-fp-hint,
+:root[data-reduce-motion='true'] .explore-fp-hint,
+:root[data-animations='off'] .explore-fp-arrow,
+:root[data-reduce-motion='true'] .explore-fp-arrow {
+  animation: none;
 }
 
 /* ---------- settings panel ---------- */
@@ -707,4 +821,16 @@
   text-transform: uppercase;
   color: var(--accent, #ffce54);
   flex: none;
+}
+.room-roster-empty {
+  margin: 6px 4px 2px;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #d8c9ad;
+}
+.room-roster-empty span {
+  font-size: 11px;
+  opacity: 0.72;
 }

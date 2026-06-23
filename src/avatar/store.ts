@@ -1,35 +1,65 @@
 import { create } from 'zustand'
 import {
-  DEFAULT_CHARACTER_CONFIG,
-  normalizeCharacter,
-  type CharacterConfig,
-} from './characters'
+  DEFAULT_AVATAR,
+  normalizeAvatar,
+  randomizeAvatar,
+  type AvatarConfig,
+} from './config'
+import { characterById } from './characters'
 
-// Character choice store. Persists to localStorage immediately (same pattern as
-// the settings/realm stores) and is structured so that switching to InsForge
-// profile persistence later is a one-function change inside `save()`.
+// The player's customizable avatar look. ONE base body, fully customized via the
+// AvatarConfig (skin / hair / eyes / clothing styles + colours). Persists to
+// localStorage immediately (same pattern as the settings/realm stores) and is
+// structured so switching to InsForge profile persistence later is a one-function
+// change inside `save()` — the shape is already the profile schema's `avatar`
+// (see lib/types.ts).
 //
-// Reads the legacy v1 key as a fallback so players who customized an avatar
-// before the character system are migrated to the closest character instead of
-// being reset.
+// Migration: this store previously held a roster CharacterConfig ({ characterId }).
+// Those saves are mapped to the matching character's signature look so existing
+// players keep an avatar instead of being reset. The even-older v1 procedural
+// blob (`sf.avatar.v1`, already an AvatarConfig) is read as a direct fallback.
 
-const KEY = 'sf.character.v1'
+const KEY = 'sf.avatar.v2'
+const ROSTER_KEY = 'sf.character.v1'
 const LEGACY_KEY = 'sf.avatar.v1'
 
-function load(): CharacterConfig {
+/** Map a legacy roster choice ({ characterId }) onto a full base-body look. */
+function fromRoster(raw: string): AvatarConfig | null {
+  try {
+    const parsed = JSON.parse(raw) as { characterId?: string }
+    if (parsed && typeof parsed.characterId === 'string') {
+      // characterById always returns a character; its `fallback` is an AvatarConfig.
+      return normalizeAvatar(characterById(parsed.characterId).fallback)
+    }
+  } catch {
+    /* fall through */
+  }
+  return null
+}
+
+function load(): AvatarConfig {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return normalizeCharacter(JSON.parse(raw) as Partial<CharacterConfig>)
-    // migrate a pre-existing v1 procedural avatar, if any
+    if (raw) return normalizeAvatar(JSON.parse(raw) as Partial<AvatarConfig>)
+
+    // migrate a roster CharacterConfig -> the matching character's look
+    const roster = localStorage.getItem(ROSTER_KEY)
+    if (roster) {
+      const look = fromRoster(roster)
+      if (look) return look
+    }
+
+    // migrate a pre-roster v1 procedural avatar (already an AvatarConfig)
     const legacy = localStorage.getItem(LEGACY_KEY)
-    if (legacy) return normalizeCharacter(JSON.parse(legacy))
-    return { ...DEFAULT_CHARACTER_CONFIG }
+    if (legacy) return normalizeAvatar(JSON.parse(legacy) as Partial<AvatarConfig>)
+
+    return { ...DEFAULT_AVATAR }
   } catch {
-    return { ...DEFAULT_CHARACTER_CONFIG }
+    return { ...DEFAULT_AVATAR }
   }
 }
 
-function persist(cfg: CharacterConfig) {
+function persist(cfg: AvatarConfig) {
   try {
     localStorage.setItem(KEY, JSON.stringify(cfg))
   } catch {
@@ -38,9 +68,12 @@ function persist(cfg: CharacterConfig) {
 }
 
 interface AvatarState {
-  config: CharacterConfig
-  /** select a character by id (instant apply in the chooser) */
-  pick: (characterId: string) => void
+  config: AvatarConfig
+  /** patch one or more fields of the look (instant apply in the editor + world) */
+  set: (patch: Partial<AvatarConfig>) => void
+  /** roll a fresh random look */
+  randomize: () => void
+  /** back to the default look */
   reset: () => void
   /** Commit the current config. Today = localStorage; later = InsForge upsert.
    *  This is the single choke-point for backend persistence. */
@@ -50,14 +83,20 @@ interface AvatarState {
 export const useAvatar = create<AvatarState>((set, get) => ({
   config: load(),
 
-  pick: (characterId) => {
-    const config: CharacterConfig = { ...get().config, characterId }
+  set: (patch) => {
+    const config = normalizeAvatar({ ...get().config, ...patch })
+    set({ config })
+    persist(config)
+  },
+
+  randomize: () => {
+    const config = randomizeAvatar()
     set({ config })
     persist(config)
   },
 
   reset: () => {
-    const config = { ...DEFAULT_CHARACTER_CONFIG }
+    const config = { ...DEFAULT_AVATAR }
     set({ config })
     persist(config)
   },
@@ -66,7 +105,7 @@ export const useAvatar = create<AvatarState>((set, get) => ({
     const config = get().config
     persist(config)
     // FUTURE (InsForge): upsert into a `profiles` table keyed by auth.uid():
-    //   await insforge.from('profiles').upsert([{ id: userId, character: config }])
-    // The shape is already a plain JSON-serializable CharacterConfig.
+    //   await insforge.from('profiles').upsert([{ id: userId, avatar: config }])
+    // The shape is already a plain JSON-serializable AvatarConfig (lib/types.ts).
   },
 }))

@@ -3,19 +3,32 @@ import { useEffect, useRef } from 'react'
 import type { AvatarRigHandle } from './AvatarRig'
 import {
   airPose,
+  celebratePose,
+  deskSitPose,
   gaitAmount,
   gaitBounce,
+  happyPose,
   idlePose,
   landPose,
   locomotionPose,
+  sitPose,
   wavePose,
   type Locomotion,
   type Pose,
 } from './animation'
 import type { BoneName } from './rig'
 
-// Creator-only override so the Preview Animations bar can force a state.
-export type PreviewState = 'auto' | 'idle' | 'walk' | 'run' | 'jump' | 'wave'
+// Creator-only override so the Preview Animations / emote bar can force a state.
+export type PreviewState =
+  | 'auto'
+  | 'idle'
+  | 'walk'
+  | 'run'
+  | 'jump'
+  | 'wave'
+  | 'happy'
+  | 'celebrate'
+  | 'sit'
 
 /** Distance LOD tiers. `near` = full fidelity; `far` = cheap; `cull` = frozen. */
 export type Lod = 'near' | 'far' | 'cull'
@@ -104,8 +117,12 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
     if (preview === 'walk') pose = locomotionPose(phase, 1)
     else if (preview === 'run') pose = locomotionPose(phase, 1.8)
     else if (preview === 'wave') pose = wavePose(t)
+    else if (preview === 'happy') pose = happyPose(t)
+    else if (preview === 'celebrate') pose = celebratePose(t)
+    else if (preview === 'sit') pose = sitPose(t)
     else if (preview === 'jump') pose = airPose(Math.sin(t * 2) * 3)
     else if (preview === 'idle') pose = allowIdleMicro ? idlePose(t) : {}
+    else if (loco.seated) pose = deskSitPose(t) // auto, seated at a desk in-world
     else if (!loco.grounded) pose = airPose(loco.vy) // auto, airborne
     else if (land.current > 0.02) pose = landPose(land.current)
     else if (g > 0.06) pose = locomotionPose(phase, Math.max(1, g)) // walking/running
@@ -145,12 +162,16 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
       if (bone) bone.rotation.set(c.x, c.y, c.z)
     }
 
-    // ---- vertical bob on the root (walk/run) ----
+    // ---- vertical offset on the root ----
     const root = handle.root
     if (root) {
-      const bob = g > 0.06 && loco.grounded ? Math.abs(Math.sin(phase)) * gaitBounce(Math.max(1, g)) : 0
+      // Sit lowers the whole body so the seated pose reads as "on a chair" rather
+      // than floating; otherwise it's the gait bob (walk/run) and zero at rest.
+      let rootY: number
+      if (preview === 'sit' || (preview === 'auto' && loco.seated)) rootY = -0.26
+      else rootY = g > 0.06 && loco.grounded ? Math.abs(Math.sin(phase)) * gaitBounce(Math.max(1, g)) : 0
       // root.position.y is the avatar's own offset; keep x/z as-is
-      root.position.y = bob
+      root.position.y = rootY
     }
 
     // ---- blink (skip when far/culled) ----

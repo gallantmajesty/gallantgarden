@@ -4,7 +4,7 @@ import { DoubleSide, type InstancedMesh, type MeshStandardMaterial, Object3D, ty
 import { HALL } from './layout'
 import { columns } from './furniture'
 import { env } from './env'
-import { QUALITY_PRESET, useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 
 const IRON = '#241a12'
 const BRASS = '#caa84a'
@@ -21,8 +21,7 @@ const GLOW_EMISSIVE = '#ffb24a'
  * lanterns cost a single draw call. They flicker softly together.
  */
 export function Lanterns() {
-  const quality = useSettings((s) => s.quality)
-  const cinematic = useSettings((s) => s.cinematic)
+  const preset = useScenePreset()
   const { halfW, halfL, wallH } = HALL
 
   // four grand lanterns up high, one per quadrant (the "topmost four")
@@ -61,7 +60,7 @@ export function Lanterns() {
   // cap how many of the four grand lanterns actually cast light (the rest glow
   // via emissive + bloom and read identically): none on low, one on medium, all
   // four on high — see QUALITY_PRESET.grandLights.
-  const grandLights = QUALITY_PRESET[quality].grandLights
+  const grandLights = preset.grandLights
 
   return (
     <group>
@@ -74,7 +73,7 @@ export function Lanterns() {
       <PillarFrames positions={pillarGlow} />
 
       {/* all glowing cores in a single instanced draw */}
-      <GlowCores positions={cores} flicker={cinematic} />
+      <GlowCores positions={cores} flicker={preset.bloom} />
     </group>
   )
 }

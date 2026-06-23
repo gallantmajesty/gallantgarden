@@ -7,6 +7,7 @@ import { buildCollision, isBlocked, PLAYER_RADIUS, rayHit, topSupport } from './
 import { seatAnchors } from './furniture'
 import { isTypingFocused, joystick } from './input'
 import { useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 import { useWorld } from '../../store/world'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
@@ -33,9 +34,11 @@ export function PlayerController() {
   const gl = useThree((s) => s.gl)
   const camRef = useRef<TPerspectiveCamera>(null)
   const avatarRef = useRef<Group>(null)
+  // Camera far plane follows the View Distance axis (closer = less to draw).
+  const far = useScenePreset().far
   // Live locomotion fed to the avatar animator each frame (no React re-renders).
-  const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0 })
-  const characterId = useAvatar((s) => s.config.characterId)
+  const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
+  const avatarConfig = useAvatar((s) => s.config)
   const keys = useRef<Record<string, boolean>>({})
   const collision = useMemo(() => buildCollision(), [])
   const seats = useMemo(() => seatAnchors(), [])
@@ -56,8 +59,18 @@ export function PlayerController() {
     zoom: THIRD_DIST, // player-controlled third-person distance (mouse wheel)
     eye: STAND_EYE,
     nearSeat: null as number | null,
+    seatedInit: false, // one-time framing init when we first sit down
   })
   const drag = useRef({ on: false, lx: 0, ly: 0 })
+
+  // Recompute the projection when the far plane (View Distance) changes — setting
+  // camera.far alone doesn't refresh the matrix.
+  useEffect(() => {
+    const cam = camRef.current
+    if (!cam) return
+    cam.far = far
+    cam.updateProjectionMatrix()
+  }, [far])
 
   // keyboard (movement + camera-mode hotkeys)
   useEffect(() => {
@@ -67,9 +80,17 @@ export function PlayerController() {
       // Space, …) types normally instead of driving the player.
       if (isTypingFocused()) return
       keys.current[e.code] = true
+      // Camera hotkeys: F1/F2/F3 (legacy) and 1/2/3 (per the UI plan: First /
+      // Front / Third). Digit keys must not fire while a modifier is held so they
+      // never clash with browser/OS chords (e.g. Ctrl+1 tab-switch).
       if (e.code === 'F1') useSettings.getState().set('cameraMode', 'first')
       if (e.code === 'F2') useSettings.getState().set('cameraMode', 'third')
       if (e.code === 'F3') useSettings.getState().set('cameraMode', 'front')
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.code === 'Digit1') useSettings.getState().set('cameraMode', 'first')
+        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'front')
+        if (e.code === 'Digit3') useSettings.getState().set('cameraMode', 'third')
+      }
       // F5 cycles first -> front -> third (Minecraft-style), preventing refresh
       if (e.code === 'F5') {
         e.preventDefault()
@@ -158,23 +179,86 @@ export function PlayerController() {
     const st = p.current
     const k = keys.current
 
-    // ---- seated: lock to the chair, allow a little look-around ----
+    // ---- seated: lock to the chair, allow a little look-around. Stay in
+    //      THIRD-person by default so the player watches their own sitting
+    //      animation; only an explicit First-person choice drops to a seat-eye
+    //      view (and hides the body, since you'd be looking out of its head). ----
     const seatId = useWorld.getState().seat
     if (seatId != null) {
       const seat = seats[seatId]
+      const av = avatarRef.current
       if (seat) {
+        // One-time framing when we first sit: start the orbit at a 3/4 side view of
+        // the FACE (camera off to the front-side of the desk-facing avatar) and a
+        // comfortable distance. Done once so the player can then freely drag around.
+        if (!st.seatedInit) {
+          st.seatedInit = true
+          st.yaw = seat.yaw - Math.PI * 0.65
+          st.pitch = 0.12
+          st.zoom = 3.6
+          st.camDist = 3.6
+        }
+
         st.x = seat.pos[0]
         st.z = seat.pos[2]
         st.y = seat.pos[1]
+        st.vx = 0
+        st.vz = 0
         st.vy = 0
-        st.yaw = MathUtils.clamp(st.yaw, seat.yaw - 0.9, seat.yaw + 0.9)
-        st.pitch = MathUtils.clamp(st.pitch, -0.7, 0.4)
-        cam.position.set(seat.pos[0], seat.pos[1] + SEAT_EYE, seat.pos[2])
-        cam.rotation.set(st.pitch, st.yaw, 0)
+        st.grounded = true
+
+        // the seated body: parked at the chair, FACING the desk (seat.yaw + π — the
+        // avatar's forward is the opposite of the seat heading) so its forward-reaching
+        // hands rest on the desktop; loco.seated drives the desk-sit pose + root drop.
+        const l = loco.current
+        l.seated = true
+        l.speed = 0
+        l.grounded = true
+        l.vy = 0
+        l.turnRate = 0
+        if (av) {
+          av.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
+          av.rotation.y = seat.yaw + Math.PI
+        }
+
+        const headY = seat.pos[1] + SEAT_EYE
+        if (s.cameraMode === 'first') {
+          // First-person stays AS-IS: seat-eye view looking toward the desk, body
+          // hidden, only a little look-around (yaw clamped near the desk heading).
+          if (av) av.visible = false
+          st.yaw = MathUtils.clamp(st.yaw, seat.yaw - 0.9, seat.yaw + 0.9)
+          st.pitch = MathUtils.clamp(st.pitch, -0.7, 0.4)
+          cam.position.set(seat.pos[0], headY, seat.pos[2])
+          cam.rotation.set(st.pitch, st.yaw, 0)
+        } else {
+          // Third / front: a true ORBIT around the seated avatar. Drag rotates the
+          // camera a full half-turn each way (so the player can swing all the way
+          // around — front, side, back), wheel zooms, and it always looks at the
+          // avatar. The body itself stays put facing the desk.
+          if (av) av.visible = true
+          st.yaw = MathUtils.clamp(st.yaw, seat.yaw - Math.PI, seat.yaw + Math.PI)
+          st.pitch = MathUtils.clamp(st.pitch, -0.5, 0.55)
+          const dist = MathUtils.clamp(st.zoom, 2.4, 6)
+          const cp = Math.cos(st.pitch)
+          const ox = Math.sin(st.yaw) * cp
+          const oy = Math.sin(st.pitch)
+          const oz = Math.cos(st.yaw) * cp
+          // pull in if a wall/pillar sits between the camera and the avatar
+          const hit = rayHit(seat.pos[0], headY, seat.pos[2], ox, oy, oz, dist + 0.4, collision.blockers)
+          const d = Math.min(dist, hit - 0.4)
+          st.camDist = MathUtils.lerp(st.camDist, Math.max(1.8, d), 1 - Math.pow(0.00005, dt))
+          cam.position.set(
+            seat.pos[0] + ox * st.camDist,
+            Math.max(0.5, headY + oy * st.camDist),
+            seat.pos[2] + oz * st.camDist,
+          )
+          cam.lookAt(seat.pos[0], headY - 0.15, seat.pos[2])
+        }
       }
-      if (avatarRef.current) avatarRef.current.visible = false
       return
     }
+    // not seated → re-arm the one-time seated framing for next time
+    st.seatedInit = false
 
     // ---- intent ----
     const crouch = !!(k['ControlLeft'] || k['ControlRight'])
@@ -257,10 +341,15 @@ export function PlayerController() {
     } else {
       const dir = mode === 'front' ? 1 : -1 // in front vs behind
       const dist = mode === 'front' ? FRONT_DIST : st.zoom
-      // unit offset from the head toward the camera (slightly raised)
-      let ox = -fx * dir
-      let oy = -fy * dir + 0.32
-      let oz = -fz * dir
+      // unit offset from the head toward the camera (slightly raised). The camera
+      // sits along the view-forward vector scaled by `dir`: third-person (dir=-1)
+      // pulls it BEHIND the player so the body is framed ahead; front-person
+      // (dir=+1) pushes it ahead and the rotation below spins it to look back.
+      // (A previous leading `-` here negated this and parked the camera on the
+      //  far side, facing away — the avatar fell behind the camera in both modes.)
+      let ox = fx * dir
+      let oy = fy * dir + 0.32
+      let oz = fz * dir
       const ol = Math.hypot(ox, oy, oz) || 1
       ox /= ol
       oy /= ol
@@ -268,7 +357,11 @@ export function PlayerController() {
       // pull the camera in if a wall/pillar is between it and the player
       const hit = rayHit(st.x, headY, st.z, ox, oy, oz, dist + 0.4, collision.blockers)
       const d = Math.min(dist, hit - 0.4)
-      st.camDist = MathUtils.lerp(st.camDist, Math.max(1.4, d), 1 - Math.pow(0.00005, dt))
+      // Keep a real gap between camera and character so the body is ALWAYS framed
+      // — never let wall-collision collapse the camera onto (or inside) the
+      // avatar. Third-person needs more room than the tighter front view.
+      const minDist = mode === 'front' ? 1.6 : 2.8
+      st.camDist = MathUtils.lerp(st.camDist, Math.max(minDist, d), 1 - Math.pow(0.00005, dt))
       cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
       if (mode === 'front') cam.rotation.set(-st.pitch, st.yaw + Math.PI, 0)
       else cam.rotation.set(st.pitch, st.yaw, 0)
@@ -280,10 +373,15 @@ export function PlayerController() {
       av.visible = mode !== 'first'
       av.position.set(st.x, st.y, st.z)
       const prevYaw = av.rotation.y
-      av.rotation.y = MathUtils.lerp(av.rotation.y, st.faceYaw, 1 - Math.pow(0.001, dt))
+      // Smooth body turn along the SHORTEST arc: ease over the wrapped delta so a
+      // heading change across ±π (e.g. spinning around) rotates the short way
+      // instead of unwinding a near-full turn (the old "sudden 180° flip").
+      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
+      av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       // feed the procedural animator: horizontal speed drives the gait, grounded
       // / vy drive jump+land, and the smoothed facing delta drives turn-lean.
       const l = loco.current
+      l.seated = false
       l.speed = Math.hypot(st.vx, st.vz)
       l.grounded = st.grounded
       l.vy = st.vy
@@ -309,13 +407,16 @@ export function PlayerController() {
 
   return (
     <>
-      <PerspectiveCamera ref={camRef} makeDefault fov={72} near={0.08} far={1400} rotation-order="YXZ" />
+      <PerspectiveCamera ref={camRef} makeDefault fov={72} near={0.08} far={far} rotation-order="YXZ" />
       {/* The player's body: the chosen pre-built character, animated in-world by
           its own baked locomotion clips (CharacterAvatar reads `loco` every
-          frame). Hidden in first-person (toggled each frame). Falls back to a
-          procedural rig until the character's .glb is baked in. */}
-      <group ref={avatarRef} visible={false}>
-        <CharacterAvatar characterId={characterId} locomotion={loco} />
+          frame). Visibility is re-asserted every frame (hidden only in
+          first-person / while seated); we start it visible so the character is
+          on-screen immediately in the default third-person view rather than
+          flashing in after the first frame. Falls back to a procedural rig until
+          the character's .glb is baked in. */}
+      <group ref={avatarRef} visible={useSettings.getState().cameraMode !== 'first'}>
+        <CharacterAvatar config={avatarConfig} locomotion={loco} />
       </group>
     </>
   )

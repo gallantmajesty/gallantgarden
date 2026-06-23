@@ -181,6 +181,10 @@ function ProfileBody({
         if (!cancelled) setRemoteCounts({ followers: fr.length, following: fg.length })
       })
     } else {
+      // Own profile: refresh the follower/following counts from the server so the
+      // header matches the (always-live) followers list. The hydrate-time snapshot
+      // goes stale the moment someone else follows you. Study counts load too.
+      void useSocial.getState().refreshCounts()
       void loadStudyCounts(view.id).then((c) => {
         if (!cancelled) setStudyCounts(c)
       })

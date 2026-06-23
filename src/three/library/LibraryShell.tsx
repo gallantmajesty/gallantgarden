@@ -6,7 +6,7 @@ import { balconyPlatforms, columns, GALLERY_FRONT_Z, staircases } from './furnit
 import { makePlasterTexture, makeStainedGlassTexture, makeWoodTexture } from './textures'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { env } from './env'
-import { QUALITY_PRESET, useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 
 const STONE = '#9c8158' // warmer honey-stone (was a washed-out cream)
 const STONE_DARK = '#6f5a39'
@@ -20,8 +20,10 @@ const CEIL = '#23170d'
  * grand staircases, and big arched glass. All procedural.
  */
 export function LibraryShell() {
-  const preset = QUALITY_PRESET[useSettings((s) => s.quality)]
-  const quality = useSettings((s) => s.quality)
+  const preset = useScenePreset()
+  // "not the lowest tier" — gates the one fireplace point-light, off only when
+  // both shadows and post-processing are disabled (the Low preset / heavy custom).
+  const realLights = preset.shadows || preset.bloom
   const wood = useMemo(() => makeWoodTexture(14, 7), [])
   const balconyWood = useMemo(() => makeWoodTexture(10, 13), [])
   const plaster = useMemo(() => makePlasterTexture(4, 19), [])
@@ -137,7 +139,7 @@ export function LibraryShell() {
         </mesh>
         {/* real firelight — dropped on Low (the emissive embers + bloom still
             read as a fire) so the weakest GPUs carry one fewer dynamic light */}
-        {quality !== 'low' && <pointLight position={[0, 1.2, 1.2]} intensity={9} distance={14} decay={2} color="#ff8a3a" />}
+        {realLights && <pointLight position={[0, 1.2, 1.2]} intensity={9} distance={14} decay={2} color="#ff8a3a" />}
       </group>
     </group>
   )

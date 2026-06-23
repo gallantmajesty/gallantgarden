@@ -292,10 +292,11 @@
   right: 312px;
   bottom: 18px;
   z-index: 42;
-  width: 340px;
+  /* size is set by the .lcw-sm / .lcw-md / .lcw-lg modifiers below */
+  width: 420px;
   max-width: calc(100vw - 332px);
-  height: 460px;
-  max-height: 72svh;
+  height: 560px;
+  max-height: 84svh;
   display: flex;
   flex-direction: column;
   border-radius: 18px;
@@ -305,6 +306,41 @@
   backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
   animation: lcw-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1), height 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* user-selectable sizes (persisted) — bigger + easier to read on desktop */
+.lcw.lcw-sm { width: 340px; height: 460px; }
+.lcw.lcw-md { width: 420px; height: 560px; }
+.lcw.lcw-lg { width: 520px; height: 680px; }
+
+/* size switcher in the header */
+.lcw-size {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-right: 2px;
+  border-radius: 9px;
+  background: var(--chip-bg);
+  flex: none;
+}
+.lcw-size-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+.lcw-size-btn:hover { color: var(--surface-ink); }
+.lcw-size-btn.on {
+  background: var(--surface);
+  color: var(--surface-ink);
+  box-shadow: 0 1px 2px rgba(8, 46, 74, 0.18);
 }
 @keyframes lcw-in {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
@@ -366,11 +402,23 @@
 .lcw-msgs {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scroll-padding-bottom: 8px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
+/* calmer, thinner scrollbar so a taller window still reads clean */
+.lcw-msgs::-webkit-scrollbar { width: 8px; }
+.lcw-msgs::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.lcw-msgs::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); background-clip: padding-box; }
 .lcw-hint {
   text-align: center;
   font-size: 12px;
@@ -379,23 +427,30 @@
 }
 .lcw-msg {
   display: flex;
-  margin-top: 6px;
+  margin-top: 9px;
 }
 .lcw-msg.grouped {
-  margin-top: 1px;
+  margin-top: 2px;
 }
 .lcw-msg.mine {
   justify-content: flex-end;
 }
 .lcw-bubble {
-  max-width: 78%;
-  padding: 8px 12px;
+  max-width: 80%;
+  padding: 9px 13px;
   border-radius: 16px;
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 14.5px;
+  line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
 }
+/* roomier, more legible bubbles in the large layout */
+.lcw-lg .lcw-bubble {
+  max-width: 82%;
+  padding: 10px 15px;
+  font-size: 15.5px;
+}
+.lcw-lg .lcw-msgs { padding: 18px 18px; }
 .lcw-msg.theirs .lcw-bubble {
   background: var(--surface);
   border: 1px solid var(--surface-border);

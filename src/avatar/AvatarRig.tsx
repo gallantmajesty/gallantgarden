@@ -2,16 +2,20 @@ import { useImperativeHandle, useMemo, useRef } from 'react'
 import { Group, type MeshStandardMaterial } from 'three'
 import {
   boxGeo,
+  eyeHex,
   hairHex,
   shoeHex,
   skinHex,
   skirtGeo,
   sphereGeo,
   taperGeo,
+  torsoGeo,
   torusGeo,
-  clothHex,
+  topHex,
+  bottomHex,
   sharedMaterial,
   type AvatarConfig,
+  type TorsoRing,
 } from './config'
 import { heightScale, proportionsFor, type BoneName, type Proportions } from './rig'
 
@@ -29,6 +33,35 @@ export interface AvatarRigHandle {
 
 type Mat = MeshStandardMaterial
 type V3 = [number, number, number]
+
+/**
+ * Cross-section rings for the single-mesh torso (see config.torsoGeo), expressed
+ * in SPINE-LOCAL space (the mesh is parented to the spine bone, which sits at
+ * hips + 0.05). The profile is deliberately simple — hips → slight waist pinch →
+ * chest → slightly-wider shoulders → taper to the neck base — so the body reads
+ * as one clean Roblox-style volume, never a stack of segments. Female gets a
+ * forward-offset, slightly deeper chest ring (`cz`) for a subtle bust without
+ * thickening the back. Widths stay inside the arm pivots (±shoulderW) so straight
+ * arms still hang clear of the torso.
+ */
+function torsoRings(P: Proportions, bodyType: AvatarConfig['bodyType']): TorsoRing[] {
+  const female = bodyType === 'female'
+  const spine = P.spineLen
+  const chest = P.chestLen
+  return [
+    // hips — meets the pelvis/leg tops
+    { y: -0.06, hw: P.hipBoneW * 1.04, hd: P.torsoD * 0.92 },
+    // waist — the slight taper
+    { y: spine * 0.5, hw: P.waistW * 1.02, hd: P.torsoD * 0.84 },
+    // chest — full volume (bust pushes forward for female)
+    { y: spine + chest * 0.38, hw: P.chestW, hd: P.torsoD * (female ? 1.0 : 0.96), cz: female ? P.bust * 0.6 : 0 },
+    // shoulders — widest, but well inside the ±shoulderW arm pivots
+    { y: spine + chest * 0.72, hw: P.shoulderW * 0.82, hd: P.torsoD * 0.82 },
+    // neck base — taper in so the shoulders round into the neck (ends just below
+    // the neck joint at chest*0.86 so the neck stays visible above the torso)
+    { y: spine + chest * 0.82, hw: P.neckR * 1.55, hd: P.neckR * 1.55 },
+  ]
+}
 
 /**
  * A stylized fantasy humanoid assembled from a handful of shared primitive
@@ -64,12 +97,13 @@ export function AvatarRig({
   // shared material lookups (cached globally by colour/finish)
   const skin = sharedMaterial(skinHex(config.skin), 0.78)
   const hairM = sharedMaterial(hairHex(config.hairColor), 0.62)
-  const topM = sharedMaterial(clothHex(config.topColor), 0.82)
-  const botM = sharedMaterial(clothHex(config.bottomColor), 0.82)
-  const shoeM = sharedMaterial(shoeHex(config.shoesColor), 0.5)
+  // Garment colour is a fixed property of the cosmetic item (no per-avatar picker).
+  const topM = sharedMaterial(topHex(config.top), 0.82)
+  const botM = sharedMaterial(bottomHex(config.bottom), 0.82)
+  const shoeM = sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
   const eyeWhite = sharedMaterial('#f6f3ec', 0.3)
-  const iris = sharedMaterial('#5b3a22', 0.25)
+  const iris = sharedMaterial(eyeHex(config.eyes), 0.25)
   const pupil = sharedMaterial('#1b1410', 0.2)
   const mouthM = sharedMaterial('#9c5b54', 0.55)
 
@@ -84,26 +118,18 @@ export function AvatarRig({
     <group ref={rootRef} scale={s}>
       {/* hips: pelvis pivot. spine rises from here; legs hang from root below. */}
       <group ref={bind('hips')} position={[0, P.hipsY, 0]}>
-        {/* pelvis */}
-        <Blob m={botM} s={[P.hipBoneW, 0.12, P.torsoD]} p={[0, -0.02, 0]} cast />
+        {/* pelvis: a slim pants waistband under the shirt (the only torso piece in
+            the bottom colour) — it tucks under the single torso mesh and meets the
+            leg tops, so there is no same-colour stacked segment. */}
+        <Blob m={botM} s={[P.hipBoneW, 0.13, P.torsoD * 0.9]} p={[0, -0.04, 0]} cast />
 
         {/* spine -> chest -> neck -> head */}
         <group ref={bind('spine')} position={[0, 0.05, 0]}>
-          {/* waist: narrows the silhouette (figure definition) */}
-          <Blob m={topM} s={[P.waistW, P.spineLen * 0.62, P.torsoD * 0.9]} p={[0, P.spineLen * 0.5, 0]} cast />
+          {/* ONE continuous torso mesh (hips -> waist -> chest -> shoulders),
+              replacing the old stack of ellipsoids — clean Roblox-style silhouette. */}
+          <mesh geometry={torsoGeo(torsoRings(P, config.bodyType))} material={topM} castShadow />
 
           <group ref={bind('chest')} position={[0, P.spineLen, 0]}>
-            {/* rib cage */}
-            <Blob m={topM} s={[P.chestW, P.chestLen * 0.6, P.torsoD]} p={[0, P.chestLen * 0.42, 0]} cast />
-            {/* shoulder yoke blends the arms into the torso */}
-            <Blob m={topM} s={[P.shoulderW + P.shoulderR, P.chestLen * 0.26, P.torsoD * 0.82]} p={[0, P.chestLen * 0.72, 0]} />
-            {config.bodyType === 'female' && P.bust > 0 && (
-              <>
-                <Blob m={topM} s={[P.chestW * 0.5, P.chestLen * 0.34, P.bust + P.torsoD * 0.4]} p={[-P.chestW * 0.42, P.chestLen * 0.34, P.torsoD * 0.42]} />
-                <Blob m={topM} s={[P.chestW * 0.5, P.chestLen * 0.34, P.bust + P.torsoD * 0.4]} p={[P.chestW * 0.42, P.chestLen * 0.34, P.torsoD * 0.42]} />
-              </>
-            )}
-
             <Top config={config} P={P} topM={topM} />
 
             {/* neck + head */}
@@ -164,55 +190,55 @@ function Head({
 }) {
   const r = P.headR
   // the head sits above the neck joint; everything below is in head-centre space
-  const cy = r * 0.95
-  const fz = r * 0.78 // face plane (front +Z), eyes/nose/mouth ride near here
-  const eyeX = r * 0.34
-  const eyeY = r * 0.06
-  const browArch = bodyType === 'female' ? 0.18 : 0.05
+  const cy = r * 0.92
+  const fz = r * 0.72 // face plane (front +Z), eyes/nose/mouth ride near here
+  // big, low-set chibi eyes spaced wide across the face
+  const eyeX = r * 0.4
+  const eyeY = -r * 0.05
+  const browArch = bodyType === 'female' ? 0.16 : 0.06
   return (
     <group position={[0, cy, 0]}>
-      {/* cranium: egg-shaped (taller than wide, slightly deeper) */}
-      <Blob m={skin} s={[r * 0.92, r * 1.04, r * 0.97]} p={[0, 0, 0]} cast />
-      {/* jaw / chin taper */}
-      <Blob m={skin} s={[r * 0.62, r * 0.5, r * 0.66]} p={[0, -r * 0.62, r * 0.12]} />
-      {/* cheeks */}
-      <Blob m={skin} s={[r * 0.34, r * 0.3, r * 0.34]} p={[-r * 0.5, -r * 0.18, r * 0.46]} />
-      <Blob m={skin} s={[r * 0.34, r * 0.3, r * 0.34]} p={[r * 0.5, -r * 0.18, r * 0.46]} />
+      {/* cranium: a big, near-round chibi head (the silhouette's defining mass) */}
+      <Blob m={skin} s={[r * 0.99, r * 1.0, r * 0.97]} p={[0, 0, 0]} cast />
+      {/* soft, gentle jaw — no harsh chin, just rounds the lower head */}
+      <Blob m={skin} s={[r * 0.74, r * 0.5, r * 0.74]} p={[0, -r * 0.64, r * 0.04]} />
 
-      {/* eyes: both clearly visible, aligned on a common line */}
+      {/* eyes: big and shiny, both clearly visible on a common line */}
       <Eye x={-eyeX} y={eyeY} z={fz} r={r} eyeWhite={eyeWhite} iris={iris} pupil={pupil} />
       <Eye x={eyeX} y={eyeY} z={fz} r={r} eyeWhite={eyeWhite} iris={iris} pupil={pupil} />
 
-      {/* brows */}
-      <mesh geometry={boxGeo(r * 0.34, r * 0.07, r * 0.08)} material={hairM} position={[-eyeX, eyeY + r * 0.26, fz + r * 0.06]} rotation={[0, 0, browArch]} />
-      <mesh geometry={boxGeo(r * 0.34, r * 0.07, r * 0.08)} material={hairM} position={[eyeX, eyeY + r * 0.26, fz + r * 0.06]} rotation={[0, 0, -browArch]} />
+      {/* brows: short, soft strokes above each eye */}
+      <mesh geometry={boxGeo(r * 0.3, r * 0.055, r * 0.06)} material={hairM} position={[-eyeX, eyeY + r * 0.34, fz + r * 0.04]} rotation={[0, 0, browArch]} />
+      <mesh geometry={boxGeo(r * 0.3, r * 0.055, r * 0.06)} material={hairM} position={[eyeX, eyeY + r * 0.34, fz + r * 0.04]} rotation={[0, 0, -browArch]} />
 
-      {/* nose: bridge + tip */}
-      <Blob m={skin} s={[r * 0.08, r * 0.2, r * 0.1]} p={[0, eyeY - r * 0.12, fz + r * 0.14]} />
-      <Blob m={skin} s={[r * 0.11, r * 0.1, r * 0.12]} p={[0, eyeY - r * 0.3, fz + r * 0.16]} />
+      {/* nose: a single tiny soft tip (no bridge — keeps the face clean) */}
+      <Blob m={skin} s={[r * 0.07, r * 0.06, r * 0.08]} p={[0, eyeY - r * 0.26, fz + r * 0.12]} />
 
-      {/* mouth (fuller for female) */}
-      <Blob m={mouthM} s={[r * 0.2, bodyType === 'female' ? r * 0.07 : r * 0.05, r * 0.05]} p={[0, -r * 0.52, fz + r * 0.06]} />
+      {/* mouth: a small soft smile (fuller for female) */}
+      <Blob m={mouthM} s={[r * 0.16, bodyType === 'female' ? r * 0.06 : r * 0.045, r * 0.05]} p={[0, -r * 0.5, fz + r * 0.04]} />
 
-      {/* ears */}
-      <Blob m={skin} s={[r * 0.1, r * 0.18, r * 0.13]} p={[-r * 0.9, eyeY, -r * 0.02]} />
-      <Blob m={skin} s={[r * 0.1, r * 0.18, r * 0.13]} p={[r * 0.9, eyeY, -r * 0.02]} />
+      {/* ears: small, tucked to the sides */}
+      <Blob m={skin} s={[r * 0.09, r * 0.16, r * 0.12]} p={[-r * 0.95, eyeY, -r * 0.04]} />
+      <Blob m={skin} s={[r * 0.09, r * 0.16, r * 0.12]} p={[r * 0.95, eyeY, -r * 0.04]} />
 
       {/* blink lids: skin quads that drop over the eyes (scale.y 0 open → 1 closed) */}
-      <group ref={lidsRef} scale={[1, 0, 1]} position={[0, eyeY + r * 0.02, fz + r * 0.04]}>
-        <mesh geometry={boxGeo(r * 0.34, r * 0.22, r * 0.04)} material={skin} position={[-eyeX, 0, 0]} />
-        <mesh geometry={boxGeo(r * 0.34, r * 0.22, r * 0.04)} material={skin} position={[eyeX, 0, 0]} />
+      <group ref={lidsRef} scale={[1, 0, 1]} position={[0, eyeY + r * 0.04, fz + r * 0.06]}>
+        <mesh geometry={boxGeo(r * 0.36, r * 0.34, r * 0.05)} material={skin} position={[-eyeX, 0, 0]} />
+        <mesh geometry={boxGeo(r * 0.36, r * 0.34, r * 0.05)} material={skin} position={[eyeX, 0, 0]} />
       </group>
     </group>
   )
 }
 
 function Eye({ x, y, z, r, eyeWhite, iris, pupil }: { x: number; y: number; z: number; r: number; eyeWhite: Mat; iris: Mat; pupil: Mat }) {
+  // Big chibi eye: a tall white oval, a large coloured iris, a pupil, and a small
+  // white catchlight (the eyeWhite material) that gives it a lively, shiny read.
   return (
     <group position={[x, y, z]}>
-      <Blob m={eyeWhite} s={[r * 0.2, r * 0.15, r * 0.12]} p={[0, 0, 0]} />
-      <Blob m={iris} s={[r * 0.1, r * 0.1, r * 0.08]} p={[0, 0, r * 0.08]} />
-      <Blob m={pupil} s={[r * 0.05, r * 0.05, r * 0.05]} p={[0, 0, r * 0.13]} />
+      <Blob m={eyeWhite} s={[r * 0.24, r * 0.3, r * 0.13]} p={[0, 0, 0]} />
+      <Blob m={iris} s={[r * 0.18, r * 0.21, r * 0.1]} p={[0, -r * 0.02, r * 0.06]} />
+      <Blob m={pupil} s={[r * 0.09, r * 0.11, r * 0.06]} p={[0, -r * 0.02, r * 0.11]} />
+      <Blob m={eyeWhite} s={[r * 0.05, r * 0.06, r * 0.03]} p={[r * 0.06, r * 0.08, r * 0.14]} />
     </group>
   )
 }
@@ -286,6 +312,27 @@ function Hair({ config, P, hairM }: { config: AvatarConfig; P: Proportions; hair
           <Blob m={hairM} s={[r * 0.8, r * 0.2, r * 0.36]} p={[0, cy + r * 0.52, r * 0.62]} r={[0.5, 0, 0]} />
         </group>
       )
+    case 'twintails':
+      // a soft cap + forehead fringe, with a bunched ponytail tied high on each
+      // side that tapers down past the shoulders — the female starter look.
+      return (
+        <group>
+          {cap([r * 1.08, r * 1.04, r * 1.08], 0.15)}
+          {/* fringe across the forehead */}
+          <Blob m={hairM} s={[r * 0.88, r * 0.26, r * 0.4]} p={[0, cy + r * 0.5, r * 0.64]} r={[0.5, 0, 0]} />
+          {/* face-framing wisps */}
+          <Blob m={hairM} s={[r * 0.34, r * 0.6, r * 0.4]} p={[-r * 0.86, cy + r * 0.15, r * 0.12]} />
+          <Blob m={hairM} s={[r * 0.34, r * 0.6, r * 0.4]} p={[r * 0.86, cy + r * 0.15, r * 0.12]} />
+          {[-1, 1].map((sx) => (
+            <group key={sx}>
+              {/* tie knot high on the side of the head */}
+              <Blob m={hairM} s={[r * 0.3, r * 0.3, r * 0.3]} p={[sx * r * 0.95, cy + r * 0.6, -r * 0.02]} />
+              {/* ponytail: a fuller upper bunch tapering to a tip, angled outward */}
+              <Strand m={hairM} len={r * 2.0} rTop={r * 0.44} rBot={r * 0.13} p={[sx * r * 1.08, cy + r * 0.52, -r * 0.05]} rot={[-0.12, 0, sx * 0.5]} />
+            </group>
+          ))}
+        </group>
+      )
     default:
       return null
   }
@@ -317,20 +364,24 @@ function Arm({
   // Y is relative to the hips group (which already sits at P.hipsY).
   return (
     <group ref={bind(upper)} position={[sign * P.shoulderW, 0.05 + P.spineLen + P.chestLen * 0.72, 0]}>
-      {/* deltoid cap */}
-      <Blob m={armMat} s={[P.shoulderR * 1.2, P.shoulderR * 1.2, P.shoulderR * 1.2]} p={[0, 0, 0]} cast />
+      {/* shoulder is ALWAYS clothed (every top is a garment): a smooth, modest
+          deltoid in the top colour, sized to merge into the torso's shoulder ring
+          rather than read as a ball. (Previously this used the arm colour, so a tee
+          exposed a big skin sphere where the old shirt yoke used to cover it.) */}
+      <Blob m={topM} s={[P.shoulderR * 1.05, P.shoulderR * 0.95, P.shoulderR * 1.05]} p={[0, 0, 0]} cast />
       <mesh geometry={taperGeo(P.shoulderR, P.elbowR, P.upperArm)} material={armMat} position={[0, -P.upperArm / 2, 0]} castShadow />
-      {/* short sleeve cap for tees */}
-      {!sleeved && <Blob m={topM} s={[P.shoulderR * 1.32, P.upperArm * 0.32, P.shoulderR * 1.32]} p={[0, -P.upperArm * 0.22, 0]} />}
+      {/* tee: a short sleeve over the top of the upper arm (forearm stays skin) */}
+      {!sleeved && (
+        <mesh geometry={taperGeo(P.shoulderR * 1.08, P.shoulderR * 0.9, P.upperArm * 0.44)} material={topM} position={[0, -P.upperArm * 0.22, 0]} castShadow />
+      )}
 
       <group ref={bind(lower)} position={[0, -P.upperArm, 0]}>
         {/* elbow */}
         <Blob m={skin} s={[P.elbowR, P.elbowR, P.elbowR]} p={[0, 0, 0]} />
         <mesh geometry={taperGeo(P.elbowR, P.wristR, P.lowerArm)} material={skin} position={[0, -P.lowerArm / 2, 0]} castShadow />
-        {/* hand: palm + thumb */}
-        <group position={[0, -P.lowerArm - P.wristR * 0.4, 0]}>
-          <Blob m={skin} s={[P.wristR * 1.25, P.handLen * 0.55, P.wristR * 0.7]} p={[0, -P.handLen * 0.4, 0]} />
-          <Blob m={skin} s={[P.wristR * 0.5, P.wristR * 0.7, P.wristR * 0.5]} p={[sign * P.wristR * 0.9, -P.handLen * 0.3, P.wristR * 0.2]} />
+        {/* hand: a single rounded chibi mitt */}
+        <group position={[0, -P.lowerArm - P.wristR * 0.3, 0]}>
+          <Blob m={skin} s={[P.wristR * 1.15, P.handLen * 0.62, P.wristR * 0.95]} p={[0, -P.handLen * 0.42, 0]} cast />
         </group>
       </group>
     </group>

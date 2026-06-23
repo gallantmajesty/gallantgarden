@@ -21,6 +21,12 @@ interface SocialState {
   ready: boolean
 
   hydrate: (meId: string) => Promise<void>
+  /** Re-pull my follower/following counts from the server. Followers change
+   *  because OTHER users follow me (no optimistic local signal), so the profile
+   *  header must refresh this from the source of truth, not trust the hydrate-
+   *  time snapshot. Keeps the header count in lock-step with the followers list,
+   *  which is always fetched live. */
+  refreshCounts: () => Promise<void>
   isFollowing: (targetId: string) => boolean
   /** Optimistically follow/unfollow `targetId`; returns the new follow state. */
   toggleFollow: (targetId: string) => Promise<boolean>
@@ -36,6 +42,13 @@ export const useSocial = create<SocialState>((set, get) => ({
   hydrate: async (meId) => {
     const [ids, counts] = await Promise.all([getFollowingIds(meId), getCounts(meId)])
     set({ meId, following: new Set(ids), myCounts: counts, ready: true })
+  },
+
+  refreshCounts: async () => {
+    const meId = get().meId
+    if (!meId) return
+    const counts = await getCounts(meId)
+    set({ myCounts: counts })
   },
 
   isFollowing: (targetId) => get().following.has(targetId),

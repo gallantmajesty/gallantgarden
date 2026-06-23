@@ -1,7 +1,7 @@
 import { Fragment, useMemo } from 'react'
 import { DoubleSide } from 'three'
 import { groundTables, TABLE, upperTables } from './furniture'
-import { QUALITY_PRESET, useSettings, type Quality } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 import { InstancedBoxes, type BoxItem } from './Instanced'
 
 const WOOD = '#5c3a1d'
@@ -47,8 +47,12 @@ const CHAIR_PARTS: { pos: [number, number, number]; size: [number, number, numbe
  * is gated by graphics quality, and never casts shadows.
  */
 export function StudyTables() {
-  const quality = useSettings((s) => s.quality)
-  const lampLights = QUALITY_PRESET[quality].lampLights
+  const preset = useScenePreset()
+  const lampLights = preset.lampLights
+  // Desk clutter scales with the Mesh-LOD axis: stacked books appear below max
+  // bias (medium+), the full lived-in clutter only at the lowest bias (high).
+  const rich = preset.lodBias < 1.5
+  const full = preset.pillarDetail
   const tables = useMemo(() => {
     const g = groundTables().map((p, i) => ({ ...p, seed: 1000 + i, idx: i }))
     const u = upperTables().map((p, i) => ({ ...p, seed: 5000 + i, idx: 100 + i }))
@@ -100,7 +104,7 @@ export function StudyTables() {
       <InstancedBoxes items={chairs} roughness={0.75} />
 
       {tables.map((t, i) => (
-        <TableDressing key={t.idx} pos={t.pos} seed={t.seed} quality={quality} light={Number.isFinite(litStep) && i % litStep === 0} />
+        <TableDressing key={t.idx} pos={t.pos} seed={t.seed} rich={rich} full={full} light={Number.isFinite(litStep) && i % litStep === 0} />
       ))}
     </group>
   )
@@ -109,12 +113,10 @@ export function StudyTables() {
 /** The per-table "hero" props — the signature banker's lamp plus, on higher
  *  quality, the lived-in clutter (books, mug, plant, hourglass…). None of it
  *  casts shadows; the structure above already grounds the tables. */
-function TableDressing({ pos, seed, light, quality }: { pos: [number, number, number]; seed: number; light: boolean; quality: Quality }) {
+function TableDressing({ pos, seed, light, rich, full }: { pos: [number, number, number]; seed: number; light: boolean; rich: boolean; full: boolean }) {
   const topY = TABLE.h
   const { l: L } = TABLE
   const rand = useMemo(() => rng(seed), [seed])
-  const rich = quality !== 'low' // medium + high show stacked books; high shows it all
-  const full = quality === 'high'
 
   const dressing = useMemo(() => {
     const r = rng(seed + 7)

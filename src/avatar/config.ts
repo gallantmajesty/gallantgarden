@@ -5,34 +5,44 @@
 
 import {
   BoxGeometry,
+  BufferGeometry,
   CapsuleGeometry,
   CylinderGeometry,
+  Float32BufferAttribute,
   LatheGeometry,
   MeshStandardMaterial,
   SphereGeometry,
   TorusGeometry,
   Vector2,
-  type BufferGeometry,
 } from 'three'
 
-export const AVATAR_SCHEMA_VERSION = 1
+// v3 reframed clothing as predefined cosmetic ITEMS rather than free colour
+// swaps: garments (top/bottom/shoes) are item ids whose colour is baked into the
+// item (GARMENT_HEX) and unlocked via progression — there are no per-garment
+// colour pickers. Free customization is limited to appearance: body type,
+// height, skin, hair (style + colour) and eye colour. Older persisted blobs are
+// brought forward by normalizeAvatar (the dropped *Color keys are simply ignored
+// by the {...DEFAULT} spread).
+export const AVATAR_SCHEMA_VERSION = 3
 
 export type BodyType = 'male' | 'female'
 
-/** Persisted, multiplayer-serializable avatar description. Plain JSON only. */
+/** Persisted, multiplayer-serializable avatar description. Plain JSON only.
+ *  Appearance fields are freely customizable; garment fields are owned cosmetic
+ *  item ids (colour is a fixed property of the item, see GARMENT_HEX). */
 export interface AvatarConfig {
   v: number // schema version (for safe future migrations)
+  // --- freely customizable appearance ---
   bodyType: BodyType
   height: number // cm
   skin: string // -> SKINS id
   hair: string // -> HAIRS id ('none' allowed)
   hairColor: string // -> HAIR_COLORS id
+  eyes: string // -> EYE_COLORS id (iris colour; a material/colour swap)
+  // --- owned cosmetic items (predefined colour, no picker) ---
   top: string // -> TOPS id
-  topColor: string // -> CLOTH_COLORS id
   bottom: string // -> BOTTOMS id
-  bottomColor: string // -> CLOTH_COLORS id
   shoes: string // -> SHOES id
-  shoesColor: string // -> SHOE_COLORS id
 }
 
 /* ----------------------------------------------------------------- palettes */
@@ -65,23 +75,16 @@ export const HAIR_COLORS: Swatch[] = [
   { id: 'teal', name: 'Teal', hex: '#2f8f86' },
 ]
 
-// One shared palette for tops & bottoms keeps the material count low.
-export const CLOTH_COLORS: Swatch[] = [
-  { id: 'plum', name: 'Plum', hex: '#6e3050' },
-  { id: 'indigo', name: 'Indigo', hex: '#34507a' },
-  { id: 'forest', name: 'Forest', hex: '#3c6b46' },
-  { id: 'amber', name: 'Amber', hex: '#c6892f' },
-  { id: 'rose', name: 'Rose', hex: '#b65a6e' },
-  { id: 'slate', name: 'Slate', hex: '#48505c' },
-  { id: 'cream', name: 'Cream', hex: '#e7dcc1' },
-  { id: 'violet', name: 'Arcane', hex: '#5a3a8a' },
-]
-
-export const SHOE_COLORS: Swatch[] = [
-  { id: 'black', name: 'Black', hex: '#2a2622' },
-  { id: 'brown', name: 'Brown', hex: '#5c3518' },
-  { id: 'white', name: 'White', hex: '#e9e6df' },
-  { id: 'red', name: 'Red', hex: '#9a3326' },
+// Iris colours — a material/colour swap on the procedural rig's eyes (and, later,
+// the base-body GLB's eye material). Small fixed set keeps shared-material count low.
+export const EYE_COLORS: Swatch[] = [
+  { id: 'brown', name: 'Brown', hex: '#5b3a22' },
+  { id: 'hazel', name: 'Hazel', hex: '#7a5230' },
+  { id: 'amber', name: 'Amber', hex: '#a76b2e' },
+  { id: 'blue', name: 'Blue', hex: '#3a6ea5' },
+  { id: 'green', name: 'Green', hex: '#3f7d52' },
+  { id: 'grey', name: 'Grey', hex: '#5d6470' },
+  { id: 'violet', name: 'Violet', hex: '#6e4bb0' },
 ]
 
 /* ------------------------------------------------------------------- styles */
@@ -99,43 +102,61 @@ export const HAIRS: StyleOption[] = [
   { id: 'medium', name: 'Swept' },
   { id: 'long', name: 'Long' },
   { id: 'bun', name: 'Top Bun' },
+  { id: 'twintails', name: 'Twin Tails' },
 ]
 
-export const TOPS: StyleOption[] = [
-  { id: 'tee', name: 'T-Shirt' },
-  { id: 'hoodie', name: 'Hoodie' },
-  { id: 'jacket', name: 'Jacket' },
-  { id: 'robe', name: 'Scholar Robe' },
+// Garments are cosmetic ITEMS: each ships with its own baked colour (`hex`), so
+// there is no per-garment colour picker. New looks = new items (unlocked via
+// progression), not recolours of existing ones.
+export interface GarmentOption extends StyleOption {
+  hex: string
+}
+
+export const TOPS: GarmentOption[] = [
+  { id: 'tee', name: 'T-Shirt', hex: '#cdd3da' },
+  { id: 'hoodie', name: 'Hoodie', hex: '#34507a' },
+  { id: 'jacket', name: 'Jacket', hex: '#4a4f5c' },
+  { id: 'robe', name: 'Scholar Robe', hex: '#5a3a8a' },
 ]
 
-export const BOTTOMS: StyleOption[] = [
-  { id: 'pants', name: 'Pants' },
-  { id: 'shorts', name: 'Shorts' },
-  { id: 'skirt', name: 'Skirt' },
+export const BOTTOMS: GarmentOption[] = [
+  { id: 'pants', name: 'Pants', hex: '#3a4257' },
+  { id: 'shorts', name: 'Shorts', hex: '#6e6256' },
+  { id: 'skirt', name: 'Skirt', hex: '#6e3050' },
 ]
 
-export const SHOES: StyleOption[] = [
-  { id: 'sneakers', name: 'Sneakers' },
-  { id: 'boots', name: 'Boots' },
+export const SHOES: GarmentOption[] = [
+  { id: 'sneakers', name: 'Sneakers', hex: '#e9e6df' },
+  { id: 'boots', name: 'Boots', hex: '#5c3518' },
 ]
 
 export const HEIGHT_MIN = 150
 export const HEIGHT_MAX = 195
 export const HEIGHT_REF = 170 // config height that maps to rig scale 1.0
 
+// Starter COSMETICS per body type. Clothing + hair are no longer freely picked in
+// "Customize" — they come from owned items — so a brand-new avatar is given a
+// distinct, recognizable starter look for its gender (the silhouettes read apart
+// at a glance: male = army-cut + hoodie + pants; female = twin-tails + tee +
+// skirt). Switching gender in the editor swaps these starter cosmetics while
+// leaving the player's chosen height/skin alone (see starterCosmetics).
+type StarterCosmetics = Pick<AvatarConfig, 'hair' | 'top' | 'bottom' | 'shoes'>
+
+const STARTER_MALE: StarterCosmetics = { hair: 'short', top: 'hoodie', bottom: 'pants', shoes: 'sneakers' }
+const STARTER_FEMALE: StarterCosmetics = { hair: 'twintails', top: 'tee', bottom: 'skirt', shoes: 'sneakers' }
+
+export function starterCosmetics(bodyType: BodyType): StarterCosmetics {
+  return bodyType === 'female' ? { ...STARTER_FEMALE } : { ...STARTER_MALE }
+}
+
 export const DEFAULT_AVATAR: AvatarConfig = {
   v: AVATAR_SCHEMA_VERSION,
   bodyType: 'male',
   height: 170,
   skin: 'light',
-  hair: 'short',
   hairColor: 'brown',
-  top: 'hoodie',
-  topColor: 'indigo',
-  bottom: 'pants',
-  bottomColor: 'slate',
-  shoes: 'sneakers',
-  shoesColor: 'black',
+  eyes: 'brown',
+  ...STARTER_MALE,
 }
 
 /* ----------------------------------------------------------- swatch helpers */
@@ -144,10 +165,18 @@ function hexOf(list: Swatch[], id: string, fallback: string): string {
   return list.find((s) => s.id === id)?.hex ?? fallback
 }
 
+function garmentHexOf(list: GarmentOption[], id: string, fallback: string): string {
+  return list.find((g) => g.id === id)?.hex ?? fallback
+}
+
 export const skinHex = (id: string) => hexOf(SKINS, id, '#edbf9b')
 export const hairHex = (id: string) => hexOf(HAIR_COLORS, id, '#5a3a22')
-export const clothHex = (id: string) => hexOf(CLOTH_COLORS, id, '#48505c')
-export const shoeHex = (id: string) => hexOf(SHOE_COLORS, id, '#2a2622')
+export const eyeHex = (id: string) => hexOf(EYE_COLORS, id, '#5b3a22')
+
+// Garment colour is a fixed property of the cosmetic item (no picker).
+export const topHex = (id: string) => garmentHexOf(TOPS, id, '#48505c')
+export const bottomHex = (id: string) => garmentHexOf(BOTTOMS, id, '#3a4257')
+export const shoeHex = (id: string) => garmentHexOf(SHOES, id, '#2a2622')
 
 /** Bring any persisted/partial blob up to a complete, valid config. */
 export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined): AvatarConfig {
@@ -155,25 +184,26 @@ export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined)
 }
 
 /* --------------------------------------------------------------- randomize */
+// Rolls appearance + currently-available cosmetic items. (Once item ownership
+// lands, this should be constrained to owned items so it never grants cosmetics.)
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
 export function randomizeAvatar(): AvatarConfig {
+  // Roll APPEARANCE only (body type, height, skin, eyes). Clothing + hair are
+  // owned cosmetics, so a random roll applies that gender's starter look rather
+  // than granting random items.
+  const bodyType: BodyType = Math.random() < 0.5 ? 'male' : 'female'
   return {
     v: AVATAR_SCHEMA_VERSION,
-    bodyType: Math.random() < 0.5 ? 'male' : 'female',
+    bodyType,
     height: HEIGHT_MIN + Math.round(Math.random() * (HEIGHT_MAX - HEIGHT_MIN)),
     skin: pick(SKINS).id,
-    hair: pick(HAIRS).id,
     hairColor: pick(HAIR_COLORS).id,
-    top: pick(TOPS).id,
-    topColor: pick(CLOTH_COLORS).id,
-    bottom: pick(BOTTOMS).id,
-    bottomColor: pick(CLOTH_COLORS).id,
-    shoes: pick(SHOES).id,
-    shoesColor: pick(SHOE_COLORS).id,
+    eyes: pick(EYE_COLORS).id,
+    ...starterCosmetics(bodyType),
   }
 }
 
@@ -259,4 +289,80 @@ export function torusGeo(radius: number, tube: number): BufferGeometry {
 export function latheGeo(profile: Array<[number, number]>): BufferGeometry {
   const key = `lat:${profile.map((p) => `${p[0].toFixed(3)},${p[1].toFixed(3)}`).join('|')}`
   return cachedGeo(key, () => new LatheGeometry(profile.map(([x, y]) => new Vector2(x, y)), 20))
+}
+
+/**
+ * ONE continuous body loft through a small list of cross-section rings — the
+ * torso as a single clean volume (Roblox-style readability) rather than a stack
+ * of ellipsoids that reads as "segmented / caterpillar / blob". Each ring is
+ * { y, hw, hd } (height; half-width X; half-depth Z) with an optional `cz`
+ * front/back centre offset (used to push the chest forward for a bust without
+ * thickening the back). Rings are sampled as a SQUIRCLE (superellipse) so the
+ * cross-section is a soft-cornered rectangle — boxy and readable, not a round
+ * tube — then lofted bottom→top with flat end caps. Cached by a rounded
+ * signature, like every other geometry here (no per-avatar allocation).
+ */
+export interface TorsoRing {
+  y: number
+  hw: number
+  hd: number
+  cz?: number
+}
+
+const TORSO_SEG = 16 // radial samples per ring
+const TORSO_EXP = 3 // superellipse exponent: higher = boxier (squarer) corners
+
+export function torsoGeo(rings: TorsoRing[]): BufferGeometry {
+  const key = `torso:${TORSO_SEG}:${TORSO_EXP}:${rings
+    .map((r) => `${r.y.toFixed(3)},${r.hw.toFixed(3)},${r.hd.toFixed(3)},${(r.cz ?? 0).toFixed(3)}`)
+    .join('|')}`
+  return cachedGeo(key, () => buildTorso(rings))
+}
+
+function buildTorso(rings: TorsoRing[]): BufferGeometry {
+  const seg = TORSO_SEG
+  const e = 2 / TORSO_EXP // exponent applied to |cos|/|sin| for the squircle param
+  const pos: number[] = []
+  const idx: number[] = []
+
+  // ring vertices (squircle: soft-cornered rectangle of half-size hw × hd)
+  for (const r of rings) {
+    const cz = r.cz ?? 0
+    for (let i = 0; i < seg; i++) {
+      const a = (i / seg) * Math.PI * 2
+      const ca = Math.cos(a)
+      const sa = Math.sin(a)
+      const x = r.hw * Math.sign(ca) * Math.pow(Math.abs(ca), e)
+      const z = cz + r.hd * Math.sign(sa) * Math.pow(Math.abs(sa), e)
+      pos.push(x, r.y, z)
+    }
+  }
+
+  // side quads between consecutive rings (winding -> outward normals)
+  for (let ri = 0; ri < rings.length - 1; ri++) {
+    const a0 = ri * seg
+    const a1 = (ri + 1) * seg
+    for (let i = 0; i < seg; i++) {
+      const j = (i + 1) % seg
+      idx.push(a0 + i, a1 + i, a1 + j, a0 + i, a1 + j, a0 + j)
+    }
+  }
+
+  // bottom cap (normal -Y) and top cap (normal +Y)
+  const first = rings[0]
+  const last = rings[rings.length - 1]
+  const botC = pos.length / 3
+  pos.push(0, first.y, first.cz ?? 0)
+  for (let i = 0; i < seg; i++) idx.push(botC, i, (i + 1) % seg)
+
+  const topStart = (rings.length - 1) * seg
+  const topC = pos.length / 3
+  pos.push(0, last.y, last.cz ?? 0)
+  for (let i = 0; i < seg; i++) idx.push(topC, topStart + ((i + 1) % seg), topStart + i)
+
+  const g = new BufferGeometry()
+  g.setAttribute('position', new Float32BufferAttribute(pos, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
 }

@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Canvas, useFrame } from '@react-three/fiber'
+import type { Group } from 'three'
 import { PngIcon } from '../components/PngIcon'
 import { useRealm, type CustomRealm } from '../store/realm'
 import { useSettings } from '../store/settings'
+import { useAvatar } from '../avatar/store'
+import { CharacterAvatar } from '../avatar/CharacterAvatar'
+import type { AvatarConfig } from '../avatar/config'
 import { Section, Slider, Toggle } from '../components/settings/controls'
-import { GLOBAL_ROOMS, ROOM_CAPACITY, mockOccupancy } from '../lib/realm'
+import { GLOBAL_ROOMS, REALM_PRESENCE_LIVE } from '../lib/realm'
 import './Realm.css'
 
 type Mode = 'choose' | 'global' | 'custom'
@@ -75,6 +80,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
   return (
     <>
       <header className="realm-head">
+        <CharacterOrb />
         <span className="sf-pill">Realm</span>
         <h1>Choose your study world</h1>
         <p>Join a shared public room, or open a private realm of your own.</p>
@@ -103,21 +109,64 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
   )
 }
 
+/* ----------------------------------------------------------- character orb
+ * A small, personal 3D portrait of the player's chosen character on the realm
+ * hub — slowly turning on a glowing dais. Reuses CharacterAvatar (same graceful
+ * GLB→procedural fallback as the world/chooser). A light static canvas: no
+ * shadows, no post, no orbit controls — just clean lighting + a gentle spin. */
+function CharacterOrb() {
+  const navigate = useNavigate()
+  const config = useAvatar((s) => s.config)
+  return (
+    <div className="realm-avatar">
+      <div className="realm-avatar-orb">
+        <Canvas
+          shadows={false}
+          dpr={[1, 1.5]}
+          camera={{ position: [0, 1.05, 3.0], fov: 36, near: 0.1, far: 50 }}
+          gl={{ antialias: true, powerPreference: 'high-performance' }}
+        >
+          <hemisphereLight args={['#cfe0ff', '#3a2f4a', 0.85]} />
+          <directionalLight position={[3, 5, 2]} intensity={1.2} color="#fff3df" />
+          <directionalLight position={[-3, 2, -2]} intensity={0.4} color="#9a8cff" />
+          <ambientLight intensity={0.3} />
+          <Suspense fallback={null}>
+            <SpinningAvatar config={config} />
+          </Suspense>
+        </Canvas>
+      </div>
+      <div className="realm-avatar-meta">
+        <span className="realm-avatar-you">Your avatar</span>
+        <strong>Study companion</strong>
+        <button className="realm-avatar-change" onClick={() => navigate('/avatar')}>
+          Customize ›
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function SpinningAvatar({ config }: { config: AvatarConfig }) {
+  const g = useRef<Group>(null)
+  // No locomotion ref → the avatar holds a calm idle pose; we add only a slow
+  // turntable spin so the portrait feels alive without a walking animation.
+  useFrame((_, dt) => {
+    if (g.current) g.current.rotation.y += dt * 0.6
+  })
+  return (
+    <group ref={g} position={[0, -0.92, 0]}>
+      <CharacterAvatar config={config} />
+    </group>
+  )
+}
+
 /* -------------------------------------------------------------- global rooms */
 
 function GlobalRealm() {
   const navigate = useNavigate()
   const enterGlobal = useRealm((s) => s.enterGlobal)
 
-  // Occupancy is mocked until backend presence sync lands; computed once so the
-  // numbers stay stable while the user browses.
-  const rooms = useMemo(
-    () => GLOBAL_ROOMS.map((r) => ({ ...r, here: mockOccupancy(r.seed) })),
-    [],
-  )
-
-  function join(roomId: string, name: string, full: boolean) {
-    if (full) return
+  function join(roomId: string, name: string) {
     enterGlobal(roomId, name)
     navigate('/explore')
   }
@@ -127,36 +176,37 @@ function GlobalRealm() {
       <header className="realm-head">
         <span className="sf-pill">Global Realm</span>
         <h1>Pick a room</h1>
-        <p>Live counts arrive with multiplayer — for now these show sample occupancy.</p>
+        <p>Step into any hall to study. Shared presence is on the way.</p>
       </header>
 
+      {/* Honest status: no fake occupancy. Until a realtime presence channel
+          lands, every room is a solo space and we say so plainly. */}
+      {!REALM_PRESENCE_LIVE && (
+        <div className="realm-banner">
+          <span className="realm-banner-dot" />
+          Realm multiplayer isn’t live yet — you’ll study solo for now. Live room counts and
+          other students will appear here once presence ships.
+        </div>
+      )}
+
       <div className="realm-rooms">
-        {rooms.map((r) => {
-          const full = r.here >= ROOM_CAPACITY
-          const pct = Math.round((r.here / ROOM_CAPACITY) * 100)
-          return (
-            <div key={r.id} className={`realm-room water-glass ${full ? 'full' : ''}`}>
-              <div className="realm-room-icon">
-                <PngIcon name="study-rooms" size={40} alt="" />
-              </div>
-              <div className="realm-room-body">
-                <div className="realm-room-top">
-                  <strong>{r.name}</strong>
-                  <span className={`realm-room-count ${pct >= 80 ? 'hot' : ''}`}>
-                    {r.here}/{ROOM_CAPACITY}
-                  </span>
-                </div>
-                <p>{r.blurb}</p>
-                <div className="realm-room-bar">
-                  <span style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-              <button className="sf-btn water realm-join" disabled={full} onClick={() => join(r.id, r.name, full)}>
-                {full ? 'Full' : 'Join'}
-              </button>
+        {GLOBAL_ROOMS.map((r) => (
+          <div key={r.id} className="realm-room water-glass">
+            <div className="realm-room-icon">
+              <PngIcon name="study-rooms" size={40} alt="" />
             </div>
-          )
-        })}
+            <div className="realm-room-body">
+              <div className="realm-room-top">
+                <strong>{r.name}</strong>
+                <span className="realm-room-count muted">Solo</span>
+              </div>
+              <p>{r.blurb}</p>
+            </div>
+            <button className="sf-btn water realm-join" onClick={() => join(r.id, r.name)}>
+              Enter
+            </button>
+          </div>
+        ))}
       </div>
     </>
   )

@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "_doc": "FocusLily cosmetic catalog. Schema + authoring guide: avatar-system/AUTHORING.md. STARTER set (not the full migration): every default-outfit item + a few alternates per category, plus one example PNG-pack item (top_canvas). Procedural items carry CSS-shape `art`; PNG-pack items carry `assets` and are expanded to tinted image layers at load.",
+  "items": [
+    {
+      "id": "eyes_round", "name": "Round", "slot": "eyes", "tint": true, "defaultTint": "eye_ink",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [
+        { "w": 26, "h": 30, "left": -32, "top": -57, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 26, "h": 30, "left": 6, "top": -57, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 19, "h": 23, "left": -29, "top": -52, "radius": "50%" },
+        { "w": 19, "h": 23, "left": 9, "top": -52, "radius": "50%" },
+        { "w": 8, "h": 8, "left": -27, "top": -55, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 8, "h": 8, "left": 11, "top": -55, "radius": "50%", "fill": "#ffffff", "flat": true }
+      ]
+    },
+    {
+      "id": "eyes_sparkle", "name": "Sparkle", "slot": "eyes", "tint": true, "defaultTint": "eye_blue",
+      "rarity": "rare", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 180,
+      "art": [
+        { "w": 28, "h": 32, "left": -33, "top": -58, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 28, "h": 32, "left": 5, "top": -58, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 21, "h": 25, "left": -30, "top": -53, "radius": "50%" },
+        { "w": 21, "h": 25, "left": 9, "top": -53, "radius": "50%" },
+        { "w": 10, "h": 10, "left": -28, "top": -56, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 10, "h": 10, "left": 12, "top": -56, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 5, "h": 5, "left": -22, "top": -47, "radius": "50%", "fill": "#ffffff", "flat": true },
+        { "w": 5, "h": 5, "left": 18, "top": -47, "radius": "50%", "fill": "#ffffff", "flat": true }
+      ]
+    },
+    {
+      "id": "glasses_round", "name": "Round Glasses", "slot": "face", "tint": false,
+      "rarity": "uncommon", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 130,
+      "art": [
+        { "w": 30, "h": 28, "left": -34, "top": -56, "radius": "50%", "fill": "transparent", "border": "3px solid #2c2a33", "flat": true },
+        { "w": 30, "h": 28, "left": 4, "top": -56, "radius": "50%", "fill": "transparent", "border": "3px solid #2c2a33", "flat": true },
+        { "w": 12, "h": 3, "left": -6, "top": -44, "fill": "#2c2a33", "flat": true }
+      ]
+    },
+    {
+      "id": "face_blush", "name": "Blush", "slot": "face", "tint": false,
+      "rarity": "common", "obtainMethod": "shop", "tradeable": false, "limited": false, "price": 40,
+      "art": [
+        { "w": 16, "h": 9, "left": -38, "top": -34, "radius": "50%", "fill": "rgba(232,120,140,.55)", "flat": true },
+        { "w": 16, "h": 9, "left": 22, "top": -34, "radius": "50%", "fill": "rgba(232,120,140,.55)", "flat": true }
+      ]
+    },
+    {
+      "id": "mouth_soft", "name": "Soft Smile", "slot": "mouth", "tint": true, "defaultTint": "cloth_rose",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [ { "w": 16, "h": 8, "left": -8, "top": -22, "radius": "0 0 10px 10px" } ]
+    },
+    {
+      "id": "hair_short", "name": "Short Crop", "slot": "hairFront", "tint": true, "defaultTint": "hair_brown",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [
+        { "w": 116, "h": 64, "left": -58, "top": -102, "radius": "54px 54px 28px 28px" },
+        { "w": 110, "h": 26, "left": -55, "top": -94, "radius": "0 0 22px 22px" }
+      ]
+    },
+    {
+      "id": "hair_wavy", "name": "Wavy Lengths", "slot": "hairFront", "tint": true, "defaultTint": "hair_chestnut",
+      "rarity": "uncommon", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 160,
+      "art": [
+        { "w": 118, "h": 60, "left": -59, "top": -104, "radius": "54px 54px 24px 24px" },
+        { "w": 30, "h": 70, "left": -62, "top": -86, "radius": "18px 8px 24px 24px" },
+        { "w": 30, "h": 70, "left": 32, "top": -86, "radius": "8px 18px 24px 24px" }
+      ]
+    },
+    {
+      "id": "hair_long", "name": "Long Flow", "slot": "hairBack", "tint": true, "defaultTint": "hair_chestnut",
+      "rarity": "rare", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 220,
+      "art": [ { "w": 124, "h": 150, "left": -62, "top": -96, "radius": "40px 40px 40px 40px" } ]
+    },
+    {
+      "id": "hair_ponytail", "name": "Ponytail", "slot": "hairBack", "tint": true, "defaultTint": "hair_blonde",
+      "rarity": "uncommon", "obtainMethod": "reward", "tradeable": true, "limited": false, "price": 0,
+      "art": [
+        { "w": 100, "h": 70, "left": -50, "top": -92, "radius": "40px" },
+        { "w": 34, "h": 96, "left": 30, "top": -86, "radius": "18px 18px 22px 22px" }
+      ]
+    },
+    {
+      "id": "top_tee", "name": "Cozy Tee", "slot": "torso", "tint": true, "defaultTint": "cloth_indigo",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false, "sleeve": "sleeve_short",
+      "art": [ { "w": 62, "h": 64, "left": -31, "top": -64, "radius": "22px 22px 16px 16px" } ]
+    },
+    {
+      "id": "top_hoodie", "name": "Study Hoodie", "slot": "torso", "tint": true, "defaultTint": "cloth_indigo",
+      "rarity": "epic", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 320, "sleeve": "sleeve_long",
+      "art": [
+        { "w": 66, "h": 66, "left": -33, "top": -66, "radius": "22px 22px 18px 18px" },
+        { "w": 40, "h": 18, "left": -20, "top": -70, "radius": "16px 16px 0 0" },
+        { "w": 4, "h": 26, "left": -2, "top": -52, "fill": "rgba(0,0,0,.18)", "flat": true },
+        { "w": 30, "h": 16, "left": -15, "top": -34, "radius": "0 0 10px 10px", "fill": "rgba(0,0,0,.12)", "flat": true }
+      ]
+    },
+    {
+      "id": "top_canvas", "name": "Canvas Hoodie", "slot": "torso", "tint": true, "defaultTint": "cloth_forest",
+      "rarity": "rare", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 260, "sleeve": "sleeve_long",
+      "_note": "Example PNG-pack item. Demonstrates the assets{} -> image-layer pipeline. The PNGs are not authored yet, so this renders via the procedural fallback until top_canvas/torso.png + arm.png are dropped in. No code change needed when they appear.",
+      "assets": {
+        "torso": "top_canvas/torso.png",
+        "leftArm": "top_canvas/arm.png"
+      }
+    },
+    {
+      "id": "sleeve_short", "name": "Short Sleeve", "slot": "leftArm", "tint": true, "defaultTint": "cloth_indigo",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [ { "w": 20, "h": 26, "left": -10, "top": -2, "radius": 8 } ]
+    },
+    {
+      "id": "sleeve_long", "name": "Long Sleeve", "slot": "leftArm", "tint": true, "defaultTint": "cloth_indigo",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [ { "w": 20, "h": 50, "left": -10, "top": -2, "radius": 8 } ]
+    },
+    {
+      "id": "pants_jeans", "name": "Comfy Jeans", "slot": "leftLeg", "tint": true, "defaultTint": "cloth_slate",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [
+        { "w": 22, "h": 58, "left": -11, "top": -2, "radius": 8 },
+        { "w": 22, "h": 6, "left": -11, "top": 30, "fill": "rgba(0,0,0,.12)", "flat": true }
+      ]
+    },
+    {
+      "id": "pants_joggers", "name": "Joggers", "slot": "leftLeg", "tint": true, "defaultTint": "cloth_forest",
+      "rarity": "uncommon", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 120,
+      "art": [ { "w": 23, "h": 56, "left": -11, "top": -2, "radius": "8px 8px 6px 6px" } ]
+    },
+    {
+      "id": "shoes_sneakers", "name": "Sneakers", "slot": "leftShoe", "tint": true, "defaultTint": "cloth_cream",
+      "rarity": "common", "obtainMethod": "default", "tradeable": false, "limited": false,
+      "art": [
+        { "w": 24, "h": 16, "left": -12, "top": 50, "radius": "8px 10px 10px 8px" },
+        { "w": 24, "h": 5, "left": -12, "top": 61, "fill": "#ffffff", "flat": true, "radius": "0 0 6px 6px" }
+      ]
+    },
+    {
+      "id": "shoes_boots", "name": "Cozy Boots", "slot": "leftShoe", "tint": true, "defaultTint": "cloth_slate",
+      "rarity": "uncommon", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 150,
+      "art": [ { "w": 25, "h": 24, "left": -12, "top": 44, "radius": "8px 10px 10px 8px" } ]
+    },
+    {
+      "id": "acc_beanie", "name": "Warm Beanie", "slot": "accessories", "tint": true, "defaultTint": "cloth_plum",
+      "rarity": "uncommon", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 110,
+      "art": [
+        { "w": 112, "h": 40, "left": -56, "top": -106, "radius": "50px 50px 6px 6px" },
+        { "w": 116, "h": 14, "left": -58, "top": -74, "radius": 8 }
+      ]
+    },
+    {
+      "id": "acc_flower_crown", "name": "Flower Crown", "slot": "accessories", "tint": false,
+      "rarity": "rare", "obtainMethod": "event", "tradeable": true, "limited": true, "price": 0,
+      "art": [
+        { "w": 18, "h": 18, "left": -50, "top": -100, "radius": "50%", "fill": "#f49ac1", "flat": true },
+        { "w": 18, "h": 18, "left": -28, "top": -108, "radius": "50%", "fill": "#f7c948", "flat": true },
+        { "w": 18, "h": 18, "left": -8, "top": -110, "radius": "50%", "fill": "#f49ac1", "flat": true },
+        { "w": 18, "h": 18, "left": 12, "top": -108, "radius": "50%", "fill": "#b08be0", "flat": true },
+        { "w": 18, "h": 18, "left": 32, "top": -100, "radius": "50%", "fill": "#f7c948", "flat": true }
+      ]
+    },
+    {
+      "id": "wings_starlight", "name": "Starlight Wings", "slot": "backItem", "tint": true, "defaultTint": "cloth_arcane",
+      "rarity": "legendary", "obtainMethod": "event", "tradeable": false, "limited": true, "price": 0,
+      "glow": true, "particle": "sparkle",
+      "art": [
+        { "w": 46, "h": 96, "left": -64, "top": -78, "radius": "60% 10% 70% 30%", "fill": "rgba(150,110,235,.62)", "flat": true },
+        { "w": 46, "h": 96, "left": 18, "top": -78, "radius": "10% 60% 30% 70%", "fill": "rgba(150,110,235,.62)", "flat": true },
+        { "w": 30, "h": 60, "left": -56, "top": -36, "radius": "60% 10% 70% 30%", "fill": "rgba(190,160,255,.55)", "flat": true },
+        { "w": 30, "h": 60, "left": 26, "top": -36, "radius": "10% 60% 30% 70%", "fill": "rgba(190,160,255,.55)", "flat": true }
+      ]
+    },
+    {
+      "id": "wings_butterfly", "name": "Butterfly Wings", "slot": "backItem", "tint": true, "defaultTint": "cloth_rose",
+      "rarity": "epic", "obtainMethod": "shop", "tradeable": true, "limited": false, "price": 400,
+      "glow": true, "particle": "petal",
+      "art": [
+        { "w": 50, "h": 64, "left": -66, "top": -72, "radius": "70% 20% 40% 60%", "fill": "rgba(244,154,193,.6)", "flat": true },
+        { "w": 50, "h": 64, "left": 16, "top": -72, "radius": "20% 70% 60% 40%", "fill": "rgba(244,154,193,.6)", "flat": true },
+        { "w": 40, "h": 44, "left": -58, "top": -16, "radius": "60% 20% 40% 60%", "fill": "rgba(247,201,232,.55)", "flat": true },
+        { "w": 40, "h": 44, "left": 18, "top": -16, "radius": "20% 60% 60% 40%", "fill": "rgba(247,201,232,.55)", "flat": true }
+      ]
+    }
+  ]
+}
