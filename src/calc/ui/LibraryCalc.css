@@ -1,0 +1,221 @@
+/* ============================================================
+   In-library calculator — warm magical-library wood & parchment. Solid (not
+   glass) so it reads against the 3D library scene. Self-contained: it locally
+   re-points the shared calc tokens (--surface*, --field*, --accent) to warm
+   wood values so embedded modules (converters, finance, …) inherit the theme.
+   ============================================================ */
+
+.lc {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+
+  /* warm parchment body with a carved wooden frame + gilded inner trim — an
+     ancient, magical, VIP look (deliberately solid, never glassmorphic). */
+  background: linear-gradient(180deg, #f7ebcd 0%, #f1dfb6 100%);
+  background-color: #f3e3bd;
+  border: 3px solid #5c3a1e;
+  box-shadow:
+    0 24px 54px rgba(28, 15, 5, 0.6),
+    0 0 0 1px rgba(28, 15, 5, 0.4),
+    inset 0 0 0 2px rgba(201, 162, 92, 0.65),
+    inset 0 0 0 3px rgba(120, 78, 38, 0.5),
+    inset 0 2px 12px rgba(255, 244, 214, 0.65);
+  color: #4a2f16;
+
+  /* ---- local theme tokens consumed by kit.css / keypad.css / modules.css ---- */
+  --surface: #fbf1d8;
+  --surface-2: #f0dcae;
+  --surface-hover: #fff7e6;
+  --surface-border: rgba(107, 68, 35, 0.34);
+  --surface-ink: #4a2f16;
+  --surface-ink-soft: #7a5630;
+  --chip-bg: rgba(107, 68, 35, 0.12);
+  --field-bg: #fffaf0;
+  --field-ink: #3a2410;
+  --accent: #c79a4e;
+  --accent-dark: #a9742f;
+  --grass: #b4863f;
+  --grass-dark: #8a5a26;
+  animation: lc-in 0.18s ease both;
+}
+@keyframes lc-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- title bar (drag handle) ---- */
+.lc-bar {
+  flex: none;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 8px;
+  cursor: grab;
+  background: linear-gradient(180deg, #7a4f29, #623e1f);
+  border-bottom: 2px solid #4a2f16;
+}
+.lc-bar:active { cursor: grabbing; }
+
+/* ⋮ three-dot "other calculators" menu button */
+.lc-dots {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 232, 186, 0.4);
+  background: rgba(255, 240, 210, 0.16);
+  color: #fdeccb;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+.lc-dots:hover,
+.lc-dots.on { background: rgba(255, 240, 210, 0.3); }
+
+/* current calculator name, engraved into the wooden title bar */
+.lc-bar-name {
+  flex: 1;
+  min-width: 0;
+  margin: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 14px var(--display);
+  letter-spacing: 0.3px;
+  color: #fdeccb;
+  text-shadow: 0 1px 1px rgba(40, 22, 8, 0.7);
+}
+
+.lc-bar-actions { display: flex; gap: 4px; }
+.lc-x {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #fdeccb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.12s ease;
+}
+.lc-x:hover { background: #b5562f; color: #fff; }
+
+/* ---- body ---- */
+.lc-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 13px 14px;
+}
+
+/* Tighten the keypad display for the smaller window. */
+.lc .kp-display { min-height: 76px; padding: 12px 14px; }
+.lc .kp-value { font-size: 28px; }
+.lc .kp-key { height: 46px; font-size: 17px; }
+.lc .kp-key.fn { height: 40px; font-size: 13px; }
+
+/* Compact "mini" Basic calc — a touch denser so the small panel stays tidy. */
+.lc.mini .lc-body { padding: 10px 11px 12px; }
+.lc.mini .kp-display { min-height: 64px; padding: 10px 12px; }
+.lc.mini .kp-value { font-size: 25px; }
+.lc.mini .kp-key { height: 42px; font-size: 16px; }
+
+/* ---- type picker dropdown ---- */
+.lc-picker-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.lc-picker {
+  position: absolute;
+  top: 46px;
+  left: 8px;
+  right: 8px;
+  z-index: 2;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background: #fbf1d8;
+  border: 2px solid #6b4423;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(40, 22, 8, 0.45);
+  overflow: hidden;
+}
+.lc-picker-search {
+  margin: 8px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1.5px solid var(--surface-border);
+  background: var(--field-bg);
+  color: var(--field-ink);
+  font: 600 13px var(--sans);
+  outline: none;
+}
+.lc-picker-search:focus { border-color: var(--accent-dark); }
+.lc-picker-cats {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--surface-border);
+}
+.lc-cat {
+  flex: none;
+  border: 1px solid var(--surface-border);
+  background: var(--chip-bg);
+  color: var(--surface-ink-soft);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font: 700 12px var(--display);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lc-cat.on { background: #6b4423; color: #fdeccb; border-color: #6b4423; }
+.lc-picker-list {
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.lc-picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--surface-ink);
+}
+.lc-picker-item:hover { background: var(--chip-bg); }
+.lc-picker-item.on { background: rgba(199, 154, 78, 0.22); }
+.lc-picker-item strong { font: 800 13.5px var(--display); }
+.lc-picker-item small { font-size: 11.5px; color: var(--surface-ink-soft); }
+.lc-picker-empty { padding: 14px; color: var(--surface-ink-soft); font-size: 13px; }
+
+/* ---- resize handles ---- */
+.lc-rz { position: absolute; z-index: 3; }
+.lc-n, .lc-s { left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.lc-e, .lc-w { top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
+.lc-n { top: 0; } .lc-s { bottom: 0; } .lc-e { right: 0; } .lc-w { left: 0; }
+.lc-ne, .lc-nw, .lc-se, .lc-sw { width: 14px; height: 14px; }
+.lc-ne { top: 0; right: 0; cursor: nesw-resize; }
+.lc-nw { top: 0; left: 0; cursor: nwse-resize; }
+.lc-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.lc-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+
+/* On small screens the calc fills most of the width. */
+@media (max-width: 640px) {
+  .lc { left: 4vw !important; right: 4vw; width: 92vw !important; }
+}

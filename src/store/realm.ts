@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { RealmKind } from '../lib/realm'
+import type { RealmVisibility } from '../lib/realms'
 
 /** Which 3D world a realm renders. Defaults to the great Library; the Waterfall
  *  Realm is the second flagship world. */
@@ -15,12 +16,17 @@ export interface ActiveRealm {
   world: RealmWorld
 }
 
-/** A private world the student created. Persisted locally so their custom realms
- *  survive a refresh. Architecture is ready to later gate creation behind a
- *  premium / ultimate tier — `createCustom` is the single choke-point for that. */
+/** A custom world, persisted server-side (src/lib/realms.ts → `realms` table) so
+ *  its invite code/link resolves on any device. We keep a LOCAL cache of the
+ *  realms a user created or joined so the "Your realms" list renders instantly;
+ *  the database is the source of truth. `code`/`visibility`/`ownerId` are absent
+ *  only for legacy realms created before the server-backed system. */
 export interface CustomRealm {
   id: string
   name: string
+  code?: string
+  visibility?: RealmVisibility
+  ownerId?: string
   createdAt: string
 }
 
@@ -31,7 +37,10 @@ interface RealmState {
   /** Drop into a flagship world (the Library hub default is 'library'; the
    *  Waterfall Realm is 'waterfall'). */
   enterFlagship: (world: RealmWorld, name: string) => void
-  createCustom: (name: string) => CustomRealm
+  /** Upsert a realm into the local cache (after create or join). */
+  rememberCustom: (realm: CustomRealm) => void
+  /** Forget a realm locally (e.g. owner closed it). */
+  forgetCustom: (id: string) => void
   enterCustom: (realm: CustomRealm) => void
   leave: () => void
 }
@@ -56,8 +65,6 @@ function saveCustom(list: CustomRealm[]) {
   }
 }
 
-let counter = 0
-
 export const useRealm = create<RealmState>((set, get) => ({
   active: null,
   custom: loadCustom(),
@@ -66,17 +73,16 @@ export const useRealm = create<RealmState>((set, get) => ({
 
   enterFlagship: (world, name) => set({ active: { kind: 'global', name, world } }),
 
-  createCustom: (name) => {
-    counter += 1
-    const realm: CustomRealm = {
-      id: `realm_${Date.now().toString(36)}_${counter.toString(36)}`,
-      name: name.trim() || 'My Realm',
-      createdAt: new Date().toISOString(),
-    }
-    const custom = [realm, ...get().custom]
+  rememberCustom: (realm) => {
+    const custom = [realm, ...get().custom.filter((r) => r.id !== realm.id)]
     saveCustom(custom)
     set({ custom })
-    return realm
+  },
+
+  forgetCustom: (id) => {
+    const custom = get().custom.filter((r) => r.id !== id)
+    saveCustom(custom)
+    set({ custom })
   },
 
   enterCustom: (realm) => set({ active: { kind: 'custom', name: realm.name, roomId: realm.id, world: 'library' } }),

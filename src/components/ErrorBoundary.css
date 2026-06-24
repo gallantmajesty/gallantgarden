@@ -1,0 +1,97 @@
+.eb-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  /* Sits above the persistent background; a soft scrim keeps the card legible
+     over whatever themed photo is behind it. */
+  background: rgba(20, 25, 15, 0.42);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.eb-card {
+  width: min(440px, 92vw);
+  padding: 28px 26px 24px;
+  border-radius: 22px;
+  text-align: center;
+  background: var(--glass-fill-strong, rgba(255, 255, 255, 0.5));
+  -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
+  backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.5));
+  box-shadow: var(--glass-shadow, 0 10px 34px rgba(8, 46, 74, 0.28));
+}
+
+.eb-logo {
+  filter: drop-shadow(0 2px 6px rgba(58, 42, 23, 0.25));
+}
+
+.eb-card h1 {
+  font-family: var(--display, system-ui);
+  font-size: 24px;
+  margin: 10px 0 6px;
+  color: var(--wood-dark, #5c3518);
+}
+
+.eb-card p {
+  color: var(--ink-soft, #6b5740);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 auto 14px;
+  max-width: 360px;
+}
+
+.eb-details {
+  text-align: left;
+  margin: 0 auto 16px;
+  font-size: 12px;
+  color: var(--ink-soft, #6b5740);
+}
+.eb-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+.eb-details pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.eb-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.eb-btn {
+  font-family: var(--display, system-ui);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 10px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.5));
+  background: var(--glass-fill, rgba(255, 255, 255, 0.34));
+  color: var(--wood-dark, #5c3518);
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.12s ease;
+}
+.eb-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+.eb-btn:active {
+  transform: translateY(1px);
+}
+.eb-btn.primary {
+  background: linear-gradient(180deg, var(--grass, #6bbf4f), var(--grass-dark, #4f9e3c));
+  color: #fff;
+  border-color: transparent;
+}

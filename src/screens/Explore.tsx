@@ -21,13 +21,17 @@ import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../component
 import { usePomodoro } from '../store/pomodoro'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
-import { useRealm } from '../store/realm'
+import { useRealm, type ActiveRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
-import { REALM_PRESENCE_LIVE, waterfallEnabled } from '../lib/realm'
+import { useAvatar } from '../avatar/store'
+import { waterfallEnabled } from '../lib/realm'
+import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
+import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
+import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -38,6 +42,7 @@ export function Explore() {
   const [ready, setReady] = useState(false)
   const [hint, setHint] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
   const fps = useSettings((s) => s.fps)
   const ambientOn = useSettings((s) => s.ambientOn)
   const master = useSettings((s) => s.master)
@@ -85,6 +90,7 @@ export function Explore() {
     <div className="explore-root">
       {isWaterfall ? <WaterfallScene onReady={() => setReady(true)} /> : <LibraryScene onReady={() => setReady(true)} />}
       <PomodoroTicker />
+      <RealmConnection />
 
       {!ready && (
         <div className="explore-veil">
@@ -131,6 +137,14 @@ export function Explore() {
               title="Volume"
             />
             <span className="explore-bar-sep" />
+            <button
+              className={`explore-iconbtn ${calcOpen ? 'on' : ''}`}
+              onClick={() => setCalcOpen((v) => !v)}
+              title={calcOpen ? 'Close calculator' : 'Calculator'}
+            >
+              <CalcGlyph />
+            </button>
+            <span className="explore-bar-sep" />
             <SunGlyph />
             <input
               className="explore-mini"
@@ -169,6 +183,10 @@ export function Explore() {
 
           {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
           <LibraryFriendsPanel />
+
+          {/* in-library calculator — a mini Basic calc docked lower-right, with a
+              ⋮ menu that swaps in any other calculator (which opens quarter-screen) */}
+          {calcOpen && <LibraryCalc onClose={() => setCalcOpen(false)} />}
 
           {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
 
@@ -296,32 +314,115 @@ function useExploreShortcuts() {
   }, [])
 }
 
+/* ----------------------------------------------------- realm multiplayer */
+
+/** The logical realm key WITHOUT the instance suffix — the unit capacity and
+ *  occupancy are tracked per. Everyone choosing the same realm shares this key;
+ *  auto-instancing then splits a busy key across `#1`, `#2`, … channels. */
+function roomKeyOf(a: ActiveRealm): string {
+  if (a.kind === 'custom') return `custom:${a.roomId ?? a.name}`
+  if (a.roomId) return `lib:${a.roomId}`
+  return `flag:${a.world}`
+}
+
+/** One realtime channel per realm INSTANCE. Everyone the server assigned to the
+ *  same instance of the same realm computes the same channel and meets here. */
+function realmChannel(a: ActiveRealm, instance: number): string {
+  return `realm:${roomKeyOf(a)}#${instance}`
+}
+
+/**
+ * Non-visual connector: assigns us to an available instance of the realm (real
+ * capacity + auto-instancing), joins that instance's realtime channel, broadcasts
+ * our identity + avatar, and keeps a presence heartbeat so occupancy stays live.
+ * Identity changes (avatar cosmetics, name, country, rank) are pushed live so
+ * others re-skin us without a rejoin. Mounted at the top of Explore so the
+ * connection survives Tab-hiding the HUD.
+ */
+function RealmConnection() {
+  const active = useRealm((s) => s.active)
+  const { user } = useAuth()
+  const username = useProfile((s) => s.username)
+  const displayName = useProfile((s) => s.displayName)
+  const country = useProfile((s) => s.data.country)
+  const rank = useProfile((s) => s.data.rank)
+  const avatar = useAvatar((s) => s.config)
+
+  const roomKey = active ? roomKeyOf(active) : null
+  const id = networkId(user?.id)
+  const name = username || displayName || user?.profile?.name || 'Explorer'
+
+  // assign an instance → join its channel → heartbeat; leave + drop presence on exit
+  useEffect(() => {
+    if (!active || !roomKey) return
+    let cancelled = false
+    let stopHeartbeat: (() => void) | null = null
+
+    void (async () => {
+      const instance = await assignInstance(roomKey, REALM_CAPACITY)
+      if (cancelled) {
+        void leavePresence() // we were unmounted mid-assign; release the claimed slot
+        return
+      }
+      const channel = realmChannel(active, instance)
+      await joinRealm(channel, { id, name, country: country ?? null, rank: rank || '', avatar })
+      if (cancelled) {
+        void leaveRealm()
+        void leavePresence()
+        return
+      }
+      stopHeartbeat = startHeartbeat(roomKey, instance)
+    })()
+
+    return () => {
+      cancelled = true
+      stopHeartbeat?.()
+      void leaveRealm()
+      void leavePresence()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomKey, id])
+
+  // push identity/cosmetic changes live while in-realm
+  useEffect(() => {
+    if (!roomKey) return
+    updateIdentity({ id, name, country: country ?? null, rank: rank || '', avatar })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avatar, name, country, rank])
+
+  return null
+}
+
 /* ----------------------------------------------------------------- roster */
 
 /**
- * "In this room" — the live roster for a Global realm. There is NO fake data: we
- * only ever show the signed-in user (rendered with their real public fields) and,
- * because realm presence isn't implemented yet, an honest "no other students
- * online" note. When a realtime presence channel lands, push remote players into
- * `others` and the count/list update for free. Every entry renders ONLY the
- * public fields via PublicPlayerTag: country flag, username, rank badge.
+ * "In this room" — the LIVE roster. Real presence only: the signed-in user plus
+ * every other player actually connected to this realm's channel (no fabricated
+ * counts, no sample avatars). The count is the real number present — 1 when you
+ * are alone. Every entry renders ONLY the public fields via PublicPlayerTag.
  */
 function RoomRoster() {
   const { user } = useAuth()
   const country = useProfile((s) => s.data.country)
   const rank = useProfile((s) => s.data.rank)
+  const username = useProfile((s) => s.username)
+  const displayName = useProfile((s) => s.displayName)
   const realm = useRealm((s) => s.active)
+  const roster = useRealmNet((s) => s.roster)
   const [open, setOpen] = useState(true)
 
-  if (realm?.kind !== 'global') return null
+  if (!realm) return null
 
   const self: PublicPlayer = {
-    username: user?.profile?.name || user?.email?.split('@')[0] || 'You',
+    username: username || displayName || user?.profile?.name || 'You',
     country,
     rank,
   }
-  // No presence backend → no remote players. Never fabricate a roster.
-  const others: PublicPlayer[] = REALM_PRESENCE_LIVE ? [] : []
+  const others: PublicPlayer[] = Object.values(roster).map((p) => ({
+    username: p.name,
+    country: p.country,
+    rank: p.rank,
+  }))
   const total = others.length + 1
 
   return (
@@ -344,9 +445,9 @@ function RoomRoster() {
           ))}
           {others.length === 0 && (
             <p className="room-roster-empty">
-              No other students online yet.
+              You’re the only one here right now.
               <br />
-              <span>Shared realms (seeing each other live) aren’t implemented yet.</span>
+              <span>Others studying in this realm will appear here live.</span>
             </p>
           )}
         </div>
@@ -865,6 +966,22 @@ function SunGlyph() {
     <svg className="explore-sun" viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2v2 M12 20v2 M2 12h2 M20 12h2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M19.1 4.9l-1.4 1.4 M6.3 17.7l-1.4 1.4" />
+    </svg>
+  )
+}
+
+function CalcGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="4" y="2" width="16" height="20" rx="2.5" />
+      <line x1="8" y1="6" x2="16" y2="6" />
+      <line x1="8" y1="11" x2="8" y2="11" />
+      <line x1="12" y1="11" x2="12" y2="11" />
+      <line x1="16" y1="11" x2="16" y2="11" />
+      <line x1="8" y1="15" x2="8" y2="15" />
+      <line x1="12" y1="15" x2="12" y2="15" />
+      <line x1="16" y1="15" x2="16" y2="18" />
+      <line x1="8" y1="18" x2="12" y2="18" />
     </svg>
   )
 }

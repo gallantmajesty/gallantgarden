@@ -15,6 +15,7 @@ import { KnowledgeTree } from './KnowledgeTree'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
+import { RemotePlayers } from './RemotePlayers'
 import { useScenePreset } from '../../store/quality'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -109,6 +110,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       )}
 
       <PlayerController />
+      <RemotePlayers />
       <PerfLogger />
 
       {preset.bloom && (

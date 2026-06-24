@@ -1,0 +1,161 @@
+.master {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.master-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: 14px;
+  background: var(--chip-bg);
+  border: 1px solid var(--surface-border);
+  margin-bottom: 14px;
+  flex: none;
+}
+.master-tab {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--surface-ink-soft);
+  font: 700 13px var(--display);
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.master-tab.on {
+  background: var(--surface);
+  color: var(--surface-ink);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+}
+
+.master-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* calculator tab: pad + side panels */
+.master-calc-split {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.3fr) minmax(240px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.master-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.master-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.master-card.solo {
+  max-width: 520px;
+}
+.master-card > header {
+  font: 800 13px var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--surface-ink-soft);
+  margin-bottom: 10px;
+}
+
+.master-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.master-empty {
+  color: var(--surface-ink-soft);
+  font-size: 13px;
+  opacity: 0.8;
+  margin: 4px 0;
+}
+.master-hist-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border: none;
+  background: var(--chip-bg);
+  border-radius: 9px;
+  padding: 7px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: filter 0.12s ease;
+}
+.master-hist-row:hover {
+  filter: brightness(1.07);
+}
+.master-hist-expr {
+  color: var(--surface-ink-soft);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.master-hist-eq {
+  color: var(--surface-ink);
+  font-weight: 800;
+  font-family: var(--display);
+  font-size: 13px;
+  flex: none;
+}
+.master-clear {
+  margin-top: 8px;
+  border: 1px solid var(--surface-border);
+  background: transparent;
+  color: var(--surface-ink-soft);
+  border-radius: 9px;
+  padding: 6px 10px;
+  font: 700 12px var(--display);
+  cursor: pointer;
+}
+
+.master-mem-value {
+  font: 800 24px var(--display);
+  color: var(--surface-ink);
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+.master-mem-row {
+  display: flex;
+  gap: 6px;
+}
+.master-mem-row button {
+  flex: 1;
+  border: 1px solid var(--surface-border);
+  background: var(--chip-bg);
+  color: var(--surface-ink-soft);
+  border-radius: 9px;
+  padding: 8px 0;
+  font: 700 13px var(--display);
+  cursor: pointer;
+}
+
+.master-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* When embedded in a narrow window, collapse the side-by-side layouts. */
+@media (max-width: 760px) {
+  .master-calc-split,
+  .master-two {
+    grid-template-columns: 1fr;
+  }
+}

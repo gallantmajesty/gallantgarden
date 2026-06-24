@@ -1,15 +1,15 @@
-import { Suspense, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
 import { PngIcon } from '../components/PngIcon'
 import { useRealm, type CustomRealm } from '../store/realm'
-import { useSettings } from '../store/settings'
 import { useAvatar } from '../avatar/store'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
-import { Section, Slider, Toggle } from '../components/settings/controls'
-import { GLOBAL_ROOMS, REALM_PRESENCE_LIVE, ENABLE_WATERFALL_REALM, isDevAccess } from '../lib/realm'
+import { GLOBAL_ROOMS, ENABLE_WATERFALL_REALM, isDevAccess } from '../lib/realm'
+import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
+import { createRealm, getRealmByCode, listPublicRealms, inviteLink, type Realm as DbRealm, type RealmVisibility } from '../lib/realms'
 import './Realm.css'
 
 type Mode = 'choose' | 'global' | 'custom'
@@ -17,7 +17,6 @@ type Mode = 'choose' | 'global' | 'custom'
 export function Realm() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('choose')
-  const [audioOpen, setAudioOpen] = useState(false)
 
   return (
     <div className="realm-root">
@@ -27,48 +26,10 @@ export function Realm() {
         </button>
       </div>
 
-      <div className="realm-topright">
-        <button className="sf-btn ghost" onClick={() => setAudioOpen(true)}>
-          ♪ Audio
-        </button>
-      </div>
-
       <div className="realm-stage">
         {mode === 'choose' && <RealmChoose onPick={setMode} />}
         {mode === 'global' && <GlobalRealm />}
         {mode === 'custom' && <CustomRealm />}
-      </div>
-
-      {audioOpen && <AudioPanel onClose={() => setAudioOpen(false)} />}
-    </div>
-  )
-}
-
-/* ----------------------------------------------------------------- audio panel
- * The Sound controls used to live in the Lobby settings drawer; they now live
- * here, since this is where the realm/scene ambience plays. Reuses the shared
- * settings drawer chrome + control primitives (controls.tsx / controls.css) so
- * it looks and behaves exactly like the old panel. */
-function AudioPanel({ onClose }: { onClose: () => void }) {
-  const s = useSettings()
-  return (
-    <div className="settings-scrim" onPointerDown={onClose}>
-      <div className="settings-panel" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="settings-head">
-          <h2>Audio</h2>
-          <button className="settings-x" onClick={onClose} aria-label="Close audio">
-            ✕
-          </button>
-        </div>
-        <div className="settings-body">
-          <Section title="Sound">
-            <Slider label="Master volume" value={s.master} onChange={(v) => s.set('master', v)} />
-            <Toggle label="Ambient music" value={s.ambientOn} onChange={(v) => s.set('ambientOn', v)} />
-            <Slider label="Ambient level" value={s.ambientVol} onChange={(v) => s.set('ambientVol', v)} />
-            <Toggle label="Rain / weather" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
-            <Slider label="Rain / weather level" value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
-          </Section>
-        </div>
       </div>
     </div>
   )
@@ -208,6 +169,25 @@ function SpinningAvatar({ config }: { config: AvatarConfig }) {
 function GlobalRealm() {
   const navigate = useNavigate()
   const enterGlobal = useRealm((s) => s.enterGlobal)
+  // Live occupancy per room, keyed by roomId → instance counts. Polled so the
+  // chooser shows real, current numbers (and "opening a new room" when full).
+  const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
+
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      const entries = await Promise.all(
+        GLOBAL_ROOMS.map(async (r) => [r.id, await occupancy(`lib:${r.id}`)] as const),
+      )
+      if (alive) setOcc(Object.fromEntries(entries))
+    }
+    void load()
+    const t = window.setInterval(load, 15_000)
+    return () => {
+      alive = false
+      window.clearInterval(t)
+    }
+  }, [])
 
   function join(roomId: string, name: string) {
     enterGlobal(roomId, name)
@@ -219,37 +199,40 @@ function GlobalRealm() {
       <header className="realm-head">
         <span className="sf-pill">Global Realm</span>
         <h1>Pick a room</h1>
-        <p>Step into any hall to study. Shared presence is on the way.</p>
+        <p>Step into any hall to study together — everyone who enters the same room sees each other live.</p>
       </header>
 
-      {/* Honest status: no fake occupancy. Until a realtime presence channel
-          lands, every room is a solo space and we say so plainly. */}
-      {!REALM_PRESENCE_LIVE && (
-        <div className="realm-banner">
-          <span className="realm-banner-dot" />
-          Realm multiplayer isn’t live yet — you’ll study solo for now. Live room counts and
-          other students will appear here once presence ships.
-        </div>
-      )}
-
       <div className="realm-rooms">
-        {GLOBAL_ROOMS.map((r) => (
-          <div key={r.id} className="realm-room water-glass">
-            <div className="realm-room-icon">
-              <PngIcon name="study-rooms" size={40} alt="" />
-            </div>
-            <div className="realm-room-body">
-              <div className="realm-room-top">
-                <strong>{r.name}</strong>
-                <span className="realm-room-count muted">Solo</span>
+        {GLOBAL_ROOMS.map((r) => {
+          const rows = occ[r.id] ?? []
+          const here = totalOccupants(rows)
+          const instances = rows.length
+          // The lead instance is what a new joiner lands in until it fills; once
+          // every instance is full the server opens the next one automatically.
+          const lead = rows.find((x) => x.instance === 1)?.count ?? 0
+          const full = instances > 0 && rows.every((x) => x.count >= REALM_CAPACITY)
+          return (
+            <div key={r.id} className="realm-room water-glass">
+              <div className="realm-room-icon">
+                <PngIcon name="study-rooms" size={40} alt="" />
               </div>
-              <p>{r.blurb}</p>
+              <div className="realm-room-body">
+                <div className="realm-room-top">
+                  <strong>{r.name}</strong>
+                  <span className="realm-room-count" title={`${here} studying now`}>
+                    <span className="realm-room-dot" />
+                    {Math.min(lead, REALM_CAPACITY)}/{REALM_CAPACITY}
+                    {instances > 1 && <span className="realm-room-inst"> · {instances} rooms · {here} total</span>}
+                  </span>
+                </div>
+                <p>{r.blurb}</p>
+              </div>
+              <button className="sf-btn water realm-join" onClick={() => join(r.id, r.name)}>
+                {full ? 'Enter new room' : 'Enter'}
+              </button>
             </div>
-            <button className="sf-btn water realm-join" onClick={() => join(r.id, r.name)}>
-              Enter
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </>
   )
@@ -257,17 +240,71 @@ function GlobalRealm() {
 
 /* -------------------------------------------------------------- custom realm */
 
+const VIS_OPTIONS: { id: RealmVisibility; label: string; blurb: string }[] = [
+  { id: 'private', label: 'Private', blurb: 'Invite code / link only' },
+  { id: 'friends', label: 'Friends', blurb: 'Your friends can join' },
+  { id: 'public', label: 'Public', blurb: 'Anyone can discover it' },
+]
+
+function dbToCustom(r: DbRealm): CustomRealm {
+  return { id: r.id, name: r.name, code: r.code, visibility: r.visibility, ownerId: r.owner_id, createdAt: r.created_at }
+}
+
 function CustomRealm() {
   const navigate = useNavigate()
   const custom = useRealm((s) => s.custom)
-  const createCustom = useRealm((s) => s.createCustom)
+  const rememberCustom = useRealm((s) => s.rememberCustom)
   const enterCustom = useRealm((s) => s.enterCustom)
-  const [name, setName] = useState('')
 
-  function create(e: React.FormEvent) {
+  const [name, setName] = useState('')
+  const [vis, setVis] = useState<RealmVisibility>('private')
+  const [busy, setBusy] = useState(false)
+  const [created, setCreated] = useState<DbRealm | null>(null)
+
+  const [joinCode, setJoinCode] = useState('')
+  const [joinErr, setJoinErr] = useState<string | null>(null)
+  const [joining, setJoining] = useState(false)
+
+  const [publicRealms, setPublicRealms] = useState<DbRealm[]>([])
+
+  useEffect(() => {
+    let alive = true
+    void listPublicRealms().then((rows) => alive && setPublicRealms(rows))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function create(e: React.FormEvent) {
     e.preventDefault()
-    const realm = createCustom(name)
-    enterCustom(realm)
+    if (busy) return
+    setBusy(true)
+    const realm = await createRealm(name, vis, REALM_CAPACITY)
+    setBusy(false)
+    if (!realm) {
+      setJoinErr('Could not create the realm. Are you signed in?')
+      return
+    }
+    rememberCustom(dbToCustom(realm))
+    setCreated(realm) // show the invite card; the player taps Enter to step inside
+  }
+
+  async function join(e: React.FormEvent) {
+    e.preventDefault()
+    if (joining || !joinCode.trim()) return
+    setJoining(true)
+    setJoinErr(null)
+    // accept a full link or a bare code
+    const code = joinCode.trim().split('/').pop() || joinCode.trim()
+    const { realm, error } = await getRealmByCode(code)
+    setJoining(false)
+    if (!realm) {
+      setJoinErr(error || 'Realm not found.')
+      return
+    }
+    const c = dbToCustom(realm)
+    rememberCustom(c)
+    enterCustom(c)
     navigate('/explore')
   }
 
@@ -276,15 +313,19 @@ function CustomRealm() {
     navigate('/explore')
   }
 
+  if (created) {
+    return <InviteCard realm={created} onEnter={() => open(dbToCustom(created))} onBack={() => setCreated(null)} />
+  }
+
   return (
     <>
       <header className="realm-head">
         <span className="sf-pill">Custom Realm</span>
-        <h1>Your private world</h1>
-        <p>Name your realm and step inside. Only you can enter — invites come later.</p>
+        <h1>Your own world</h1>
+        <p>Create a realm, then share its invite code or link so friends join the exact same world.</p>
       </header>
 
-      <form className="realm-create" onSubmit={create}>
+      <form className="realm-create realm-create-col" onSubmit={create}>
         <input
           className="sf-input"
           placeholder="Name your realm — e.g. Midnight Library"
@@ -293,10 +334,37 @@ function CustomRealm() {
           maxLength={40}
           autoFocus
         />
-        <button className="sf-btn water" type="submit">
-          Create &amp; enter
+        <div className="realm-vis">
+          {VIS_OPTIONS.map((o) => (
+            <button
+              type="button"
+              key={o.id}
+              className={`realm-vis-opt ${vis === o.id ? 'on' : ''}`}
+              onClick={() => setVis(o.id)}
+            >
+              <strong>{o.label}</strong>
+              <span>{o.blurb}</span>
+            </button>
+          ))}
+        </div>
+        <button className="sf-btn water" type="submit" disabled={busy}>
+          {busy ? 'Creating…' : 'Create realm'}
         </button>
       </form>
+
+      {/* join by invite code or pasted link */}
+      <form className="realm-create realm-join-form" onSubmit={join}>
+        <input
+          className="sf-input"
+          placeholder="Have a code? Paste it — e.g. midnight-8xk2p"
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+        />
+        <button className="sf-btn water secondary" type="submit" disabled={joining}>
+          {joining ? 'Joining…' : 'Join'}
+        </button>
+      </form>
+      {joinErr && <p className="realm-join-err">{joinErr}</p>}
 
       {custom.length > 0 && (
         <div className="realm-mine">
@@ -306,6 +374,7 @@ function CustomRealm() {
               <button key={r.id} className="realm-mine-item" onClick={() => open(r)}>
                 <PngIcon name="realm" size={34} alt="" />
                 <span>{r.name}</span>
+                {r.code && <span className="realm-mine-code">{r.code}</span>}
                 <span className="realm-mine-go">Enter ›</span>
               </button>
             ))}
@@ -313,9 +382,70 @@ function CustomRealm() {
         </div>
       )}
 
-      <p className="realm-note">
-        Custom realms are private to you today. Later, creating them may become a premium perk.
-      </p>
+      {publicRealms.length > 0 && (
+        <div className="realm-mine">
+          <h3>Public realms</h3>
+          <div className="realm-mine-list">
+            {publicRealms.map((r) => (
+              <button key={r.id} className="realm-mine-item" onClick={() => open(dbToCustom(r))}>
+                <PngIcon name="realm" size={34} alt="" />
+                <span>{r.name}</span>
+                <span className="realm-mine-go">Enter ›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Post-create card: shows the shareable code + link with copy buttons, then a
+ *  prominent Enter to step into the new realm. */
+function InviteCard({ realm, onEnter, onBack }: { realm: DbRealm; onEnter: () => void; onBack: () => void }) {
+  const link = inviteLink(realm.code)
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null)
+
+  function copy(text: string, which: 'code' | 'link') {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(which)
+      window.setTimeout(() => setCopied(null), 1600)
+    })
+  }
+
+  return (
+    <>
+      <header className="realm-head">
+        <span className="sf-pill">Realm created</span>
+        <h1>{realm.name}</h1>
+        <p>Share this with friends so they drop into the exact same realm.</p>
+      </header>
+
+      <div className="realm-invite">
+        <div className="realm-invite-row">
+          <span className="realm-invite-label">Invite code</span>
+          <code className="realm-invite-value">{realm.code}</code>
+          <button className="sf-btn water secondary" onClick={() => copy(realm.code, 'code')}>
+            {copied === 'code' ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <div className="realm-invite-row">
+          <span className="realm-invite-label">Invite link</span>
+          <code className="realm-invite-value">{link}</code>
+          <button className="sf-btn water secondary" onClick={() => copy(link, 'link')}>
+            {copied === 'link' ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      <div className="realm-create">
+        <button className="sf-btn ghost" onClick={onBack}>
+          ‹ Back
+        </button>
+        <button className="sf-btn water" onClick={onEnter}>
+          Enter realm ›
+        </button>
+      </div>
     </>
   )
 }

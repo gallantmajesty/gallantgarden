@@ -16,7 +16,6 @@ import { Camps } from './Camps'
 import { StudyDecks } from './StudyDecks'
 import { FocusLily } from './FocusLily'
 import { Vegetation } from './Vegetation'
-import { Watchtower } from './Watchtower'
 import { Wildlife } from './Wildlife'
 import { PlayerController } from './PlayerController'
 

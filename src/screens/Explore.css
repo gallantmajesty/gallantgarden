@@ -264,14 +264,15 @@
   animation: pop-in 0.4s ease both;
 }
 
-/* ---------- camera view switch (vertical, docked at the left edge) ---------- */
+/* ---------- camera view switch (horizontal, docked at the bottom-left) ----------
+   Moved to the bottom-left corner so the left-middle edge is free for the
+   friends/chat tab. First · Front · Third sit in a compact horizontal rail. */
 .explore-cam {
   position: absolute;
   left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 18px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
   padding: 6px;
   background: rgba(20, 14, 8, 0.55);
@@ -301,6 +302,13 @@
   background: linear-gradient(180deg, #ffe08a, var(--gold));
   color: #1a1206;
   box-shadow: 0 2px 8px rgba(180, 140, 50, 0.5);
+}
+/* On touch devices the joystick lives in the bottom-left, so lift the camera
+   rail above it to avoid overlap. */
+@media (pointer: coarse) {
+  .explore-cam {
+    bottom: 158px;
+  }
 }
 
 /* ---------- first-person onboarding hint ---------- */

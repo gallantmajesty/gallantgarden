@@ -260,6 +260,23 @@
   padding: 2px 10px;
   border-radius: 999px;
 }
+.realm-room-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.realm-room-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--grass-dark);
+  box-shadow: 0 0 6px rgba(107, 191, 79, 0.7);
+}
+.realm-room-inst {
+  font-weight: 600;
+  font-size: 11px;
+  opacity: 0.8;
+}
 .realm-room-count.hot {
   color: #b5562f;
   background: rgba(226, 91, 75, 0.14);
@@ -382,4 +399,92 @@
   text-align: center;
   font-style: italic;
   text-shadow: 0 1px 8px rgba(255, 255, 255, 0.6);
+}
+
+/* ---- custom realm: create + visibility + invite + join ---- */
+.realm-create-col {
+  flex-direction: column;
+  align-items: stretch;
+}
+.realm-vis {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.realm-vis-opt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--glass-fill);
+  border: 1.5px solid var(--glass-border);
+  text-align: left;
+  cursor: pointer;
+  transition: filter 0.12s ease, border-color 0.12s ease;
+}
+.realm-vis-opt strong {
+  font-family: var(--display);
+  font-size: 14px;
+  color: var(--wood-dark);
+}
+.realm-vis-opt span {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.realm-vis-opt.on {
+  border-color: var(--grass-dark);
+  background: rgba(107, 191, 79, 0.16);
+}
+.realm-join-form {
+  margin-top: 4px;
+}
+.realm-join-err {
+  color: #b5562f;
+  font-size: 13px;
+  font-weight: 600;
+}
+.realm-mine-code {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  color: var(--grass-dark);
+  background: rgba(107, 191, 79, 0.14);
+  border: 1px solid rgba(79, 158, 60, 0.35);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.realm-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+}
+.realm-invite-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.realm-invite-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--ink-soft);
+  width: 86px;
+  flex: none;
+}
+.realm-invite-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  color: var(--wood-dark);
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  padding: 8px 12px;
+  border-radius: 10px;
 }

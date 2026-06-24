@@ -1,0 +1,107 @@
+.fw-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  /* The window floats over a light scrim; clicks outside don't dismiss it (a
+     professional app stays open until you close it). */
+  background: rgba(15, 18, 28, 0.34);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+.fw {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--parchment);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 6px 20px rgba(0, 0, 0, 0.3);
+  animation: fw-in 0.18s ease both;
+}
+@keyframes fw-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.fw.max {
+  box-shadow: none;
+}
+body.fw-dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.fw-bar {
+  flex: none;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 16px;
+  cursor: grab;
+  background: linear-gradient(180deg, rgba(138, 108, 255, 0.22), rgba(138, 108, 255, 0.08));
+  border-bottom: 1px solid var(--surface-border);
+}
+.fw-bar:active {
+  cursor: grabbing;
+}
+.fw-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 800 15px var(--display);
+  color: var(--surface-ink);
+}
+.fw-bar-icon {
+  display: inline-flex;
+}
+.fw-bar-actions {
+  display: flex;
+  gap: 4px;
+}
+.fw-ctrl {
+  width: 32px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--surface-ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.fw-ctrl:hover {
+  background: var(--chip-bg);
+  color: var(--surface-ink);
+}
+.fw-ctrl.close:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.fw-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 18px;
+  background: var(--parchment);
+}
+
+/* resize handles */
+.fw-resize {
+  position: absolute;
+  z-index: 2;
+}
+.fw-n, .fw-s { left: 8px; right: 8px; height: 7px; cursor: ns-resize; }
+.fw-e, .fw-w { top: 8px; bottom: 8px; width: 7px; cursor: ew-resize; }
+.fw-n { top: 0; }
+.fw-s { bottom: 0; }
+.fw-e { right: 0; }
+.fw-w { left: 0; }
+.fw-ne, .fw-nw, .fw-se, .fw-sw { width: 14px; height: 14px; }
+.fw-ne { top: 0; right: 0; cursor: nesw-resize; }
+.fw-nw { top: 0; left: 0; cursor: nwse-resize; }
+.fw-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.fw-sw { bottom: 0; left: 0; cursor: nesw-resize; }

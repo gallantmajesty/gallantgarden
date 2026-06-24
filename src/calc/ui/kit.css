@@ -1,0 +1,139 @@
+/* Shared calculator-module styling. Uses the app's theme tokens so dark/light
+   mode flips automatically with the rest of Focus Lily. */
+
+.calc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.calc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.calc-field-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--surface-ink-soft);
+}
+.calc-field-hint {
+  font-size: 11.5px;
+  color: var(--surface-ink-soft);
+  opacity: 0.8;
+}
+
+.calc-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.calc-input,
+.calc-select {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1.5px solid var(--surface-border);
+  background: var(--field-bg);
+  color: var(--field-ink);
+  font: 600 15px var(--sans);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.calc-input:focus,
+.calc-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(138, 108, 255, 0.16);
+}
+.calc-input-suffix {
+  position: absolute;
+  right: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--surface-ink-soft);
+  pointer-events: none;
+}
+
+.calc-select {
+  appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--surface-ink-soft) 50%),
+    linear-gradient(135deg, var(--surface-ink-soft) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+/* segmented toggle */
+.calc-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border-radius: 12px;
+  background: var(--chip-bg);
+  border: 1px solid var(--surface-border);
+}
+.calc-seg-btn {
+  border: none;
+  background: transparent;
+  padding: 7px 14px;
+  border-radius: 9px;
+  font: 700 13px var(--display);
+  color: var(--surface-ink-soft);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.calc-seg-btn.on {
+  background: var(--surface);
+  color: var(--surface-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* results */
+.calc-result {
+  margin-top: 4px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(138, 108, 255, 0.14), rgba(107, 191, 79, 0.1));
+  border: 1px solid var(--surface-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.calc-result-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--surface-ink-soft);
+}
+.calc-result-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--surface-ink);
+  line-height: 1.1;
+  word-break: break-word;
+}
+.calc-result.big .calc-result-value {
+  font-size: 34px;
+}
+.calc-result-sub {
+  font-size: 12.5px;
+  color: var(--surface-ink-soft);
+}
+
+.calc-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.calc-result-grid .calc-result {
+  margin-top: 0;
+}
+.calc-result-grid .calc-result-value {
+  font-size: 20px;
+}

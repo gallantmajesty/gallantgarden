@@ -12,6 +12,7 @@ import { useWorld } from '../../store/world'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
 import { useAvatar } from '../../avatar/store'
+import { setLocalState } from '../../multiplayer/net'
 
 const SEAT_RANGE = 2.0
 const SEAT_EYE = 1.16
@@ -254,6 +255,8 @@ export function PlayerController() {
           )
           cam.lookAt(seat.pos[0], headY - 0.15, seat.pos[2])
         }
+        // broadcast the seated pose to the realm (parked at the chair, facing it)
+        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
       }
       return
     }
@@ -386,6 +389,9 @@ export function PlayerController() {
       l.grounded = st.grounded
       l.vy = st.vy
       l.turnRate = dt > 0 ? (av.rotation.y - prevYaw) / dt : 0
+      // broadcast our transform + motion to the realm (the net layer throttles to
+      // ~10Hz and only sends when something changed — see multiplayer/net.ts)
+      setLocalState({ x: st.x, y: st.y, z: st.z, yaw: av.rotation.y, speed: l.speed, grounded: st.grounded, seated: false })
     }
 
     // ---- nearest sittable seat (for the "Press E to sit" prompt) ----

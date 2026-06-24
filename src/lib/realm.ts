@@ -8,12 +8,16 @@
 //     later, invites friends to). No payment gating today, but the shape is
 //     ready to later restrict creation to premium / ultimate tiers.
 //
-// NOTE: realm multiplayer (shared presence + remote avatars) is NOT implemented
-// yet. There is no live participant data, so the UI must never invent occupancy
-// numbers or sample players. Rooms are presented as joinable solo spaces until a
-// realtime presence channel lands (see "Still requires new development" below).
+// Realm multiplayer is LIVE: entering a global room joins that room's realtime
+// channel (see multiplayer/net.ts) where players see each other move, animate and
+// wear their avatar cosmetics in real time. The roster shows only REAL connected
+// players — never fabricated counts or sample avatars. Pre-join room occupancy
+// counts (showing 8/50 before you enter) are the next step (capacity/instancing).
 
-export const ROOM_CAPACITY = 30
+// Per-room capacity. A room auto-instances (Forest Hall #1, #2, …) once every
+// existing instance is full — see src/lib/realmPresence.ts (REALM_CAPACITY is the
+// runtime value passed to assign_realm_instance; keep these in sync).
+export const ROOM_CAPACITY = 50
 export type RealmKind = 'global' | 'custom'
 
 export interface GlobalRoom {
@@ -37,11 +41,9 @@ export const GLOBAL_ROOMS: GlobalRoom[] = [
   { id: 'starlit-wing', name: 'Starlit Wing', blurb: 'Night-owls and dawn risers.' },
 ]
 
-/** Realm multiplayer is not implemented yet — no live presence exists. This flag
- *  is the single switch the UI reads to decide between "live counts" and the
- *  honest "solo / not live yet" state. Flip to true only once a realtime
- *  presence channel actually populates room occupancy. */
-export const REALM_PRESENCE_LIVE = false
+/** Realm multiplayer presence is live (see multiplayer/net.ts). Retained as a
+ *  single kill-switch in case presence needs to be disabled in an incident. */
+export const REALM_PRESENCE_LIVE = true
 
 /* ----------------------------------------------------- experimental realms */
 
