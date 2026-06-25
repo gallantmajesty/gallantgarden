@@ -270,6 +270,7 @@ function RainSide({ side, scale, count }: { side: number; scale: number; count: 
   const ref = useRef<InstancedMesh>(null)
   const dummy = useMemo(() => new Object3D(), [])
   const dropsRef = useRef<Drop[] | null>(null)
+  const wasActive = useRef(false)
   if (dropsRef.current == null) dropsRef.current = buildDrops(side, count)
 
   useFrame((_, dtRaw) => {
@@ -278,6 +279,21 @@ function RainSide({ side, scale, count }: { side: number; scale: number; count: 
     if (!mesh || !drops) return
     const dt = Math.min(dtRaw, 0.05)
     const active = Math.floor(drops.length * env.rain * scale)
+    // PERF: when it isn't raining, don't rewrite + re-upload the whole instance
+    // buffer every frame. Park the drops once on the transition to dry, then idle.
+    if (active === 0) {
+      if (!wasActive.current) return
+      for (let i = 0; i < drops.length; i++) {
+        dummy.position.set(0, -9999, 0)
+        dummy.scale.set(0, 0, 0)
+        dummy.updateMatrix()
+        mesh.setMatrixAt(i, dummy.matrix)
+      }
+      mesh.instanceMatrix.needsUpdate = true
+      wasActive.current = false
+      return
+    }
+    wasActive.current = true
     for (let i = 0; i < drops.length; i++) {
       if (i >= active) {
         dummy.position.set(0, -9999, 0)
@@ -337,6 +353,7 @@ function GlassStreaks() {
   const ref = useRef<InstancedMesh>(null)
   const dummy = useMemo(() => new Object3D(), [])
   const streaksRef = useRef<Streak[] | null>(null)
+  const wasActive = useRef(false)
   if (streaksRef.current == null) streaksRef.current = buildStreaks()
   const streaks = streaksRef.current
 
@@ -345,6 +362,20 @@ function GlassStreaks() {
     if (!mesh) return
     const dt = Math.min(dtRaw, 0.05)
     const active = Math.floor(streaks.length * env.rain)
+    // PERF: skip the per-frame rewrite + buffer upload while dry (see RainSide).
+    if (active === 0) {
+      if (!wasActive.current) return
+      for (let i = 0; i < streaks.length; i++) {
+        dummy.position.set(0, -9999, 0)
+        dummy.scale.set(0, 0, 0)
+        dummy.updateMatrix()
+        mesh.setMatrixAt(i, dummy.matrix)
+      }
+      mesh.instanceMatrix.needsUpdate = true
+      wasActive.current = false
+      return
+    }
+    wasActive.current = true
     for (let i = 0; i < streaks.length; i++) {
       const st = streaks[i]
       if (i >= active) {

@@ -15,6 +15,8 @@ import {
   TorusGeometry,
   Vector2,
 } from 'three'
+import { getAccessory } from './accessories/catalog'
+import { ACCESSORY_SLOTS, type EquippedAccessories } from './accessories/types'
 
 // v3 reframed clothing as predefined cosmetic ITEMS rather than free colour
 // swaps: garments (top/bottom/shoes) are item ids whose colour is baked into the
@@ -23,7 +25,12 @@ import {
 // height, skin, hair (style + colour) and eye colour. Older persisted blobs are
 // brought forward by normalizeAvatar (the dropped *Color keys are simply ignored
 // by the {...DEFAULT} spread).
-export const AVATAR_SCHEMA_VERSION = 3
+//
+// v4 adds `accessories`: a slot→item-id map of equipped cosmetic accessories
+// (glasses/hats/face/neck/back/handheld — see src/avatar/accessories/). At most
+// one item per slot; all slots can be worn at once. Item ids resolve to the
+// accessory catalog; normalizeAvatar drops any unknown / slot-mismatched id.
+export const AVATAR_SCHEMA_VERSION = 4
 
 export type BodyType = 'male' | 'female'
 
@@ -43,6 +50,8 @@ export interface AvatarConfig {
   top: string // -> TOPS id
   bottom: string // -> BOTTOMS id
   shoes: string // -> SHOES id
+  // --- equipped cosmetic accessories (slot -> accessory catalog id) ---
+  accessories: EquippedAccessories
 }
 
 /* ----------------------------------------------------------------- palettes */
@@ -94,16 +103,46 @@ export interface StyleOption {
   name: string
 }
 
-// Hair styles map to parametric cap/strand shapes built in AvatarRig.
-export const HAIRS: StyleOption[] = [
+// Hair styles map to parametric cap/strand shapes built in AvatarRig. Libraries
+// are gender-aware: a set of neutral cuts shared by both bodies, plus a distinct
+// masculine and feminine library so the two silhouettes never read identically.
+// The editor's hairstyle picker only offers hairsFor(bodyType); the rig renders
+// any id (see AvatarRig Hair()). Every id here MUST have a matching render case.
+
+/** Neutral cuts available to every body type. */
+export const SHARED_HAIRS: StyleOption[] = [
   { id: 'none', name: 'None' },
-  { id: 'buzz', name: 'Buzz' },
-  { id: 'short', name: 'Short' },
-  { id: 'medium', name: 'Swept' },
-  { id: 'long', name: 'Long' },
-  { id: 'bun', name: 'Top Bun' },
-  { id: 'twintails', name: 'Twin Tails' },
+  { id: 'crop', name: 'Cropped' },
+  { id: 'pixie', name: 'Pixie' },
+  { id: 'bob', name: 'Short Bob' },
 ]
+
+export const MALE_HAIRS: StyleOption[] = [
+  { id: 'short_messy', name: 'Short Messy' },
+  { id: 'side_part', name: 'Side Part' },
+  { id: 'curly', name: 'Curly' },
+  { id: 'fade', name: 'Fade' },
+  { id: 'medium_layered', name: 'Medium Layered' },
+  { id: 'spiky', name: 'Spiky' },
+  { id: 'academic_neat', name: 'Academic Neat' },
+  { id: 'wavy', name: 'Wavy' },
+]
+
+export const FEMALE_HAIRS: StyleOption[] = [
+  { id: 'long_straight', name: 'Long Straight' },
+  { id: 'ponytail', name: 'Ponytail' },
+  { id: 'twintails', name: 'Twin Tails' },
+  { id: 'bun', name: 'Bun' },
+  { id: 'braided', name: 'Braided' },
+  { id: 'shoulder', name: 'Shoulder Length' },
+  { id: 'wavy_long', name: 'Wavy Long' },
+  { id: 'curly_long', name: 'Curly Long' },
+]
+
+/** The hairstyle library offered for a body type: shared cuts + that gender's. */
+export function hairsFor(bodyType: BodyType): StyleOption[] {
+  return [...SHARED_HAIRS, ...(bodyType === 'female' ? FEMALE_HAIRS : MALE_HAIRS)]
+}
 
 // Garments are cosmetic ITEMS: each ships with its own baked colour (`hex`), so
 // there is no per-garment colour picker. New looks = new items (unlocked via
@@ -116,14 +155,21 @@ export const TOPS: GarmentOption[] = [
   { id: 'tee', name: 'T-Shirt', hex: '#cdd3da' },
   { id: 'hoodie', name: 'Hoodie', hex: '#34507a' },
   { id: 'jacket', name: 'Jacket', hex: '#4a4f5c' },
+  { id: 'blazer', name: 'Academic Blazer', hex: '#243049' },
   { id: 'robe', name: 'Scholar Robe', hex: '#5a3a8a' },
 ]
 
+// Skirt removed: clothing determines appearance, not body type, and no body type
+// auto-wears a skirt. Bottoms are leg garments only (pants / shorts / leggings);
+// academic vs casual is a TOP concern (see TOPS: tee/hoodie = casual, blazer/robe
+// = academic). Older saves with `bottom:'skirt'` are coerced in normalizeAvatar.
 export const BOTTOMS: GarmentOption[] = [
   { id: 'pants', name: 'Pants', hex: '#3a4257' },
   { id: 'shorts', name: 'Shorts', hex: '#6e6256' },
-  { id: 'skirt', name: 'Skirt', hex: '#6e3050' },
+  { id: 'leggings', name: 'Leggings', hex: '#2b2d3a' },
 ]
+
+const ALL_BOTTOM_IDS = new Set<string>(BOTTOMS.map((b) => b.id))
 
 export const SHOES: GarmentOption[] = [
   { id: 'sneakers', name: 'Sneakers', hex: '#e9e6df' },
@@ -137,13 +183,13 @@ export const HEIGHT_REF = 170 // config height that maps to rig scale 1.0
 // Starter COSMETICS per body type. Clothing + hair are no longer freely picked in
 // "Customize" — they come from owned items — so a brand-new avatar is given a
 // distinct, recognizable starter look for its gender (the silhouettes read apart
-// at a glance: male = army-cut + hoodie + pants; female = twin-tails + tee +
-// skirt). Switching gender in the editor swaps these starter cosmetics while
+// at a glance: male = short-messy + hoodie + pants; female = ponytail + tee +
+// leggings). Switching gender in the editor swaps these starter cosmetics while
 // leaving the player's chosen height/skin alone (see starterCosmetics).
 type StarterCosmetics = Pick<AvatarConfig, 'hair' | 'top' | 'bottom' | 'shoes'>
 
-const STARTER_MALE: StarterCosmetics = { hair: 'short', top: 'hoodie', bottom: 'pants', shoes: 'sneakers' }
-const STARTER_FEMALE: StarterCosmetics = { hair: 'twintails', top: 'tee', bottom: 'skirt', shoes: 'sneakers' }
+const STARTER_MALE: StarterCosmetics = { hair: 'short_messy', top: 'hoodie', bottom: 'pants', shoes: 'sneakers' }
+const STARTER_FEMALE: StarterCosmetics = { hair: 'ponytail', top: 'tee', bottom: 'leggings', shoes: 'sneakers' }
 
 export function starterCosmetics(bodyType: BodyType): StarterCosmetics {
   return bodyType === 'female' ? { ...STARTER_FEMALE } : { ...STARTER_MALE }
@@ -157,6 +203,7 @@ export const DEFAULT_AVATAR: AvatarConfig = {
   hairColor: 'brown',
   eyes: 'brown',
   ...STARTER_MALE,
+  accessories: {},
 }
 
 /* ----------------------------------------------------------- swatch helpers */
@@ -178,9 +225,44 @@ export const topHex = (id: string) => garmentHexOf(TOPS, id, '#48505c')
 export const bottomHex = (id: string) => garmentHexOf(BOTTOMS, id, '#3a4257')
 export const shoeHex = (id: string) => garmentHexOf(SHOES, id, '#2a2622')
 
-/** Bring any persisted/partial blob up to a complete, valid config. */
+// Legacy hair ids (pre-library split) → their nearest current id. Anything that
+// maps to a style outside the avatar's gender library is then caught by the
+// validity check below and falls back to that gender's starter hair.
+const LEGACY_HAIR: Record<string, string> = {
+  buzz: 'crop',
+  short: 'short_messy',
+  medium: 'medium_layered',
+  long: 'long_straight',
+  // bun + twintails keep their ids (now female-library) — valid as-is for female,
+  // coerced to the male starter for a male body by the validity check.
+}
+
+/** Bring any persisted/partial blob up to a complete, valid config. Coerces
+ *  retired cosmetic ids (legacy hair names, the removed `skirt`) onto valid
+ *  current ids so old saves never render a missing/floating cosmetic. */
 export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined): AvatarConfig {
-  return { ...DEFAULT_AVATAR, ...(input ?? {}), v: AVATAR_SCHEMA_VERSION }
+  const merged = { ...DEFAULT_AVATAR, ...(input ?? {}), v: AVATAR_SCHEMA_VERSION }
+
+  // hair: map legacy ids, then ensure the result is in this body's library.
+  const mappedHair = LEGACY_HAIR[merged.hair] ?? merged.hair
+  const validHair = hairsFor(merged.bodyType).some((h) => h.id === mappedHair)
+  merged.hair = validHair ? mappedHair : starterCosmetics(merged.bodyType).hair
+
+  // bottom: the removed `skirt` (and any unknown id) coerces to pants.
+  if (!ALL_BOTTOM_IDS.has(merged.bottom)) merged.bottom = 'pants'
+
+  // accessories: keep only ids that exist in the catalog AND match their slot;
+  // anything unknown/removed/mismatched is silently dropped (never renders).
+  const inAcc = (merged.accessories ?? {}) as EquippedAccessories
+  const acc: EquippedAccessories = {}
+  for (const slot of ACCESSORY_SLOTS) {
+    const id = inAcc[slot]
+    const item = getAccessory(id)
+    if (id && item && item.slot === slot) acc[slot] = id
+  }
+  merged.accessories = acc
+
+  return merged
 }
 
 /* --------------------------------------------------------------- randomize */
@@ -204,6 +286,7 @@ export function randomizeAvatar(): AvatarConfig {
     hairColor: pick(HAIR_COLORS).id,
     eyes: pick(EYE_COLORS).id,
     ...starterCosmetics(bodyType),
+    accessories: {},
   }
 }
 

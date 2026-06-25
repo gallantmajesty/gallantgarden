@@ -21,6 +21,7 @@ import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../component
 import { usePomodoro } from '../store/pomodoro'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
+import { useMagnet } from '../store/magnet'
 import { useRealm, type ActiveRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
@@ -32,6 +33,7 @@ import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTa
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
+import { MusicPlayer } from '../components/library/MusicPlayer'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -44,8 +46,6 @@ export function Explore() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
   const fps = useSettings((s) => s.fps)
-  const ambientOn = useSettings((s) => s.ambientOn)
-  const master = useSettings((s) => s.master)
   const brightness = useSettings((s) => s.brightness)
   const set = useSettings((s) => s.set)
   // Transient view state: Tab hides every widget; Ctrl+F enters Performance Mode.
@@ -116,27 +116,9 @@ export function Explore() {
           {/* top-center: pomodoro */}
           <PomodoroChip />
 
-          {/* top-right: compact bar — audio · brightness · menu */}
+          {/* top-right: compact bar — brightness · menu. (Audio volume now lives
+              in the Library Realm music widget, bottom-right.) */}
           <div className="explore-topbar">
-            <button
-              className={`explore-iconbtn ${ambientOn ? 'on' : ''}`}
-              onClick={() => set('ambientOn', !ambientOn)}
-              title={ambientOn ? 'Mute ambience' : 'Play ambience'}
-            >
-              <MusicGlyph on={ambientOn} />
-            </button>
-            <input
-              className="explore-mini"
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={master}
-              onChange={(e) => set('master', Number(e.target.value))}
-              aria-label="Master volume"
-              title="Volume"
-            />
-            <span className="explore-bar-sep" />
             <button
               className={`explore-iconbtn ${calcOpen ? 'on' : ''}`}
               onClick={() => setCalcOpen((v) => !v)}
@@ -217,6 +199,12 @@ export function Explore() {
           {perfMode ? '⚡ Performance Mode · Ctrl+F to exit' : 'Tab to show UI'}
         </button>
       )}
+
+      {/* Library-realm focus-music mini-player. Mounted outside the hide gate so
+          its singleton engine keeps playing when the HUD is hidden; the widget
+          itself hides on Tab/Performance Mode. Library realm only — never in the
+          waterfall realm, and (by design) never in study rooms. */}
+      {!isWaterfall && <MusicPlayer />}
     </div>
   )
 }
@@ -577,6 +565,11 @@ function SeatPrompt() {
 function SeatedPanel() {
   const seat = useWorld((s) => s.seat)
   const { mode, remaining, running, toggle, skip, reset } = usePomodoro()
+  // What the student is studying — tags every completed focus block so analytics
+  // can break focus time down by subject. Options come from Task Magnet.
+  const subject = usePomodoro((s) => s.subject)
+  const setSubject = usePomodoro((s) => s.setSubject)
+  const subjects = useMagnet((s) => s.data.subjects)
   // Goals / notes / view live in the persisted desk store so they survive
   // stand-up → sit-down and page refreshes (never cleared on stand up).
   const goals = useDesk((s) => s.goals)
@@ -650,6 +643,21 @@ function SeatedPanel() {
               Reset
             </button>
           </div>
+          <label className="station-subject">
+            <span>Studying</span>
+            <input
+              className="sf-input"
+              list="station-subjects"
+              placeholder="Subject (optional)"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+            <datalist id="station-subjects">
+              {subjects.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </label>
         </div>
 
         <div className="station-card">
@@ -709,12 +717,13 @@ function PomodoroTicker() {
 }
 
 function PomodoroChip() {
-  const { mode, remaining, running, toggle, skip } = usePomodoro()
+  const { mode, remaining, running, toggle, skip, subject } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
   if (!show) return null
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
-  const label = mode === 'idle' ? 'Focus' : mode === 'study' ? 'Study' : mode === 'long' ? 'Long break' : 'Break'
+  const studying = mode === 'study' && subject ? subject : null
+  const label = studying ?? (mode === 'idle' ? 'Focus' : mode === 'study' ? 'Study' : mode === 'long' ? 'Long break' : 'Break')
   return (
     <div className={`explore-pomo ${mode}`}>
       <span className="explore-pomo-label">{label}</span>
@@ -867,9 +876,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
 
           <Section title="Audio">
             <Slider label="Master volume" display={`${Math.round(s.master * 100)}%`} value={s.master} onChange={(v) => s.set('master', v)} />
-            <Slider label="Ambient music" display={`${Math.round(s.ambientVol * 100)}%`} value={s.ambientVol} onChange={(v) => s.set('ambientVol', v)} />
             <Slider label="Rain / weather" display={`${Math.round(s.rainVol * 100)}%`} value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
-            <Toggle label="Ambient music" value={s.ambientOn} onChange={(v) => s.set('ambientOn', v)} />
             <Toggle label="Rain sounds" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
           </Section>
 
@@ -947,17 +954,6 @@ function Joystick() {
     >
       <div className="explore-joy-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
     </div>
-  )
-}
-
-function MusicGlyph({ on }: { on: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 18V6l10-2v12" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="16" cy="16" r="3" />
-      {!on && <line x1="3" y1="3" x2="21" y2="21" />}
-    </svg>
   )
 }
 

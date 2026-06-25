@@ -14,12 +14,16 @@ import { Lobby } from './screens/Lobby'
 import { Blueprint } from './screens/Blueprint'
 import { StickyEntry } from './screens/StickyEntry'
 import { Explore } from './screens/Explore'
+import { StudyRoom } from './screens/StudyRoom'
+import { RoomsList } from './screens/RoomsList'
+import { About } from './screens/About'
 import { Realm } from './screens/Realm'
 import { RealmInvite } from './screens/RealmInvite'
 import { TaskMagnet } from './screens/TaskMagnet'
 import { Profile } from './screens/Profile'
 import { AvatarCreator } from './screens/AvatarCreator'
 import { ShotHarness } from './screens/ShotHarness' // TEMP: torso-review screenshots
+import { PerfHarness } from './screens/PerfHarness' // TEMP: Forest Hall perf profiling
 import { CalcHub } from './calc/ui/CalcHub' // TEMP usage in /__calc verify route
 import { LoadingVeil } from './components/LoadingVeil'
 import { MobileFullscreenGate, useIsDesktop } from './components/DesktopOnly'
@@ -57,6 +61,11 @@ export default function App() {
 
   // TEMP (torso review): a no-auth screenshot harness. Remove with ShotHarness.
   if (window.location.pathname === '/__shot') return <ShotHarness />
+
+  // TEMP (perf pass): a no-auth, no-presence direct mount of Forest Hall so the
+  // environment can be profiled in isolation (1 player, no crowd). Remove with
+  // PerfHarness when the optimization pass is done.
+  if (window.location.pathname === '/__perf') return <PerfHarness />
 
   // TEMP (calc verify): a no-auth direct mount of the Calculator Hub for visual
   // checks. Safe to remove — it short-circuits before auth.
@@ -101,6 +110,10 @@ export default function App() {
             <Route path="/realm" element={<Realm />} />
             <Route path="/realm/:code" element={<RealmInvite />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/rooms" element={<RoomsList />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/room" element={<Navigate to="/rooms" replace />} />
+            <Route path="/room/:id" element={<StudyRoom />} />
             <Route path="/magnet" element={<TaskMagnet />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:username" element={<Profile />} />

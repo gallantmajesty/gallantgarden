@@ -4,26 +4,33 @@ import { Canvas } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { AvatarRig, type AvatarRigHandle } from '../avatar/AvatarRig'
-import { AvatarAnimator, type PreviewState } from '../avatar/AvatarAnimator'
+import { AvatarAnimator } from '../avatar/AvatarAnimator'
 import { BASE_BODY } from '../avatar/baseBody'
 import type { Locomotion } from '../avatar/animation'
 import { useAvatar } from '../avatar/store'
 import {
   BOTTOMS,
   EYE_COLORS,
-  HAIRS,
   HEIGHT_MAX,
   HEIGHT_MIN,
   SHOES,
   SKINS,
   TOPS,
   hairHex,
+  hairsFor,
   starterCosmetics,
   type AvatarConfig,
   type GarmentOption,
   type StyleOption,
   type Swatch,
 } from '../avatar/config'
+import { accessoriesByCategory } from '../avatar/accessories/catalog'
+import {
+  CATEGORY_LABEL,
+  CATEGORY_ORDER,
+  SLOT_FOR_ACCESSORY_CATEGORY,
+} from '../avatar/accessories/types'
+import { RARITY_COLOR, RARITY_LABEL } from '../marketplace/types'
 import { LoadingVeil } from '../components/LoadingVeil'
 import './AvatarCreator.css'
 
@@ -35,16 +42,10 @@ import './AvatarCreator.css'
 // adding a hairstyle/colour there shows up here for free. No roster, no
 // characterId — a single customizable body.
 
-// Emote bar — drives the live preview pose (see AvatarAnimator PreviewState).
-const EMOTES: { id: PreviewState; label: string; icon: GlyphKind }[] = [
-  { id: 'idle', label: 'Idle', icon: 'idle' },
-  { id: 'wave', label: 'Wave', icon: 'wave' },
-  { id: 'happy', label: 'Cheer', icon: 'happy' },
-  { id: 'celebrate', label: 'Celebrate', icon: 'celebrate' },
-  { id: 'sit', label: 'Sit', icon: 'sit' },
-]
+// Emotes live in the realm/game world, not the avatar editor — the editor is a
+// focused dressing room. The preview just idles + turntable-rotates.
 
-type DockTab = 'customize' | 'items'
+type DockTab = 'customize' | 'items' | 'accessories'
 
 export function AvatarCreator() {
   const navigate = useNavigate()
@@ -54,7 +55,6 @@ export function AvatarCreator() {
   const save = useAvatar((s) => s.save)
 
   const [dock, setDock] = useState<DockTab>('customize')
-  const [emote, setEmote] = useState<PreviewState>('idle')
   const [auto, setAuto] = useState(true)
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
@@ -75,21 +75,19 @@ export function AvatarCreator() {
           <span className="ac-brand-name">Focus Lily</span>
         </button>
 
+        {/* Focused dressing-room nav: Home / Shop / Avatar only. Quests, Garden &
+            Friends live elsewhere — the editor stays distraction-free. Shop will
+            open this editor on its Marketplace tab once that lands (Phase 3); for
+            now it just keeps you in the dressing room. */}
         <nav className="ac-nav">
-          <button className="ac-nav-item" data-on onClick={() => navigate('/')}>
+          <button className="ac-nav-item" onClick={() => navigate('/')}>
             <Glyph kind="home" /> Home
           </button>
-          <button className="ac-nav-item" onClick={() => navigate('/magnet')}>
-            <Glyph kind="quests" /> Quests
-          </button>
-          <button className="ac-nav-item" onClick={() => navigate('/realm')}>
-            <Glyph kind="garden" /> Garden
-          </button>
-          <button className="ac-nav-item" onClick={() => navigate('/')}>
+          <button className="ac-nav-item" onClick={() => navigate('/avatar')}>
             <Glyph kind="shop" /> Shop
           </button>
-          <button className="ac-nav-item" onClick={() => navigate('/')}>
-            <Glyph kind="friends" /> Friends
+          <button className="ac-nav-item" data-on onClick={() => navigate('/avatar')}>
+            <Glyph kind="body" /> Avatar
           </button>
         </nav>
 
@@ -110,27 +108,12 @@ export function AvatarCreator() {
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <Suspense fallback={<div className="ac-stage-veil"><LoadingVeil label="Summoning your avatar…" /></div>}>
-            <AvatarCanvas config={config} auto={auto} emote={emote} controlsRef={controls} />
+            <AvatarCanvas config={config} auto={auto} controlsRef={controls} />
           </Suspense>
 
           <button className="ac-rotate" onClick={() => setAuto((v) => !v)} data-on={auto}>
             <Glyph kind="auto" /> {auto ? 'Auto-rotate' : 'Manual'}
           </button>
-
-          {/* emote bar */}
-          <div className="ac-emotebar">
-            {EMOTES.map((e) => (
-              <button
-                key={e.id}
-                className="ac-emote"
-                data-on={emote === e.id}
-                onClick={() => setEmote(e.id)}
-              >
-                <span className="ac-emote-ico"><Glyph kind={e.icon} /></span>
-                <span className="ac-emote-label">{e.label}</span>
-              </button>
-            ))}
-          </div>
         </section>
 
         {/* ---- right: light dock ---- */}
@@ -141,7 +124,10 @@ export function AvatarCreator() {
                 <Glyph kind="sliders" /> Customize
               </button>
               <button data-on={dock === 'items'} onClick={() => setDock('items')}>
-                <Glyph kind="bag" /> My Items
+                <Glyph kind="bag" /> Items
+              </button>
+              <button data-on={dock === 'accessories'} onClick={() => setDock('accessories')}>
+                <Glyph kind="gem" /> Accessories
               </button>
             </div>
             <button className="ac-dock-x" onClick={() => navigate('/')} aria-label="Close">
@@ -156,9 +142,13 @@ export function AvatarCreator() {
             <div className="ac-dock-scroll">
               <BodyTab config={config} set={set} />
             </div>
-          ) : (
+          ) : dock === 'items' ? (
             <div className="ac-dock-scroll">
               <MyItems config={config} set={set} />
+            </div>
+          ) : (
+            <div className="ac-dock-scroll">
+              <AccessoriesPanel config={config} set={set} />
             </div>
           )}
 
@@ -341,7 +331,7 @@ function MyItems({ config, set }: { config: AvatarConfig; set: SetFn }) {
       </p>
       <StyleField
         label="Hairstyles"
-        styles={HAIRS}
+        styles={hairsFor(config.bodyType)}
         selected={config.hair}
         tileHex={() => hairHex(config.hairColor)}
         onPick={(id) => set({ hair: id })}
@@ -349,22 +339,51 @@ function MyItems({ config, set }: { config: AvatarConfig; set: SetFn }) {
       <GarmentField label="Tops" items={TOPS} selected={config.top} onPick={(id) => set({ top: id })} />
       <GarmentField label="Bottoms" items={BOTTOMS} selected={config.bottom} onPick={(id) => set({ bottom: id })} />
       <GarmentField label="Shoes" items={SHOES} selected={config.shoes} onPick={(id) => set({ shoes: id })} />
-      <LockedCategory label="Accessories" />
-      <LockedCategory label="Glasses" />
-      <LockedCategory label="Wings" />
-      <LockedCategory label="Back Items" />
+      <p className="ac-items-note">Glasses, hats, wings, handhelds &amp; more live in the Accessories tab.</p>
     </>
   )
 }
 
-/** A cosmetic category that exists in the IA but has no items yet. */
-function LockedCategory({ label }: { label: string }) {
+/* ----------------------------------------------------------------- accessories */
+// The cosmetic accessory wardrobe: 7 categories, one item per conflicting slot,
+// but every slot can be worn at once (hat + glasses + scarf + wings + a book…).
+// Clicking a tile equips it, or unequips it if it's already on. All items are
+// shown unlocked for now — ownership + the marketplace land in a later pass.
+function AccessoriesPanel({ config, set }: { config: AvatarConfig; set: SetFn }) {
+  const eq = config.accessories
   return (
-    <Field label={label}>
-      <div className="ac-locked">
-        <Glyph kind="bag" /> Coming soon — unlock with Focus Points
-      </div>
-    </Field>
+    <>
+      <p className="ac-items-note">
+        Mix &amp; match — wear a hat, glasses, a scarf, wings and a handheld all at once.
+      </p>
+      {CATEGORY_ORDER.map((cat) => {
+        const slot = SLOT_FOR_ACCESSORY_CATEGORY[cat]
+        const equippedId = eq[slot] ?? null
+        return (
+          <Field key={cat} label={CATEGORY_LABEL[cat]}>
+            <div className="ac-acc-grid">
+              {accessoriesByCategory(cat).map((it) => {
+                const on = equippedId === it.id
+                return (
+                  <button
+                    key={it.id}
+                    className="ac-acc-tile"
+                    data-on={on}
+                    style={{ ['--rarity' as string]: RARITY_COLOR[it.rarity] }}
+                    title={`${it.name} · ${RARITY_LABEL[it.rarity]}`}
+                    onClick={() => set({ accessories: { ...eq, [slot]: on ? null : it.id } })}
+                  >
+                    <span className="ac-acc-dot" />
+                    <span className="ac-acc-name">{it.name}</span>
+                    {on && <span className="ac-acc-tick"><Glyph kind="check" /></span>}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+        )
+      })}
+    </>
   )
 }
 
@@ -377,12 +396,10 @@ const STATIC_LOCO: Locomotion = { speed: 0, grounded: true, vy: 0, turnRate: 0, 
 function AvatarCanvas({
   config,
   auto,
-  emote,
   controlsRef,
 }: {
   config: AvatarConfig
   auto: boolean
-  emote: PreviewState
   controlsRef: React.RefObject<OrbitControlsImpl | null>
 }) {
   return (
@@ -400,7 +417,7 @@ function AvatarCanvas({
       <ambientLight intensity={0.25} />
 
       <group position={[0, -0.9, 0]}>
-        <PreviewAvatar config={config} emote={emote} />
+        <PreviewAvatar config={config} />
         {/* magic-circle pedestal */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
           <ringGeometry args={[0.55, 0.85, 48]} />
@@ -436,13 +453,13 @@ function AvatarCanvas({
 /** The customizable body, driven by the emote bar. Renders the procedural rig +
  *  animator directly (vs the static CharacterAvatar) so emotes play live; the
  *  baked base.glb's own emote clips can replace this path once that art lands. */
-function PreviewAvatar({ config, emote }: { config: AvatarConfig; emote: PreviewState }) {
+function PreviewAvatar({ config }: { config: AvatarConfig }) {
   const rig = useRef<AvatarRigHandle>(null)
   const loco = useRef<Locomotion>(STATIC_LOCO)
   return (
     <group scale={BASE_BODY.scale} position={[0, BASE_BODY.yOffset, 0]}>
       <AvatarRig ref={rig} config={config} />
-      <AvatarAnimator rig={rig} locomotion={loco} preview={emote} lod="near" />
+      <AvatarAnimator rig={rig} locomotion={loco} preview="idle" lod="near" />
     </group>
   )
 }
@@ -451,7 +468,7 @@ function PreviewAvatar({ config, emote }: { config: AvatarConfig; emote: Preview
 
 type GlyphKind =
   | 'home' | 'quests' | 'garden' | 'shop' | 'friends' | 'gear'
-  | 'sliders' | 'bag' | 'close' | 'check' | 'auto'
+  | 'sliders' | 'bag' | 'gem' | 'close' | 'check' | 'auto'
   | 'body' | 'hair' | 'eyes' | 'top' | 'bottom' | 'shoes'
   | 'idle' | 'wave' | 'happy' | 'celebrate' | 'sit'
 
@@ -470,6 +487,7 @@ function Glyph({ kind }: { kind: GlyphKind }) {
     case 'gear': return <svg {...c}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
     case 'sliders': return <svg {...c}><path d="M4 8h10M18 8h2M4 16h2M10 16h10" /><circle cx="16" cy="8" r="2" /><circle cx="8" cy="16" r="2" /></svg>
     case 'bag': return <svg {...c}><path d="M6 7h12l1 13H5L6 7z" /><path d="M9 7V5a3 3 0 016 0v2" /></svg>
+    case 'gem': return <svg {...c}><path d="M6 3h12l3 6-9 12L3 9z" /><path d="M3 9h18M9 3l-3 6 6 12 6-12-3-6" /></svg>
     case 'close': return <svg {...c}><path d="M6 6l12 12M18 6L6 18" /></svg>
     case 'check': return <svg {...c}><path d="M5 12l4 4 10-10" /></svg>
     case 'auto': return <svg {...c}><path d="M21 12a9 9 0 11-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>

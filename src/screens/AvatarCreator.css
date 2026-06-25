@@ -166,50 +166,6 @@
 .ac-rotate:active { transform: translateY(1px); }
 .ac-rotate[data-on='true'] { border-color: rgba(160, 132, 255, 0.9); background: rgba(96, 76, 180, 0.8); }
 
-/* emote bar */
-.ac-emotebar {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  background: rgba(14, 11, 28, 0.7);
-  border: 1px solid rgba(138, 108, 255, 0.28);
-  border-radius: 18px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-}
-.ac-emote {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  width: 64px;
-  padding: 8px 4px;
-  border-radius: 13px;
-  color: #c9bdf0;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
-}
-.ac-emote:hover { background: rgba(138, 108, 255, 0.16); color: #fff; }
-.ac-emote:active { transform: translateY(1px); }
-.ac-emote[data-on='true'] {
-  background: linear-gradient(180deg, #8a6cff, #6b50d8);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(108, 80, 220, 0.5);
-}
-.ac-emote-ico {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-}
-.ac-emote[data-on='true'] .ac-emote-ico { background: rgba(255, 255, 255, 0.18); }
-.ac-emote-label { font-family: var(--display); font-weight: 700; font-size: 11px; }
-
 /* --------------------------------------------------------------- right: dock */
 .ac-dock {
   flex: 0 0 440px;
@@ -498,6 +454,57 @@
   font-weight: 600;
 }
 .ac-locked svg { width: 15px; height: 15px; opacity: 0.7; }
+
+/* accessory wardrobe tiles — rarity-coloured pills, one per slot equipped */
+.ac-acc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.ac-acc-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1.5px solid #e7ddd1;
+  border-left: 4px solid var(--rarity, #cbb);
+  text-align: left;
+  transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
+}
+.ac-acc-tile:hover { background: #faf6f0; box-shadow: 0 2px 8px rgba(90, 62, 168, 0.12); }
+.ac-acc-tile:active { transform: translateY(1px); }
+.ac-acc-tile[data-on='true'] {
+  border-color: var(--rarity, #8a6cff);
+  box-shadow: 0 0 0 2px var(--rarity, #8a6cff) inset, 0 4px 12px rgba(90, 62, 168, 0.18);
+  background: #fbf8ff;
+}
+.ac-acc-dot {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--rarity, #cbb);
+}
+.ac-acc-name {
+  flex: 1;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: #2c2540;
+  line-height: 1.2;
+}
+.ac-acc-tick {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: #5a3ea8;
+}
+.ac-acc-tick svg { width: 16px; height: 16px; }
 
 /* footer */
 .ac-dock-foot {

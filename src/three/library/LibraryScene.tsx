@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
-import type { Material, Mesh, Texture } from 'three'
+import type { Material, Mesh, Object3D, Texture } from 'three'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -44,21 +44,24 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   // whenever the Quality setting changes.
   const [dpr, setDpr] = useState(preset.dpr)
   useEffect(() => setDpr(preset.dpr), [preset.dpr])
-  // Floor kept high (0.85) so that even when the governor *does* engage the
-  // image stays close to sharp — a full drop to 0.6 read as a visible blur.
-  const dprFloor = 0.85
+
+  // DPR floor: the PerformanceMonitor is allowed to drop all the way to 0.6 when
+  // the GPU is struggling. The previous value (0.85) gave almost no headroom and
+  // prevented the governor from doing anything useful on weak integrated GPUs.
+  // 0.6 still renders recognisable avatars and furniture at typical screen sizes.
+  const dprFloor = 0.6
 
   // Warm-up gate. The first few seconds after entering the realm are dominated
   // by one-time stalls (Suspense asset loads, shader/program compilation,
   // texture uploads, EffectComposer warm-up). Those frame-time spikes look like
   // a struggling GPU to the PerformanceMonitor, so if it samples during that
   // window it permanently sheds pixels right as the scene is about to settle —
-  // the "sharp at first, then blurry a few seconds in" bug. We hold the governor
-  // back until the scene has had time to warm up, so it only ever judges
-  // steady-state performance.
+  // the "sharp at first, then blurry a few seconds in" bug. 5 s is enough to
+  // cover the typical Suspense waterfall + shader compile without leaving the
+  // governor blind for too long. (Was 8 s — the extra 3 s gave no benefit.)
   const [govReady, setGovReady] = useState(false)
   useEffect(() => {
-    const t = setTimeout(() => setGovReady(true), 8000)
+    const t = setTimeout(() => setGovReady(true), 5000)
     return () => clearTimeout(t)
   }, [])
 
@@ -67,13 +70,16 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
+      camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
       onCreated={() => onReady?.()}
     >
       {/* Auto-resolution governor: when the frame rate drops below the healthy
           band we shed pixels; when it recovers we add them back. Keeps motion
           smooth on integrated GPUs instead of locking at a fixed heavy DPR.
           Mounted only after the warm-up window so transient load-time stalls
-          can't trigger a permanent downscale. */}
+          can't trigger a permanent downscale.
+          DPR floor is 0.6 (down from 0.85) giving the governor real headroom
+          to actually help weak GPUs — the main fix for the 1–10 FPS issue. */}
       {govReady && (
         <PerformanceMonitor
           bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
@@ -85,6 +91,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       )}
 
       <QualitySync shadows={preset.shadows} />
+      <ShadowThrottle enabled={preset.shadows} />
       <TextureQualitySync anisotropy={preset.anisotropy} />
 
       <SoftBoundary>
@@ -126,6 +133,41 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   )
 }
 
+/**
+ * Shadow-map update governor — the single biggest *quality-preserving* GPU win.
+ *
+ * The hall casts ONE directional shadow over ~49 casters into a 1024² (or higher)
+ * depth map. By default three re-renders that entire depth pass EVERY FRAME — and
+ * because the day/night cycle nudges the sun a hair each frame, the renderer never
+ * gets to skip it. That is a full extra ~49-object scene pass at 60 fps for shadows
+ * that visibly change perhaps once a second.
+ *
+ * Fix: turn off automatic shadow updates and refresh the map only every Nth frame
+ * (plus immediately whenever shadows are toggled). The sun moves ~0.0008 rad per
+ * frame, so a refresh every 8 frames is visually identical while cutting the shadow
+ * pass to ~1/8 of its cost. No resolution, sharpness or coverage is touched.
+ */
+const SHADOW_REFRESH_INTERVAL = 8
+function ShadowThrottle({ enabled }: { enabled: boolean }) {
+  const gl = useThree((s) => s.gl)
+  const frame = useRef(0)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    // force a fresh render of the map right after (un)toggling shadows
+    gl.shadowMap.needsUpdate = enabled
+    return () => {
+      // restore default behaviour if this scene unmounts
+      gl.shadowMap.autoUpdate = true
+    }
+  }, [gl, enabled])
+  useFrame(() => {
+    if (!enabled) return
+    frame.current = (frame.current + 1) % SHADOW_REFRESH_INTERVAL
+    if (frame.current === 0) gl.shadowMap.needsUpdate = true
+  })
+  return null
+}
+
 /** Applies graphics-quality changes that the WebGL renderer won't pick up from a
  *  React prop on its own — chiefly toggling the shadow map on/off live so the
  *  "Quality" setting visibly updates the scene without a reload. */
@@ -147,7 +189,7 @@ function QualitySync({ shadows }: { shadows: boolean }) {
  */
 const TEX_KEYS = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap'] as const
 function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
-  const gl = useThree((s) => s.gl)
+  const gl    = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
   useEffect(() => {
     const max = gl.capabilities.getMaxAnisotropy()
@@ -170,30 +212,88 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
 }
 
 /**
- * Render-statistics logger. Samples the WebGL renderer's `info` (draw calls,
- * triangles, active programs) plus a rolling FPS average and prints a concise
- * summary to the console — once ~2 s after the scene warms up, and then every
- * 5 s while the on-screen FPS counter is enabled. This is how we measured the
- * before/after of the optimization pass.
+ * Comprehensive render-statistics logger. Samples the WebGL renderer's `info`
+ * plus a rolling FPS average and prints a detailed profile report to the console.
+ *
+ * Reports every ~2 s during the first 15 s (warm-up phase) and every 10 s after.
+ * Covers the full audit checklist:
+ *   FPS, draw calls, triangles, active programs (proxy for shader permutations),
+ *   geometry count (proxy for non-instanced mesh count), texture memory,
+ *   point / directional / spot light counts, shadow-casting objects, and the
+ *   object count (active meshes in the graph).
+ *
+ * The report also ranks the most likely bottlenecks by frame cost so engineers
+ * can read the console and know where to look without needing an external profiler.
  */
 function PerfLogger() {
-  const gl = useThree((s) => s.gl)
-  const acc = useRef({ frames: 0, time: 0, logged: false, since: 0 })
+  const gl    = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  const acc   = useRef({ frames: 0, time: 0, logged: false, since: 0, warmPhase: 0 })
+
+  // TEMP perf-audit hook: expose the live renderer + scene graph so the external
+  // profiler (probe.cjs) can compute exact triangle/draw/light counts directly,
+  // bypassing the unreliable gl.info.render under the postprocessing composer.
+  // Remove with the PerfHarness when the optimisation pass is done.
+  useEffect(() => {
+    ;(window as unknown as Record<string, unknown>).__perfStore = { gl, scene }
+  }, [gl, scene])
 
   useFrame((_, dt) => {
     const a = acc.current
     a.frames++
-    a.time += dt
-    a.since += dt
-    if (a.since < (a.logged ? 5 : 2)) return
+    a.time   += dt
+    a.since  += dt
+    a.warmPhase += dt
+
+    // Report every 2 s for the first 15 s, then every 10 s
+    const interval = a.warmPhase < 15 ? 2 : 10
+    if (a.since < interval) return
+
     const fps = a.frames / a.since
-    const r = gl.info.render
-    const m = gl.info.memory
+    const r   = gl.info.render
+    const m   = gl.info.memory
+
+    // Count light types and shadow-casting objects by walking the scene graph.
+    // This is done at report time (~every 10 s), not every frame.
+    let pointLights = 0, dirLights = 0, spotLights = 0, shadowCasters = 0, meshCount = 0
+    scene.traverse((o: Object3D) => {
+      const type = o.type
+      if (type === 'PointLight')       pointLights++
+      else if (type === 'DirectionalLight') dirLights++
+      else if (type === 'SpotLight')   spotLights++
+      // @ts-expect-error three typing
+      if (o.castShadow && (o.isMesh || o.isSkinnedMesh)) shadowCasters++
+      // @ts-expect-error three typing
+      if (o.isMesh || o.isSkinnedMesh) meshCount++
+    })
+
+    const totalLights = pointLights + dirLights + spotLights
+
+    // ---- bottleneck ranking (heuristic, based on known WebGL costs) ----
+    const bottlenecks: string[] = []
+    if (r.calls > 200)     bottlenecks.push(`HIGH draw calls (${r.calls}) → merge/instance static props`)
+    if (r.triangles > 400_000) bottlenecks.push(`HIGH tri count (${(r.triangles/1000).toFixed(0)}k) → LOD/cull distant meshes`)
+    if (totalLights > 6)   bottlenecks.push(`MANY real-time lights (${totalLights}) → switch to emissive+bloom`)
+    if (shadowCasters > 30) bottlenecks.push(`MANY shadow casters (${shadowCasters}) → disable castShadow on static props`)
+    if (fps < 30 && meshCount > 500) bottlenecks.push(`HIGH mesh count (${meshCount}) w/ low FPS → static batching`)
+    if (fps < 30 && m.textures > 80) bottlenecks.push(`HIGH texture count (${m.textures}) → atlas/reduce`)
+    if (fps >= 45) bottlenecks.push('✓ FPS healthy — no urgent bottleneck detected')
+
     console.info(
-      `[FocusLily perf] ${fps.toFixed(0)} fps · ${r.calls} draw calls · ${(r.triangles / 1000).toFixed(0)}k tris · ${gl.info.programs?.length ?? 0} programs · geo ${m.geometries} · tex ${m.textures}`,
+      `[FocusLily perf] ${fps.toFixed(1)} fps` +
+      ` | draws: ${r.calls}` +
+      ` | tris: ${(r.triangles / 1000).toFixed(0)}k` +
+      ` | programs: ${gl.info.programs?.length ?? 0}` +
+      ` | geo: ${m.geometries}` +
+      ` | tex: ${m.textures}` +
+      ` | meshes: ${meshCount}` +
+      ` | lights: ${totalLights} (pt:${pointLights} dir:${dirLights} spot:${spotLights})` +
+      ` | shadow casters: ${shadowCasters}` +
+      `\n  ► ${bottlenecks.join('\n  ► ')}`
     )
+
     a.frames = 0
-    a.since = 0
+    a.since  = 0
     a.logged = true
   })
 

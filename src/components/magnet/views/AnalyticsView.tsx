@@ -52,6 +52,32 @@ export function AnalyticsView() {
     .sort((a, b) => b.count - a.count)
   const areaTotal = areaEntries.reduce((s, x) => s + x.count, 0)
 
+  // per-habit consistency over the selected window (same math as the engine,
+  // surfaced here so each habit gets its own bar).
+  const habitRows = useMemo(() => {
+    const cutoff = now.getTime() - days * 86400000
+    const ceil = now.getTime() + 86400000
+    const windowDays = Math.max(1, Math.min(days, 90))
+    return data.habits
+      .map((h) => {
+        const hits = h.history.filter((d) => {
+          const t = new Date(d).getTime()
+          return !Number.isNaN(t) && t >= cutoff && t <= ceil
+        }).length
+        return { id: h.id, title: h.title, color: h.color, icon: h.icon, hits, pct: Math.min(1, hits / windowDays) }
+      })
+      .sort((a, b) => b.pct - a.pct)
+  }, [data.habits, now, days])
+
+  const activeGoals = useMemo(
+    () =>
+      data.goals
+        .filter((g) => g.progress < 100)
+        .sort((a, b) => b.progress - a.progress)
+        .slice(0, 5),
+    [data.goals],
+  )
+
   function submitFocus(e: React.FormEvent) {
     e.preventDefault()
     const m = Number(focusMin)
@@ -60,7 +86,8 @@ export function AnalyticsView() {
     setFocusOpen(false)
   }
 
-  const hasData = data.tasks.length > 0 || data.focus.length > 0
+  const hasData =
+    data.tasks.length > 0 || data.focus.length > 0 || data.goals.length > 0 || data.habits.length > 0
 
   return (
     <div className="mg-view">
@@ -103,6 +130,22 @@ export function AnalyticsView() {
               tone={AREA_META.career.color}
             />
             <StatCard icon="fire" label="Streak" value={streak} tone="#ff7a3d" />
+            {data.goals.length > 0 && (
+              <StatCard
+                icon="target"
+                label="Goal progress"
+                value={`${Math.round(stats.avgGoalProgress * 100)}%`}
+                tone={AREA_META.personal.color}
+              />
+            )}
+            {data.habits.length > 0 && (
+              <StatCard
+                icon="spark"
+                label="Habit consistency"
+                value={`${Math.round(stats.habitConsistency * 100)}%`}
+                tone={AREA_META.social.color}
+              />
+            )}
           </div>
 
           <div className="mg-analytics-grid">
@@ -176,6 +219,71 @@ export function AnalyticsView() {
                         />
                       </div>
                       <span className="mg-muted">{Math.round((e.count / areaTotal) * 100)}%</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+
+            <Panel>
+              <div className="mg-panel-head">
+                <h3>
+                  <Icon name="target" size={17} /> Goal progress
+                </h3>
+              </div>
+              {activeGoals.length === 0 ? (
+                <p className="mg-muted">
+                  {data.goals.length > 0
+                    ? 'Every goal is complete — set a new horizon in the Goals room.'
+                    : 'Set a goal and track milestones to watch progress here.'}
+                </p>
+              ) : (
+                <ul className="mg-subjectlist">
+                  {activeGoals.map((g) => {
+                    const done = g.milestones.filter((m) => m.done).length
+                    return (
+                      <li key={g.id}>
+                        <div className="mg-subject-top">
+                          <span>{g.title}</span>
+                          <span className="mg-muted">
+                            {g.milestones.length > 0 ? `${done}/${g.milestones.length} · ` : ''}
+                            {g.progress}%
+                          </span>
+                        </div>
+                        <div className="mg-meter">
+                          <div
+                            className="mg-meter-fill"
+                            style={{ width: `${g.progress}%`, background: g.color }}
+                          />
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </Panel>
+
+            <Panel>
+              <div className="mg-panel-head">
+                <h3>
+                  <Icon name="fire" size={17} /> Habit consistency
+                </h3>
+              </div>
+              {habitRows.length === 0 ? (
+                <p className="mg-muted">Build a habit to track your consistency over time.</p>
+              ) : (
+                <ul className="mg-subjectlist">
+                  {habitRows.slice(0, 6).map((h) => (
+                    <li key={h.id}>
+                      <div className="mg-subject-top">
+                        <span>{h.title}</span>
+                        <span className="mg-muted">
+                          {h.hits} day{h.hits !== 1 ? 's' : ''} · {Math.round(h.pct * 100)}%
+                        </span>
+                      </div>
+                      <div className="mg-meter">
+                        <div className="mg-meter-fill" style={{ width: `${h.pct * 100}%`, background: h.color }} />
+                      </div>
                     </li>
                   ))}
                 </ul>

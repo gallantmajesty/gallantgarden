@@ -123,6 +123,10 @@ export interface MagnetData {
   font: string
 
   lastVisit: string | null // ISO timestamp of previous visit
+
+  // one-time migration flag: lifetime minutes from the old standalone pomodoro
+  // store have been imported into `focus` as a single backfilled session.
+  pomoBackfilled?: boolean
 }
 
 export const AREA_META: Record<LifeArea, { label: string; icon: string; color: string }> = {

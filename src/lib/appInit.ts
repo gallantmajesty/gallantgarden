@@ -4,7 +4,8 @@ import { useProfile } from '../store/profile'
 import { useSocial } from '../store/social'
 import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
-import { usePomodoro } from '../store/pomodoro'
+import { usePomodoro, setPomodoroFocusSink } from '../store/pomodoro'
+import { useMagnet } from '../store/magnet'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
 import { globalRunOnce, userRunOnce } from './runOnce'
@@ -54,6 +55,12 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   startHeartbeat()
   bindFocusPresence()
 
+  // 2e. Hydrate Task Magnet here (not only on the /magnet screen) so the
+  //     student's "second brain" is live everywhere — most importantly so
+  //     completed focus blocks log into analytics no matter where they study.
+  useMagnet.getState().hydrate(user.id)
+  bindFocusLogging()
+
   // 3. One-time per-user seeding: create the profile row with the current
   //    settings the first time we ever see this account.
   await userRunOnce(user.id, 'profile-seed.v1', async () => {
@@ -78,10 +85,20 @@ function bindFocusPresence(): void {
   unbindFocus = usePomodoro.subscribe(apply)
 }
 
+// Bridge the focus timer into Task Magnet analytics: every completed study block
+// becomes a dated, subject-tagged focus session (and earns world-growing XP).
+// Registering the sink is idempotent — setPomodoroFocusSink simply overwrites.
+function bindFocusLogging(): void {
+  setPomodoroFocusSink((minutes, subject) => {
+    useMagnet.getState().logFocus(minutes, subject)
+  })
+}
+
 /** Tear down per-user state on sign-out so the next user starts clean. */
 export function runUserTeardown(): void {
   unbindFocus?.()
   unbindFocus = null
+  setPomodoroFocusSink(null)
   useSettings.getState().unbindCloud()
   useProfile.getState().reset()
   useSocial.getState().reset()

@@ -41,7 +41,7 @@ export const CHARACTERS: Character[] = [
     scale: 1,
     yOffset: 0,
     fallback: look('male', {
-      skin: 'tan', hair: 'short', hairColor: 'black',
+      skin: 'tan', hair: 'short_messy', hairColor: 'black',
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
     }),
   },
@@ -53,8 +53,8 @@ export const CHARACTERS: Character[] = [
     scale: 1,
     yOffset: 0,
     fallback: look('female', {
-      skin: 'light', hair: 'long', hairColor: 'chestnut',
-      top: 'tee', bottom: 'skirt', shoes: 'sneakers',
+      skin: 'light', hair: 'long_straight', hairColor: 'chestnut',
+      top: 'tee', bottom: 'leggings', shoes: 'sneakers',
     }),
   },
   {

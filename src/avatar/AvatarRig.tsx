@@ -18,6 +18,8 @@ import {
   type TorsoRing,
 } from './config'
 import { heightScale, proportionsFor, type BoneName, type Proportions } from './rig'
+import { BackAccessories, HandAccessory, HeadAccessories, NeckAccessories } from './accessories/render'
+import type { EquippedAccessories } from './accessories/types'
 
 // The animator drives the avatar by writing rotations onto these groups every
 // frame. Collecting them into a typed map (filled once on mount) avoids any
@@ -49,10 +51,10 @@ function torsoRings(P: Proportions, bodyType: AvatarConfig['bodyType']): TorsoRi
   const spine = P.spineLen
   const chest = P.chestLen
   return [
-    // hips — meets the pelvis/leg tops
-    { y: -0.06, hw: P.hipBoneW * 1.04, hd: P.torsoD * 0.92 },
-    // waist — the slight taper
-    { y: spine * 0.5, hw: P.waistW * 1.02, hd: P.torsoD * 0.84 },
+    // hips — meets the pelvis/leg tops (fuller flare for the female hourglass)
+    { y: -0.06, hw: P.hipBoneW * (female ? 1.08 : 1.04), hd: P.torsoD * 0.92 },
+    // waist — a slight taper for male, a deep cinch for female
+    { y: spine * 0.5, hw: P.waistW * (female ? 0.94 : 1.02), hd: P.torsoD * (female ? 0.8 : 0.84) },
     // chest — full volume (bust pushes forward for female)
     { y: spine + chest * 0.38, hw: P.chestW, hd: P.torsoD * (female ? 1.0 : 0.96), cz: female ? P.bust * 0.6 : 0 },
     // shoulders — widest, but well inside the ±shoulderW arm pivots
@@ -131,6 +133,10 @@ export function AvatarRig({
 
           <group ref={bind('chest')} position={[0, P.spineLen, 0]}>
             <Top config={config} P={P} topM={topM} />
+            {/* neck-slot accessory (scarf/chain/tie…) below the head, and back-slot
+                accessory (wings/cape/bag/aura) behind the torso */}
+            <NeckAccessories eq={config.accessories} P={P} />
+            <BackAccessories eq={config.accessories} P={P} />
 
             {/* neck + head */}
             <group ref={bind('neck')} position={[0, P.chestLen * 0.86, 0]}>
@@ -138,17 +144,17 @@ export function AvatarRig({
               <group ref={bind('head')} position={[0, P.neckLen, 0]}>
                 <Head P={P} skin={skin} eyeWhite={eyeWhite} iris={iris} pupil={pupil} mouthM={mouthM} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} />
                 <Hair config={config} P={P} hairM={hairM} />
+                {/* head-slot accessories: face (over face) → eyewear → headwear (on top) */}
+                <HeadAccessories eq={config.accessories} P={P} />
               </group>
             </group>
           </group>
         </group>
 
-        {/* skirt sways with the hips */}
-        <Bottom config={config} P={P} botM={botM} />
-
-        {/* arms hang from the hips group so torso sway carries them (as before) */}
+        {/* arms hang from the hips group so torso sway carries them (as before).
+            The right hand carries the equipped handheld accessory. */}
         <Arm side="L" bind={bind} P={P} skin={skin} armMat={armMat} sleeved={sleeved} topM={topM} />
-        <Arm side="R" bind={bind} P={P} skin={skin} armMat={armMat} sleeved={sleeved} topM={topM} />
+        <Arm side="R" bind={bind} P={P} skin={skin} armMat={armMat} sleeved={sleeved} topM={topM} hand={config.accessories} />
       </group>
 
       {/* legs hang from the root at hip height (independent of torso lean) */}
@@ -256,81 +262,263 @@ function Strand({ m, len, rTop, rBot, p, rot }: { m: Mat; len: number; rTop: num
   )
 }
 
+/** A loose cluster of round curls at fixed (deterministic) offsets — the building
+ *  block for curly styles. */
+function Curls({ m, r, p, spread = 1, size = 0.34 }: { m: Mat; r: number; p: V3; spread?: number; size?: number }) {
+  const o = r * 0.32 * spread
+  const s = r * size
+  const pts: V3[] = [
+    [0, 0, 0],
+    [o, o * 0.6, 0],
+    [-o, o * 0.5, 0],
+    [o * 0.6, -o * 0.6, o * 0.4],
+    [-o * 0.6, -o * 0.5, o * 0.4],
+    [0, -o, -o * 0.3],
+  ]
+  return (
+    <group position={p}>
+      {pts.map((q, i) => (
+        <Blob key={i} m={m} s={[s, s, s]} p={q} />
+      ))}
+    </group>
+  )
+}
+
+/** A braid: a tapering column of beads hanging from a point (back or side braid). */
+function Braid({ m, r, p, len, beads = 6, rot }: { m: Mat; r: number; p: V3; len: number; beads?: number; rot?: V3 }) {
+  const step = len / beads
+  return (
+    <group position={p} rotation={rot}>
+      {Array.from({ length: beads }).map((_, i) => {
+        const t = i / (beads - 1)
+        const w = r * (0.36 - 0.18 * t)
+        return <Blob key={i} m={m} s={[w, w * 1.15, w]} p={[0, -step * i, 0]} />
+      })}
+    </group>
+  )
+}
+
 function Hair({ config, P, hairM }: { config: AvatarConfig; P: Proportions; hairM: Mat }) {
   const r = P.headR
   const cy = r * 0.95 // head-centre offset (matches Head)
   // scalp cap: an ellipsoid shell sitting over the crown, pushed up and back
-  const cap = (scale: V3, lift = 0.18) => <Blob m={hairM} s={scale} p={[0, cy + r * lift, -r * 0.06]} />
+  const cap = (scale: V3, lift = 0.18) => <Blob m={hairM} s={scale} p={[0, cy + r * lift, -r * 0.12]} />
+
+  // Fringe: a THIN hairline band sitting high on the forehead (above the brows)
+  // and barely tilted — reads as a clean hair edge, never a curtain over the eyes.
+  const fringe = (w = 0.8, h = 0.13) => (
+    <Blob m={hairM} s={[r * w, r * h, r * 0.36]} p={[0, cy + r * 0.66, r * 0.5]} r={[0.2, 0, 0]} />
+  )
+  // Length that falls at the SIDES and slightly BEHIND the face (wide x + negative
+  // z) so long styles frame the face from behind the cheeks, never across it.
+  const sideFall = (len: number, top: number, bot: number, y = 0.3) => (
+    <>
+      <Strand m={hairM} len={r * len} rTop={r * top} rBot={r * bot} p={[-r * 0.97, cy + r * y, -r * 0.08]} rot={[0, 0, 0.05]} />
+      <Strand m={hairM} len={r * len} rTop={r * top} rBot={r * bot} p={[r * 0.97, cy + r * y, -r * 0.08]} rot={[0, 0, -0.05]} />
+    </>
+  )
+  // The back curtain — the bulk of long hair, hanging straight down the back.
+  const backFall = (len: number, top: number, bot: number) => (
+    <Strand m={hairM} len={r * len} rTop={r * top} rBot={r * bot} p={[0, cy + r * 0.5, -r * 0.62]} rot={[-0.06, 0, 0]} />
+  )
 
   switch (config.hair) {
+    /* ---- shared neutral cuts ---- */
     case 'none':
       return null
-    case 'buzz':
-      return cap([r * 1.0, r * 0.92, r * 1.02], 0.08)
-    case 'short':
+    case 'crop':
+      // tight even crop hugging the scalp
       return (
         <group>
-          {cap([r * 1.06, r * 1.0, r * 1.06], 0.14)}
-          {/* soft fringe across the forehead */}
-          <Blob m={hairM} s={[r * 0.9, r * 0.28, r * 0.4]} p={[0, cy + r * 0.5, r * 0.66]} r={[0.5, 0, 0]} />
-          <Blob m={hairM} s={[r * 0.4, r * 0.26, r * 0.36]} p={[-r * 0.5, cy + r * 0.46, r * 0.5]} r={[0.4, 0, 0.3]} />
-          <Blob m={hairM} s={[r * 0.4, r * 0.26, r * 0.36]} p={[r * 0.5, cy + r * 0.46, r * 0.5]} r={[0.4, 0, -0.3]} />
+          {cap([r * 1.0, r * 0.9, r * 1.02], 0.06)}
+          {fringe(0.84)}
         </group>
       )
-    case 'medium':
-      // side-swept: a cap plus a sweep of strands arcing across the brow
+    case 'pixie':
+      // short, with a high side-swept top + neat sideburns in front of the ears
       return (
         <group>
-          {cap([r * 1.08, r * 1.04, r * 1.08], 0.16)}
-          <Strand m={hairM} len={r * 1.3} rTop={r * 0.34} rBot={r * 0.12} p={[r * 0.55, cy + r * 0.8, r * 0.5]} rot={[0.5, 0, -0.9]} />
-          <Strand m={hairM} len={r * 1.1} rTop={r * 0.28} rBot={r * 0.1} p={[r * 0.2, cy + r * 0.86, r * 0.62]} rot={[0.7, 0, -0.6]} />
-          <Blob m={hairM} s={[r * 0.5, r * 0.7, r * 0.55]} p={[-r * 0.78, cy + r * 0.1, -r * 0.05]} />
+          {cap([r * 1.05, r * 0.98, r * 1.06], 0.12)}
+          <Blob m={hairM} s={[r * 0.52, r * 0.16, r * 0.34]} p={[-r * 0.16, cy + r * 0.62, r * 0.52]} r={[0.22, 0, 0.2]} />
+          <Blob m={hairM} s={[r * 0.18, r * 0.42, r * 0.34]} p={[-r * 0.9, cy + r * 0.04, -r * 0.02]} />
+          <Blob m={hairM} s={[r * 0.18, r * 0.42, r * 0.34]} p={[r * 0.9, cy + r * 0.04, -r * 0.02]} />
         </group>
       )
-    case 'long':
-      // a fuller cap, face-framing side strands, and a back fall to the shoulders
+    case 'bob':
+      // chin-length bob: side curtains tucked behind the cheeks + a blunt fringe
       return (
         <group>
-          {cap([r * 1.12, r * 1.08, r * 1.12], 0.16)}
-          {/* back fall */}
-          <Strand m={hairM} len={r * 3.0} rTop={r * 1.0} rBot={r * 0.5} p={[0, cy + r * 0.5, -r * 0.7]} rot={[-0.12, 0, 0]} />
-          {/* face-framing strands */}
-          <Strand m={hairM} len={r * 2.2} rTop={r * 0.36} rBot={r * 0.16} p={[-r * 0.85, cy + r * 0.35, r * 0.1]} rot={[0, 0, 0.12]} />
-          <Strand m={hairM} len={r * 2.2} rTop={r * 0.36} rBot={r * 0.16} p={[r * 0.85, cy + r * 0.35, r * 0.1]} rot={[0, 0, -0.12]} />
-          {/* fringe */}
-          <Blob m={hairM} s={[r * 0.85, r * 0.26, r * 0.4]} p={[0, cy + r * 0.55, r * 0.62]} r={[0.5, 0, 0]} />
+          {cap([r * 1.08, r * 1.03, r * 1.08], 0.16)}
+          {sideFall(1.5, 0.42, 0.34, 0.34)}
+          {backFall(1.4, 0.85, 0.6)}
+          {fringe(0.88)}
+        </group>
+      )
+
+    /* ---- male library ---- */
+    case 'short_messy':
+      return (
+        <group>
+          {cap([r * 1.06, r * 1.0, r * 1.06], 0.15)}
+          {/* a couple of subtle tufts on the CROWN only (kept above the hairline) */}
+          <Blob m={hairM} s={[r * 0.46, r * 0.22, r * 0.42]} p={[-r * 0.3, cy + r * 0.78, r * 0.16]} r={[0.2, 0.3, 0.2]} />
+          <Blob m={hairM} s={[r * 0.42, r * 0.24, r * 0.4]} p={[r * 0.28, cy + r * 0.82, r * 0.1]} r={[0.15, -0.3, -0.2]} />
+          {fringe(0.82)}
+        </group>
+      )
+    case 'side_part':
+      return (
+        <group>
+          {cap([r * 1.06, r * 1.02, r * 1.06], 0.15)}
+          {/* combed top swept across a clean side part, sitting on the hairline */}
+          <Blob m={hairM} s={[r * 0.7, r * 0.2, r * 0.42]} p={[-r * 0.16, cy + r * 0.64, r * 0.46]} r={[0.22, 0, 0.12]} />
+          <Blob m={hairM} s={[r * 0.34, r * 0.22, r * 0.38]} p={[r * 0.46, cy + r * 0.6, r * 0.42]} r={[0.22, 0, -0.18]} />
+        </group>
+      )
+    case 'curly':
+      // short cropped curls — volume on the crown, tight to the head, off the face
+      return (
+        <group>
+          {cap([r * 1.0, r * 0.96, r * 1.02], 0.12)}
+          <Curls m={hairM} r={r} p={[0, cy + r * 0.66, -r * 0.02]} spread={1.1} size={0.26} />
+          <Curls m={hairM} r={r} p={[-r * 0.5, cy + r * 0.42, -r * 0.12]} spread={0.8} size={0.24} />
+          <Curls m={hairM} r={r} p={[r * 0.5, cy + r * 0.42, -r * 0.12]} spread={0.8} size={0.24} />
+        </group>
+      )
+    case 'fade':
+      // tight sides (low cap) + a little box on top
+      return (
+        <group>
+          {cap([r * 0.98, r * 0.86, r * 1.0], 0.06)}
+          <Blob m={hairM} s={[r * 0.78, r * 0.34, r * 0.8]} p={[0, cy + r * 0.5, r * 0.02]} />
+          {fringe(0.74)}
+        </group>
+      )
+    case 'medium_layered':
+      // a fuller crown reaching the ears (still short — never past the jaw)
+      return (
+        <group>
+          {cap([r * 1.1, r * 1.05, r * 1.1], 0.16)}
+          <Blob m={hairM} s={[r * 0.28, r * 0.5, r * 0.42]} p={[-r * 0.92, cy + r * 0.16, -r * 0.04]} />
+          <Blob m={hairM} s={[r * 0.28, r * 0.5, r * 0.42]} p={[r * 0.92, cy + r * 0.16, -r * 0.04]} />
+          {fringe(0.86)}
+        </group>
+      )
+    case 'spiky':
+      return (
+        <group>
+          {cap([r * 1.02, r * 0.95, r * 1.02], 0.1)}
+          {([[-0.45, 0.2], [0, 0.28], [0.45, 0.2], [-0.22, 0.45], [0.22, 0.45]] as const).map(([sx, sz], i) => (
+            <Strand key={i} m={hairM} len={r * 0.62} rTop={r * 0.2} rBot={r * 0.02} p={[sx * r, cy + r * 0.82, sz * r]} rot={[-0.3 + sz * 0.2, 0, sx * 0.55]} />
+          ))}
+        </group>
+      )
+    case 'academic_neat':
+      // very tidy, smooth, low-volume comb-over with a clean part
+      return (
+        <group>
+          {cap([r * 1.04, r * 1.0, r * 1.05], 0.13)}
+          <Blob m={hairM} s={[r * 0.82, r * 0.2, r * 0.46]} p={[r * 0.05, cy + r * 0.6, r * 0.46]} r={[0.22, 0, 0.05]} />
+        </group>
+      )
+    case 'wavy':
+      // short tousled waves on the crown — no long side pieces
+      return (
+        <group>
+          {cap([r * 1.07, r * 1.02, r * 1.08], 0.15)}
+          <Blob m={hairM} s={[r * 0.4, r * 0.22, r * 0.4]} p={[-r * 0.3, cy + r * 0.7, r * 0.26]} r={[0.2, 0, 0.25]} />
+          <Blob m={hairM} s={[r * 0.4, r * 0.22, r * 0.4]} p={[r * 0.28, cy + r * 0.68, r * 0.26]} r={[0.2, 0, -0.25]} />
+          {fringe(0.82)}
+        </group>
+      )
+
+    /* ---- female library ---- */
+    case 'long_straight':
+      return (
+        <group>
+          {cap([r * 1.07, r * 1.02, r * 1.08], 0.18)}
+          {backFall(3.3, 1.0, 0.55)}
+          {sideFall(2.7, 0.4, 0.22)}
+          {fringe(0.84)}
+        </group>
+      )
+    case 'shoulder':
+      return (
+        <group>
+          {cap([r * 1.08, r * 1.03, r * 1.08], 0.18)}
+          {backFall(1.7, 0.85, 0.5)}
+          {sideFall(2.0, 0.42, 0.26)}
+          {fringe(0.84)}
+        </group>
+      )
+    case 'wavy_long':
+      return (
+        <group>
+          {cap([r * 1.07, r * 1.02, r * 1.08], 0.18)}
+          {backFall(2.9, 0.95, 0.55)}
+          {/* body/volume on the back fall, tucked behind the shoulders */}
+          <Blob m={hairM} s={[r * 0.9, r * 0.6, r * 0.58]} p={[0, cy - r * 0.95, -r * 0.72]} />
+          <Blob m={hairM} s={[r * 0.95, r * 0.58, r * 0.56]} p={[0, cy - r * 1.85, -r * 0.66]} />
+          {sideFall(2.4, 0.42, 0.24)}
+          {fringe(0.84)}
+        </group>
+      )
+    case 'curly_long':
+      return (
+        <group>
+          {cap([r * 1.08, r * 1.03, r * 1.08], 0.18)}
+          {/* curl masses on the sides + back, all set BEHIND the face */}
+          <Curls m={hairM} r={r} p={[-r * 0.82, cy + r * 0.1, -r * 0.12]} spread={1.2} size={0.36} />
+          <Curls m={hairM} r={r} p={[r * 0.82, cy + r * 0.1, -r * 0.12]} spread={1.2} size={0.36} />
+          <Curls m={hairM} r={r} p={[-r * 0.72, cy - r * 0.9, -r * 0.22]} spread={1.1} size={0.36} />
+          <Curls m={hairM} r={r} p={[r * 0.72, cy - r * 0.9, -r * 0.22]} spread={1.1} size={0.36} />
+          <Curls m={hairM} r={r} p={[0, cy - r * 0.55, -r * 0.7]} spread={1.3} size={0.36} />
+          {fringe(0.84)}
+        </group>
+      )
+    case 'ponytail':
+      return (
+        <group>
+          {cap([r * 1.08, r * 1.04, r * 1.08], 0.15)}
+          {/* smooth pulled-back top */}
+          <Blob m={hairM} s={[r * 0.95, r * 0.5, r * 0.95]} p={[0, cy + r * 0.4, -r * 0.1]} />
+          {/* tie + ponytail down the back */}
+          <Blob m={hairM} s={[r * 0.3, r * 0.3, r * 0.3]} p={[0, cy + r * 0.5, -r * 0.8]} />
+          <Strand m={hairM} len={r * 2.6} rTop={r * 0.46} rBot={r * 0.18} p={[0, cy + r * 0.45, -r * 0.85]} rot={[-0.25, 0, 0]} />
+          {fringe(0.82)}
+        </group>
+      )
+    case 'twintails':
+      return (
+        <group>
+          {cap([r * 1.08, r * 1.04, r * 1.08], 0.15)}
+          {fringe(0.84)}
+          {[-1, 1].map((sx) => (
+            <group key={sx}>
+              <Blob m={hairM} s={[r * 0.28, r * 0.28, r * 0.28]} p={[sx * r * 0.92, cy + r * 0.55, -r * 0.08]} />
+              <Strand m={hairM} len={r * 2.0} rTop={r * 0.4} rBot={r * 0.12} p={[sx * r * 1.0, cy + r * 0.48, -r * 0.12]} rot={[-0.15, 0, sx * 0.45]} />
+            </group>
+          ))}
         </group>
       )
     case 'bun':
       return (
         <group>
-          {cap([r * 1.04, r * 1.0, r * 1.04], 0.12)}
+          {cap([r * 1.06, r * 1.02, r * 1.06], 0.13)}
           {/* top knot */}
-          <Blob m={hairM} s={[r * 0.42, r * 0.42, r * 0.42]} p={[0, cy + r * 1.05, -r * 0.05]} />
-          <mesh geometry={torusGeo(r * 0.42, r * 0.12)} material={hairM} position={[0, cy + r * 0.95, -r * 0.05]} rotation={[Math.PI / 2, 0, 0]} />
-          {/* small fringe */}
-          <Blob m={hairM} s={[r * 0.8, r * 0.2, r * 0.36]} p={[0, cy + r * 0.52, r * 0.62]} r={[0.5, 0, 0]} />
+          <Blob m={hairM} s={[r * 0.4, r * 0.4, r * 0.4]} p={[0, cy + r * 1.02, -r * 0.08]} />
+          <mesh geometry={torusGeo(r * 0.4, r * 0.12)} material={hairM} position={[0, cy + r * 0.92, -r * 0.08]} rotation={[Math.PI / 2, 0, 0]} />
+          {fringe(0.78)}
         </group>
       )
-    case 'twintails':
-      // a soft cap + forehead fringe, with a bunched ponytail tied high on each
-      // side that tapers down past the shoulders — the female starter look.
+    case 'braided':
       return (
         <group>
-          {cap([r * 1.08, r * 1.04, r * 1.08], 0.15)}
-          {/* fringe across the forehead */}
-          <Blob m={hairM} s={[r * 0.88, r * 0.26, r * 0.4]} p={[0, cy + r * 0.5, r * 0.64]} r={[0.5, 0, 0]} />
-          {/* face-framing wisps */}
-          <Blob m={hairM} s={[r * 0.34, r * 0.6, r * 0.4]} p={[-r * 0.86, cy + r * 0.15, r * 0.12]} />
-          <Blob m={hairM} s={[r * 0.34, r * 0.6, r * 0.4]} p={[r * 0.86, cy + r * 0.15, r * 0.12]} />
-          {[-1, 1].map((sx) => (
-            <group key={sx}>
-              {/* tie knot high on the side of the head */}
-              <Blob m={hairM} s={[r * 0.3, r * 0.3, r * 0.3]} p={[sx * r * 0.95, cy + r * 0.6, -r * 0.02]} />
-              {/* ponytail: a fuller upper bunch tapering to a tip, angled outward */}
-              <Strand m={hairM} len={r * 2.0} rTop={r * 0.44} rBot={r * 0.13} p={[sx * r * 1.08, cy + r * 0.52, -r * 0.05]} rot={[-0.12, 0, sx * 0.5]} />
-            </group>
-          ))}
+          {cap([r * 1.08, r * 1.03, r * 1.08], 0.18)}
+          {fringe(0.84)}
+          {/* thin face-frame strands tucked behind + a thick back braid */}
+          {sideFall(1.3, 0.18, 0.1)}
+          <Braid m={hairM} r={r} p={[0, cy + r * 0.3, -r * 0.6]} len={r * 2.6} beads={6} rot={[-0.08, 0, 0]} />
         </group>
       )
     default:
@@ -348,6 +536,7 @@ function Arm({
   armMat,
   sleeved,
   topM,
+  hand,
 }: {
   side: 'L' | 'R'
   bind: (n: BoneName) => (g: Group | null) => void
@@ -356,6 +545,7 @@ function Arm({
   armMat: Mat
   sleeved: boolean
   topM: Mat
+  hand?: EquippedAccessories
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'armUpperL' : 'armUpperR'
@@ -368,7 +558,7 @@ function Arm({
           deltoid in the top colour, sized to merge into the torso's shoulder ring
           rather than read as a ball. (Previously this used the arm colour, so a tee
           exposed a big skin sphere where the old shirt yoke used to cover it.) */}
-      <Blob m={topM} s={[P.shoulderR * 1.05, P.shoulderR * 0.95, P.shoulderR * 1.05]} p={[0, 0, 0]} cast />
+      <Blob m={topM} s={[P.shoulderR * 1.0, P.shoulderR * 0.82, P.shoulderR * 1.0]} p={[0, 0, 0]} cast />
       <mesh geometry={taperGeo(P.shoulderR, P.elbowR, P.upperArm)} material={armMat} position={[0, -P.upperArm / 2, 0]} castShadow />
       {/* tee: a short sleeve over the top of the upper arm (forearm stays skin) */}
       {!sleeved && (
@@ -379,9 +569,11 @@ function Arm({
         {/* elbow */}
         <Blob m={skin} s={[P.elbowR, P.elbowR, P.elbowR]} p={[0, 0, 0]} />
         <mesh geometry={taperGeo(P.elbowR, P.wristR, P.lowerArm)} material={skin} position={[0, -P.lowerArm / 2, 0]} castShadow />
-        {/* hand: a single rounded chibi mitt */}
+        {/* hand: a single rounded chibi mitt (the right hand also holds the
+            equipped handheld accessory, in front of the body) */}
         <group position={[0, -P.lowerArm - P.wristR * 0.3, 0]}>
           <Blob m={skin} s={[P.wristR * 1.15, P.handLen * 0.62, P.wristR * 0.95]} p={[0, -P.handLen * 0.42, 0]} cast />
+          {hand && <HandAccessory eq={hand} P={P} />}
         </group>
       </group>
     </group>
@@ -413,10 +605,9 @@ function Leg({
   const upper: BoneName = side === 'L' ? 'legUpperL' : 'legUpperR'
   const lower: BoneName = side === 'L' ? 'legLowerL' : 'legLowerR'
   const foot: BoneName = side === 'L' ? 'footL' : 'footR'
-  // skirt/shorts bare the calf; a skirt also bares the thigh
-  const bareLower = config.bottom === 'shorts' || config.bottom === 'skirt'
-  const thighMat = config.bottom === 'skirt' ? skin : botM
-  const calfMat = bareLower ? skin : botM
+  // shorts bare the calf (thigh stays clothed); pants & leggings clothe the full leg
+  const thighMat = botM
+  const calfMat = config.bottom === 'shorts' ? skin : botM
   return (
     <group ref={bind(upper)} position={[sign * P.hipW, P.hipsY - 0.06, 0]}>
       {/* hip joint */}
@@ -485,6 +676,16 @@ function Top({ config, P, topM }: { config: AvatarConfig; P: Proportions; topM: 
           <Blob m={topM} s={[P.chestW * 0.7, P.chestLen * 0.14, P.torsoD * 0.6]} p={[0, P.chestLen * 0.78, P.torsoD * 0.2]} />
         </group>
       )
+    case 'blazer':
+      // tidy academic blazer: structured shoulders, notched lapels, collar band
+      return (
+        <group>
+          <mesh geometry={boxGeo(P.chestW * 0.2, P.chestLen * 0.85, P.torsoD * 0.12)} material={topM} position={[-P.chestW * 0.32, P.chestLen * 0.38, P.torsoD * 0.95]} rotation={[0, 0, 0.16]} />
+          <mesh geometry={boxGeo(P.chestW * 0.2, P.chestLen * 0.85, P.torsoD * 0.12)} material={topM} position={[P.chestW * 0.32, P.chestLen * 0.38, P.torsoD * 0.95]} rotation={[0, 0, -0.16]} />
+          <Blob m={topM} s={[P.chestW * 0.78, P.chestLen * 0.16, P.torsoD * 0.62]} p={[0, P.chestLen * 0.8, P.torsoD * 0.18]} />
+          <Blob m={topM} s={[P.chestW * 0.42, P.chestLen * 0.16, P.torsoD * 0.5]} p={[0, P.chestLen * 0.7, 0]} />
+        </group>
+      )
     case 'robe':
       // flowing scholar-robe skirt falling below the waist
       return (
@@ -496,12 +697,3 @@ function Top({ config, P, topM }: { config: AvatarConfig; P: Proportions; topM: 
   }
 }
 
-/* ----------------------------------------------------------- bottom overlays */
-
-function Bottom({ config, P, botM }: { config: AvatarConfig; P: Proportions; botM: Mat }) {
-  if (config.bottom !== 'skirt') return null
-  // a flared skirt that hangs from the hips and sways with them
-  return (
-    <mesh geometry={skirtGeo(P.hipBoneW * 1.1, P.hipBoneW * 1.9, 0.34)} material={botM} position={[0, -0.16, 0]} />
-  )
-}

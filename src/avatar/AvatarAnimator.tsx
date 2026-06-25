@@ -42,8 +42,11 @@ export interface AnimatorProps {
   locomotion: React.RefObject<Locomotion>
   /** creator preview override */
   preview?: PreviewState
-  /** distance LOD; defaults to 'near' (local player is always near) */
-  lod?: Lod
+  /** distance LOD. Either a fixed value (creator preview / shot harness, always
+   *  'near') or a mutable ref that RemotePlayers rewrites every frame as the
+   *  camera distance changes — read live each frame so the tier updates without
+   *  any React re-render. Defaults to 'near'. */
+  lod?: Lod | React.RefObject<Lod>
 }
 
 const BONE_NAMES: BoneName[] = [
@@ -87,12 +90,15 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
   useFrame((_, dtRaw) => {
     const handle = rig.current
     if (!handle) return
-    if (lod === 'cull') return
+    // Resolve the LOD tier — a plain value (creator/shot) or the live ref
+    // RemotePlayers updates each frame (remote avatars).
+    const lodVal: Lod = typeof lod === 'string' ? lod : (lod?.current ?? 'near')
+    if (lodVal === 'cull') return
 
     const dt = Math.min(dtRaw, 0.05)
     // Far avatars update at a reduced rate (every 3rd frame) to save CPU.
     frame.current++
-    const stride = lod === 'far' ? 3 : 1
+    const stride = lodVal === 'far' ? 3 : 1
     if (frame.current % stride !== 0) return
     const fdt = dt * stride // compensate clock so motion speed is unchanged
 
@@ -113,7 +119,7 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
 
     // ---- choose the target pose ----
     let pose: Pose
-    const allowIdleMicro = lod === 'near'
+    const allowIdleMicro = lodVal === 'near'
     if (preview === 'walk') pose = locomotionPose(phase, 1)
     else if (preview === 'run') pose = locomotionPose(phase, 1.8)
     else if (preview === 'wave') pose = wavePose(t)

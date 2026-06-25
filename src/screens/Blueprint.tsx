@@ -9,7 +9,6 @@ import { Canvas } from '../components/blueprint/Canvas'
 import { Toolbar } from '../components/blueprint/Toolbar'
 import { Inspector } from '../components/blueprint/Inspector'
 import { ConnectionBar } from '../components/blueprint/ConnectionBar'
-import { MiniMap } from '../components/blueprint/MiniMap'
 import { SearchPanel } from '../components/blueprint/SearchPanel'
 import { AIPanel } from '../components/blueprint/AIPanel'
 import '../screens/TaskMagnet.css' // reuse the theme backdrop + particle styles
@@ -32,6 +31,7 @@ export function Blueprint() {
   const ready = useBlueprint((s) => s.ready)
 
   const [panel, setPanel] = useState<null | 'search' | 'ai'>(null)
+  const [inspectorOpen, setInspectorOpen] = useState(true)
 
   useEffect(() => {
     if (user?.id) {
@@ -108,12 +108,18 @@ export function Blueprint() {
 
       <Canvas />
 
-      <aside className="bp-inspector bp-surface">
+      <button
+        className={`bp-inspector-toggle ${inspectorOpen ? 'open' : 'closed'}`}
+        onClick={() => setInspectorOpen((o) => !o)}
+        title={inspectorOpen ? 'Hide panel' : 'Show panel'}
+      >
+        {inspectorOpen ? '⟩' : '⟨'}
+      </button>
+      <aside className={`bp-inspector bp-surface ${inspectorOpen ? '' : 'collapsed'}`}>
         <Inspector />
       </aside>
 
       <ConnectionBar />
-      <MiniMap />
 
       {panel === 'search' && <SearchPanel onClose={() => setPanel(null)} />}
       {panel === 'ai' && <AIPanel onClose={() => setPanel(null)} />}

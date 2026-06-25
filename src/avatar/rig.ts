@@ -78,55 +78,61 @@ const MALE: Proportions = {
   spineLen: 0.165,
   chestLen: 0.235,
   neckLen: 0.05,
-  neckR: 0.085,
+  neckR: 0.082,
   headR: 0.242,
-  shoulderW: 0.32,
-  hipW: 0.135,
+  shoulderW: 0.275, // narrower than the old 0.32 (arms tuck nearer the body)
+  hipW: 0.12,
   upperArm: 0.26,
   lowerArm: 0.21,
   upperLeg: 0.3,
   lowerLeg: 0.3,
-  shoulderR: 0.097,
-  elbowR: 0.082,
-  wristR: 0.073,
-  thighR: 0.13,
-  kneeR: 0.108,
-  ankleR: 0.085,
-  chestW: 0.218,
-  waistW: 0.188,
-  hipBoneW: 0.195,
-  torsoD: 0.183,
+  shoulderR: 0.078, // slimmer arms (was 0.097 — the old shoulder ball was huge)
+  elbowR: 0.07,
+  wristR: 0.062,
+  thighR: 0.105, // slimmer legs (was 0.13 — read as thunder thighs)
+  kneeR: 0.092,
+  ankleR: 0.078,
+  chestW: 0.185,
+  waistW: 0.158,
+  hipBoneW: 0.168, // trimmer seat (was 0.195) — male is a V-taper, narrow hips
+  torsoD: 0.16,
   bust: 0,
-  handLen: 0.13,
+  handLen: 0.125,
   footLen: 0.235,
 }
 
+// Female silhouette is tuned to read CLEARLY apart from male at a glance, not just
+// numerically: noticeably narrower shoulders + chest, a deep waist pinch, and a
+// wider pelvis than the chest give a soft hourglass; limbs/head/feet are daintier.
+// Clearance invariants still hold: shoulderW (0.272) > chestW + shoulderR (0.250),
+// and hipW (0.15) < shoulderW. Absolute height stays ≈ male (legs unchanged) so
+// camera framing is untouched.
 const FEMALE: Proportions = {
   hipsY: 0.68,
-  spineLen: 0.17,
-  chestLen: 0.225,
-  neckLen: 0.05,
-  neckR: 0.075,
-  headR: 0.236,
-  shoulderW: 0.29,
-  hipW: 0.14,
+  spineLen: 0.175,
+  chestLen: 0.22,
+  neckLen: 0.052,
+  neckR: 0.066,
+  headR: 0.232,
+  shoulderW: 0.242, // distinctly narrower than male's 0.275
+  hipW: 0.132, // hip sockets sit wider apart than male's 0.12
   upperArm: 0.25,
   lowerArm: 0.2,
   upperLeg: 0.3,
   lowerLeg: 0.3,
-  shoulderR: 0.085,
-  elbowR: 0.072,
-  wristR: 0.064,
-  thighR: 0.122,
-  kneeR: 0.1,
-  ankleR: 0.078,
-  chestW: 0.182,
-  waistW: 0.158,
-  hipBoneW: 0.205,
-  torsoD: 0.165,
-  bust: 0.05,
-  handLen: 0.118,
-  footLen: 0.218,
+  shoulderR: 0.066,
+  elbowR: 0.058,
+  wristR: 0.052,
+  thighR: 0.098, // slim legs
+  kneeR: 0.085,
+  ankleR: 0.07,
+  chestW: 0.155, // slim chest
+  waistW: 0.125, // deep waist pinch (vs male 0.158) — the defining cinch
+  hipBoneW: 0.2, // pelvis wider than the chest → hourglass, but not an oversized seat
+  torsoD: 0.142,
+  bust: 0.06,
+  handLen: 0.105,
+  footLen: 0.2,
 }
 
 export function proportionsFor(bodyType: BodyType): Proportions {

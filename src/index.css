@@ -126,6 +126,16 @@ body {
   scroll-behavior: auto !important;
 }
 
+/* …but the Task Magnet ambient particle field (rain, snow, petals, fireflies…)
+   is decorative and meant to loop forever. Keep it alive even when motion is
+   reduced — its per-particle duration lives in the --mg-dur var so we can
+   re-assert it here. Higher specificity than the `*` rule above, so it wins. */
+:root[data-reduce-motion='true'] .mg-particles span,
+:root[data-animations='off'] .mg-particles span {
+  animation-duration: var(--mg-dur, 10s) !important;
+  animation-iteration-count: infinite !important;
+}
+
 h1,
 h2,
 h3 {

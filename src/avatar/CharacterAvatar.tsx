@@ -12,7 +12,7 @@ import { Box3, type AnimationAction, type Object3D } from 'three'
 import { SkeletonUtils } from 'three-stdlib'
 import { BASE_BODY } from './baseBody'
 import { AvatarRig, type AvatarRigHandle } from './AvatarRig'
-import { AvatarAnimator } from './AvatarAnimator'
+import { AvatarAnimator, type Lod } from './AvatarAnimator'
 import { gaitAmount, type Locomotion } from './animation'
 import type { AvatarConfig } from './config'
 
@@ -21,6 +21,11 @@ import type { AvatarConfig } from './config'
 //   • animated (realm/world): a Locomotion ref drives clip selection + crossfade
 //     every frame — idle ⇄ walk ⇄ run, jump while airborne.
 //   • static (editor/preview): no Locomotion → holds a single calm idle frame.
+//
+// LOD SUPPORT: a `lod` ref (from RemotePlayers) allows the caller to drive the
+// LOD tier per-frame. 'near' = full detail; 'far' = reduced update rate;
+// 'cull' = animation frozen. Local player always uses 'near'. Remote players
+// update this ref from camera-distance checks in their own useFrame.
 //
 // Until `/models/avatars/base.glb` is baked, a ModelBoundary + Suspense fallback
 // renders the deterministic procedural rig (AvatarRig), driven by the SAME
@@ -34,6 +39,8 @@ interface CharacterAvatarProps {
   config: AvatarConfig
   /** live locomotion source; omit for a static (non-animated) display */
   locomotion?: React.RefObject<Locomotion>
+  /** mutable LOD ref written by RemotePlayers every frame; undefined = always 'near' */
+  lod?: React.RefObject<Lod>
 }
 
 /** Catches a failed GLB load (file not baked yet) and renders the fallback rig. */
@@ -47,22 +54,26 @@ class ModelBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   }
 }
 
-export function CharacterAvatar({ config, locomotion }: CharacterAvatarProps) {
+export function CharacterAvatar({ config, locomotion, lod }: CharacterAvatarProps) {
   // Fallback = the procedural rig in the player's live look. When a locomotion ref
   // is present we also mount the procedural animator so the fallback walks
   // in-world; static previews stay still.
   const fallbackRig = useRef<AvatarRigHandle>(null)
+  // Stable 'near' ref used when no lod prop is provided (local player / previews).
+  const nearLod = useRef<Lod>('near')
+  const resolvedLod = lod ?? nearLod
+
   const fallback = (
     <group scale={BASE_BODY.scale} position={[0, BASE_BODY.yOffset, 0]}>
       <AvatarRig ref={fallbackRig} config={config} />
-      {locomotion && <AvatarAnimator rig={fallbackRig} locomotion={locomotion} lod="near" />}
+      {locomotion && <AvatarAnimator rig={fallbackRig} locomotion={locomotion} lod={resolvedLod} />}
     </group>
   )
 
   return (
     <ModelBoundary fallback={fallback}>
       <Suspense fallback={fallback}>
-        <GLBCharacter locomotion={locomotion} />
+        <GLBCharacter locomotion={locomotion} lod={resolvedLod} />
       </Suspense>
     </ModelBoundary>
   )
@@ -78,7 +89,7 @@ function findAction(actions: Record<string, AnimationAction | null>, want: strin
   return hit ? actions[hit] ?? null : null
 }
 
-function GLBCharacter({ locomotion }: { locomotion?: React.RefObject<Locomotion> }) {
+function GLBCharacter({ locomotion, lod }: { locomotion?: React.RefObject<Locomotion>; lod: React.RefObject<Lod> }) {
   const { scene, animations } = useGLTF(`${AVATAR_DIR}/${BASE_BODY.model}`)
 
   // SkeletonUtils.clone (NOT Object3D.clone) so each instance gets its own
@@ -111,7 +122,7 @@ function GLBCharacter({ locomotion }: { locomotion?: React.RefObject<Locomotion>
     () => ({
       idle: findAction(actions, 'idle'),
       walk: findAction(actions, 'walk'),
-      run: findAction(actions, 'run'),
+      run:  findAction(actions, 'run'),
       jump: findAction(actions, 'jump'),
     }),
     [actions],
@@ -144,17 +155,23 @@ function GLBCharacter({ locomotion }: { locomotion?: React.RefObject<Locomotion>
     current.current = next
   }
 
-  // Animated mode: pick a clip from locomotion every frame. Without a locomotion
-  // ref we never touch the action again — it holds the idle pose.
+  // Animated mode: pick a clip from locomotion every frame. Skip clip switching
+  // when the LOD tier is 'cull' — the animation mixer is still advancing (Three
+  // does that internally) but we avoid the crossfade bookkeeping cost.
+  // Without a locomotion ref we never touch the action — it holds the idle pose.
   useFrame(() => {
     if (!locomotion) return
+    const currentLod = lod.current
+    // 'cull' → skip clip logic entirely to save CPU
+    if (currentLod === 'cull') return
+
     const loco = locomotion.current
     let want: AnimationAction | null
     if (!loco.grounded) want = clips.jump ?? clips.run ?? clips.walk ?? clips.idle
     else {
       const g = gaitAmount(loco.speed)
-      if (g > 1.25) want = clips.run ?? clips.walk ?? clips.idle
-      else if (g > 0.08) want = clips.walk ?? clips.run ?? clips.idle
+      if (g > 1.25) want = clips.run  ?? clips.walk ?? clips.idle
+      else if (g > 0.08) want = clips.walk ?? clips.run  ?? clips.idle
       else want = clips.idle
     }
     fadeTo(want)

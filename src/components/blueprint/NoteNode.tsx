@@ -8,10 +8,14 @@ interface NoteNodeProps {
   node: BlueprintNode
   selected: boolean
   dimmed: boolean
+  /** true while a string is being dragged from any node */
+  connecting?: boolean
+  /** true when THIS node is the card the dragged string would drop onto */
+  connectTarget?: boolean
   onPortDown: (nodeId: string, port: Port, e: React.PointerEvent) => void
 }
 
-export function NoteNode({ node, selected, dimmed, onPortDown }: NoteNodeProps) {
+export function NoteNode({ node, selected, dimmed, connecting, connectTarget, onPortDown }: NoteNodeProps) {
   const zoom = useBlueprint((s) => s.doc.viewport.zoom)
   const snap = useBlueprint((s) => s.doc.snap)
   const grid = useBlueprint((s) => s.doc.grid)
@@ -100,7 +104,7 @@ export function NoteNode({ node, selected, dimmed, onPortDown }: NoteNodeProps) 
 
   return (
     <div
-      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''}`}
+      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connecting ? 'connecting' : ''} ${connectTarget ? 'drop-target' : ''}`}
       style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
       onPointerDown={onBodyPointerDown}
       onPointerMove={onBodyPointerMove}
@@ -114,9 +118,18 @@ export function NoteNode({ node, selected, dimmed, onPortDown }: NoteNodeProps) 
         setEditing(true)
       }}
     >
-      {/* pinned evidence card — a single subtle pin head holds it to the wall */}
+      {/* pin head — holds the card to the wall AND is a string anchor: drag it
+          onto another card to link them. */}
       {node.style.shape !== 'circle' && node.style.shape !== 'hexagon' && (
-        <span className="bp-node-pin" aria-hidden />
+        <span
+          className="bp-node-pin"
+          title="Drag to link this note to another"
+          onPointerDown={(e) => {
+            if (node.locked) return
+            e.stopPropagation()
+            onPortDown(node.id, 'top', e)
+          }}
+        />
       )}
       <div className="bp-node-surface" style={surface}>
         {node.style.shape === 'folder' && <span className="bp-folder-tab" />}

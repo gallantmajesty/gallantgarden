@@ -36,6 +36,7 @@ export function Canvas() {
   const addEdge = useBlueprint((s) => s.addEdge)
 
   const [connecting, setConnecting] = useState<Connecting | null>(null)
+  const [connectTarget, setConnectTarget] = useState<string | null>(null)
   const [marquee, setMarquee] = useState<Marquee | null>(null)
   const pan = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null)
   const marqueeRef = useRef<Marquee | null>(null)
@@ -144,6 +145,29 @@ export function Canvas() {
   }
 
   // ---- drag-to-connect from a node port ----
+  // Find the note under (or nearest to, within tolerance) a world point — so a
+  // string snaps to a card even on a slightly-loose drop. Returns null on empty.
+  function nodeAt(w: Pt, excludeId: string): BlueprintNode | null {
+    const list = useBlueprint.getState().doc.nodes
+    // direct hit first (top-most wins)
+    for (let i = list.length - 1; i >= 0; i--) {
+      const n = list[i]
+      if (n.id !== excludeId && w.x >= n.x && w.x <= n.x + n.w && w.y >= n.y && w.y <= n.y + n.h) return n
+    }
+    // else snap to the nearest card whose centre is within a forgiving radius
+    let best: BlueprintNode | null = null
+    let bestD = Infinity
+    const tol = 90 // world units of slack around a card
+    for (const n of list) {
+      if (n.id === excludeId) continue
+      const cx = Math.max(n.x, Math.min(w.x, n.x + n.w))
+      const cy = Math.max(n.y, Math.min(w.y, n.y + n.h))
+      const d = Math.hypot(w.x - cx, w.y - cy)
+      if (d < tol && d < bestD) { best = n; bestD = d }
+    }
+    return best
+  }
+
   function startConnect(nodeId: string, port: Port, e: React.PointerEvent) {
     const from = useBlueprint.getState().doc.nodes.find((n) => n.id === nodeId)
     if (!from) return
@@ -151,25 +175,29 @@ export function Canvas() {
     const cur = useBlueprint.getState().doc.viewport
     const to = screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cur)
     setConnecting({ from, fromPort: port, to })
-
+    setConnectTarget(null)
+    // Drive the whole gesture off window listeners (no pointer capture on the
+    // canvas — capturing there fought with the canvas's own pointer handlers and
+    // could swallow the drop). Window-level move/up never miss the gesture.
     function move(ev: PointerEvent) {
       const c = useBlueprint.getState().doc.viewport
       const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
       setConnecting((p) => (p ? { ...p, to: w } : p))
+      const t = nodeAt(w, nodeId)
+      setConnectTarget(t ? t.id : null)
     }
     function up(ev: PointerEvent) {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       const c = useBlueprint.getState().doc.viewport
       const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
-      const target = [...useBlueprint.getState().doc.nodes]
-        .reverse()
-        .find((n) => n.id !== nodeId && w.x >= n.x && w.x <= n.x + n.w && w.y >= n.y && w.y <= n.y + n.h)
+      const target = nodeAt(w, nodeId)
       if (target) {
         const { fromPort, toPort } = autoPorts(from!, target)
         addEdge(from!.id, fromPort, target.id, toPort, useBlueprint.getState().activeTypeId)
       }
       setConnecting(null)
+      setConnectTarget(null)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -201,6 +229,8 @@ export function Canvas() {
             node={n}
             selected={selection.includes(n.id)}
             dimmed={(!!focusNodes && !focusNodes.has(n.id)) || (!!tracedNodes && !tracedNodes.has(n.id))}
+            connecting={!!connecting}
+            connectTarget={connectTarget === n.id}
             onPortDown={startConnect}
           />
         ))}

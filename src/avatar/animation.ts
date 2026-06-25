@@ -47,13 +47,14 @@ export function idlePose(t: number): Pose {
     hips: { x: 0, z: -sway * 0.018, y: sway * 0.018 },
     neck: { x: -0.02, y: headDrift * 0.05 },
     head: { y: headDrift * 0.045, x: breath * 0.01 },
-    // arms rest with a slight OUTWARD splay (negative z = out for L, positive = out
-    // for R) so the chunkier chibi torso never intersects them; forearm carries a
-    // gentle constant bend so it never reads as a stiff rod
-    armUpperL: { x: 0.03 + breath * 0.012, z: -0.12 + sway * 0.01 },
-    armUpperR: { x: 0.03 + breath * 0.012, z: 0.12 - sway * 0.01 },
-    armLowerL: { x: 0.16, z: -0.04 },
-    armLowerR: { x: 0.16, z: 0.04 },
+    // arms hang straight at the sides, close to the body, with only a whisper of
+    // outward splay (negative z = out for L, positive = out for R). The forearm
+    // keeps a *forward* micro-bend (negative x) so the hands settle just in front
+    // of the thighs — never swung out behind the back (the old +0.16 did that).
+    armUpperL: { x: 0.02 + breath * 0.012, z: -0.05 + sway * 0.01 },
+    armUpperR: { x: 0.02 + breath * 0.012, z: 0.05 - sway * 0.01 },
+    armLowerL: { x: -0.06, z: -0.03 },
+    armLowerR: { x: -0.06, z: 0.03 },
     legUpperL: { x: 0 },
     legUpperR: { x: 0 },
   }

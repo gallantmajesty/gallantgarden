@@ -49,6 +49,16 @@ export interface Stats {
   perArea: Record<LifeArea, number>
   perSubject: { subject: string; minutes: number; tasks: number }[]
   daily: { day: string; tasks: number; minutes: number }[] // chronological
+  // goals (snapshot — milestones carry no completion date, so not range-filtered)
+  goalsActive: number
+  goalsDone: number
+  avgGoalProgress: number // 0..1 across all goals
+  milestonesDone: number
+  milestonesTotal: number
+  // habits (range-filtered via their dated history)
+  habitCount: number
+  habitConsistency: number // 0..1 — avg of (completed days / window) per habit
+  habitCompletions: number // total habit check-ins within range
 }
 
 function tasksCompletedInRange(tasks: Task[], now: Date, days: number): Task[] {
@@ -100,6 +110,32 @@ export function computeStats(data: MagnetData, now: Date, days: number): Stats {
     daily.push({ day: key, tasks: dayTasks, minutes: dayMin })
   }
 
+  // goals — a current snapshot (milestones have no completion timestamp, so we
+  // can't honestly range-filter them; progress is "where you stand right now").
+  const goalsDone = data.goals.filter((g) => g.progress >= 100).length
+  const goalsActive = data.goals.filter((g) => g.progress < 100).length
+  const avgGoalProgress = data.goals.length
+    ? data.goals.reduce((s, g) => s + g.progress, 0) / data.goals.length / 100
+    : 0
+  let milestonesDone = 0
+  let milestonesTotal = 0
+  for (const g of data.goals) {
+    milestonesTotal += g.milestones.length
+    milestonesDone += g.milestones.filter((m) => m.done).length
+  }
+
+  // habits — consistency = how many of the window's days each habit was kept,
+  // averaged across habits. Range-filtered using each habit's dated history.
+  const windowDays = Math.max(1, Math.min(days, 90))
+  let habitCompletions = 0
+  let consistencySum = 0
+  for (const h of data.habits) {
+    const hits = h.history.filter((d) => inRange(d, now, days)).length
+    habitCompletions += hits
+    consistencySum += Math.min(1, hits / windowDays)
+  }
+  const habitConsistency = data.habits.length ? consistencySum / data.habits.length : 0
+
   const completed = completedTasks.length
   const created = createdTasks.length
   return {
@@ -112,6 +148,14 @@ export function computeStats(data: MagnetData, now: Date, days: number): Stats {
     perArea,
     perSubject,
     daily,
+    goalsActive,
+    goalsDone,
+    avgGoalProgress,
+    milestonesDone,
+    milestonesTotal,
+    habitCount: data.habits.length,
+    habitConsistency,
+    habitCompletions,
   }
 }
 
@@ -249,6 +293,55 @@ export function generateInsights(data: MagnetData, now: Date, days: number): Ins
     }
   }
 
+  // 7. Habit consistency
+  if (stats.habitCount > 0) {
+    const pct = Math.round(stats.habitConsistency * 100)
+    if (stats.habitConsistency >= 0.7) {
+      out.push({
+        tone: 'good',
+        title: 'Habits locked in',
+        body: `You're keeping your habits ${pct}% of the time. Identity is built one repetition at a time — this is who you're becoming.`,
+      })
+    } else if (stats.habitConsistency < 0.3 && stats.habitCompletions >= 0) {
+      out.push({
+        tone: 'tip',
+        title: 'Anchor one habit',
+        body: 'Habits slipped this period. Don’t chase all of them — pick the single most important one and protect just that for the next few days.',
+      })
+    }
+  }
+
+  // 8. Goal momentum + deadlines
+  if (stats.goalsActive > 0) {
+    const nowMs = now.getTime()
+    const urgent = data.goals.find(
+      (g) =>
+        g.progress < 70 &&
+        g.target &&
+        (() => {
+          const t = new Date(g.target).getTime()
+          return !Number.isNaN(t) && t >= nowMs && t - nowMs <= 14 * 86400000
+        })(),
+    )
+    if (urgent) {
+      out.push({
+        tone: 'watch',
+        title: 'Goal deadline approaching',
+        body: `"${urgent.title}" is due within two weeks and sits at ${urgent.progress}%. Break the gap into one concrete task today and the rest gets lighter.`,
+      })
+    } else if (stats.avgGoalProgress > 0 && stats.avgGoalProgress < 1) {
+      const pct = Math.round(stats.avgGoalProgress * 100)
+      out.push({
+        tone: stats.avgGoalProgress >= 0.6 ? 'good' : 'tip',
+        title: `Goals ${pct}% of the way`,
+        body:
+          stats.avgGoalProgress >= 0.6
+            ? `Your goals are well underway, averaging ${pct}% complete. Keep converting milestones into tasks — momentum is on your side.`
+            : `Your goals are averaging ${pct}%. Turn the next milestone into a scheduled task this week to move the needle.`,
+      })
+    }
+  }
+
   if (out.length === 0) {
     out.push({
       tone: 'tip',
@@ -256,5 +349,5 @@ export function generateInsights(data: MagnetData, now: Date, days: number): Ins
       body: 'Add a few tasks and log a focus session — within days, this space fills with insights drawn entirely from your own patterns.',
     })
   }
-  return out.slice(0, 5)
+  return out.slice(0, 6)
 }

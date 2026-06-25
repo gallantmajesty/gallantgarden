@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
+import { useProfile } from '../store/profile'
 import { useMagnet } from '../store/magnet'
 import { getTheme } from '../lib/magnet/themes'
 import { levelProgress } from '../lib/magnet/types'
@@ -79,7 +80,15 @@ export function TaskMagnet() {
     } as React.CSSProperties
   }, [theme, accent, data.accent, data.font])
 
-  const displayName = user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
+  // Use the canonical profile name (the same source the Lobby, Profile and
+  // presence use) so the student's name is universal across the whole app.
+  // Fall back to the auth profile / email only before the profile has hydrated.
+  const profileName = useProfile((s) => s.displayName)
+  const displayName =
+    (profileName && profileName !== 'Explorer' ? profileName : null) ||
+    user?.profile?.name ||
+    user?.email?.split('@')[0] ||
+    'Explorer'
   const lp = levelProgress(data.xp)
 
   if (!ready) {

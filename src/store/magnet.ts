@@ -55,7 +55,33 @@ function emptyData(): MagnetData {
     particleDensity: 0.7,
     font: 'Inter',
     lastVisit: null,
+    pomoBackfilled: false,
   }
+}
+
+// One-time import of lifetime focus minutes from the old standalone pomodoro
+// store (sg.pomo.totalmin) into Magnet's focus history, so existing users don't
+// see their hours vanish when analytics becomes the single source of truth.
+// Idempotent via the `pomoBackfilled` flag. Dated to yesterday so it never
+// inflates "today's pulse", and deliberately awards no XP (it's history, not a
+// fresh session).
+const OLD_POMO_MIN_KEY = 'sg.pomo.totalmin'
+function backfillPomodoro(data: MagnetData): MagnetData {
+  if (data.pomoBackfilled) return data
+  let oldMin = 0
+  try {
+    oldMin = Number(localStorage.getItem(OLD_POMO_MIN_KEY) ?? 0)
+  } catch {
+    oldMin = 0
+  }
+  if (!Number.isFinite(oldMin) || oldMin <= 0) {
+    return { ...data, pomoBackfilled: true }
+  }
+  const y = new Date()
+  y.setDate(y.getDate() - 1)
+  const date = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`
+  const session = { id: uid('foc'), date, minutes: Math.round(oldMin), subject: 'Imported' }
+  return { ...data, focus: [session, ...data.focus], pomoBackfilled: true }
 }
 
 function load(userId: string): MagnetData {
@@ -71,6 +97,9 @@ function load(userId: string): MagnetData {
     delete (merged as unknown as Record<string, unknown>).journal
     // make sure starter themes are always owned
     merged.unlockedThemes = Array.from(new Set([...STARTER_THEME_IDS, ...(parsed.unlockedThemes ?? [])]))
+    // if the saved active theme was retired (e.g. the old light themes), fall
+    // back to the default so the world never renders an unknown theme.
+    if (!THEMES.some((t) => t.id === merged.themeId)) merged.themeId = DEFAULT_THEME_ID
     return merged
   } catch {
     return emptyData()
@@ -206,7 +235,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
     hydrate: (userId) => {
       if (get().userId === userId && get().ready) return
-      const data = load(userId)
+      const data = backfillPomodoro(load(userId))
       const prevVisit = data.lastVisit
       const withVisit: MagnetData = { ...data, lastVisit: prevVisit }
       // record this visit time but remember the *previous* one for greetings

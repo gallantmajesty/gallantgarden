@@ -4,8 +4,8 @@ import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
-import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
+import { getRank, RANKS } from '../lib/ranks'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
@@ -21,6 +21,7 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
+  { key: 'room', label: 'Study Rooms', caption: 'Study on camera, together', png: 'study-rooms', route: '/rooms' },
   { key: 'sticky', label: 'Sticky Notes', caption: 'Your visual thinking space', png: 'notes', route: '/sticky' },
   { key: 'realm', label: 'Realm', caption: 'Step into a shared study world', png: 'realm', route: '/realm' },
   { key: 'magnet', label: 'Task Magnet', caption: 'Your private productivity HQ', png: 'tasks', route: '/magnet' },
@@ -31,11 +32,25 @@ export function Lobby() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends'>(null)
-  const country = useProfile((s) => s.data.country)
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
 
-  const displayName = user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
+  // Use the canonical profile display name (the same source the Profile screen
+  // shows) so the name is consistent app-wide; fall back to auth/email only
+  // until the profile has hydrated.
+  const profileName = useProfile((s) => s.displayName)
+  const displayName =
+    profileName && profileName !== 'Explorer'
+      ? profileName
+      : user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
+
+  // XP widget — the bar colour follows the current rank (so it re-tints on every
+  // level-up), and fill grows with the rank tier. Progression is cosmetic until
+  // a real XP system lands; the colour/rank wiring is already in place.
+  const rankObj = getRank(rank)
+  const rankAccent = rankObj.accent
+  const rankIdx = Math.max(0, RANKS.findIndex((r) => r.id === rankObj.id))
+  const xpPct = Math.round(((rankIdx + 1) / RANKS.length) * 100)
 
   function pick(o: LobbyObject) {
     if (o.soon || !o.route) {
@@ -50,10 +65,16 @@ export function Lobby() {
     <div className="lobby-root">
       {/* ---------- top-left: profile + Interact ---------- */}
       <div className="lobby-topleft">
-        <button className="lobby-chip" onClick={() => navigate('/profile')} title="Your profile">
-          {country ? <Flag code={country} className="lobby-chip-flag" /> : <span className="lobby-avatar-dot" />}
-          <span className="lobby-chip-name">{displayName}</span>
-          <RankBadge rankId={rank} size={22} className="lobby-chip-rank" />
+        <button
+          className="lobby-xp"
+          onClick={() => navigate('/profile')}
+          title={`${displayName} · ${rankObj.name}`}
+          style={{ ['--xp' as string]: rankAccent, ['--pct' as string]: xpPct }}
+        >
+          <span className="lobby-xp__medal">
+            <RankBadge rankId={rank} size={32} />
+          </span>
+          <span className="lobby-xp__name">{displayName}</span>
         </button>
         <button className="sf-btn ghost lobby-iconbtn" onClick={() => setPanel('interact')}>
           <Glyph name="people" /> Interact
@@ -117,17 +138,24 @@ export function Lobby() {
             </span>
           </button>
           {[
-            ['Controls', 'How to move & interact', 'gear'],
-            ['Info', 'About Focus Lily', 'star'],
-            ['Help', 'Tips & support', 'book'],
-          ].map(([t, s, g]) => (
-            <button key={t} className="menu-item" onClick={() => setPanel(null)}>
-              <span className="menu-item-icon"><Glyph name={g} /></span>
+            { t: 'Controls', s: 'How to move & interact', g: 'gear', soon: true },
+            { t: 'Info', s: 'About FocusLily', g: 'star', route: '/about' },
+            { t: 'Help', s: 'Tips & support', g: 'book', soon: true },
+          ].map((it) => (
+            <button
+              key={it.t}
+              className="menu-item"
+              onClick={() => {
+                setPanel(null)
+                if (it.route) navigate(it.route)
+              }}
+            >
+              <span className="menu-item-icon"><Glyph name={it.g} /></span>
               <span>
-                <strong>{t}</strong>
-                <small>{s}</small>
+                <strong>{it.t}</strong>
+                <small>{it.s}</small>
               </span>
-              <span className="menu-soon">Soon</span>
+              {it.soon && <span className="menu-soon">Soon</span>}
             </button>
           ))}
         </div>

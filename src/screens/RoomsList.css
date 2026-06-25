@@ -1,0 +1,137 @@
+/* Study-room chooser — a warm "brown-coffee magical" realm gateway.
+   Not glassmorphism, not rainbow colours: a cosy espresso world lit by golden
+   candle-glow, with mocha cards and cream text. Readable on any theme. */
+
+.rooms {
+  --rl-ink: #f5ecdc;
+  --rl-soft: rgba(245, 236, 220, 0.74);
+  --rl-faint: rgba(245, 236, 220, 0.5);
+  --gold: #e6b46e;
+  --gold-soft: rgba(230, 180, 110, 0.4);
+  position: absolute; inset: 0; z-index: 1;
+  overflow-y: auto; padding: 30px clamp(20px, 5vw, 64px) 64px;
+  color: var(--rl-ink);
+  /* espresso → mocha world with a warm candle glow */
+  background:
+    radial-gradient(58% 52% at 82% -5%, rgba(230, 178, 110, 0.26), transparent 60%),
+    radial-gradient(55% 55% at 4% 106%, rgba(120, 74, 40, 0.42), transparent 60%),
+    radial-gradient(42% 40% at 50% 38%, rgba(246, 206, 140, 0.07), transparent 70%),
+    linear-gradient(165deg, #2b1d10 0%, #1e140b 55%, #140d07 100%);
+}
+/* drifting warm embers */
+.rooms::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, rgba(246, 206, 140, 0.7), transparent),
+    radial-gradient(2px 2px at 70% 60%, rgba(230, 180, 110, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%, rgba(246, 206, 140, 0.55), transparent),
+    radial-gradient(1.5px 1.5px at 85% 25%, rgba(230, 180, 110, 0.45), transparent),
+    radial-gradient(2px 2px at 55% 15%, rgba(246, 206, 140, 0.5), transparent);
+  animation: rl-twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes rl-twinkle { from { opacity: 0.3; } to { opacity: 0.6; } }
+.rooms > * { position: relative; z-index: 1; }
+
+.rooms__head { display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px; }
+.rooms__back {
+  align-self: flex-start; padding: 9px 16px; font-size: 14px; font-weight: 700; border-radius: 12px;
+  color: var(--rl-ink); background: rgba(246, 206, 140, 0.12); border: 1px solid var(--gold-soft);
+}
+.rooms__back:hover { background: rgba(246, 206, 140, 0.2); }
+.rooms__title { display: flex; align-items: center; gap: 16px; }
+.rooms__logo { width: 54px; height: 54px; border-radius: 16px; object-fit: cover; background: radial-gradient(circle at 50% 38%, #e9d3a4, #c8a468); box-shadow: 0 8px 22px rgba(0,0,0,0.4), inset 0 0 0 1px var(--gold-soft); }
+.rooms__title h1 { font-family: var(--display); font-size: clamp(26px, 4vw, 40px); color: #fbf2e2; text-shadow: 0 2px 14px rgba(230,178,110,0.4); }
+.rooms__title p { margin: 4px 0 0; color: var(--rl-soft); font-size: 15px; }
+
+/* ---- step 1: the two coffee portal cards ---- */
+.rooms__choose { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 820px; }
+.rooms__choice {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 18px; text-align: left;
+  padding: 26px; border-radius: 22px; color: #fbf2e2;
+  border: 1px solid var(--gold-soft);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,240,210,0.18), inset 0 0 40px rgba(120,74,40,0.3);
+  transition: transform 0.16s ease, box-shadow 0.2s ease, filter 0.2s;
+  animation: pop-in 0.35s ease both;
+}
+/* both warm coffee — gently distinct roast, not different colours */
+.rooms__choice--intl { background: linear-gradient(135deg, #7c5634 0%, #523619 55%, #34220f 100%); }
+.rooms__choice--custom { background: linear-gradient(135deg, #6a4a2c 0%, #43301a 55%, #2b1c0e 100%); }
+/* warm candle sheen instead of a glass blur */
+.rooms__choice::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(130% 90% at 18% -15%, rgba(246, 206, 140, 0.32), transparent 55%);
+}
+.rooms__choice:hover { transform: translateY(-4px); filter: brightness(1.06); box-shadow: 0 26px 54px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,240,210,0.22), 0 0 0 1px var(--gold-soft); }
+.rooms__choice-emoji {
+  width: 64px; height: 64px; flex: none; border-radius: 18px; overflow: hidden; display: grid; place-items: center; font-size: 32px;
+  background: radial-gradient(circle at 50% 38%, #e9d3a4, #c19a63);
+  box-shadow: inset 0 0 0 1px var(--gold-soft), 0 6px 14px rgba(0,0,0,0.35);
+}
+.rooms__choice-emoji img { width: 100%; height: 100%; object-fit: cover; }
+.rooms__choice-body { flex: 1; position: relative; z-index: 1; }
+.rooms__choice-body b { font-family: var(--display); font-weight: 800; font-size: 23px; display: block; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.rooms__choice-body small { color: rgba(245, 236, 220, 0.86); font-size: 13.5px; }
+.rooms__choice-go { font-size: 24px; color: var(--gold); opacity: 0.9; transition: transform 0.15s; position: relative; z-index: 1; }
+.rooms__choice:hover .rooms__choice-go { transform: translateX(5px); opacity: 1; }
+
+/* ---- step 2a: mind-map list of public rooms (warm coffee cards) ---- */
+.mindmap { position: relative; max-width: 900px; animation: pop-in 0.35s ease both; }
+.mindmap__root {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--display); font-weight: 800; font-size: 18px; color: #fbf2e2;
+  padding: 11px 20px; border-radius: 14px; margin-left: 8px; margin-bottom: 4px;
+  background: linear-gradient(135deg, #7c5634, #4a3119); box-shadow: 0 10px 24px rgba(0,0,0,0.4), inset 0 0 0 1px var(--gold-soft);
+}
+.mindmap__branches { position: relative; padding-left: 38px; }
+.mindmap__branches::before {
+  content: ''; position: absolute; left: 20px; top: -6px; bottom: 32px; width: 2px;
+  background: linear-gradient(180deg, var(--gold), rgba(230,180,110,0.15));
+}
+
+/* warm coffee rows; the per-room accent (--rc) is used only as a subtle glow */
+.room-row {
+  display: flex; align-items: center; gap: 18px;
+  padding: 18px 22px; border-radius: 16px; position: relative; margin-bottom: 14px;
+  background: linear-gradient(180deg, #2c1f12, #1f150c);
+  border: 1px solid rgba(246,206,140,0.12); border-left: 4px solid var(--gold);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.36);
+  transition: transform 0.14s ease, box-shadow 0.18s ease;
+  animation: pop-in 0.35s ease both;
+}
+.room-row:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(0,0,0,0.46), 0 0 0 1px var(--gold-soft); }
+.mindmap__branches .room-row::before { content: ''; position: absolute; left: -18px; top: 50%; width: 18px; height: 2px; background: rgba(230,180,110,0.3); }
+.mindmap__branches .room-row::after { content: ''; position: absolute; left: -22px; top: 50%; width: 9px; height: 9px; transform: translateY(-50%); border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold-soft); }
+.room-row__emoji { width: 58px; height: 58px; flex: none; border-radius: 16px; display: grid; place-items: center; font-size: 28px; background: radial-gradient(circle at 40% 30%, rgba(246,206,140,0.26), rgba(120,74,40,0.28)); box-shadow: inset 0 0 0 1px var(--gold-soft); }
+.room-row__body { flex: 1; min-width: 0; }
+.room-row__name { font-family: var(--display); font-weight: 800; font-size: 21px; color: #fbf2e2; }
+.room-row__blurb { color: var(--rl-soft); font-size: 14px; line-height: 1.4; margin-top: 2px; }
+.room-row__count { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 14px; color: var(--rl-soft); flex: none; }
+.room-row__count .live { width: 9px; height: 9px; border-radius: 50%; background: #6fcf8e; box-shadow: 0 0 8px #6fcf8e; animation: live-pulse 2s ease-in-out infinite; }
+@keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.room-row__join { padding: 11px 28px; font-size: 15px; flex: none; }
+
+/* ---- step 2b: custom panel (coffee card) ---- */
+.rooms__custom {
+  max-width: 600px; border-radius: 22px; padding: 32px 28px; text-align: center;
+  background: linear-gradient(180deg, #2c1f12, #1d140b);
+  border: 1px solid rgba(246,206,140,0.14); border-top: 4px solid var(--gold);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.46);
+  animation: pop-in 0.35s ease both;
+}
+.rooms__custom-emoji { width: 68px; height: 68px; margin: 0 auto 12px; border-radius: 18px; overflow: hidden; display: grid; place-items: center; font-size: 32px; background: radial-gradient(circle at 50% 38%, #e9d3a4, #c19a63); box-shadow: inset 0 0 0 1px var(--gold-soft); }
+.rooms__custom-emoji img { width: 100%; height: 100%; object-fit: cover; }
+.mindmap__root img { width: 26px; height: 26px; border-radius: 7px; object-fit: cover; background: radial-gradient(circle, #e9d3a4, #c19a63); }
+.rooms__custom h2 { font-family: var(--display); font-size: 25px; color: #fbf2e2; }
+.rooms__custom p { color: var(--rl-soft); font-size: 14px; line-height: 1.5; margin: 8px auto 20px; max-width: 440px; }
+.rooms__custom-actions { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.rooms__custom-create { padding: 12px 28px; font-size: 15px; }
+.rooms__custom-or { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--rl-faint); }
+.rooms__custom-join { display: flex; gap: 8px; align-items: center; }
+.rooms__custom-join .sf-input { width: 190px; text-align: center; letter-spacing: 2px; font-weight: 700; text-transform: uppercase; }
+
+@media (max-width: 620px) {
+  .rooms__choose { grid-template-columns: 1fr; }
+  .room-row { flex-wrap: wrap; }
+  .room-row__count { order: 3; }
+}

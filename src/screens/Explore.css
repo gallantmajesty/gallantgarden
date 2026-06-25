@@ -609,6 +609,23 @@
 .station-row .sf-input {
   flex: 1;
 }
+.station-subject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.station-subject > span {
+  font-size: 12px;
+  color: #ffd98a;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.station-subject .sf-input {
+  flex: 1;
+  font-size: 13px;
+  padding: 7px 10px;
+}
 .station-goals {
   display: flex;
   flex-direction: column;

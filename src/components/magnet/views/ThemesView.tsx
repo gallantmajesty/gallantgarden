@@ -4,8 +4,25 @@ import { levelForXp } from '../../../lib/magnet/types'
 import { SectionHead, Panel } from '../ui'
 import { Icon } from '../Icon'
 
-const ACCENTS = ['#ff6f9c', '#9a6cff', '#46d6a0', '#ffb454', '#4fd1e0', '#ff5d6c', '#7aa2ff', '#ff77c2']
-const FONTS = ['Inter', 'Georgia', 'Courier New', 'Trebuchet MS', 'Palatino Linotype']
+const ACCENTS = [
+  '#ff6f9c',
+  '#9a6cff',
+  '#46d6a0',
+  '#ffb454',
+  '#4fd1e0',
+  '#ff5d6c',
+  '#7aa2ff',
+  '#ff77c2',
+  '#6fe0a0',
+  '#ff7a1a',
+  '#4fe0ff',
+  '#d9a23a',
+  '#a877ff',
+  '#37e6ff',
+  '#ff5246',
+  '#7ce05a',
+]
+const FONTS = ['Inter', 'Georgia', 'Courier New', 'Trebuchet MS', 'Palatino Linotype', 'Verdana', 'Garamond', 'Consolas']
 
 export function ThemesView() {
   const data = useMagnet((s) => s.data)

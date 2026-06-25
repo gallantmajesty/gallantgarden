@@ -224,8 +224,16 @@ function WindowWalls({ glass, plaster, windowDetail }: { glass: Texture; plaster
       <InstancedBoxes items={data.bayBoxes} roughness={1} />
 
       {/* stained glass (main panels) — one instanced draw for every bay; its
-          emissive glow is animated up at night (see useFrame above) */}
-      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} transparent opacity={0.92} roughness={0.4} metalness={0.1} side={DoubleSide}>
+          emissive glow is animated up at night (see useFrame above).
+          PERF: rendered OPAQUE (was transparent opacity 0.92 — visually already
+          near-solid). Transparency disabled early-Z, so every fragment of the
+          forest/mountains/sky BEHIND these big bay-filling panes was still shaded
+          and the panes themselves were blend-sorted over a huge slice of the
+          screen — the hall's single biggest fill-rate cost on integrated GPUs.
+          Opaque restores depth occlusion (geometry behind the glass is rejected
+          before shading) while the colour + emissive map keep the jewelled look
+          identical. DoubleSide stays so the one batch faces both window walls. */}
+      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} roughness={0.4} metalness={0.1} side={DoubleSide}>
         <planeGeometry args={[step - 0.7, h]} />
       </InstancedShape>
 

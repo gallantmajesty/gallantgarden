@@ -67,6 +67,44 @@ export function threadPath(a: Pt, b: Pt, sag = 1): string {
   return `M ${a.x} ${a.y} Q ${mx} ${my + droop}, ${b.x} ${b.y}`
 }
 
+/**
+ * Control points for a smooth "blueprint" cubic between two border anchors.
+ * Control handles push out along the dominant axis (like a mind-map / React-Flow
+ * bezier) so the string leaves each card cleanly and sweeps a graceful S-curve —
+ * no gravity sag. Shared by the path builder and the point sampler so labels and
+ * energy dots sit exactly on the drawn curve.
+ */
+export function smoothControls(a: Pt, b: Pt): { c1: Pt; c2: Pt } {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const horizontal = Math.abs(dx) >= Math.abs(dy)
+  const off = horizontal
+    ? Math.max(46, Math.abs(dx) * 0.5)
+    : Math.max(46, Math.abs(dy) * 0.5)
+  if (horizontal) {
+    const dir = dx >= 0 ? 1 : -1
+    return { c1: { x: a.x + off * dir, y: a.y }, c2: { x: b.x - off * dir, y: b.y } }
+  }
+  const dir = dy >= 0 ? 1 : -1
+  return { c1: { x: a.x, y: a.y + off * dir }, c2: { x: b.x, y: b.y - off * dir } }
+}
+
+/** SVG `d` for the smooth blueprint cubic between two world points. */
+export function smoothPath(a: Pt, b: Pt): string {
+  const { c1, c2 } = smoothControls(a, b)
+  return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`
+}
+
+/** Point on the smooth cubic at parameter t (0..1) — for labels / energy dots. */
+export function smoothPoint(a: Pt, b: Pt, t: number): Pt {
+  const { c1, c2 } = smoothControls(a, b)
+  const u = 1 - t
+  return {
+    x: u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * b.x,
+    y: u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * b.y,
+  }
+}
+
 /** Point on the quadratic thread at parameter t (0..1) — for label / mid pins. */
 export function threadPoint(a: Pt, b: Pt, t: number, sag = 1): Pt {
   const mx = (a.x + b.x) / 2
