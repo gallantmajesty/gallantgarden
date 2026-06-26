@@ -142,11 +142,6 @@ export function StudyRoom() {
 
   return (
     <div className="ss" data-chrome={chrome ? 'on' : 'off'}>
-      {/* hide/show the top + left bars for a minimal focus view */}
-      <button className="ss-chrome-toggle" onClick={() => setChrome((c) => !c)} title={chrome ? 'Hide bars' : 'Show bars'}>
-        <Ic n={chrome ? 'eyeoff' : 'eye'} />
-      </button>
-
       {/* =====================  LEFT ICON RAIL  ===================== */}
       <nav className="ss-rail water-glass">
         <button className="ss-rail__btn is-active" title="Rooms" onClick={() => navigate('/rooms')}><Ic n="home" /></button>
@@ -156,49 +151,14 @@ export function StudyRoom() {
         <button className="ss-rail__btn" title="Profile" onClick={() => navigate('/profile')}><Ic n="user" /></button>
         <div className="ss-rail__spacer" />
         <button className="ss-rail__btn" title="Settings"><Ic n="gear" /></button>
+        <div className="ss-rail__sigil">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
+            <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" />
+          </svg>
+        </div>
       </nav>
 
       <div className="ss-main">
-        {/* =====================  TOP BAR  ===================== */}
-        <header className="ss-top water-glass">
-          <img src="/icons/rooms/fairy.png" alt="" className="ss-top__logo" />
-          <button className="ss-finish" onClick={leave}><Ic n="check" /> Finish session</button>
-          <span className="ss-top__room" style={{ ['--rc' as string]: room.accent }}>
-            <span className="ss-top__room-emoji">{room.emoji}</span>{room.name}
-          </span>
-
-          <div className="ss-top__spacer" />
-
-          <div className="ss-pager">
-            <button><Ic n="chevl" /></button>
-            <span><b>1</b> / 1</span>
-            <button><Ic n="chevr" /></button>
-          </div>
-
-          <div className="ss-top__spacer" />
-
-          <button className="ss-find"><Ic n="filter" /> Find Focus Buddies</button>
-          <div className="ss-count"><Ic n="users" /> {online}</div>
-        </header>
-
-        {/* =====================  YOUR CONTROL PILL  ===================== */}
-        <div className="ss-sub">
-          <div className="ss-you water-glass">
-            <span className="ss-you__tag"><span className="dot">{myName[0]?.toUpperCase()}</span>YOU</span>
-            <button className={`ss-you__ic${camOn ? ' on' : ' off'}`} title={camOn ? 'Turn camera off' : 'Show your face'} onClick={() => (camOn ? stopCam() : startCam())}>
-              <Ic n={camOn ? 'cam' : 'camoff'} />
-            </button>
-            <button className="ss-you__ic muted" title="No mic — silent room"><Ic n="micoff" /></button>
-            <button className="ss-you__ic" title="Safety & report"><Ic n="shield" /></button>
-            <button className="ss-you__ic" title="Settings"><Ic n="gear" /></button>
-          </div>
-
-          <button className="ss-status" onClick={cycleStatus} title="Set your study mode">
-            <i style={{ background: STATUS_COLOR[myStatus] }} />
-            {STATUS_LABEL[myStatus]}
-          </button>
-        </div>
-
         {/* =====================  WEBCAM GRID  ===================== */}
         <div className="ss-grid-wrap">
           <div className="ss-grid">
@@ -211,7 +171,7 @@ export function StudyRoom() {
               {!camOn && (
                 <div className="ss-tile__off">
                   {avatarUrl ? <img src={avatarUrl} alt="" className="ss-tile__ava" /> : <div className="ss-tile__init">{myName[0]?.toUpperCase()}</div>}
-                  <small>Camera off — click “Show face” to be seen</small>
+                  <small>Click "Show Face" to reveal yourself</small>
                 </div>
               )}
 
@@ -232,7 +192,7 @@ export function StudyRoom() {
                 className="ss-tile__statusinput"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                placeholder="Set a study status…"
+                placeholder="Set a study status..."
                 maxLength={80}
               />
             </div>
@@ -246,14 +206,69 @@ export function StudyRoom() {
             {Array.from({ length: openSeats }).map((_, i) => (
               <div key={`open-${i}`} className="ss-tile is-open">
                 <div className="ss-seat">
-                  <div className="ss-seat__ic"><Ic n="cam" /></div>
-                  <b>Open seat</b>
-                  <small>Waiting for a focus buddy</small>
+                  <div className="ss-seat__ic">
+                    <Ic n="cam" />
+                  </div>
+                  <b>Open Seat</b>
+                  <small>Awaiting a study companion</small>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {/* =====================  BOTTOM BAR (slides up)  ===================== */}
+        <div className="ss-bottom-bar">
+          <header className="ss-bottom water-glass">
+            {/* Chrome toggle - centered at top of bar */}
+            <button className="ss-chrome-toggle" onClick={() => setChrome((c) => !c)} title={chrome ? 'Hide bar' : 'Show bar'}>
+              <Ic n={chrome ? 'chevd' : 'chevu'} />
+            </button>
+            <img src="/icons/rooms/fairy.png" alt="" className="ss-bottom__logo" />
+            <button className="ss-finish" onClick={leave}>
+              <Ic n="check" /> Finish
+            </button>
+
+            <div className="ss-bottom__divider" />
+
+            <div className="ss-you water-glass">
+              <span className="ss-you__tag"><RuneIcon /> <span className="dot">{myName[0]?.toUpperCase()}</span>YOU</span>
+              <button className={`ss-you__ic${camOn ? ' on' : ' off'}`} title={camOn ? 'Turn camera off' : 'Show your face'} onClick={() => (camOn ? stopCam() : startCam())}>
+                <Ic n={camOn ? 'cam' : 'camoff'} />
+              </button>
+              <button className="ss-you__ic muted" title="No mic — silent room"><Ic n="micoff" /></button>
+            </div>
+
+            <button className="ss-status" onClick={cycleStatus} title="Set your study mode">
+              <i style={{ background: STATUS_COLOR[myStatus] }} />
+              {STATUS_LABEL[myStatus]}
+            </button>
+
+            <div className="ss-bottom__spacer" />
+
+            <span className="ss-bottom__room" style={{ ['--rc' as string]: room.accent }}>
+              <span className="ss-bottom__room-emoji">{room.emoji}</span>{room.name}
+            </span>
+
+            <div className="ss-pager">
+              <button><Ic n="chevl" /></button>
+              <span><b>1</b> / 1</span>
+              <button><Ic n="chevr" /></button>
+            </div>
+
+            <button className="ss-find">
+              <Ic n="filter" /> Find Buddies
+            </button>
+            <div className="ss-count"><Ic n="users" /> {online}</div>
+          </header>
+        </div>
+
+        {/* Unhide button - shows when bottom bar is hidden */}
+        {!chrome && (
+          <button className="ss-unhide-btn" onClick={() => setChrome(true)} title="Show controls">
+            <Ic n="chevu" />
+          </button>
+        )}
       </div>
 
       {toast && <div className="ss-toast">{toast}</div>}
@@ -286,6 +301,17 @@ function PeerTile({ peer, now }: { peer: StudyPeer; now: number }) {
 }
 
 /* ------------------------------------------------------------------
+   Magical rune icon — decorative sparkle element
+   ------------------------------------------------------------------ */
+function RuneIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.8 }}>
+      <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------
    Inline monochrome icons (no icon dependency) — currentColor, 24px box.
    ------------------------------------------------------------------ */
 function Ic({ n }: { n: string }) {
@@ -309,6 +335,8 @@ function Ic({ n }: { n: string }) {
     case 'shield': return p('M12 3l7 3v5c0 4-3 7-7 9-4-2-7-5-7-9V6z')
     case 'chevl': return p('M15 6l-6 6 6 6')
     case 'chevr': return p('M9 6l6 6-6 6')
+    case 'chevd': return p('M6 9l6 6 6-6')
+    case 'chevu': return p('M18 15l-6-6-6 6')
     case 'filter': return p('M4 5h16l-6 8v5l-4 2v-7z')
     case 'users': return p('M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19a6 6 0 0 1 12 0M16 11a3 3 0 1 0-1-5.8M21 19a6 6 0 0 0-5-5.9')
     case 'pin': return p('M9 4h6l-1 6 3 3H7l3-3z M12 13v7')

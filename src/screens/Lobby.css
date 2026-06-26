@@ -176,6 +176,13 @@
   /* white halo + soft drop so the brand-dark text stays legible over the video */
   text-shadow: 0 1px 14px rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.28);
 }
+.lobby-welcome__name {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent-dark)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--accent) 50%, transparent));
+}
 .lobby-welcome p {
   color: var(--ink-soft);
   font-weight: 600;
@@ -201,12 +208,31 @@
   box-shadow: var(--glass-shadow);
   text-align: center;
   position: relative;
+  isolation: isolate;
   animation: pop-in 0.4s ease both;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.lobby-object::before {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  border-radius: 28px;
+  opacity: 0;
+  background: radial-gradient(circle at var(--glow-x, 50%) var(--glow-y, 50%), var(--accent), transparent 55%);
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(12px);
+}
+.lobby-object::after {
+  display: none;
 }
 .lobby-object:hover {
   transform: translateY(-6px);
   box-shadow: var(--glass-shadow-hover);
+}
+.lobby-object:hover::before {
+  opacity: 0.5;
 }
 .lobby-object:active {
   transform: translateY(2px);
@@ -223,11 +249,11 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  /* translucent bubble backing so the watercolour PNG art floats on glass */
-  background: radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.55), rgba(190, 228, 246, 0.16));
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(90, 160, 200, 0.18);
-  color: var(--wood-dark);
+  /* translucent bubble backing — tints with the active theme's glass palette */
+  background: radial-gradient(circle at 38% 30%, var(--glass-border), var(--glass-fill, rgba(190, 228, 246, 0.16)));
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.35), inset 0 -6px 14px color-mix(in srgb, var(--accent, rgba(90, 160, 200)) 18%, transparent);
+  color: var(--on-glass, var(--wood-dark));
   overflow: hidden;
   animation: floaty 6s ease-in-out infinite;
 }
@@ -244,7 +270,7 @@
   font-family: var(--display);
   font-weight: 800;
   font-size: 18px;
-  color: var(--wood-dark);
+  color: var(--on-glass, var(--wood-dark));
 }
 .lobby-object-caption {
   font-size: 12.5px;

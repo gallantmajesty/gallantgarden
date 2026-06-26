@@ -3,8 +3,8 @@ import type { RealmKind } from '../lib/realm'
 import type { RealmVisibility } from '../lib/realms'
 
 /** Which 3D world a realm renders. Defaults to the great Library; the Waterfall
- *  Realm is the second flagship world. */
-export type RealmWorld = 'library' | 'waterfall'
+ *  Realm is the second flagship world; the Train Station is the third. */
+export type RealmWorld = 'library' | 'waterfall' | 'train-station'
 
 /** The realm the player is currently inside (drives the label in the 3D scene,
  *  which world to render, and — later — which presence channel to join). `null` =

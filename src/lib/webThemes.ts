@@ -76,6 +76,8 @@ export const WEB_THEMES: WebTheme[] = [
     accents: ['#c2a878', '#9aa7b8', '#d8c49a'],
     backgrounds: [
       { id: 'silent-ruins', label: 'Silent Ruins', src: '/themes/fantasy-silent-ruins.jpg' },
+      { id: 'dark-fantasy-castle', label: 'Shadow Citadel', src: '/themes/dark-fantasy-castle.png' },
+      { id: 'fantasy-kingdom', label: 'Royal Dominion', src: '/themes/fantasy-kingdom.png' },
     ],
     palette: {
       accent: '#c2a878',
@@ -101,78 +103,6 @@ export const WEB_THEMES: WebTheme[] = [
     },
   },
 
-  // ----------------------------------------------------------------- Forest
-  {
-    id: 'forest',
-    name: 'Forest',
-    emoji: '🌿',
-    mood: 'Emerald valleys, mossy hush and warm gold light.',
-    dark: false,
-    accents: ['#34b06a', '#ffce54', '#8fae4d'],
-    backgrounds: [
-      { id: 'viking-lake', label: 'Hidden Lagoon', src: '/themes/forest-viking-lake.jpg' },
-      { id: 'misty-laurel', label: 'Misty Laurels', src: '/themes/forest-misty-laurel.jpg' },
-      { id: 'green-lagoon', label: 'Emerald Shore', src: '/themes/forest-green-lagoon.jpg' },
-    ],
-    palette: {
-      accent: '#34b06a',
-      accentDark: '#1f8a4f',
-      accent2: '#ffce54',
-      glassFill: 'linear-gradient(135deg, rgba(255,255,255,0.40), rgba(168,222,190,0.20))',
-      glassFillStrong: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(168,222,190,0.30))',
-      glassBorder: 'rgba(255,255,255,0.58)',
-      glassShadow:
-        '0 10px 34px rgba(12,46,28,0.30), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -14px 30px rgba(90,170,120,0.16)',
-      glassShadowHover:
-        '0 18px 46px rgba(12,46,28,0.38), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -14px 30px rgba(90,170,120,0.2)',
-      ink: '#1d3a28',
-      inkSoft: '#3f6b50',
-      onGlass: '#173524',
-      woodSolid: '#236b43',
-      panelTop: 'rgba(247,253,247,0.92)',
-      panelBot: 'rgba(228,243,228,0.92)',
-      scrim:
-        'radial-gradient(120% 90% at 50% 8%, rgba(20,50,30,0) 40%, rgba(12,34,20,0.30) 100%)',
-      glowA: 'rgba(90,200,130,0.30)',
-      glowB: 'rgba(255,206,84,0.24)',
-    },
-  },
-
-  // ------------------------------------------------------------------- Rain
-  {
-    id: 'rain',
-    name: 'Rain',
-    emoji: '🌧️',
-    mood: 'Cool blues, silver mist and quiet moonlight.',
-    dark: true,
-    accents: ['#7fb8e6', '#9fb4d8', '#c7d6e0'],
-    backgrounds: [
-      { id: 'moonlit-oak', label: 'Moonlit Oak', src: '/themes/rain-moonlit-oak.jpg' },
-    ],
-    palette: {
-      accent: '#7fb8e6',
-      accentDark: '#3d7fb8',
-      accent2: '#c7d6e0',
-      glassFill: 'linear-gradient(135deg, rgba(150,185,225,0.22), rgba(40,70,110,0.30))',
-      glassFillStrong: 'linear-gradient(135deg, rgba(165,200,235,0.32), rgba(45,80,120,0.46))',
-      glassBorder: 'rgba(196,220,244,0.5)',
-      glassShadow:
-        '0 12px 36px rgba(6,18,38,0.45), inset 0 1px 0 rgba(220,235,255,0.5), inset 0 -14px 30px rgba(60,110,170,0.2)',
-      glassShadowHover:
-        '0 20px 50px rgba(6,18,38,0.55), inset 0 1px 0 rgba(220,235,255,0.6), inset 0 -14px 30px rgba(60,110,170,0.26)',
-      ink: '#eef4fc',
-      inkSoft: '#c2d4e8',
-      onGlass: '#f4f9ff',
-      woodSolid: '#34516e',
-      panelTop: 'rgba(34,48,68,0.9)',
-      panelBot: 'rgba(22,33,50,0.92)',
-      scrim:
-        'linear-gradient(180deg, rgba(10,20,40,0.30) 0%, rgba(10,18,34,0.12) 45%, rgba(8,16,30,0.42) 100%)',
-      glowA: 'rgba(120,180,235,0.28)',
-      glowB: 'rgba(180,200,225,0.22)',
-    },
-  },
-
   // ------------------------------------------------------------------- Love
   {
     id: 'love',
@@ -182,8 +112,8 @@ export const WEB_THEMES: WebTheme[] = [
     dark: false,
     accents: ['#ff6f9c', '#e23e5c', '#ff9ec4'],
     backgrounds: [
-      { id: 'pink-cloud', label: 'Rose Dusk', src: '/themes/love-pink-cloud.jpg' },
       { id: 'reed-field', label: 'Whispering Reeds', src: '/themes/love-reed-field.jpg' },
+      { id: 'moonlit-oak', label: 'Moonlit Oak', src: '/themes/rain-moonlit-oak.jpg' },
     ],
     palette: {
       accent: '#ff6f9c',
@@ -206,6 +136,78 @@ export const WEB_THEMES: WebTheme[] = [
         'radial-gradient(120% 90% at 50% 12%, rgba(255,160,200,0.06) 0%, rgba(80,20,50,0) 45%, rgba(70,16,44,0.32) 100%)',
       glowA: 'rgba(255,140,185,0.30)',
       glowB: 'rgba(226,62,92,0.22)',
+    },
+  },
+
+  // -------------------------------------------------------------------- Cyber
+  {
+    id: 'cyber',
+    name: 'Cyber',
+    emoji: '💻',
+    mood: 'Neon code, electric circuits and digital frontiers.',
+    dark: true,
+    accents: ['#00ff88', '#00ccff', '#ff0066'],
+    backgrounds: [
+      { id: 'hacker-matrix', label: 'Matrix Rain', src: '/themes/hacker-matrix.png' },
+      { id: 'trading-terminal', label: 'Trading Floor', src: '/themes/trading-terminal.png' },
+    ],
+    palette: {
+      accent: '#00ff88',
+      accentDark: '#00cc6a',
+      accent2: '#00ccff',
+      glassFill: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(10,20,15,0.40))',
+      glassFillStrong: 'linear-gradient(135deg, rgba(0,230,120,0.25), rgba(15,30,22,0.54))',
+      glassBorder: 'rgba(0,255,136,0.35)',
+      glassShadow:
+        '0 12px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0,255,136,0.35), inset 0 -14px 30px rgba(0,180,90,0.15)',
+      glassShadowHover:
+        '0 20px 50px rgba(0,0,0,0.65), inset 0 1px 0 rgba(0,255,136,0.45), inset 0 -14px 30px rgba(0,180,90,0.22)',
+      ink: '#e0ffe8',
+      inkSoft: '#a0d0b0',
+      onGlass: '#e8fff0',
+      woodSolid: '#0a2818',
+      panelTop: 'rgba(10,25,18,0.91)',
+      panelBot: 'rgba(5,15,10,0.93)',
+      scrim:
+        'linear-gradient(180deg, rgba(0,10,5,0.40) 0%, rgba(0,8,4,0.14) 45%, rgba(0,6,3,0.52) 100%)',
+      glowA: 'rgba(0,255,136,0.22)',
+      glowB: 'rgba(0,204,255,0.18)',
+    },
+  },
+
+  // -------------------------------------------------------------- Cozy Night
+  {
+    id: 'cozy-night',
+    name: 'Cozy Night',
+    emoji: '🌙',
+    mood: 'Warm lamplight, quiet focus and starry windows.',
+    dark: true,
+    accents: ['#ffb347', '#ff6b6b', '#74b9ff'],
+    backgrounds: [
+      { id: 'cozy-study-desk', label: 'Study Nook', src: '/themes/cozy-study-desk.png' },
+      { id: 'anime-study-night', label: 'Night Scholar', src: '/themes/anime-study-night.png' },
+    ],
+    palette: {
+      accent: '#ffb347',
+      accentDark: '#e09030',
+      accent2: '#ff6b6b',
+      glassFill: 'linear-gradient(135deg, rgba(255,179,71,0.18), rgba(40,30,20,0.40))',
+      glassFillStrong: 'linear-gradient(135deg, rgba(255,190,90,0.28), rgba(48,36,24,0.54))',
+      glassBorder: 'rgba(255,200,130,0.42)',
+      glassShadow:
+        '0 12px 36px rgba(10,8,4,0.55), inset 0 1px 0 rgba(255,220,160,0.42), inset 0 -14px 30px rgba(180,120,50,0.18)',
+      glassShadowHover:
+        '0 20px 50px rgba(10,8,4,0.65), inset 0 1px 0 rgba(255,220,160,0.52), inset 0 -14px 30px rgba(180,120,50,0.24)',
+      ink: '#fff5e6',
+      inkSoft: '#d4b896',
+      onGlass: '#fff8ee',
+      woodSolid: '#4a3828',
+      panelTop: 'rgba(42,32,22,0.91)',
+      panelBot: 'rgba(25,18,12,0.93)',
+      scrim:
+        'linear-gradient(180deg, rgba(15,10,5,0.40) 0%, rgba(12,8,4,0.14) 45%, rgba(8,5,2,0.52) 100%)',
+      glowA: 'rgba(255,179,71,0.24)',
+      glowB: 'rgba(255,107,107,0.18)',
     },
   },
 ]
@@ -285,10 +287,12 @@ export function applyWebTheme(
     s.setProperty('--ink', fontColor)
     s.setProperty('--ink-soft', soft)
     s.setProperty('--wood-dark', fontColor)
+    s.setProperty('--on-glass', fontColor)
   } else {
     s.setProperty('--ink', p.ink)
     s.setProperty('--ink-soft', p.inkSoft)
     s.setProperty('--wood-dark', p.onGlass)
+    s.setProperty('--on-glass', p.onGlass)
   }
   s.setProperty('--wood', p.woodSolid)
 

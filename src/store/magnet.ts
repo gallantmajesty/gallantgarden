@@ -152,6 +152,15 @@ interface MagnetState {
 
   // focus + subjects
   logFocus: (minutes: number, subject: string) => void
+  /** Train Station journeys: record a completed journey as a focus session and
+   *  award its (diminishing-returns) XP + any unlocked achievements in one shot.
+   *  XP is passed in pre-computed (NOT per-minute) so it never double-counts. */
+  recordJourney: (input: {
+    minutes: number
+    subject: string
+    xp: number
+    achievements: { id: string; title: string; detail: string; icon: string }[]
+  }) => void
   addSubject: (name: string) => void
 
   // personalization
@@ -440,6 +449,23 @@ export const useMagnet = create<MagnetState>((set, get) => {
           next = { ...next, subjects: [...next.subjects, subject] }
         }
         return award(next, Math.round(minutes * XP_PER_FOCUS_MIN))
+      }),
+
+    recordJourney: ({ minutes, subject, xp, achievements }) =>
+      commit((d) => {
+        const session = { id: uid('foc'), date: todayKey(), minutes, subject }
+        let next = { ...d, focus: [session, ...d.focus] }
+        if (subject && !next.subjects.includes(subject)) {
+          next = { ...next, subjects: [...next.subjects, subject] }
+        }
+        // De-dupe against achievements already earned (journey achievement ids
+        // are stable, e.g. 'train-grand'), then stamp the fresh ones.
+        const have = new Set(next.achievements.map((a) => a.id))
+        const fresh = achievements
+          .filter((a) => !have.has(a.id))
+          .map((a) => ({ ...a, at: nowIso() }))
+        if (fresh.length) next = { ...next, achievements: [...fresh, ...next.achievements] }
+        return award(next, Math.max(0, Math.round(xp)))
       }),
 
     addSubject: (name) =>

@@ -7,12 +7,12 @@ import { useRealm, type CustomRealm } from '../store/realm'
 import { useAvatar } from '../avatar/store'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
-import { GLOBAL_ROOMS, ENABLE_WATERFALL_REALM, isDevAccess } from '../lib/realm'
+import { LIBRARY_ROOMS, TRAIN_ROOMS } from '../lib/realm'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
 import { createRealm, getRealmByCode, listPublicRealms, inviteLink, type Realm as DbRealm, type RealmVisibility } from '../lib/realms'
 import './Realm.css'
 
-type Mode = 'choose' | 'global' | 'custom'
+type Mode = 'choose' | 'global' | 'library' | 'train' | 'custom'
 
 export function Realm() {
   const navigate = useNavigate()
@@ -21,14 +21,16 @@ export function Realm() {
   return (
     <div className="realm-root">
       <div className="realm-topleft">
-        <button className="sf-btn ghost" onClick={() => (mode === 'choose' ? navigate('/') : setMode('choose'))}>
-          ‹ {mode === 'choose' ? 'Lobby' : 'Realm'}
+        <button className="sf-btn ghost" onClick={() => (mode === 'choose' ? navigate('/') : setMode(mode === 'global' ? 'choose' : 'global'))}>
+          ‹ {mode === 'choose' ? 'Lobby' : mode === 'global' ? 'Realm' : 'Global Realm'}
         </button>
       </div>
 
       <div className="realm-stage">
         {mode === 'choose' && <RealmChoose onPick={setMode} />}
-        {mode === 'global' && <GlobalRealm />}
+        {mode === 'global' && <GlobalChoose onPick={setMode} />}
+        {mode === 'library' && <LibraryRealm />}
+        {mode === 'train' && <TrainRealm />}
         {mode === 'custom' && <CustomRealm />}
       </div>
     </div>
@@ -38,52 +40,23 @@ export function Realm() {
 /* ------------------------------------------------------------ choose flavour */
 
 function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
-  const navigate = useNavigate()
-  const enterFlagship = useRealm((s) => s.enterFlagship)
-
-  // The Waterfall Realm is still experimental. It is shown as the prominent
-  // flagship card ONLY once it is publicly enabled (ENABLE_WATERFALL_REALM). While
-  // that flag is off it is hidden from users entirely — developers (?dev=1) still
-  // reach it through a small, clearly-labelled box pinned to the bottom.
-  const waterfallPublic = ENABLE_WATERFALL_REALM
-  const waterfallDev = !ENABLE_WATERFALL_REALM && isDevAccess()
-
-  function enterWaterfall() {
-    if (!waterfallPublic && !waterfallDev) return // never enter while hidden
-    enterFlagship('waterfall', 'Waterfall Realm')
-    navigate('/explore')
-  }
-
   return (
     <>
       <header className="realm-head">
         <CharacterOrb />
         <span className="sf-pill">Realm</span>
         <h1>Choose your study world</h1>
-        <p>Step into a flagship world, join a shared public room, or open a private realm of your own.</p>
+        <p>Step into a shared public world or open a private realm of your own.</p>
       </header>
 
       <div className="realm-cards">
-        {/* flagship: the Waterfall Realm — only when publicly enabled */}
-        {waterfallPublic && (
-          <button className="realm-card water-glass realm-card-flagship" onClick={enterWaterfall}>
-            <div className="realm-card-orb">
-              <PngIcon name="realm" size={72} alt="Waterfall Realm" />
-            </div>
-            <span className="sf-pill realm-kind">Flagship</span>
-            <h2>Waterfall Realm</h2>
-            <p>A bright daytime paradise — a giant waterfall, a turquoise lake and five campfire camps to study and hang out around.</p>
-            <span className="realm-card-cta">Enter the falls ›</span>
-          </button>
-        )}
-
         <button className="realm-card water-glass" onClick={() => onPick('global')}>
           <div className="realm-card-orb">
-            <PngIcon name="study-rooms" size={72} alt="Global Realm" />
+            <PngIcon name="realm" size={72} alt="Global Realm" />
           </div>
-          <h2>Global Realm</h2>
-          <p>Drop into one of our pre-made study halls and focus alongside others.</p>
-          <span className="realm-card-cta">Browse rooms ›</span>
+          <h2>🌐 Global Realm</h2>
+          <p>Join a shared study hall — Library halls or Train Station platforms alongside others.</p>
+          <span className="realm-card-cta">Enter the realm ›</span>
         </button>
 
         <button className="realm-card water-glass" onClick={() => onPick('custom')}>
@@ -94,20 +67,40 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <p>Create a private world that&rsquo;s just yours. Invite friends later.</p>
           <span className="realm-card-cta">Create realm ›</span>
         </button>
+      </div>
+    </>
+  )
+}
 
-        {/* developer-only access to the hidden experimental realm: small, last,
-            and clearly tagged so it never reads as a production world */}
-        {waterfallDev && (
-          <button className="realm-card water-glass realm-card-dev" onClick={enterWaterfall}>
-            <span className="sf-pill realm-kind realm-dev-tag">Experimental · Dev</span>
-            <div className="realm-card-orb realm-card-orb-sm">
-              <PngIcon name="realm" size={44} alt="Waterfall Realm" />
-            </div>
-            <h2>Waterfall Realm</h2>
-            <p>Hidden from users while it&rsquo;s being optimized. Visible to you via dev access.</p>
-            <span className="realm-card-cta">Enter (dev) ›</span>
-          </button>
-        )}
+/* ---------------------------------------------------------- global sub-choose */
+
+function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
+  return (
+    <>
+      <header className="realm-head">
+        <span className="sf-pill">Global Realm</span>
+        <h1>Pick a world</h1>
+        <p>Choose a world type, then join a room to study alongside others live.</p>
+      </header>
+
+      <div className="realm-cards">
+        <button className="realm-card water-glass" onClick={() => onPick('library')}>
+          <div className="realm-card-orb">
+            <PngIcon name="study-rooms" size={72} alt="Library" />
+          </div>
+          <h2>📚 Library</h2>
+          <p>Grand reading halls, cozy nooks, and the Knowledge Tree at the heart of it all.</p>
+          <span className="realm-card-cta">Enter the library ›</span>
+        </button>
+
+        <button className="realm-card water-glass" onClick={() => onPick('train')}>
+          <div className="realm-card-orb">
+            <PngIcon name="realm" size={72} alt="Train Station" />
+          </div>
+          <h2>🚂 Train Station</h2>
+          <p>Board a magical train and commit to a real study journey — from Express to Grand Journey.</p>
+          <span className="realm-card-cta">Enter the station ›</span>
+        </button>
       </div>
     </>
   )
@@ -166,27 +159,22 @@ function SpinningAvatar({ config }: { config: AvatarConfig }) {
 
 /* -------------------------------------------------------------- global rooms */
 
-function GlobalRealm() {
+function LibraryRealm() {
   const navigate = useNavigate()
   const enterGlobal = useRealm((s) => s.enterGlobal)
-  // Live occupancy per room, keyed by roomId → instance counts. Polled so the
-  // chooser shows real, current numbers (and "opening a new room" when full).
   const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
 
   useEffect(() => {
     let alive = true
     async function load() {
       const entries = await Promise.all(
-        GLOBAL_ROOMS.map(async (r) => [r.id, await occupancy(`lib:${r.id}`)] as const),
+        LIBRARY_ROOMS.map(async (r) => [r.id, await occupancy(`lib:${r.id}`)] as const),
       )
       if (alive) setOcc(Object.fromEntries(entries))
     }
     void load()
     const t = window.setInterval(load, 15_000)
-    return () => {
-      alive = false
-      window.clearInterval(t)
-    }
+    return () => { alive = false; window.clearInterval(t) }
   }, [])
 
   function join(roomId: string, name: string) {
@@ -197,24 +185,85 @@ function GlobalRealm() {
   return (
     <>
       <header className="realm-head">
-        <span className="sf-pill">Global Realm</span>
+        <span className="sf-pill">Library</span>
         <h1>Pick a room</h1>
         <p>Step into any hall to study together — everyone who enters the same room sees each other live.</p>
       </header>
-
       <div className="realm-rooms">
-        {GLOBAL_ROOMS.map((r) => {
+        {LIBRARY_ROOMS.map((r) => {
           const rows = occ[r.id] ?? []
           const here = totalOccupants(rows)
           const instances = rows.length
-          // The lead instance is what a new joiner lands in until it fills; once
-          // every instance is full the server opens the next one automatically.
           const lead = rows.find((x) => x.instance === 1)?.count ?? 0
           const full = instances > 0 && rows.every((x) => x.count >= REALM_CAPACITY)
           return (
             <div key={r.id} className="realm-room water-glass">
               <div className="realm-room-icon">
                 <PngIcon name="study-rooms" size={40} alt="" />
+              </div>
+              <div className="realm-room-body">
+                <div className="realm-room-top">
+                  <strong>{r.name}</strong>
+                  <span className="realm-room-count" title={`${here} studying now`}>
+                    <span className="realm-room-dot" />
+                    {Math.min(lead, REALM_CAPACITY)}/{REALM_CAPACITY}
+                    {instances > 1 && <span className="realm-room-inst"> · {instances} rooms · {here} total</span>}
+                  </span>
+                </div>
+                <p>{r.blurb}</p>
+              </div>
+              <button className="sf-btn water realm-join" onClick={() => join(r.id, r.name)}>
+                {full ? 'Enter new room' : 'Enter'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function TrainRealm() {
+  const navigate = useNavigate()
+  const enterGlobal = useRealm((s) => s.enterGlobal)
+  const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
+
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      const entries = await Promise.all(
+        TRAIN_ROOMS.map(async (r) => [r.id, await occupancy(`train:${r.id}`)] as const),
+      )
+      if (alive) setOcc(Object.fromEntries(entries))
+    }
+    void load()
+    const t = window.setInterval(load, 15_000)
+    return () => { alive = false; window.clearInterval(t) }
+  }, [])
+
+  function join(roomId: string, name: string) {
+    enterGlobal(roomId, name)
+    navigate('/explore')
+  }
+
+  return (
+    <>
+      <header className="realm-head">
+        <span className="sf-pill">Train Station</span>
+        <h1>Pick a platform</h1>
+        <p>Study while waiting for your journey, or board a timed express.</p>
+      </header>
+      <div className="realm-rooms">
+        {TRAIN_ROOMS.map((r) => {
+          const rows = occ[r.id] ?? []
+          const here = totalOccupants(rows)
+          const instances = rows.length
+          const lead = rows.find((x) => x.instance === 1)?.count ?? 0
+          const full = instances > 0 && rows.every((x) => x.count >= REALM_CAPACITY)
+          return (
+            <div key={r.id} className="realm-room water-glass">
+              <div className="realm-room-icon">
+                <PngIcon name="realm" size={40} alt="" />
               </div>
               <div className="realm-room-body">
                 <div className="realm-room-top">

@@ -96,7 +96,7 @@ export function Lobby() {
       <div className="lobby-stage">
         <div className="lobby-welcome">
           <span className="sf-pill">Lobby</span>
-          <h1>Welcome back, {displayName}</h1>
+          <h1>Welcome back, <span className="lobby-welcome__name">{displayName}</span></h1>
           <p>Pick where your mind wants to wander.</p>
         </div>
 
@@ -107,6 +107,17 @@ export function Lobby() {
               className={`lobby-object water-glass ${o.soon ? 'soon' : ''}`}
               style={{ animationDelay: `${i * 70}ms` }}
               onClick={() => pick(o)}
+              onMouseMove={(e) => {
+                const r = e.currentTarget.getBoundingClientRect()
+                const x = ((e.clientX - r.left) / r.width) * 100
+                const y = ((e.clientY - r.top) / r.height) * 100
+                e.currentTarget.style.setProperty('--glow-x', `${x}%`)
+                e.currentTarget.style.setProperty('--glow-y', `${y}%`)
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.removeProperty('--glow-x')
+                e.currentTarget.style.removeProperty('--glow-y')
+              }}
             >
               <div className="lobby-object-orb">
                 <PngIcon name={o.png} size={64} alt={o.label} />

@@ -30,6 +30,7 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
   const [editing, setEditing] = useState(false)
   const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number } | null>(null)
   const resize = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   // leave edit mode when this note is no longer the selection
   useEffect(() => {
@@ -104,7 +105,8 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
 
   return (
     <div
-      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connecting ? 'connecting' : ''} ${connectTarget ? 'drop-target' : ''}`}
+      ref={rootRef}
+      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${editing ? 'editing' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connecting ? 'connecting' : ''} ${connectTarget ? 'drop-target' : ''}`}
       style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
       onPointerDown={onBodyPointerDown}
       onPointerMove={onBodyPointerMove}
@@ -118,18 +120,20 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
         setEditing(true)
       }}
     >
-      {/* pin head — holds the card to the wall AND is a string anchor: drag it
-          onto another card to link them. */}
-      {node.style.shape !== 'circle' && node.style.shape !== 'hexagon' && (
+      {/* pin head — holds the card to the wall AND is the single string anchor:
+          drag it onto another card to thread them together. Shown on every shape
+          so linking is one consistent gesture everywhere. */}
+      {!node.locked && (
         <span
           className="bp-node-pin"
-          title="Drag to link this note to another"
+          title="Drag onto another note to thread them"
           onPointerDown={(e) => {
-            if (node.locked) return
             e.stopPropagation()
             onPortDown(node.id, 'top', e)
           }}
-        />
+        >
+          <span className="bp-node-pin-ring" />
+        </span>
       )}
       <div className="bp-node-surface" style={surface}>
         {node.style.shape === 'folder' && <span className="bp-folder-tab" />}

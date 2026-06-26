@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { WaterfallScene } from '../three/waterfall/WaterfallScene'
+import { TrainStationScene } from '../three/train/TrainStationScene'
 import { LoadingVeil } from '../components/LoadingVeil'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
@@ -26,7 +27,7 @@ import { useRealm, type ActiveRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
-import { waterfallEnabled } from '../lib/realm'
+import { waterfallEnabled, trainStationEnabled } from '../lib/realm'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
@@ -34,6 +35,7 @@ import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
+import { TrainHUD } from '../components/train/TrainHUD'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -76,25 +78,37 @@ export function Explore() {
   }, [seat])
 
   const isWaterfall = realm?.world === 'waterfall'
+  const isTrain = realm?.world === 'train-station'
 
-  // Experimental-realm route guard. If someone reaches the Waterfall route while
-  // it is hidden (public build, no dev access) — e.g. a stale link or a manual
+  // Experimental-realm route guard. If someone reaches a flagship route while it
+  // is hidden (public build, no dev access) — e.g. a stale link or a manual
   // navigation — show an under-development screen instead of the scene. The scene
   // and all its code stay intact; it simply isn't rendered until re-enabled.
   // Placed after every hook above so the rules of hooks are never broken.
   if (isWaterfall && !waterfallEnabled()) {
-    return <WaterfallUnavailable />
+    return <FlagshipUnavailable name="Waterfall Realm" />
+  }
+  if (isTrain && !trainStationEnabled()) {
+    return <FlagshipUnavailable name="Train Station Realm" />
   }
 
   return (
     <div className="explore-root">
-      {isWaterfall ? <WaterfallScene onReady={() => setReady(true)} /> : <LibraryScene onReady={() => setReady(true)} />}
+      {isTrain ? (
+        <TrainStationScene onReady={() => setReady(true)} />
+      ) : isWaterfall ? (
+        <WaterfallScene onReady={() => setReady(true)} />
+      ) : (
+        <LibraryScene onReady={() => setReady(true)} />
+      )}
       <PomodoroTicker />
       <RealmConnection />
 
       {!ready && (
         <div className="explore-veil">
-          <LoadingVeil label={isWaterfall ? 'Entering the falls…' : 'Entering the library…'} />
+          <LoadingVeil
+            label={isTrain ? 'Arriving at the station…' : isWaterfall ? 'Entering the falls…' : 'Entering the library…'}
+          />
         </div>
       )}
 
@@ -163,6 +177,12 @@ export function Explore() {
           <SeatPrompt />
           <SeatedPanel />
 
+          {/* Train Station realm HUD — the boarding card, live journey dock and
+              arrival/reward screen. It's the realm's primary interface, so it's
+              mounted only in the train world. The journey engine itself lives in
+              the store + scene runtime, so this is purely its view. */}
+          {isTrain && <TrainHUD />}
+
           {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
           <LibraryFriendsPanel />
 
@@ -203,8 +223,8 @@ export function Explore() {
       {/* Library-realm focus-music mini-player. Mounted outside the hide gate so
           its singleton engine keeps playing when the HUD is hidden; the widget
           itself hides on Tab/Performance Mode. Library realm only — never in the
-          waterfall realm, and (by design) never in study rooms. */}
-      {!isWaterfall && <MusicPlayer />}
+          waterfall/train realms, and (by design) never in study rooms. */}
+      {!isWaterfall && !isTrain && <MusicPlayer />}
     </div>
   )
 }
@@ -212,12 +232,12 @@ export function Explore() {
 /* ------------------------------------------------- experimental realm gate */
 
 /**
- * Shown when the Waterfall route is reached while the realm is hidden (launch
- * build with no dev access). Keeps the realm's code/assets fully intact — this
- * is purely the public-facing "not yet available" wall. Leaving clears the
- * active realm so the player returns cleanly to the lobby.
+ * Shown when a flagship route (Waterfall, Train Station, …) is reached while that
+ * realm is hidden (launch build with no dev access). Keeps the realm's code/assets
+ * fully intact — this is purely the public-facing "not yet available" wall. Leaving
+ * clears the active realm so the player returns cleanly to the lobby.
  */
-function WaterfallUnavailable() {
+function FlagshipUnavailable({ name }: { name: string }) {
   const navigate = useNavigate()
   function toLobby() {
     useRealm.getState().leave()
@@ -227,7 +247,7 @@ function WaterfallUnavailable() {
     <div className="explore-root waterfall-wip">
       <div className="wip-card water-glass">
         <div className="wip-emoji" aria-hidden>🚧</div>
-        <h1>Waterfall Realm</h1>
+        <h1>{name}</h1>
         <p>This realm is currently under development and is not yet available.</p>
         <button className="sf-btn water wip-back" onClick={toLobby}>
           Return to Lobby
@@ -874,11 +894,9 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle label="Show timer on screen" value={s.pomo.showTimer} onChange={(v) => s.setPomo({ showTimer: v })} />
           </Section>
 
-          <Section title="Audio">
-            <Slider label="Master volume" display={`${Math.round(s.master * 100)}%`} value={s.master} onChange={(v) => s.set('master', v)} />
-            <Slider label="Rain / weather" display={`${Math.round(s.rainVol * 100)}%`} value={s.rainVol} onChange={(v) => s.set('rainVol', v)} />
-            <Toggle label="Rain sounds" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
-          </Section>
+          {/* The "Audio" section was removed — all sound is controlled from the
+              Library Realm music widget (bottom-right), so there's nothing to tune
+              here. The underlying master/rain settings still exist in the store. */}
 
           {/* The "World" section (weather / day-night / time speed) was removed —
               the realm's atmosphere is now fixed for everyone (auto weather +

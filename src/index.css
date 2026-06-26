@@ -53,6 +53,7 @@
     inset 0 -14px 30px rgba(120, 190, 225, 0.12);
   --glass-shadow-hover: 0 18px 44px rgba(8, 46, 74, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.75),
     inset 0 -14px 30px rgba(120, 190, 225, 0.16);
+  --on-glass: var(--wood-dark);
 
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --display: 'Baloo 2', system-ui, sans-serif;
