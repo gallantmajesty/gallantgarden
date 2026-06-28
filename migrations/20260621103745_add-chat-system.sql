@@ -146,8 +146,10 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 
 -- updated_at auto-touch (set_updated_at() created in the core-schema migration)
+DROP TRIGGER IF EXISTS friend_requests_touch ON friend_requests;
 CREATE TRIGGER friend_requests_touch BEFORE UPDATE ON friend_requests
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DROP TRIGGER IF EXISTS conversations_touch ON conversations;
 CREATE TRIGGER conversations_touch BEFORE UPDATE ON conversations
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -343,36 +345,45 @@ ALTER TABLE messages             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports              ENABLE ROW LEVEL SECURITY;
 
 -- friend_requests: each party may read their own (in/out). Writes via RPC only.
+DROP POLICY IF EXISTS fr_select ON friend_requests;
 CREATE POLICY fr_select ON friend_requests FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) IN (requester_id, addressee_id));
 
 -- friendships: read your own edges. Writes via RPC only.
+DROP POLICY IF EXISTS fs_select ON friendships;
 CREATE POLICY fs_select ON friendships FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) IN (user_a, user_b));
 
 -- blocks: read only your own outgoing blocks. Writes via RPC only.
+DROP POLICY IF EXISTS bl_select ON blocks;
 CREATE POLICY bl_select ON blocks FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = blocker_id);
 
 -- conversations: visible to members. Writes via RPC only.
+DROP POLICY IF EXISTS cv_select ON conversations;
 CREATE POLICY cv_select ON conversations FOR SELECT TO authenticated
   USING (is_conversation_member(id));
 
 -- conversation_members: members can see the roster of conversations they're in.
 -- last_read_at update lets the client move its OWN read cursor (read receipts).
+DROP POLICY IF EXISTS cm_select ON conversation_members;
 CREATE POLICY cm_select ON conversation_members FOR SELECT TO authenticated
   USING (is_conversation_member(conversation_id));
+DROP POLICY IF EXISTS cm_update_own ON conversation_members;
 CREATE POLICY cm_update_own ON conversation_members FOR UPDATE TO authenticated
   USING (user_id = (SELECT auth.uid()))
   WITH CHECK (user_id = (SELECT auth.uid()));
 
 -- messages: members read history. Writes via send_message RPC only.
+DROP POLICY IF EXISTS msg_select ON messages;
 CREATE POLICY msg_select ON messages FOR SELECT TO authenticated
   USING (is_conversation_member(conversation_id));
 
 -- reports: a user may file (and read back) their own reports.
+DROP POLICY IF EXISTS rp_select ON reports;
 CREATE POLICY rp_select ON reports FOR SELECT TO authenticated
   USING (reporter_id = (SELECT auth.uid()));
+DROP POLICY IF EXISTS rp_insert ON reports;
 CREATE POLICY rp_insert ON reports FOR INSERT TO authenticated
   WITH CHECK (reporter_id = (SELECT auth.uid()));
 

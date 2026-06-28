@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import DOMPurify from 'dompurify'
 import type { StickyNote } from '../lib/types'
 import { noteBackground } from '../lib/noteStyle'
 import './NoteReader.css'
@@ -24,7 +25,7 @@ export function NoteReader({ note, onClose }: { note: StickyNote; onClose: () =>
           {!flipped ? (
             <>
               {note.image_url && <img className="nr-img" src={note.image_url} alt="" />}
-              <div dangerouslySetInnerHTML={{ __html: note.content_html }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content_html) }} />
             </>
           ) : (
             <div className="nr-back">{note.flashcard_back || '(no answer yet)'}</div>

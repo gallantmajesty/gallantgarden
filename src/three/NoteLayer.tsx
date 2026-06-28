@@ -1,4 +1,5 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import DOMPurify from 'dompurify'
 import { Html } from '@react-three/drei'
 import type { StickyNote } from '../lib/types'
 import { noteBackground } from '../lib/noteStyle'
@@ -118,7 +119,7 @@ function NoteCard({
     >
       <span className="note3d-pin" />
       {note.image_url && <img className="note3d-img" src={note.image_url} alt="" />}
-      <div className="note3d-body" dangerouslySetInnerHTML={{ __html: note.content_html }} />
+      <div className="note3d-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content_html) }} />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import DOMPurify from 'dompurify'
 import { useBlueprint } from '../../store/blueprint'
 import { mediaBackgroundStyle, mediaImageStyle, noteSurfaceStyle } from '../../lib/blueprint/style'
 import type { BlueprintNode, Port } from '../../lib/blueprint/types'
@@ -146,7 +147,7 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
           {editing ? (
             <RichText html={node.html} onChange={(html) => setNodeHtml(node.id, html)} autoFocus />
           ) : (
-            <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: node.html }} />
+            <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.html) }} />
           )}
         </div>
         {node.icon && <span className="bp-node-icon">{node.icon}</span>}
