@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { occupancy, totalOccupants } from '../lib/realmPresence'
 import { STUDY_ROOMS, ROOM_CAP, roomKey, newCustomCode } from '../lib/studyRooms'
@@ -12,6 +13,7 @@ import './RoomsList.css'
 type Mode = null | 'international' | 'custom'
 
 export function RoomsList() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>(null)
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -43,13 +45,13 @@ export function RoomsList() {
     <div className="rooms">
       <header className="rooms__head">
         <button className="rooms__back sf-btn ghost" onClick={() => (mode ? setMode(null) : navigate('/'))}>
-          ← {mode ? 'Options' : 'Lobby'}
+          ← {mode ? t('roomsList.options') : t('common.lobby')}
         </button>
         <div className="rooms__title">
           <img src="/icons/rooms/fairy.png" alt="" className="rooms__logo" />
           <div>
-            <h1>Study Rooms</h1>
-            <p>Study on camera with focus buddies — live.</p>
+            <h1>{t('roomsList.studyRooms')}</h1>
+            <p>t('roomsList.studyOnCamera')</p>
           </div>
         </div>
       </header>
@@ -60,16 +62,16 @@ export function RoomsList() {
           <button className="rooms__choice rooms__choice--intl" onClick={() => setMode('international')}>
             <span className="rooms__choice-emoji"><img src="/icons/rooms/globe.png" alt="" /></span>
             <span className="rooms__choice-body">
-              <b>International</b>
-              <small>Join a public room with students worldwide</small>
+              <b>{t('roomsList.international')}</b>
+              <small>t('roomsList.intlDescription')</small>
             </span>
             <span className="rooms__choice-go">→</span>
           </button>
           <button className="rooms__choice rooms__choice--custom" onClick={() => setMode('custom')}>
             <span className="rooms__choice-emoji"><img src="/icons/rooms/scroll.png" alt="" /></span>
             <span className="rooms__choice-body">
-              <b>Custom</b>
-              <small>Make a private room — no limit, invite by code</small>
+              <b>{t('roomsList.custom')}</b>
+              <small>t('roomsList.customDescription')</small>
             </span>
             <span className="rooms__choice-go">→</span>
           </button>
@@ -79,7 +81,7 @@ export function RoomsList() {
       {/* step 2a — International rooms as a mind-map list */}
       {mode === 'international' && (
         <div className="mindmap">
-          <div className="mindmap__root"><img src="/icons/rooms/globe.png" alt="" /> International Rooms</div>
+          <div className="mindmap__root"><img src="/icons/rooms/globe.png" alt="" /> t('roomsList.internationalRooms')</div>
           <div className="mindmap__branches">
             {STUDY_ROOMS.map((r) => {
               const n = counts[r.id] ?? 0
@@ -92,10 +94,10 @@ export function RoomsList() {
                     <div className="room-row__blurb">{r.blurb}</div>
                   </div>
                   <div className="room-row__count">
-                    <i className="live" /> {n}/{ROOM_CAP} studying
+                    <i className="live" /> {n}/{ROOM_CAP} t('roomsList.studying')
                   </div>
                   <button className="sf-btn room-row__join" disabled={full} onClick={() => navigate(`/room/${r.id}`)}>
-                    {full ? 'Full' : 'Join'}
+                    {full ? t('roomsList.full') : t('roomsList.join')}
                   </button>
                 </div>
               )
@@ -108,7 +110,7 @@ export function RoomsList() {
       {mode === 'custom' && (
         <div className="rooms__custom">
           <div className="rooms__custom-emoji"><img src="/icons/rooms/scroll.png" alt="" /></div>
-          <h2>Custom Room</h2>
+          <h2>{t('roomsList.customRoom')}</h2>
           <p>Create your own private room with no student cap, then share the code with friends. Or join one you’ve been invited to.</p>
           <div className="rooms__custom-actions">
             <button className="sf-btn rooms__custom-create" onClick={createCustom}>＋ Create a room</button>
@@ -116,7 +118,7 @@ export function RoomsList() {
             <div className="rooms__custom-join">
               <input
                 className="sf-input"
-                placeholder="Enter room code"
+                placeholder={t('roomsList.enterCode')}
                 value={code}
                 maxLength={8}
                 onChange={(e) => setCode(e.target.value)}

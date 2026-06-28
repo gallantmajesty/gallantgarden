@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import {
   AREA_META,
@@ -44,6 +45,7 @@ function emptyDraft(): Draft {
 }
 
 export function TasksView() {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const addTask = useMagnet((s) => s.addTask)
   const updateTask = useMagnet((s) => s.updateTask)
@@ -123,11 +125,11 @@ export function TasksView() {
     <div className="mg-view">
       <SectionHead
         icon="check"
-        title="Tasks"
+        title={t('tasks.title')}
         subtitle={`${openCount} open · ${data.tasks.length} total`}
         action={
           <button className="mg-btn primary" onClick={startCreate}>
-            <Icon name="plus" size={16} /> New task
+            <Icon name="plus" size={16} />{t('tasks.newTask')}
           </button>
         }
       />
@@ -158,78 +160,78 @@ export function TasksView() {
         </div>
         <div className="mg-search">
           <Icon name="target" size={15} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks…" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('tasks.searchPlaceholder')} />
         </div>
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon="check"
-          title="No tasks here"
-          body="Create your first task and start filling your world with momentum."
+          title={t('tasks.noTasksTitle')}
+          body={t('tasks.noTasksBody')}
         />
       ) : (
         <ul className="mg-tasklist">
-          {filtered.map((t) => {
-            const a = AREA_META[t.area]
-            const subsDone = t.subtasks.filter((s) => s.done).length
-            const isOpen = expanded === t.id
+          {filtered.map((task) => {
+            const a = AREA_META[task.area]
+            const subsDone = task.subtasks.filter((s) => s.done).length
+            const isOpen = expanded === task.id
             return (
-              <li key={t.id} className={`mg-taskcard ${t.done ? 'done' : ''}`}>
+              <li key={task.id} className={`mg-taskcard ${task.done ? 'done' : ''}`}>
                 <div className="mg-taskcard-main">
                   <button
                     className="mg-check"
-                    onClick={() => toggleTask(t.id)}
+                    onClick={() => toggleTask(task.id)}
                     aria-label="Complete"
-                    style={{ ['--mg-check-tone' as string]: PRIORITY_META[t.priority].color }}
+                    style={{ ['--mg-check-tone' as string]: PRIORITY_META[task.priority].color }}
                   >
                     <Icon name="check" size={14} />
                   </button>
-                  <button className="mg-taskcard-body" onClick={() => setExpanded(isOpen ? null : t.id)}>
-                    <span className="mg-task-icon" style={{ color: PRIORITY_META[t.priority].color }}>
-                      <Icon name={t.icon} size={16} />
+                  <button className="mg-taskcard-body" onClick={() => setExpanded(isOpen ? null : task.id)}>
+                    <span className="mg-task-icon" style={{ color: PRIORITY_META[task.priority].color }}>
+                      <Icon name={task.icon} size={16} />
                     </span>
                     <span className="mg-task-text">
-                      <span className="mg-task-title">{t.title}</span>
+                      <span className="mg-task-title">{task.title}</span>
                       <span className="mg-task-meta">
                         <span className="mg-tag" style={{ ['--mg-tag' as string]: a.color }}>
                           {a.label}
                         </span>
                         <span
                           className="mg-tag soft"
-                          style={{ ['--mg-tag' as string]: PRIORITY_META[t.priority].color }}
+                          style={{ ['--mg-tag' as string]: PRIORITY_META[task.priority].color }}
                         >
-                          {PRIORITY_META[t.priority].label}
+                          {PRIORITY_META[task.priority].label}
                         </span>
-                        {t.subject && <span className="mg-task-subject">{t.subject}</span>}
-                        {t.due && (
+                        {task.subject && <span className="mg-task-subject">{task.subject}</span>}
+                        {task.due && (
                           <span className="mg-task-due">
-                            <Icon name="calendar" size={12} /> {t.due}
+                            <Icon name="calendar" size={12} /> {task.due}
                           </span>
                         )}
-                        {t.estimateMin > 0 && (
+                        {task.estimateMin > 0 && (
                           <span className="mg-task-est">
-                            <Icon name="clock" size={12} /> {t.estimateMin}m
+                            <Icon name="clock" size={12} /> {task.estimateMin}m
                           </span>
                         )}
-                        {t.recurring !== 'none' && (
+                        {task.recurring !== 'none' && (
                           <span className="mg-task-rec">
-                            <Icon name="spark" size={12} /> {t.recurring}
+                            <Icon name="spark" size={12} /> {task.recurring}
                           </span>
                         )}
-                        {t.subtasks.length > 0 && (
+                        {task.subtasks.length > 0 && (
                           <span className="mg-task-subcount">
-                            {subsDone}/{t.subtasks.length}
+                            {subsDone}/{task.subtasks.length}
                           </span>
                         )}
                       </span>
                     </span>
                   </button>
                   <div className="mg-taskcard-actions">
-                    <button className="mg-iconbtn" onClick={() => startEdit(t)} aria-label="Edit">
+                    <button className="mg-iconbtn" onClick={() => startEdit(task)} aria-label="Edit">
                       <Icon name="edit" size={15} />
                     </button>
-                    <button className="mg-iconbtn danger" onClick={() => deleteTask(t.id)} aria-label="Delete">
+                    <button className="mg-iconbtn danger" onClick={() => deleteTask(task.id)} aria-label="Delete">
                       <Icon name="trash" size={15} />
                     </button>
                   </div>
@@ -237,18 +239,18 @@ export function TasksView() {
 
                 {isOpen && (
                   <div className="mg-taskcard-detail">
-                    {t.notes && <p className="mg-task-notes">{t.notes}</p>}
+                    {task.notes && <p className="mg-task-notes">{task.notes}</p>}
                     <ul className="mg-sublist">
-                      {t.subtasks.map((s) => (
+                      {task.subtasks.map((s) => (
                         <li key={s.id}>
                           <button
                             className={`mg-subcheck ${s.done ? 'done' : ''}`}
-                            onClick={() => toggleSubtask(t.id, s.id)}
+                            onClick={() => toggleSubtask(task.id, s.id)}
                           >
                             <Icon name="check" size={11} />
                           </button>
                           <span className={s.done ? 'done' : ''}>{s.title}</span>
-                          <button className="mg-iconbtn danger" onClick={() => removeSubtask(t.id, s.id)}>
+                          <button className="mg-iconbtn danger" onClick={() => removeSubtask(task.id, s.id)}>
                             <Icon name="close" size={12} />
                           </button>
                         </li>
@@ -260,14 +262,14 @@ export function TasksView() {
                         e.preventDefault()
                         const v = subInput.trim()
                         if (!v) return
-                        addSubtask(t.id, v)
+                        addSubtask(task.id, v)
                         setSubInput('')
                       }}
                     >
                       <input
                         value={subInput}
                         onChange={(e) => setSubInput(e.target.value)}
-                        placeholder="Add a subtask…"
+                        placeholder={t('tasks.addSubtaskPlaceholder')}
                       />
                       <button type="submit">
                         <Icon name="plus" size={14} />
@@ -283,30 +285,30 @@ export function TasksView() {
 
       <MgModal
         open={modalOpen}
-        title={editId ? 'Edit task' : 'New task'}
+        title={editId ? t('tasks.editTask') : t('tasks.newTask')}
         onClose={() => setModalOpen(false)}
         width={520}
       >
         <form className="mg-form" onSubmit={save}>
-          <Field label="Title">
+          <Field label={t('tasks.titleLabel')}>
             <input
               autoFocus
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              placeholder="What needs doing?"
+              placeholder={t('tasks.titlePlaceholder')}
             />
           </Field>
-          <Field label="Notes">
+          <Field label={t('tasks.notesLabel')}>
             <textarea
               rows={2}
               value={draft.notes}
               onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-              placeholder="Optional detail, links, context…"
+              placeholder={t('tasks.notesPlaceholder')}
             />
           </Field>
 
           <div className="mg-form-row">
-            <Field label="Priority">
+            <Field label={t('tasks.priorityLabel')}>
               <select
                 value={draft.priority}
                 onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
@@ -318,7 +320,7 @@ export function TasksView() {
                 ))}
               </select>
             </Field>
-            <Field label="Life area">
+            <Field label={t('tasks.areaLabel')}>
               <select
                 value={draft.area}
                 onChange={(e) => setDraft({ ...draft, area: e.target.value as LifeArea })}
@@ -333,12 +335,12 @@ export function TasksView() {
           </div>
 
           <div className="mg-form-row">
-            <Field label="Subject">
+            <Field label={t('tasks.subjectLabel')}>
               <input
                 list="mg-subjects"
                 value={draft.subject}
                 onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
-                placeholder="e.g. Physics"
+                placeholder={t('tasks.subjectPlaceholder')}
               />
               <datalist id="mg-subjects">
                 {data.subjects.map((s) => (
@@ -346,13 +348,13 @@ export function TasksView() {
                 ))}
               </datalist>
             </Field>
-            <Field label="Due date">
+            <Field label={t('tasks.dueDateLabel')}>
               <input type="date" value={draft.due} onChange={(e) => setDraft({ ...draft, due: e.target.value })} />
             </Field>
           </div>
 
           <div className="mg-form-row">
-            <Field label="Estimate (min)">
+            <Field label={t('tasks.estimateLabel')}>
               <input
                 type="number"
                 min={0}
@@ -361,21 +363,21 @@ export function TasksView() {
                 onChange={(e) => setDraft({ ...draft, estimateMin: Number(e.target.value) })}
               />
             </Field>
-            <Field label="Repeat">
+            <Field label={t('tasks.repeatLabel')}>
               <select
                 value={draft.recurring}
                 onChange={(e) => setDraft({ ...draft, recurring: e.target.value as Recurrence })}
               >
                 {RECURRENCES.map((r) => (
                   <option key={r} value={r}>
-                    {r === 'none' ? 'No repeat' : r[0].toUpperCase() + r.slice(1)}
+                    {r === 'none' ? t('tasks.noRepeat') : r[0].toUpperCase() + r.slice(1)}
                   </option>
                 ))}
               </select>
             </Field>
           </div>
 
-          <Field label="Icon">
+          <Field label={t('tasks.iconLabel')}>
             <div className="mg-iconpick">
               {TASK_ICONS.map((ic) => (
                 <button

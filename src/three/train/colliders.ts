@@ -53,9 +53,15 @@ export function buildCollision(): Collision {
   // left + right of the entrance
   blockers.push({ minX: minX - 0.4, maxX: cxMid - gap, minZ: z0 - 0.4, maxZ: z0 + 0.4, minY: 0, maxY: wallH })
   blockers.push({ minX: cxMid + gap, maxX: maxX + 0.4, minZ: z0 - 0.4, maxZ: z0 + 0.4, minY: 0, maxY: wallH })
-  // west + east concourse walls
-  blockers.push({ minX: minX - 0.4, maxX: minX + 0.4, minZ: z0 - 0.4, maxZ: z1, minY: 0, maxY: wallH })
+  // east concourse wall
   blockers.push({ minX: maxX - 0.4, maxX: maxX + 0.4, minZ: z0 - 0.4, maxZ: z1, minY: 0, maxY: wallH })
+  // west concourse wall — split with a wide gap for Platform 1 access
+  // Platform 0 sits at x = -47.5..-37.5, concourse west wall is at x = -36.
+  // The opening runs most of the concourse length so you can walk to P1 from anywhere.
+  const pGapZ0 = -40  // start of gap (near south end)
+  const pGapZ1 = -2   // end of gap (near north end)
+  blockers.push({ minX: minX - 0.4, maxX: minX + 0.4, minZ: z0 - 0.4, maxZ: pGapZ0, minY: 0, maxY: wallH })
+  blockers.push({ minX: minX - 0.4, maxX: minX + 0.4, minZ: pGapZ1, maxZ: z1, minY: 0, maxY: wallH })
 
   // ---- trainshed outer side walls (west of P1, east of P5) ----
   const { westX: westShed, eastX: eastShed } = shedExtent()
@@ -68,9 +74,9 @@ export function buildCollision(): Collision {
     if (p.index > 0) {
       blockers.push({ minX: p.westX - 0.25, maxX: p.westX + 0.25, minZ: PLAT_Z0, maxZ: PLAT_Z1, minY: 0, maxY: 2.4 })
     }
-    // east edge: the track/door side — full-height edge so you can't fall onto
-    // the rails; boarding is triggered by proximity, not by stepping off.
-    blockers.push({ minX: p.eastX - 0.25, maxX: p.eastX + 0.25, minZ: PLAT_Z0, maxZ: PLAT_Z1, minY: 0, maxY: 2.4 })
+    // east edge: NO collider here — the train body itself blocks the player from
+    // the tracks when it's berthed, and removing this lets the player walk right
+    // up to the open doors for walk-through boarding.
     // buffer stop sealing the TRACK mouth at the concourse (between platforms)
     const trackWest = p.eastX
     const trackEast = p.trackX + 3

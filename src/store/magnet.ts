@@ -1,10 +1,5 @@
 import { create } from 'zustand'
 import {
-  levelForXp,
-  XP_PER_TASK,
-  XP_PER_FOCUS_MIN,
-  XP_PER_HABIT,
-  XP_PER_MILESTONE,
   type MagnetData,
   type Task,
   type Goal,
@@ -15,6 +10,13 @@ import {
   type Recurrence,
 } from '../lib/magnet/types'
 import { DEFAULT_THEME_ID, STARTER_THEME_IDS, THEMES } from '../lib/magnet/themes'
+import {
+  XP_VALUES,
+  awardLeaves,
+  awardGoldenLeaves,
+  syncXpToDb,
+} from '../lib/xpEngine'
+import { rankForTotalXp } from '../lib/ranks'
 
 // ---- id + time helpers ------------------------------------------------------
 let counter = 0
@@ -49,6 +51,7 @@ function emptyData(): MagnetData {
     brainDump: '',
     subjects: ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'History'],
     xp: 0,
+    premiumXp: 0,
     unlockedThemes: [...STARTER_THEME_IDS],
     themeId: DEFAULT_THEME_ID,
     accent: null,
@@ -190,50 +193,84 @@ export const useMagnet = create<MagnetState>((set, get) => {
     })
   }
 
-  // Award XP and, if a new level unlocks themes, record them + raise a toast.
-  function award(d: MagnetData, amount: number): MagnetData {
-    const beforeLevel = levelForXp(d.xp)
-    const xp = Math.max(0, d.xp + amount)
-    const afterLevel = levelForXp(xp)
+    // Award XP via the engine (with caps/cooldown), detect rank changes, sync to DB.
+    // Tasks/habits/milestones give 0 leaves — only study sources earn currency.
+    function award(d: MagnetData, source: 'focus' | 'login' | 'tree' | 'note' | 'train', amount: number): MagnetData {
+      const currentRank = rankForTotalXp(d.xp + d.premiumXp)
+
+      const result = source === 'login'
+        ? awardGoldenLeaves(d.xp, d.premiumXp, amount, currentRank.id)
+        : awardLeaves(d.xp, d.premiumXp, source, amount, currentRank.id)
+
+    if (result.onCooldown || (result.leaves === 0 && result.goldenLeaves === 0)) return d
+
+    const xp = d.xp + result.leaves
+    const premiumXp = d.premiumXp + result.goldenLeaves
     let unlockedThemes = d.unlockedThemes
     let achievements = d.achievements
     let toastQueued: { title: string; body: string; icon: string } | null = null
 
-    if (afterLevel > beforeLevel) {
-      // unlock every theme whose requirement we just crossed
+    // Check rank change
+    if (result.rankChanged && result.newRankId) {
+      const newRank = rankForTotalXp(xp + premiumXp)
+      const rankAch: Achievement = {
+        id: uid('ach'),
+        title: `Rank Up: ${newRank.name}!`,
+        detail: `You've been promoted to ${newRank.name}.`,
+        icon: 'star',
+        at: nowIso(),
+      }
+      achievements = [rankAch, ...achievements]
+      toastQueued = {
+        title: `${newRank.name}!`,
+        body: "You\u2019ve been promoted.",
+        icon: 'star',
+      }
+      // Award premium XP for rank up
+      const rankUpResult = awardGoldenLeaves(xp, premiumXp, XP_VALUES.rankUp, currentRank.id)
+      if (rankUpResult.goldenLeaves > 0) {
+        achievements = [{ id: uid('ach'), title: 'Rank Up Bonus', detail: `+${rankUpResult.goldenLeaves} Golden Leaves`, icon: 'star', at: nowIso() }, ...achievements]
+      }
+    }
+
+    // Check level-based theme unlocks
+    const totalXp = xp + premiumXp
+    const level = Math.floor(Math.sqrt(totalXp / 100)) + 1
+    const prevLevel = Math.floor(Math.sqrt((d.xp + d.premiumXp) / 100)) + 1
+
+    if (level > prevLevel) {
       const newly = THEMES.filter(
-        (t) => t.unlockLevel > 0 && t.unlockLevel <= afterLevel && !unlockedThemes.includes(t.id),
+        (t) => t.unlockLevel > 0 && t.unlockLevel <= level && !unlockedThemes.includes(t.id),
       )
       if (newly.length > 0) {
         unlockedThemes = [...unlockedThemes, ...newly.map((t) => t.id)]
         const ach: Achievement[] = newly.map((t) => ({
           id: uid('ach'),
           title: `Unlocked: ${t.name}`,
-          detail: `Reached level ${afterLevel} and opened the ${t.name} theme.`,
+          detail: `Reached level ${level} and opened the ${t.name} theme.`,
           icon: 'palette',
           at: nowIso(),
         }))
         achievements = [...ach, ...achievements]
       }
-      const levelAch: Achievement = {
-        id: uid('ach'),
-        title: `Level ${afterLevel}`,
-        detail: `Your world grew — you reached level ${afterLevel}.`,
-        icon: 'star',
-        at: nowIso(),
-      }
-      achievements = [levelAch, ...achievements]
-      toastQueued = {
-        title: `Level ${afterLevel}!`,
-        body: newly.length
-          ? `You unlocked ${newly.length} new theme${newly.length > 1 ? 's' : ''}.`
-          : 'Your universe keeps growing.',
-        icon: 'star',
+      if (!toastQueued) {
+        toastQueued = {
+          title: `Level ${level}!`,
+          body: newly.length
+            ? `You unlocked ${newly.length} new theme${newly.length > 1 ? 's' : ''}.`
+            : 'Your universe keeps growing.',
+          icon: 'star',
+        }
       }
     }
 
     if (toastQueued) set({ toast: toastQueued })
-    return { ...d, xp, unlockedThemes, achievements }
+
+    // Sync to DB (debounced)
+    const userId = get().userId
+    if (userId) syncXpToDb(userId, xp, premiumXp)
+
+    return { ...d, xp, premiumXp, unlockedThemes, achievements }
   }
 
   return {
@@ -299,10 +336,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const tasks = d.tasks.map((t) =>
           t.id === id ? { ...t, done: nowDone, completedAt: nowDone ? nowIso() : null } : t,
         )
-        // Non-punishing game layer: completing earns XP, but un-checking never
-        // takes it away (no penalties, no level loss) — the world only grows.
-        const awarded = award({ ...d, tasks }, nowDone ? XP_PER_TASK : 0)
-        return awarded
+        // Tasks give no leaves — only study time earns currency.
+        return { ...d, tasks }
       }),
 
     deleteTask: (id) => commit((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) })),
@@ -394,8 +429,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const doneCount = milestones.filter((m) => m.done).length
         const progress = milestones.length ? Math.round((doneCount / milestones.length) * 100) : goal.progress
         const goals = d.goals.map((g) => (g.id === goalId ? { ...g, milestones, progress } : g))
-        // never deduct XP when un-checking a milestone (non-punishing)
-        return award({ ...d, goals }, becomingDone ? XP_PER_MILESTONE : 0)
+        // Milestones give no leaves — only study time earns currency.
+        return { ...d, goals }
       }),
 
     // ---------- habits ----------
@@ -415,8 +450,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const has = habit.history.includes(key)
         const history = has ? habit.history.filter((x) => x !== key) : [...habit.history, key]
         const habits = d.habits.map((h) => (h.id === id ? { ...h, history } : h))
-        // un-marking a habit doesn't subtract XP (non-punishing)
-        return award({ ...d, habits }, has ? 0 : XP_PER_HABIT)
+        // Habits give no leaves — only study time earns currency.
+        return { ...d, habits }
       }),
 
     // ---------- ideas / vision / brain dump ----------
@@ -448,7 +483,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
         if (subject && !next.subjects.includes(subject)) {
           next = { ...next, subjects: [...next.subjects, subject] }
         }
-        return award(next, Math.round(minutes * XP_PER_FOCUS_MIN))
+        // Leaves earned: 1 per focus minute (study rooms / library)
+        return award(next, 'focus', Math.round(minutes * XP_VALUES.focusMin))
       }),
 
     recordJourney: ({ minutes, subject, xp, achievements }) =>
@@ -458,14 +494,17 @@ export const useMagnet = create<MagnetState>((set, get) => {
         if (subject && !next.subjects.includes(subject)) {
           next = { ...next, subjects: [...next.subjects, subject] }
         }
-        // De-dupe against achievements already earned (journey achievement ids
-        // are stable, e.g. 'train-grand'), then stamp the fresh ones.
+        // De-dupe achievements
         const have = new Set(next.achievements.map((a) => a.id))
         const fresh = achievements
           .filter((a) => !have.has(a.id))
           .map((a) => ({ ...a, at: nowIso() }))
         if (fresh.length) next = { ...next, achievements: [...fresh, ...next.achievements] }
-        return award(next, Math.max(0, Math.round(xp)))
+        // Award regular XP for focus time (train source for diminishing returns)
+        const result = award(next, 'train', Math.max(0, Math.round(xp)))
+        // Award premium XP for journey commitment (golden leaves, uncapped)
+        const pResult = awardGoldenLeaves(result.xp, result.premiumXp, XP_VALUES.journeyPremium, rankForTotalXp(result.xp + result.premiumXp).id)
+        return { ...result, premiumXp: result.premiumXp + pResult.goldenLeaves }
       }),
 
     addSubject: (name) =>

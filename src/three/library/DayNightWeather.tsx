@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { type MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Stars } from '@react-three/drei'
 import {
@@ -37,7 +37,7 @@ function smooth(x: number) {
  * stars, all global lights, and fog imperatively through refs (no per-frame
  * re-renders), and renders rain through the windows + streaks on the glass.
  */
-export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rainDrops }: { shadows: boolean; fog: boolean; rainScale: number; shadowMap: number; rainDrops: number }) {
+export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rainDrops, sunRef, onSunReady }: { shadows: boolean; fog: boolean; rainScale: number; shadowMap: number; rainDrops: number; sunRef?: MutableRefObject<Mesh | null>; onSunReady?: () => void }) {
   const dir = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
   const fog = useRef<FogExp2>(null)
@@ -200,8 +200,15 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
         <Stars radius={300} depth={60} count={1800} factor={6} saturation={0} fade speed={0.5} />
       </group>
 
-      {/* sun + moon discs (glow via bloom) */}
-      <mesh ref={sun}>
+      {/* sun + moon discs (glow via bloom). The sun also feeds the Ultra GodRays
+          effect, so its mesh is published to the parent via sunRef/onSunReady. */}
+      <mesh
+        ref={(m) => {
+          sun.current = m
+          if (sunRef) sunRef.current = m
+          if (m && onSunReady) onSunReady()
+        }}
+      >
         <sphereGeometry args={[14, 16, 16]} />
         <meshBasicMaterial color="#fff3c8" />
       </mesh>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useSocial } from '../store/social'
 import { useFriends } from '../store/friends'
@@ -14,11 +15,8 @@ import './FriendsPanel.css'
 
 type Tab = 'find' | 'friends' | 'requests' | 'following' | 'followers'
 
-// Social hub (Lobby): find explorers, send/answer friend requests, manage
-// friends, and browse follows. Friend requests + accepted friends gate the chat
-// system — this is the ONLY place requests are surfaced (the library never
-// interrupts focus with them).
 export function FriendsPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   const meId = useSocial((s) => s.meId)
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('find')
@@ -36,13 +34,11 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
   const [following, setFollowing] = useState<PublicProfile[] | null>(null)
   const [followers, setFollowers] = useState<PublicProfile[] | null>(null)
 
-  // keep requests/friends fresh whenever the hub opens
   useEffect(() => {
     void refreshRequests()
     void refreshFriends()
   }, [refreshRequests, refreshFriends])
 
-  // live search (debounced)
   useEffect(() => {
     const query = q.trim()
     let active = true
@@ -83,11 +79,11 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
   }
 
   const TABS: [Tab, string][] = [
-    ['find', 'Find'],
-    ['friends', 'Friends'],
-    ['requests', 'Requests'],
-    ['following', 'Following'],
-    ['followers', 'Followers'],
+    ['find', t('friendsPanel.tabFind')],
+    ['friends', t('friendsPanel.tabFriends')],
+    ['requests', t('friendsPanel.tabRequests')],
+    ['following', t('friendsPanel.tabFollowing')],
+    ['followers', t('friendsPanel.tabFollowers')],
   ]
 
   function Row({ u, action }: { u: PublicProfile; action?: React.ReactNode }) {
@@ -110,10 +106,10 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal open title="Friends" onClose={onClose} width={520}>
+    <Modal open title={t('friendsPanel.title')} onClose={onClose} width={520}>
       <div className="fp-tabs">
         {TABS.map(([id, label]) => (
-          <button key={id} className={`fp-tab ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}>
+          <button key={id} className={`fp-tab ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>
             {label}
             {id === 'requests' && incoming.length > 0 && <span className="fp-tab-badge">{incoming.length}</span>}
           </button>
@@ -123,7 +119,7 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
       {tab === 'find' && (
         <input
           className="sf-input fp-search"
-          placeholder="Search by username or name…"
+          placeholder={t('friendsPanel.searchPlaceholder')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           autoFocus
@@ -131,13 +127,12 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="fp-list">
-        {/* ---- Find ---- */}
         {tab === 'find' && (
           <>
-            {q.trim().length < 2 && <p className="fp-empty">Type at least 2 characters to search.</p>}
-            {searching && <p className="fp-empty">Searching…</p>}
+            {q.trim().length < 2 && <p className="fp-empty">{t('friendsPanel.typeToSearch')}</p>}
+            {searching && <p className="fp-empty">{t('common.loading')}</p>}
             {q.trim().length >= 2 && !searching && results.length === 0 && (
-              <p className="fp-empty">No explorers found.</p>
+              <p className="fp-empty">{t('friendsPanel.noExplorers')}</p>
             )}
             {results.map((u) => (
               <Row
@@ -154,11 +149,10 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        {/* ---- Friends ---- */}
         {tab === 'friends' && (
           <>
             {friends.length === 0 && (
-              <p className="fp-empty">No friends yet. Find explorers and send a request.</p>
+              <p className="fp-empty">{t('friendsPanel.noFriendsYet')}</p>
             )}
             {friends.map((u) => (
               <Row key={u.id} u={u} action={<AddFriendButton targetId={u.id} className="fp-row-friend" />} />
@@ -166,13 +160,12 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        {/* ---- Requests ---- */}
         {tab === 'requests' && (
           <>
             {incoming.length === 0 && outgoing.length === 0 && (
-              <p className="fp-empty">No pending requests.</p>
+              <p className="fp-empty">{t('friendsPanel.noPendingRequests')}</p>
             )}
-            {incoming.length > 0 && <p className="fp-section">Incoming</p>}
+            {incoming.length > 0 && <p className="fp-section">{t('friendsPanel.incoming')}</p>}
             {incoming.map((r) =>
               r.profile ? (
                 <Row
@@ -181,39 +174,38 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
                   action={
                     <div className="fp-row-actions">
                       <button className="sf-btn fp-row-friend" onClick={() => void accept(r.id)}>
-                        Accept
+                        {t('common.accept')}
                       </button>
                       <button className="sf-btn secondary fp-row-friend" onClick={() => void decline(r.id)}>
-                        Decline
+                        {t('common.decline')}
                       </button>
                     </div>
                   }
                 />
               ) : null,
             )}
-            {outgoing.length > 0 && <p className="fp-section">Sent</p>}
+            {outgoing.length > 0 && <p className="fp-section">{t('friendsPanel.sent')}</p>}
             {outgoing.map((r) =>
               r.profile ? (
                 <Row
                   key={r.id}
                   u={r.profile}
-                  action={<span className="fp-pending">Pending</span>}
+                  action={<span className="fp-pending">{t('common.pending')}</span>}
                 />
               ) : null,
             )}
           </>
         )}
 
-        {/* ---- Following / Followers ---- */}
         {tab === 'following' && (following === null
-          ? <p className="fp-empty">Loading…</p>
+          ? <p className="fp-empty">{t('common.loading')}</p>
           : following.length === 0
-            ? <p className="fp-empty">You're not following anyone yet.</p>
+            ? <p className="fp-empty">{t('friendsPanel.notFollowingAnyone')}</p>
             : following.map((u) => <Row key={u.id} u={u} action={<FollowButton targetId={u.id} className="fp-row-follow" />} />))}
         {tab === 'followers' && (followers === null
-          ? <p className="fp-empty">Loading…</p>
+          ? <p className="fp-empty">{t('common.loading')}</p>
           : followers.length === 0
-            ? <p className="fp-empty">No followers yet.</p>
+            ? <p className="fp-empty">{t('friendsPanel.noFollowersYet')}</p>
             : followers.map((u) => <Row key={u.id} u={u} action={<AddFriendButton targetId={u.id} className="fp-row-friend" />} />))}
       </div>
     </Modal>

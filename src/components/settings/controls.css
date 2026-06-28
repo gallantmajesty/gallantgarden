@@ -300,3 +300,61 @@
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(233, 211, 160, 0.3);
 }
+
+/* ---- RTL support ---- */
+[dir="rtl"] .settings-scrim {
+  justify-content: flex-end;
+}
+[dir="rtl"] .settings-panel {
+  border-left: none;
+  border-right: 3px solid rgba(202, 168, 74, 0.5);
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.5);
+}
+[dir="rtl"] .settings-panel .slide-in {
+  animation-name: slide-in-rtl;
+}
+@keyframes slide-in-rtl {
+  from {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+[dir="rtl"] .lang-btn {
+  text-align: right;
+}
+[dir="rtl"] .sf-label {
+  text-align: right;
+}
+[dir="rtl"] .set-knob {
+  left: auto;
+  right: 2px;
+}
+[dir="rtl"] .set-switch.on .set-knob {
+  transform: translateX(-20px);
+}
+[dir="rtl"] .wc-bg-label {
+  left: auto;
+  right: 8px;
+}
+[dir="rtl"] .wc-soon-tag,
+[dir="rtl"] .wc-tick {
+  right: auto;
+  left: 7px;
+}
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .settings-panel { width: 100%; border-left: none; }
+  .settings-head { padding: 14px 16px; }
+  .settings-head h2 { font-size: 18px; }
+  .settings-body { padding: 14px 16px; }
+  .set-group { margin-bottom: 14px; }
+  .set-group-title { font-size: 12px; }
+  .set-row { padding: 10px 0; }
+  .set-label { font-size: 13px; }
+  .set-hint { font-size: 11px; }
+}

@@ -132,15 +132,31 @@ export function Platforms({ accentLights }: { accentLights: number }) {
               <meshStandardMaterial map={numbers[i]} transparent emissive={line.mood.glow} emissiveMap={numbers[i]} emissiveIntensity={0.25} toneMapped={false} depthWrite={false} />
             </mesh>
 
-            {/* round station clock on a bracket off the track-edge, mid-platform */}
-            <group position={[p.eastX - 0.3, 4.6, midZ]}>
-              <mesh rotation-y={-Math.PI / 2}>
-                <circleGeometry args={[0.95, 28]} />
-                <meshStandardMaterial map={clock} emissive={'#fff4d8'} emissiveIntensity={0.25} toneMapped={false} side={DoubleSide} />
+            {/* round station clock on a tall iron standard planted on the platform
+                near the track edge — it floated in mid-air before. Double-faced so
+                it reads from both directions; the post runs the full height to the
+                floor with a cast base. */}
+            <group position={[p.eastX - 0.6, 0, midZ]}>
+              {/* post to the floor + cast base */}
+              <mesh position={[0, 2.3, 0]} material={MAT.iron()}>
+                <cylinderGeometry args={[0.1, 0.13, 4.6, 8]} />
               </mesh>
-              <mesh position={[0.16, 0, 0]} rotation-z={Math.PI / 2} material={MAT.iron()}>
-                <cylinderGeometry args={[0.05, 0.05, 0.8, 6]} />
+              <mesh position={[0, 0.08, 0]} material={MAT.iron()}>
+                <cylinderGeometry args={[0.28, 0.34, 0.16, 10]} />
               </mesh>
+              {/* clock head */}
+              <group position={[0, 4.55, 0]}>
+                {/* iron case ring (axis along X → the two faces look ±X) */}
+                <mesh rotation-z={Math.PI / 2} material={MAT.iron()}>
+                  <cylinderGeometry args={[1.0, 1.0, 0.18, 28]} />
+                </mesh>
+                {[-1, 1].map((s) => (
+                  <mesh key={s} position={[s * 0.1, 0, 0]} rotation-y={(s * Math.PI) / 2}>
+                    <circleGeometry args={[0.92, 28]} />
+                    <meshStandardMaterial map={clock} emissive={'#fff4d8'} emissiveIntensity={0.25} toneMapped={false} side={DoubleSide} />
+                  </mesh>
+                ))}
+              </group>
             </group>
 
             {/* small destination sign further down the platform — raised well clear

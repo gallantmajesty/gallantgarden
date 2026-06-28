@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { TRAIN_LINES, lineById, type LineId, type TrainLine } from '../lib/train/lines'
 import { computeReward, type JourneyReward } from '../lib/train/rewards'
+import { claimSeat, lockAllSeats } from '../three/train/interior'
 import { useMagnet } from './magnet'
 import {
   loadJourneyState,
@@ -70,6 +71,11 @@ interface TrainState {
 
   // ----- actions -----
   beginBoarding: (lineId: LineId) => void
+  /** Board the train and start the journey (standing at the vestibule). No seat
+   *  is claimed yet — the player walks to a seat and presses E to sit. */
+  boardTrain: () => void
+  /** Sit down at a seat mid-journey (claims + locks it). */
+  sitDown: (seat: number) => void
   confirmBoard: (seat: number) => void
   cancelBoarding: () => void
   tick: () => void
@@ -132,20 +138,35 @@ export const useTrain = create<TrainState>((set, get) => ({
     persist(get)
   },
 
-  confirmBoard: (seat) => {
+  boardTrain: () => {
     const { line, phase } = get()
-    if (!line || phase === 'traveling') return
+    if (!line || phase !== 'boarding') return
     const now = Date.now()
     set({
       phase: 'traveling',
-      seat,
+      seat: null,
       startedAt: now,
       endsAt: now + line.minutes * 60_000,
       activeFocusSec: 0,
       lastTickAt: now,
     })
     persist(get)
-    void syncStartJourney(currentUserId, { lineId: line.id, platform: line.platform, seat, minutes: line.minutes, startedAt: now })
+    void syncStartJourney(currentUserId, { lineId: line.id, platform: line.platform, seat: -1, minutes: line.minutes, startedAt: now })
+  },
+
+  sitDown: (seat) => {
+    const { line, phase } = get()
+    if (!line || phase !== 'traveling') return
+    claimSeat(seat, currentUserId ?? 'local', line.route)
+    lockAllSeats()
+    set({ seat })
+    persist(get)
+  },
+
+  confirmBoard: (seat) => {
+    // Legacy: delegates to boardTrain + sitDown for code that still calls it directly
+    get().boardTrain()
+    get().sitDown(seat)
   },
 
   cancelBoarding: () => {

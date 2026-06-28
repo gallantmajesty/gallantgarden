@@ -115,6 +115,7 @@ export function InstancedShape({
   depthWrite,
   map,
   emissiveMap,
+  normalMap,
   materialRef,
   castShadow = false,
   receiveShadow = false,
@@ -133,6 +134,7 @@ export function InstancedShape({
   depthWrite?: boolean
   map?: Texture
   emissiveMap?: Texture
+  normalMap?: Texture
   materialRef?: Ref<MeshStandardMaterial>
   castShadow?: boolean
   receiveShadow?: boolean
@@ -185,6 +187,7 @@ export function InstancedShape({
         depthWrite={depthWrite}
         map={map}
         emissiveMap={emissiveMap}
+        normalMap={normalMap}
       />
     </instancedMesh>
   )

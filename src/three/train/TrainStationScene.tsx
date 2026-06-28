@@ -74,7 +74,7 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
           <EffectComposer enableNormalPass={false} multisampling={0}>
             {/* warm gas-lamp bloom: high threshold so only lanterns, signage and
                 window-glow blossom — the cosy terminus highlight, never a wash */}
-            <Bloom luminanceThreshold={0.82} luminanceSmoothing={0.4} intensity={0.42} kernelSize={KernelSize.SMALL} mipmapBlur />
+            <Bloom luminanceThreshold={0.88} luminanceSmoothing={0.4} intensity={0.32} kernelSize={KernelSize.SMALL} mipmapBlur />
             <Vignette eskil={false} offset={0.2} darkness={0.62} />
           </EffectComposer>
         )}

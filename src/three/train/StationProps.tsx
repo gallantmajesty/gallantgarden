@@ -16,6 +16,9 @@ import {
   CONCOURSE,
   PLAT_Z0,
   waitingChairs,
+  vendingMachines,
+  platformTrashCans,
+  platformRailings,
 } from './layout'
 
 // All the hand-placed dressing that makes the terminus feel lived-in and busy
@@ -131,6 +134,16 @@ export function StationProps({ lanternLights }: { lanternLights: number }) {
     return spots.map((s, j) => ({ pos: [s[0], 0.36, s[2]], rot: [0, s[0] * 0.6, 0], scale: [1, 0.78 + (j % 2) * 0.25, 1], color: tints[j % tints.length] }))
   }, [])
 
+  // vending machines (instanced)
+  const vendings = useMemo<ShapeItem[]>(() => vendingMachines().map((v) => ({ pos: v.pos, rot: [0, v.yaw, 0] })), [])
+
+  // trash cans (instanced)
+  const trashCans = useMemo<ShapeItem[]>(() => platformTrashCans().map((t) => ({ pos: t.pos })), [])
+
+  // platform railings (posts + rails)
+  const railingPosts = useMemo<ShapeItem[]>(() => platformRailings().filter(r => r.len === 0).map((r) => ({ pos: r.pos, rot: [0, r.yaw, 0] })), [])
+  const railingRails = useMemo<ShapeItem[]>(() => platformRailings().filter(r => r.len > 0).map((r) => ({ pos: r.pos, rot: [0, r.yaw, 0], scale: [1, 1, r.len / 10] })), [])
+
   return (
     <group>
       {/* ---------------- instanced benches (all platforms + lounge) ---------------- */}
@@ -180,6 +193,33 @@ export function StationProps({ lanternLights }: { lanternLights: number }) {
       {/* ---------------- instanced luggage ---------------- */}
       <InstancedShape items={luggage} color={'#ffffff'} roughness={0.7} castShadow>
         <boxGeometry args={[0.9, 0.7, 0.55]} />
+      </InstancedShape>
+
+      {/* ---------------- vending machines ---------------- */}
+      <InstancedShape items={vendings} color={'#2a2a3a'} roughness={0.3} metalness={0.2} castShadow receiveShadow>
+        <boxGeometry args={[1.6, 2.2, 0.9]} />
+      </InstancedShape>
+      {/* vending machine emissive front panels */}
+      <InstancedShape items={vendings} color={'#0f0f1f'} emissive={'#00bfff'} emissiveIntensity={0.8} toneMapped={false}>
+        <planeGeometry args={[1.4, 1.4]} />
+      </InstancedShape>
+
+      {/* ---------------- trash cans ---------------- */}
+      <InstancedShape items={trashCans} color={palette.iron.getStyle()} metalness={0.5} roughness={0.5} castShadow>
+        <cylinderGeometry args={[0.35, 0.35, 0.9, 12]} />
+      </InstancedShape>
+      <InstancedShape items={trashCans} color={'#1a1a1a'} roughness={0.9}>
+        <cylinderGeometry args={[0.38, 0.38, 0.1, 12]} />
+      </InstancedShape>
+
+      {/* ---------------- platform railings ---------------- */}
+      {/* posts */}
+      <InstancedShape items={railingPosts} color={palette.iron.getStyle()} metalness={0.6} roughness={0.4} castShadow>
+        <cylinderGeometry args={[0.06, 0.06, 1.1, 8]} />
+      </InstancedShape>
+      {/* top rail */}
+      <InstancedShape items={railingRails} color={palette.iron.getStyle()} metalness={0.6} roughness={0.4} castShadow>
+        <boxGeometry args={[0.08, 0.08, 10]} />
       </InstancedShape>
 
       {/* ---------------- waiting-lounge rug ---------------- */}

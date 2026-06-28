@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import { SectionHead, Panel, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
@@ -22,6 +23,7 @@ function VisionSymbol({ value, size = 30 }: { value: string; size?: number }) {
 }
 
 export function SanctuaryView() {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const setBrainDump = useMagnet((s) => s.setBrainDump)
   const addIdea = useMagnet((s) => s.addIdea)
@@ -60,21 +62,21 @@ export function SanctuaryView() {
 
   return (
     <div className="mg-view">
-      <SectionHead icon="vault" title="Sanctuary" subtitle="Your private vault — ideas, dreams and the proof of how far you've come" />
+      <SectionHead icon="vault" title={t('sanctuary.title')} subtitle={t('sanctuary.subtitle')} />
 
       <div className="mg-sanctuary-grid">
         {/* brain dump */}
         <Panel className="mg-braindump">
           <div className="mg-panel-head">
             <h3>
-              <Icon name="brain" size={17} /> Brain dump
+              <Icon name="brain" size={17} />{t('sanctuary.brainDump')}
             </h3>
-            <span className="mg-muted">Auto-saved</span>
+            <span className="mg-muted">t('sanctuary.autoSaved')</span>
           </div>
           <textarea
             value={data.brainDump}
             onChange={(e) => setBrainDump(e.target.value)}
-            placeholder="Empty your head here — worries, reminders, half-thoughts. No structure required."
+            placeholder={t('sanctuary.brainDumpPlaceholder')}
           />
         </Panel>
 
@@ -82,17 +84,17 @@ export function SanctuaryView() {
         <Panel className="mg-ideavault">
           <div className="mg-panel-head">
             <h3>
-              <Icon name="bulb" size={17} /> Ideas vault
+              <Icon name="bulb" size={17} />{t('sanctuary.ideasVault')}
             </h3>
           </div>
           <form className="mg-subadd" onSubmit={submitIdea}>
-            <input value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="Capture a spark…" />
+            <input value={idea} onChange={(e) => setIdea(e.target.value)} placeholder={t('sanctuary.captureSpark')} />
             <button type="submit">
               <Icon name="plus" size={14} />
             </button>
           </form>
           {ideas.length === 0 ? (
-            <p className="mg-muted">Every big project starts as a throwaway note. Catch them here.</p>
+            <p className="mg-muted">t('sanctuary.ideasEmpty')</p>
           ) : (
             <ul className="mg-idealist">
               {ideas.map((i) => (
@@ -115,14 +117,14 @@ export function SanctuaryView() {
       <Panel className="mg-vision">
         <div className="mg-panel-head">
           <h3>
-            <Icon name="star" size={17} /> Vision board
+            <Icon name="star" size={17} />{t('sanctuary.visionBoard')}
           </h3>
           <button className="mg-btn ghost small" onClick={() => setVisionOpen(true)}>
-            <Icon name="plus" size={14} /> Add
+            <Icon name="plus" size={14} />{t('common.add')}
           </button>
         </div>
         {data.vision.length === 0 ? (
-          <EmptyState icon="star" title="Picture the life you want" body="Add cards for the things you're working toward — see them every time you visit." />
+          <EmptyState icon="star" title={t('sanctuary.visionEmptyTitle')} body={t('sanctuary.visionEmptyBody')} />
         ) : (
           <div className="mg-visiongrid">
             {data.vision.map((v) => (
@@ -143,12 +145,12 @@ export function SanctuaryView() {
       <Panel className="mg-achievements">
         <div className="mg-panel-head">
           <h3>
-            <Icon name="trophy" size={17} /> Achievement gallery
+            <Icon name="trophy" size={17} />{t('sanctuary.achievementGallery')}
           </h3>
           <span className="mg-muted">{data.achievements.length} earned</span>
         </div>
         {data.achievements.length === 0 ? (
-          <p className="mg-muted">Complete tasks and level up to start filling your trophy shelf.</p>
+          <p className="mg-muted">t('sanctuary.achievementsEmpty')</p>
         ) : (
           <ul className="mg-achlist">
             {data.achievements.slice(0, 30).map((a) => (
@@ -166,15 +168,15 @@ export function SanctuaryView() {
         )}
       </Panel>
 
-      <MgModal open={visionOpen} title="New vision card" onClose={() => setVisionOpen(false)}>
+      <MgModal open={visionOpen} title={t('sanctuary.newVisionCard')} onClose={() => setVisionOpen(false)}>
         <form className="mg-form" onSubmit={saveVision}>
-          <Field label="Title">
-            <input autoFocus value={vTitle} onChange={(e) => setVTitle(e.target.value)} placeholder="e.g. Top of my class" />
+          <Field label={t('sanctuary.titleLabel')}>
+            <input autoFocus value={vTitle} onChange={(e) => setVTitle(e.target.value)} placeholder={t('sanctuary.titlePlaceholder')} />
           </Field>
-          <Field label="Note">
-            <textarea rows={2} value={vNote} onChange={(e) => setVNote(e.target.value)} placeholder="What this looks like for you…" />
+          <Field label={t('sanctuary.noteLabel')}>
+            <textarea rows={2} value={vNote} onChange={(e) => setVNote(e.target.value)} placeholder={t('sanctuary.notePlaceholder')} />
           </Field>
-          <Field label="Symbol">
+          <Field label={t('sanctuary.symbolLabel')}>
             <div className="mg-emojipick">
               {VISION_ICONS.map((ic) => (
                 <button
@@ -188,7 +190,7 @@ export function SanctuaryView() {
               ))}
             </div>
           </Field>
-          <Field label="Color">
+          <Field label={t('goals.colorLabel')}>
             <div className="mg-swatches">
               {VISION_COLORS.map((c) => (
                 <button

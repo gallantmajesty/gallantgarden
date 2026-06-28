@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useFriends } from '../../store/friends'
 import { useChat } from '../../store/chat'
 import { effectiveStatus, STATUS_COLOR } from '../../lib/presence'
@@ -8,12 +9,8 @@ import { StatusDot } from './StatusDot'
 import { ChatWindow } from './ChatWindow'
 import './library-chat.css'
 
-// The library's collapsible friends sidebar. Hidden by default behind a slim
-// edge tab so it never covers the workspace; opens from the right with a smooth
-// slide. This is the ONLY chat surface in the focus zone — no popups, no
-// request prompts (those live in the Lobby). Messages that arrived during a
-// focus session are simply here, waiting, when the student chooses to look.
 export function LibraryFriendsPanel() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const friends = useFriends((s) => s.friends)
   const meId = useFriends((s) => s.meId)
@@ -24,7 +21,6 @@ export function LibraryFriendsPanel() {
   const myStatus = useChat((s) => s.myStatus)
   const focusSilent = useChat((s) => s.focusSilent)
 
-  // Poll summaries (unread dots + receipts) only while the panel is open.
   useEffect(() => {
     if (!open || !meId) return
     void refreshSummaries()
@@ -38,7 +34,6 @@ export function LibraryFriendsPanel() {
   )
   const anyUnread = unreadIds.size > 0
 
-  // friends sorted: unread first, then online, then by name
   const sorted = useMemo(() => {
     const score = (f: PublicProfile) => {
       const online = effectiveStatus(f) !== 'offline'
@@ -53,14 +48,13 @@ export function LibraryFriendsPanel() {
 
   return (
     <>
-      {/* edge tab — always present, unobtrusive */}
       <button
         className={`lcf-tab ${open ? 'hidden' : ''} ${anyUnread && !focusSilent ? 'alert' : ''}`}
         onClick={() => setOpen(true)}
-        title="Friends"
+        title={t('libraryFriends.friends')}
       >
         <FriendsGlyph />
-        <span className="lcf-tab-label">Friends</span>
+        <span className="lcf-tab-label">{t('libraryFriends.friends')}</span>
         {onlineCount > 0 && <span className="lcf-tab-count">{onlineCount}</span>}
         {anyUnread && !focusSilent && <span className="lcf-tab-dot" />}
       </button>
@@ -68,25 +62,25 @@ export function LibraryFriendsPanel() {
       <aside className={`lcf-panel ${open ? 'open' : ''}`} aria-hidden={!open}>
         <header className="lcf-head">
           <div className="lcf-head-title">
-            <strong>Friends</strong>
-            <span className="lcf-head-sub">{onlineCount} online</span>
+            <strong>{t('libraryFriends.friends')}</strong>
+            <span className="lcf-head-sub">{t('libraryFriends.onlineCount', { count: onlineCount })}</span>
           </div>
           <StatusPicker status={myStatus} />
-          <button className="lcf-collapse" onClick={() => setOpen(false)} title="Collapse" aria-label="Collapse">
+          <button className="lcf-collapse" onClick={() => setOpen(false)} title={t('libraryFriends.collapse')} aria-label={t('libraryFriends.collapse')}>
             ›
           </button>
         </header>
 
         {focusSilent && (
           <div className="lcf-focus-note">
-            <span className="lcf-focus-dot" /> Focus mode — chats are silent. Messages wait quietly here.
+            <span className="lcf-focus-dot" /> {t('libraryFriends.focusModeNote')}
           </div>
         )}
 
         <div className="lcf-list">
           {sorted.length === 0 && (
             <p className="lcf-empty">
-              No friends yet. Add friends from the Lobby, then chat with them here while you study.
+              {t('libraryFriends.noFriendsYet')}
             </p>
           )}
           {sorted.map((f) => {
@@ -112,21 +106,20 @@ export function LibraryFriendsPanel() {
         </div>
       </aside>
 
-      {/* the active chat window floats beside the panel */}
       <ChatWindow />
     </>
   )
 }
 
-/* ----- my-status picker (calm dropdown) ----- */
 const PICKABLE: StudyStatus[] = ['available', 'studying', 'break', 'offline']
 
 function StatusPicker({ status }: { status: StudyStatus }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const setMyStatus = useChat((s) => s.setMyStatus)
   return (
     <div className="lcf-status">
-      <button className="lcf-status-btn" onClick={() => setOpen((v) => !v)} title="Your status">
+      <button className="lcf-status-btn" onClick={() => setOpen((v) => !v)} title={t('libraryFriends.yourStatus')}>
         <StatusDot status={status} />
         <span>{STUDY_STATUS_LABEL[status]}</span>
         <span className="lcf-status-chev">▾</span>
@@ -135,7 +128,7 @@ function StatusPicker({ status }: { status: StudyStatus }) {
         <>
           <div className="lcf-status-scrim" onClick={() => setOpen(false)} />
           <div className="lcf-status-menu">
-            {status === 'focus' && <div className="lcf-status-auto">Auto: focus session active</div>}
+            {status === 'focus' && <div className="lcf-status-auto">{t('libraryFriends.autoFocus')}</div>}
             {PICKABLE.map((s) => (
               <button
                 key={s}

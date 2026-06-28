@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Sparkles } from '@react-three/drei'
-import { Color, type Group, type InstancedMesh, Object3D, type PointLight } from 'three'
+import { AdditiveBlending, type BufferAttribute, type BufferGeometry, CanvasTexture, Color, type Group, type InstancedMesh, Object3D, type PointLight } from 'three'
 import { env } from './env'
 import { useScenePreset } from '../../store/quality'
 
@@ -130,9 +129,105 @@ export function KnowledgeTree() {
           and the hall lanterns carry the look. */}
       {preset.treeLight && <pointLight ref={treeLight} position={[0, 6, 0]} intensity={3.4} distance={16} decay={2.2} color="#ffcf9a" />}
 
-      {/* a few floating motes around the canopy (only when particles are on) */}
-      {preset.particles && <Sparkles count={preset.dust > 0 ? 24 : 0} scale={[14, 10, 14]} position={[0, 10, 0]} size={2.4} speed={0.2} color="#ffe6b0" opacity={0.55} />}
+      {/* glowing rune motes drifting up out of the canopy — GPU Points, additive,
+          picked up by bloom. Replaces the old round Sparkles with the magical
+          rising-rune look. (only when particles are on) */}
+      {preset.particles && <RuneMotes count={Math.round(20 + preset.dust * 1.2)} />}
     </group>
+  )
+}
+
+/** A soft glowing rune sprite (warm core + faint eight-spoke glyph) used as the
+ *  point texture for the drifting tree motes. Generated once. */
+function makeRuneSprite(): CanvasTexture {
+  const s = 64
+  const c = document.createElement('canvas')
+  c.width = c.height = s
+  const ctx = c.getContext('2d')!
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2)
+  g.addColorStop(0, 'rgba(255,244,210,1)')
+  g.addColorStop(0.4, 'rgba(255,200,120,0.55)')
+  g.addColorStop(1, 'rgba(255,180,80,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, s, s)
+  ctx.translate(s / 2, s / 2)
+  ctx.strokeStyle = 'rgba(255,250,232,0.85)'
+  ctx.lineWidth = 1.6
+  ctx.beginPath()
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2
+    ctx.moveTo(0, 0)
+    ctx.lineTo(Math.cos(a) * 11, Math.sin(a) * 11)
+  }
+  ctx.stroke()
+  return new CanvasTexture(c)
+}
+
+/**
+ * Drifting rune motes rising out of the canopy. One `THREE.Points` draw call: a
+ * shared position buffer is nudged upward each frame (and gently swirled around
+ * the trunk), wrapping back down at the top. Additive + toneMapped:false so the
+ * motes read as glowing sparks under bloom — no real lights, ~one cheap buffer
+ * upload per frame for a few dozen points.
+ */
+function RuneMotes({ count }: { count: number }) {
+  const geomRef = useRef<BufferGeometry>(null)
+  const sprite = useMemo(() => makeRuneSprite(), [])
+
+  const { positions, speeds, baseX, baseZ, phase } = useMemo(() => {
+    const rand = rng(20260626)
+    const positions = new Float32Array(count * 3)
+    const speeds = new Float32Array(count)
+    const baseX = new Float32Array(count)
+    const baseZ = new Float32Array(count)
+    const phase = new Float32Array(count)
+    for (let i = 0; i < count; i++) {
+      const a = rand() * Math.PI * 2
+      const rad = 1.5 + rand() * 6
+      baseX[i] = Math.cos(a) * rad
+      baseZ[i] = Math.sin(a) * rad
+      positions[i * 3] = baseX[i]
+      positions[i * 3 + 1] = 4 + rand() * 12
+      positions[i * 3 + 2] = baseZ[i]
+      speeds[i] = 0.4 + rand() * 0.8
+      phase[i] = rand() * Math.PI * 2
+    }
+    return { positions, speeds, baseX, baseZ, phase }
+  }, [count])
+
+  useFrame((state, dtRaw) => {
+    const g = geomRef.current
+    if (!g) return
+    const dt = Math.min(dtRaw, 0.05)
+    const t = state.clock.elapsedTime
+    const arr = (g.attributes.position as BufferAttribute).array as Float32Array
+    for (let i = 0; i < count; i++) {
+      let y = arr[i * 3 + 1] + speeds[i] * dt
+      if (y > 17) y -= 13 // wrap back down to keep the column continuous
+      arr[i * 3] = baseX[i] + Math.sin(t * 0.5 + phase[i]) * 0.5
+      arr[i * 3 + 1] = y
+      arr[i * 3 + 2] = baseZ[i] + Math.cos(t * 0.4 + phase[i]) * 0.5
+    }
+    g.attributes.position.needsUpdate = true
+  })
+
+  return (
+    <points frustumCulled={false}>
+      <bufferGeometry ref={geomRef}>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.5}
+        map={sprite}
+        color="#ffe0a0"
+        transparent
+        opacity={0.9}
+        depthWrite={false}
+        blending={AdditiveBlending}
+        sizeAttenuation
+        toneMapped={false}
+      />
+    </points>
   )
 }
 

@@ -33,6 +33,22 @@ export interface PlatformStatus {
   untilArrival: number
   /** true while doors are open and a player may board the live train */
   boardable: boolean
+  /** this arrival is running late (~5% of cycles, deterministic per cadence) */
+  delayed: boolean
+  /** how many seconds late, when `delayed` (0 otherwise) */
+  delaySec: number
+}
+
+/** Deterministic 0..1 hash of a string (FNV-1a → normalised). Used so "is this
+ *  arrival delayed?" is computed identically on every client without any RNG or
+ *  server state — the same cadence cycle reads the same value everywhere. */
+function hash01(str: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return (h >>> 0) / 4294967296
 }
 
 /** Where we are inside this line's repeating cadence, in seconds [0, cadence). */
@@ -49,6 +65,10 @@ function cyclePos(line: TrainLine, nowMs: number): number {
  */
 export function platformStatus(line: TrainLine, nowMs = Date.now()): PlatformStatus {
   const p = cyclePos(line, nowMs)
+  // Which repeat of this line's cadence we're in — keys the deterministic delay.
+  const cycleIndex = Math.floor((Math.floor(nowMs / 1000) + line.phaseSec) / line.cadenceSec)
+  const delayed = hash01(`${line.id}:${cycleIndex}`) < 0.05
+  const delaySec = delayed ? 60 + Math.floor(hash01(`${line.id}:${cycleIndex}:d`) * 661) : 0 // 1–12 min
   const boardStart = APPROACH_SEC
   const boardEnd = boardStart + line.boardSec
   const departEnd = boardEnd + DEPART_SEC
@@ -78,6 +98,8 @@ export function platformStatus(line: TrainLine, nowMs = Date.now()): PlatformSta
     untilBoarding: Math.max(0, untilBoarding),
     untilArrival: Math.max(0, untilArrival),
     boardable: phase === 'boarding',
+    delayed,
+    delaySec,
   }
 }
 
@@ -105,7 +127,9 @@ export function fmtCountdown(totalSec: number): string {
 export function statusLabel(s: PlatformStatus): { tag: string; detail: string } {
   switch (s.phase) {
     case 'approaching':
-      return { tag: 'Arriving', detail: fmtCountdown(s.phaseRemaining) }
+      return s.delayed
+        ? { tag: 'Delayed', detail: `${fmtHuman(s.delaySec)} late` }
+        : { tag: 'Arriving', detail: fmtCountdown(s.phaseRemaining) }
     case 'boarding':
       return { tag: 'Boarding', detail: `closes ${fmtCountdown(s.phaseRemaining)}` }
     case 'departing':

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTrain } from '../../store/train'
 import { useStation } from '../../store/station'
 import { TRAIN_LINES } from '../../lib/train/lines'
-import { ROWS, COLS } from '../../three/train/interior'
 import { departureBoard, statusLabel, statusById, fmtCountdown, fmtHuman } from '../../lib/train/schedule'
 import { xpFor, coinsFor } from '../../lib/train/rewards'
+import { isMuted, setMuted } from '../../three/train/audio'
 import './TrainHUD.css'
 
 // ============================================================================
@@ -44,7 +44,13 @@ export function TrainHUD() {
 
   if (phase === 'browsing') return <BrowsingHud />
   if (phase === 'boarding') return <BoardingCard />
-  if (phase === 'traveling') return <JourneyDock />
+  if (phase === 'traveling')
+    return (
+      <>
+        <JourneyDock />
+        <MilestoneToast />
+      </>
+    )
   if (phase === 'arrived') return <ArrivalScreen />
   return null
 }
@@ -57,6 +63,7 @@ function BrowsingHud() {
     <>
       <DeparturesPanel open={boardOpen} onToggle={() => setBoardOpen((v) => !v)} />
       <BoardingPrompt />
+      <AudioMuteToggle />
     </>
   )
 }
@@ -158,18 +165,11 @@ function BoardingPrompt() {
 
 /* ----------------------------------------------------------------- boarding */
 
-/** The boarding card: the commitment screen. Choose a seat and depart on a
- *  journey of the line's full study length. */
+/** The boarding card: the commitment screen. Shows route info and a "Board"
+ *  button. The player enters the carriage standing and walks to a seat in-world. */
 function BoardingCard() {
   const line = useTrain((s) => s.line)
-  // Front-left window seat ("best seat in the house") as the friendly default.
-  const [seat, setSeat] = useState((ROWS - 1) * COLS)
-  // The seat is a COMMITMENT: the player must explicitly acknowledge that it
-  // locks for the whole journey before the Depart button arms.
-  const [ack, setAck] = useState(false)
   if (!line) return null
-
-  const seatCode = `${Math.floor(seat / COLS) + 1}${seat % COLS === 0 ? 'L' : 'R'}`
 
   const xp = xpFor(line.minutes)
   const coins = coinsFor(line.minutes)
@@ -203,42 +203,9 @@ function BoardingCard() {
           <Stat label="Tickets" value={`+${tickets}`} glyph="🎟" />
         </div>
 
-        <div className="train-seats">
-          <div className="train-seats-head">
-            <strong>Choose your seat</strong>
-            <span>Front of train ↑ · panoramic windows</span>
-          </div>
-          <div className="train-seats-grid">
-            {seatRows().map((row) => (
-              <div className="train-seat-row" key={row.r}>
-                <span className="train-seat-rowlabel">{row.label}</span>
-                {row.seats.map((s) => (
-                  <button
-                    key={s.index}
-                    className={`train-seat ${seat === s.index ? 'on' : ''}`}
-                    onClick={() => setSeat(s.index)}
-                    title={`Seat ${s.code}`}
-                  >
-                    {s.code}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
+        <div className="train-board-info">
+          <p>Board the train and walk to any empty seat. Press <kbd>E</kbd> to sit down.</p>
         </div>
-
-        {/* PERMANENT-SEAT warning + acknowledgement — boarding is a commitment */}
-        <div className="train-seat-warn">
-          <span className="train-seat-warn-ic">⚠</span>
-          <div className="train-seat-warn-txt">
-            <strong>Seat {seatCode} is permanent for this journey.</strong>
-            <span>Once the train departs you can’t change seats until you arrive.</span>
-          </div>
-        </div>
-        <label className="train-seat-ack">
-          <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-          <span>I understand my seat locks for the whole journey.</span>
-        </label>
 
         <footer className="train-card-foot">
           <button className="sf-btn ghost" onClick={() => useTrain.getState().cancelBoarding()}>
@@ -246,11 +213,9 @@ function BoardingCard() {
           </button>
           <button
             className="sf-btn water train-depart"
-            disabled={!ack}
-            title={ack ? '' : 'Confirm your seat is permanent first'}
-            onClick={() => ack && useTrain.getState().confirmBoard(seat)}
+            onClick={() => useTrain.getState().boardTrain()}
           >
-            Depart — study for {durationLabel(line.minutes)} →
+            Board the train →
           </button>
         </footer>
       </div>
@@ -265,6 +230,7 @@ function BoardingCard() {
 function JourneyDock() {
   useHeartbeat(true)
   const line = useTrain((s) => s.line)
+  const seat = useTrain((s) => s.seat)
   const remaining = useTrain((s) => s.remainingSec)()
   const progress = useTrain((s) => s.progress)()
   const activeSec = useTrain((s) => s.activeFocusSec)
@@ -296,6 +262,10 @@ function JourneyDock() {
         </div>
       </div>
 
+      {seat == null && <SitPrompt />}
+
+      <AudioMuteToggle />
+
       {confirmLeave ? (
         <div className="train-dock-confirm">
           <span>Leave now? You'll forfeit this journey's reward.</span>
@@ -323,16 +293,136 @@ function JourneyDock() {
   )
 }
 
+/** Shown while the player is standing in the aisle — tells them how to sit. */
+function SitPrompt() {
+  return (
+    <div className="train-sit-prompt">
+      <span>Walk to a seat and press <kbd>E</kbd> to sit down</span>
+    </div>
+  )
+}
+
+/* --------------------------------------------------------------- milestones */
+
+// The progress checkpoints that earn an encouraging pop mid-journey (spec 1.7).
+// Ascending order matters: when several are crossed in one tick (e.g. an offline
+// catch-up), the loop lands on the highest reached.
+const MILESTONES: { at: number; msg: string }[] = [
+  { at: 0.25, msg: '25% there — nice focus!' },
+  { at: 0.5, msg: 'Halfway! Keep going!' },
+  { at: 0.75, msg: '75% — almost at the destination!' },
+  { at: 0.9, msg: 'Final stretch — nearly there!' },
+]
+
+/**
+ * A transient encouragement that pops as the journey passes 25/50/75/90%. It
+ * derives purely from the live progress selector, fires each milestone at most
+ * once per journey (keyed to startedAt so a fresh boarding re-arms them), and
+ * self-dismisses. No store/persistence changes — the journey state machine and
+ * its offline-resume logic stay untouched.
+ */
+function MilestoneToast() {
+  useHeartbeat(true)
+  const line = useTrain((s) => s.line)
+  const startedAt = useTrain((s) => s.startedAt)
+  const progress = useTrain((s) => s.progress)()
+
+  const firedRef = useRef<Set<number>>(new Set())
+  const journeyRef = useRef<number | null>(null)
+  const hideRef = useRef<number | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  // Re-arm all milestones whenever a new journey begins.
+  if (journeyRef.current !== startedAt) {
+    journeyRef.current = startedAt
+    firedRef.current = new Set()
+  }
+
+  useEffect(() => {
+    if (!line || startedAt == null) return
+    let next: string | null = null
+    for (const m of MILESTONES) {
+      if (progress >= m.at && !firedRef.current.has(m.at)) {
+        firedRef.current.add(m.at)
+        next = m.msg
+      }
+    }
+    if (next) {
+      setToast(next)
+      milestoneChime()
+      if (hideRef.current) window.clearTimeout(hideRef.current)
+      // Matches the train-milestone-life animation length below.
+      hideRef.current = window.setTimeout(() => setToast(null), 3600)
+    }
+  }, [progress, line, startedAt])
+
+  useEffect(() => () => void (hideRef.current && window.clearTimeout(hideRef.current)), [])
+
+  if (!toast || !line) return null
+  return (
+    <div className="train-milestone" style={accentVars(line.mood.glow, line.mood.accent)} role="status" aria-live="polite">
+      <span className="train-milestone-spark">✦</span>
+      <span className="train-milestone-msg">{toast}</span>
+    </div>
+  )
+}
+
+// A soft two-note rising chime as a milestone lands. Self-contained WebAudio so
+// it has no dependency on the realm's audio module; silently no-ops if autoplay
+// is blocked. Set CHIME to false to mute.
+const CHIME = true
+let chimeCtx: AudioContext | null = null
+function milestoneChime() {
+  if (!CHIME) return
+  try {
+    const AC =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AC) return
+    if (!chimeCtx) chimeCtx = new AC()
+    const ctx = chimeCtx
+    if (ctx.state === 'suspended') void ctx.resume()
+    const t0 = ctx.currentTime
+    const bus = ctx.createGain()
+    bus.gain.value = 0.06
+    bus.connect(ctx.destination)
+    // two-note "ding-dong" up a perfect fifth (E5 → B5)
+    ;[
+      [659.25, 0],
+      [987.77, 0.12],
+    ].forEach(([freq, at]) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'sine'
+      o.frequency.value = freq
+      g.gain.value = 0
+      o.connect(g).connect(bus)
+      const s = t0 + at
+      g.gain.linearRampToValueAtTime(1, s + 0.01)
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.5)
+      o.start(s)
+      o.stop(s + 0.55)
+    })
+  } catch {
+    /* autoplay blocked or WebAudio unavailable — milestone shows silently */
+  }
+}
+
 /* ------------------------------------------------------------------ arrived */
 
 /** The arrival/reward screen — the celebratory payoff for completing a journey. */
 function ArrivalScreen() {
   const arrived = useTrain((s) => s.arrived)
   const [show, setShow] = useState(false)
+  const [showRewards, setShowRewards] = useState(false)
   useEffect(() => {
     const id = window.setTimeout(() => setShow(true), 60)
     return () => window.clearTimeout(id)
   }, [])
+  useEffect(() => {
+    if (!show) return
+    const id = window.setTimeout(() => setShowRewards(true), 2200)
+    return () => window.clearTimeout(id)
+  }, [show])
   if (!arrived) return null
   const { line, reward, activeFocusSec } = arrived
 
@@ -341,38 +431,44 @@ function ArrivalScreen() {
       <div className={`train-arrive water-glass ${show ? 'in' : ''}`} style={accentVars(line.mood.glow, line.mood.accent)}>
         <div className="train-arrive-glow" />
         <span className="sf-pill train-arrive-kind">Journey complete</span>
-        <h1 className="train-arrive-dest">Arrived at {line.destination}</h1>
+        <h1 className="train-arrive-dest">
+          {showRewards ? `Arrived at ${line.destination}` : `Welcome to ${line.destination}`}
+        </h1>
         <p className="train-arrive-sub">
           {line.route} · {durationLabel(line.minutes)} · focused {fmtHuman(activeFocusSec)}
         </p>
 
-        <div className="train-arrive-rewards">
-          <Reward glyph="✦" value={`+${reward.xp}`} label="XP" delay={0} />
-          <Reward glyph="🪙" value={`+${reward.coins}`} label="Coins" delay={90} />
-          <Reward glyph="🎟" value={`+${reward.tickets}`} label="Tickets" delay={180} />
-          <Reward glyph="🧭" value={`${reward.distanceKm} km`} label="Travelled" delay={270} />
-        </div>
+        {showRewards && (
+          <>
+            <div className="train-arrive-rewards">
+              <Reward glyph="✦" value={`+${reward.xp}`} label="XP" delay={0} />
+              <Reward glyph="🪙" value={`+${reward.coins}`} label="Coins" delay={90} />
+              <Reward glyph="🎟" value={`+${reward.tickets}`} label="Tickets" delay={180} />
+              <Reward glyph="🧭" value={`${reward.distanceKm} km`} label="Travelled" delay={270} />
+            </div>
 
-        {reward.achievements.length > 0 && (
-          <div className="train-arrive-ach">
-            <span className="train-arrive-ach-head">Unlocked</span>
-            <ul>
-              {reward.achievements.map((a) => (
-                <li key={a.id}>
-                  <span className="train-ach-i">{achGlyph(a.icon)}</span>
-                  <span className="train-ach-t">
-                    <strong>{a.title}</strong>
-                    <em>{a.detail}</em>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {reward.achievements.length > 0 && (
+              <div className="train-arrive-ach">
+                <span className="train-arrive-ach-head">Unlocked</span>
+                <ul>
+                  {reward.achievements.map((a) => (
+                    <li key={a.id}>
+                      <span className="train-ach-i">{achGlyph(a.icon)}</span>
+                      <span className="train-ach-t">
+                        <strong>{a.title}</strong>
+                        <em>{a.detail}</em>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <button className="sf-btn water train-arrive-cta" onClick={() => useTrain.getState().dismissReward()}>
+              Back to the station →
+            </button>
+          </>
         )}
-
-        <button className="sf-btn water train-arrive-cta" onClick={() => useTrain.getState().dismissReward()}>
-          Back to the station →
-        </button>
       </div>
     </div>
   )
@@ -402,6 +498,22 @@ function Reward({ glyph, value, label, delay }: { glyph: string; value: string; 
 
 /* -------------------------------------------------------------------- utils */
 
+/** Tiny mute toggle — audio was intentionally removed from Settings per project
+ *  history, so the control lives in-realm. */
+function AudioMuteToggle() {
+  const [muted, setMutedState] = useState(isMuted())
+  const onClick = () => {
+    const next = !muted
+    setMutedState(next)
+    setMuted(next)
+  }
+  return (
+    <button className="train-audio-mute" onClick={onClick} title={muted ? 'Unmute' : 'Mute'} aria-label={muted ? 'Unmute' : 'Mute'}>
+      {muted ? '🔇' : '🔊'}
+    </button>
+  )
+}
+
 /** CSS custom properties so each line tints its own card/prompt warmly. */
 function accentVars(glow: string, accent: string): React.CSSProperties {
   return { ['--train-glow' as string]: glow, ['--train-accent' as string]: accent }
@@ -421,21 +533,6 @@ function durationLabel(minutes: number): string {
   if (minutes < 60) return `${minutes} min`
   const h = minutes / 60
   return `${Number.isInteger(h) ? h : h.toFixed(1)} hr`
-}
-
-/** Seat grid rows, front of train first (row 5 → row 1). Each seat gets a code
- *  like "5L"/"5R" whose index maps straight into the carriage's SEATS array. */
-function seatRows(): { r: number; label: string; seats: { index: number; code: string }[] }[] {
-  const rows: { r: number; label: string; seats: { index: number; code: string }[] }[] = []
-  for (let r = ROWS - 1; r >= 0; r--) {
-    const seats: { index: number; code: string }[] = []
-    for (let c = 0; c < COLS; c++) {
-      const index = r * COLS + c
-      seats.push({ index, code: `${r + 1}${c === 0 ? 'L' : 'R'}` })
-    }
-    rows.push({ r, label: r === ROWS - 1 ? 'Front' : `Row ${r + 1}`, seats })
-  }
-  return rows
 }
 
 const ACH_GLYPHS: Record<string, string> = {

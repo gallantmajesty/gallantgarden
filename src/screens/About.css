@@ -78,3 +78,23 @@
 .about__footer { text-align: center; padding-top: 8px; }
 .about__tag { font-family: var(--display); font-weight: 800; font-size: clamp(18px, 3vw, 24px); color: #fbf2e2; margin: 10px 0 18px; text-shadow: 0 2px 12px rgba(230,178,110,0.4); }
 .about__cta { padding: 13px 30px; font-size: 16px; }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .about { padding: 24px 14px 48px; }
+  .about__close { width: 36px; height: 36px; font-size: 14px; }
+  .about h2 { font-size: 22px; }
+  .about p { font-size: 15px; line-height: 1.6; }
+  .about__hero h1 { font-size: 30px; }
+  .about__lily { font-size: 44px; }
+  .about__belief { font-size: 16px; }
+  .about__belief b { font-size: 18px; }
+  .about__features { grid-template-columns: 1fr; gap: 12px; }
+  .about__feature { padding: 18px; }
+  .about__feature-icon { width: 46px; height: 46px; border-radius: 12px; font-size: 22px; }
+  .about__feature h3 { font-size: 16px; }
+  .about__feature p { font-size: 13px; }
+  .about__vision li { font-size: 14px; gap: 10px; }
+  .about__tag { font-size: 18px; }
+  .about__cta { padding: 11px 24px; font-size: 14px; }
+}

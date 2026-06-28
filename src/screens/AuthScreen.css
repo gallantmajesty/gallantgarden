@@ -165,3 +165,17 @@
 .auth-email-toggle + .auth-tabs {
   margin-top: 16px;
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .auth-root { padding: 16px; }
+  .auth-card { padding: 24px 20px 28px; border-radius: 20px; }
+  .auth-crest { width: 68px; height: 68px; margin-top: -50px; }
+  .auth-crest-glyph { width: 48px; height: 48px; }
+  .auth-title { font-size: 28px; }
+  .auth-sub { font-size: 13px; margin: 4px 0 14px; }
+  .auth-tab { font-size: 13px; padding: 7px; }
+  .auth-form { gap: 10px; }
+  .auth-submit { font-size: 16px; padding: 12px; }
+  .auth-oauth-btn { font-size: 13px; padding: 10px 12px; }
+}

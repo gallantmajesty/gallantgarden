@@ -1,11 +1,13 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import type { ScenePreset } from '../../store/settings'
 import { MovingWorld } from './MovingWorld'
 import { CarriageInterior } from './CarriageInterior'
 import { InteriorController } from './InteriorController'
+import { TrainInteriorAudio } from './TrainInteriorAudio'
 import { RemotePlayers } from '../library/RemotePlayers'
 import { useTrain } from '../../store/train'
 import { TRAIN_LINES } from '../../lib/train/lines'
+import { resetSeatMap } from './interior'
 
 // The journey world: what you see once you've boarded and the train is rolling.
 // Mounted by TrainStationScene whenever the player is aboard (phase traveling or
@@ -25,6 +27,9 @@ export function TrainRide({ preset }: { preset: ScenePreset }) {
   const moving = phase === 'traveling'
   void preset // reserved: per-quality scenery density tuning lands with LOD pass
 
+  // clear seat occupancy on a fresh ride
+  useEffect(() => { resetSeatMap() }, [])
+
   return (
     <>
       <Suspense fallback={null}>
@@ -36,6 +41,7 @@ export function TrainRide({ preset }: { preset: ScenePreset }) {
       </Suspense>
 
       <InteriorController />
+      <TrainInteriorAudio />
     </>
   )
 }

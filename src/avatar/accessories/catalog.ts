@@ -47,7 +47,7 @@ export const ACCESSORIES: AccessoryItem[] = [
   acc('sg_luxury', 'Luxury Shades',       'sunglasses', 'legendary',520, 'Gem-set gold luxury.',            'glasses', { shape: 'oversized',frame: '#e8c049', lensTint: '#241a10', lensOpacity: 0.85, gem: true }),
   acc('sg_over',   'Oversized Sunglasses','sunglasses', 'rare',     200, 'Big bold statement frames.',      'glasses', { shape: 'oversized',frame: '#1a1a1a', lensTint: '#15131a', lensOpacity: 0.85 }),
 
-  // ── Hats & Headwear (15) ───────────────────────────────────────────────────
+  // ── Hats & Headwear (16) ───────────────────────────────────────────────────
   acc('hat_cap',    'Baseball Cap',  'headwear', 'common',    50,  'Comfy curved-brim cap.',         'hatBrim', { crown: 'cap',    color: '#3a6ea5', accent: '#dfe7ef' }),
   acc('hat_beanie', 'Beanie',        'headwear', 'common',    50,  'Warm knitted beanie.',           'hatSoft', { color: '#9a6a52', cuff: '#7d5340' }),
   acc('hat_bucket', 'Bucket Hat',    'headwear', 'uncommon',  90,  'Casual all-round brim.',         'hatBrim', { crown: 'bucket', color: '#7a8a5a' }),
@@ -63,6 +63,8 @@ export const ACCESSORIES: AccessoryItem[] = [
   acc('hat_cat',    'Cat Ears',      'headwear', 'uncommon',  110, 'Perky little cat ears.',         'ears',    { kind: 'cat',     color: '#3a3340', inner: '#ff9ec2' }),
   acc('hat_viking', 'Viking Helmet', 'headwear', 'epic',      380, 'Horned iron helm.',              'pointHat',{ kind: 'viking',  color: '#9aa3ad', horn: '#efe6d2' }),
   acc('hat_pirate', 'Pirate Hat',    'headwear', 'rare',      230, 'Captain of the study seas.',     'hatBrim', { crown: 'pirate', color: '#1a1a1f', accent: '#e8c049' }),
+  // NEW: Leaf Crown
+  acc('hat_leaf',   'Leaf Crown',    'headwear', 'epic',      400, 'A wild crown of woven leaves & gold berries.', 'crown', { kind: 'flowers', petal: '#3d8a48', leaf: '#2d7a3a' }),
 
   // ── Face Accessories (10) ──────────────────────────────────────────────────
   acc('face_mustache','Fake Mustache','face', 'common',   40,  'A jaunty curled mustache.',     'facialHair',{ style: 'mustache',  color: '#3a2a1a' }),
@@ -88,7 +90,7 @@ export const ACCESSORIES: AccessoryItem[] = [
   acc('neck_band',     'Headphone Neckband', 'neck', 'uncommon',  110, 'Headphones resting at rest.', 'neckwear', { style: 'neckband', color: '#2b2b33' }),
   acc('neck_lanyard',  'VIP Lanyard',        'neck', 'uncommon',  90,  'An all-access study pass.',   'neckwear', { style: 'lanyard',  color: '#c5402f', card: '#e8c049' }),
 
-  // ── Back Accessories (10) ──────────────────────────────────────────────────
+  // ── Back Accessories (13) ──────────────────────────────────────────────────
   acc('back_angel',   'Angel Wings',    'back', 'epic',      440, 'Soft feathered wings.',          'wings',   { preset: 'angel',     color: '#fbfbf6' }),
   acc('back_demon',   'Demon Wings',    'back', 'epic',      440, 'Leathery shadow wings.',         'wings',   { preset: 'demon',     color: '#3a1320', membrane: '#7a1e34' }),
   acc('back_fly',     'Butterfly Wings','back', 'rare',      240, 'Iridescent butterfly wings.',    'wings',   { preset: 'butterfly', color: '#8ab4ff', accent: '#ff9ec2' }),
@@ -99,18 +101,30 @@ export const ACCESSORIES: AccessoryItem[] = [
   acc('back_jetpack', 'Jetpack',        'back', 'epic',      400, 'Zip between study sessions.',     'backProp',{ kind: 'jetpack',     color: '#9aa3ad', flame: '#ff8a3a' }),
   acc('back_books',   'Floating Books', 'back', 'mythic',    900, 'Tomes that orbit you, gently.',  'backProp',{ kind: 'books',       color: '#6a4f8a', emissive: '#b6a8ff' }),
   acc('back_aura',    'Magic Aura',     'back', 'mythic',    950, 'A radiant ring of study magic.', 'backProp',{ kind: 'aura',        color: '#9a8cff', emissive: '#b6a8ff' }),
+  // NEW: Trail Effects
+  acc('back_spark_trail', 'Spark Trail',  'back', 'legendary', 700, 'Blue diamond sparks trail behind your steps.', 'backProp', { kind: 'aura', color: '#22d3ee', emissive: '#7df9ff' }),
+  acc('back_footprints',  'Footprint Trail','back', 'epic',      450, 'Colorful footprints mark your path.',           'backProp', { kind: 'aura', color: '#4ade80', emissive: '#4ade80' }),
+  acc('back_lightning',   'Lightning Steps','back', 'legendary', 720, 'Rainbow lightning bolts crackle with each step.', 'backProp', { kind: 'aura', color: '#f97316', emissive: '#e879f9' }),
 
-  // ── Handheld Items (10) — held in the right hand, in front of the body ──────
-  acc('hand_book',   'Book',        'handheld', 'common',   40,  'A well-loved hardcover.',        'handheld', { kind: 'book',   color: '#6a4f8a' }),
-  acc('hand_coffee', 'Coffee Cup',  'handheld', 'common',   40,  'Warm focus fuel.',               'handheld', { kind: 'coffee', color: '#e8e2d6', sleeve: '#9a6a52' }),
-  acc('hand_pencil', 'Pencil',      'handheld', 'common',   30,  'A trusty yellow pencil.',        'handheld', { kind: 'pencil', color: '#e8c049' }),
-  acc('hand_laptop', 'Laptop',      'handheld', 'uncommon', 110, 'Lightweight study laptop.',      'handheld', { kind: 'laptop', color: '#9aa3ad', screen: '#7df9ff' }),
-  acc('hand_wand',   'Magic Wand',  'handheld', 'rare',     220, 'A star-tipped wand.',            'handheld', { kind: 'wand',   color: '#3a2a4a', star: '#ffd36e' }),
-  acc('hand_lantern','Lantern',     'handheld', 'uncommon', 120, 'A warm guiding lantern.',        'handheld', { kind: 'lantern',color: '#caa24a', glow: '#ffcf6e' }),
-  acc('hand_rose',   'Rose',        'handheld', 'uncommon', 90,  'A single red rose.',             'handheld', { kind: 'rose',   color: '#c5402f', stem: '#3f7d52' }),
-  acc('hand_camera', 'Camera',      'handheld', 'uncommon', 120, 'Capture cozy moments.',          'handheld', { kind: 'camera', color: '#2b2b33', lens: '#7aa7ff' }),
-  acc('hand_tablet', 'Tablet',      'handheld', 'uncommon', 110, 'Notes at your fingertips.',      'handheld', { kind: 'tablet', color: '#1b1b22', screen: '#bfe3ff' }),
-  acc('hand_notes',  'Study Notes', 'handheld', 'common',   40,  'A flurry of revision notes.',    'handheld', { kind: 'notes',  color: '#f3ecdf', ink: '#324a6e' }),
+  // ── Handheld Items (17) — held in the right hand, in front of the body ──────
+  acc('hand_book',        'Book',             'handheld', 'common',    40,  'A well-loved hardcover.',              'handheld', { kind: 'book',   color: '#6a4f8a' }),
+  acc('hand_coffee',      'Coffee Cup',       'handheld', 'common',    40,  'Warm focus fuel.',                     'handheld', { kind: 'coffee', color: '#e8e2d6', sleeve: '#9a6a52' }),
+  acc('hand_pencil',      'Pencil',           'handheld', 'common',    30,  'A trusty yellow pencil.',              'handheld', { kind: 'pencil', color: '#e8c049' }),
+  acc('hand_laptop',      'Laptop',           'handheld', 'uncommon', 110, 'Lightweight study laptop.',            'handheld', { kind: 'laptop', color: '#9aa3ad', screen: '#7df9ff' }),
+  acc('hand_wand',        'Magic Wand',       'handheld', 'rare',     220, 'A star-tipped wand.',                  'handheld', { kind: 'wand',   color: '#3a2a4a', star: '#ffd36e' }),
+  acc('hand_lantern',     'Lantern',          'handheld', 'uncommon', 120, 'A warm guiding lantern.',              'handheld', { kind: 'lantern',color: '#caa24a', glow: '#ffcf6e' }),
+  acc('hand_rose',        'Rose',             'handheld', 'uncommon',  90,  'A single red rose.',                   'handheld', { kind: 'rose',   color: '#c5402f', stem: '#3f7d52' }),
+  acc('hand_camera',      'Camera',           'handheld', 'uncommon', 120, 'Capture cozy moments.',                'handheld', { kind: 'camera', color: '#2b2b33', lens: '#7aa7ff' }),
+  acc('hand_tablet',      'Tablet',           'handheld', 'uncommon', 110, 'Notes at your fingertips.',            'handheld', { kind: 'tablet', color: '#1b1b22', screen: '#bfe3ff' }),
+  acc('hand_notes',       'Study Notes',      'handheld', 'common',    40,  'A flurry of revision notes.',          'handheld', { kind: 'notes',  color: '#f3ecdf', ink: '#324a6e' }),
+  // NEW: Pen
+  acc('hand_pen',         'Fountain Pen',     'handheld', 'common',    45,  'A sleek blue fountain pen for notes.', 'handheld', { kind: 'pencil', color: '#1a5cb0' }),
+  // NEW: Character Wands
+  acc('hand_wand_elder',  'Elder Wand',       'handheld', 'legendary', 680, 'The wand of destiny — elderberry wood, thestral core.', 'handheld', { kind: 'wand', color: '#3a2a18', star: '#ffffff', emissive: '#ccccdd' }),
+  acc('hand_wand_vine',   'Vine Wand',        'handheld', 'epic',      380, 'Vine wood with dragon heartstring — precise & clever.', 'handheld', { kind: 'wand', color: '#d4b888', star: '#66aaff', emissive: '#2266ff' }),
+  acc('hand_wand_holly',  'Holly Wand',       'handheld', 'epic',      360, 'Holly with phoenix feather — loyal & brave.',        'handheld', { kind: 'wand', color: '#c8a060', star: '#ffcc66', emissive: '#ff8800' }),
+  acc('hand_wand_dark',   'Devil Stick',      'handheld', 'epic',      420, 'Twisted darkwood topped with a flaming skull.',        'handheld', { kind: 'wand', color: '#1a0a0a', star: '#ff2200', emissive: '#ff1100' }),
+  acc('hand_wand_fairy',  'Fairy Star Wand',  'handheld', 'rare',      280, 'Elegant white wand crowned with a glowing star.',        'handheld', { kind: 'wand', color: '#f5e6d0', star: '#ffee44', emissive: '#ffaa00' }),
 ]
 
 const _byId = new Map<string, AccessoryItem>(ACCESSORIES.map((a) => [a.id, a]))

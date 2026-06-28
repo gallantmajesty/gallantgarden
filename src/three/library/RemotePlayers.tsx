@@ -1,6 +1,6 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Group, MathUtils, Vector3 } from 'three'
+import { Group, MathUtils, type Object3D, Vector3 } from 'three'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
 import type { AvatarConfig } from '../../avatar/config'
@@ -13,23 +13,81 @@ import { getTarget, useRealmNet } from '../../multiplayer/net'
 // snapshot — so 40–50 bodies move smoothly without re-rendering React each frame.
 //
 // LOD TIERS (avatar cost is the #1 FPS bottleneck with many players):
-//   < LOD_FAR  → 'near'  full bone updates every frame
-//   < LOD_CULL → 'far'   update every 3rd frame (AvatarAnimator stride logic)
-//   >= LOD_CULL → 'cull'  no animation updates — body frozen in last pose
+//   < LOD_FAR  → 'near'  full bone updates every frame + casts a shadow
+//   < LOD_CULL → 'far'   update every 3rd frame, NO shadow (AvatarAnimator stride)
+//   >= LOD_CULL → 'cull'  no animation updates — body frozen in last pose, no shadow
+//
+// VISIBILITY CAP: beyond MAX_VISIBLE bodies, only the nearest MAX_VISIBLE are
+// rendered at all — the rest are hidden (group.visible=false) so they cost
+// nothing in the colour OR shadow pass. The nearest set is recomputed on a slow
+// throttle (RANK_INTERVAL) to keep React churn negligible in a busy room.
 // These thresholds are conservative; the animator already handles the math.
 
 const LOD_FAR  = 12   // metres — full detail inside this radius
 const LOD_CULL = 28   // metres — cull animation beyond this radius
 
+const MAX_VISIBLE   = 10   // render only the nearest N avatars
+const RANK_INTERVAL = 0.4  // seconds between nearest-set recomputes
+
 const _camPos  = new Vector3()
 const _avatarPos = new Vector3()
 
+/** True when both sets hold exactly the same ids. */
+function sameSet(a: Set<string>, b: Set<string>) {
+  if (a.size !== b.size) return false
+  for (const id of a) if (!b.has(id)) return false
+  return true
+}
+
 export function RemotePlayers() {
   const roster = useRealmNet((s) => s.roster)
+  const camera = useThree((s) => s.camera)
+  // The ids currently allowed to render (nearest MAX_VISIBLE). Updated by the
+  // throttled ranker below; mounting/unmounting still follows join/leave only.
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set(Object.keys(roster)))
+  const visibleRef = useRef(visibleIds)
+  const acc = useRef(0)
+
+  useFrame((_, dt) => {
+    acc.current += dt
+    if (acc.current < RANK_INTERVAL) return
+    acc.current = 0
+
+    const ids = Object.keys(useRealmNet.getState().roster)
+
+    // Cheap path: everyone fits under the cap — show all (only re-set on change).
+    if (ids.length <= MAX_VISIBLE) {
+      if (!sameSet(new Set(ids), visibleRef.current)) {
+        const next = new Set(ids)
+        visibleRef.current = next
+        setVisibleIds(next)
+      }
+      return
+    }
+
+    // Rank roster by squared camera distance and keep the nearest MAX_VISIBLE.
+    _camPos.copy(camera.position)
+    const ranked = ids
+      .map((id) => {
+        const t = getTarget(id)
+        const d = t ? _camPos.distanceToSquared(_avatarPos.set(t.x, t.y, t.z)) : Infinity
+        return [id, d] as const
+      })
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, MAX_VISIBLE)
+      .map(([id]) => id)
+
+    const next = new Set(ranked)
+    if (!sameSet(next, visibleRef.current)) {
+      visibleRef.current = next
+      setVisibleIds(next)
+    }
+  })
+
   return (
     <>
       {Object.values(roster).map((p) => (
-        <RemotePlayerAvatar key={p.id} id={p.id} config={p.avatar} />
+        <RemotePlayerAvatar key={p.id} id={p.id} config={p.avatar} visible={visibleIds.has(p.id)} />
       ))}
     </>
   )
@@ -40,7 +98,7 @@ export function RemotePlayers() {
 // feeling laggy. Higher = snappier but jerkier; lower = floatier.
 const CHASE = 12
 
-function RemotePlayerAvatar({ id, config }: { id: string; config: AvatarConfig }) {
+function RemotePlayerAvatar({ id, config, visible }: { id: string; config: AvatarConfig; visible: boolean }) {
   const group   = useRef<Group>(null)
   const camera  = useThree((s) => s.camera)
   // Locomotion fed to the shared avatar animator (same type the local player
@@ -50,10 +108,21 @@ function RemotePlayerAvatar({ id, config }: { id: string; config: AvatarConfig }
   const render  = useRef<{ x: number; y: number; z: number; yaw: number } | null>(null)
   // Current LOD tier — updated per-frame from camera distance.
   const lodRef  = useRef<Lod>('near')
+  // Last shadow state pushed onto the body, so we only traverse on a change.
+  const shadowsOn = useRef<boolean | null>(null)
 
   useFrame((_, dtRaw) => {
     const g = group.current
     if (!g) return
+
+    // Hidden by the visibility cap: drop out of every pass and skip all work.
+    if (!visible) {
+      if (g.visible) g.visible = false
+      lodRef.current = 'cull'
+      return
+    }
+    if (!g.visible) g.visible = true
+
     const t = getTarget(id)
     if (!t) return
     if (!render.current) {
@@ -85,6 +154,22 @@ function RemotePlayerAvatar({ id, config }: { id: string; config: AvatarConfig }
     _avatarPos.set(r.x, r.y, r.z)
     const dist = _camPos.distanceTo(_avatarPos)
     lodRef.current = dist < LOD_FAR ? 'near' : dist < LOD_CULL ? 'far' : 'cull'
+
+    // ---- Shadow LOD ---------------------------------------------------------
+    // Only 'near' bodies cast/receive shadows — skinned/multi-mesh avatars are
+    // the dominant shadow-pass cost. Toggle the whole body in one traversal,
+    // and only when the desired state actually flips.
+    const wantShadow = lodRef.current === 'near'
+    if (wantShadow !== shadowsOn.current) {
+      shadowsOn.current = wantShadow
+      g.traverse((o: Object3D) => {
+        const m = o as Object3D & { isMesh?: boolean; castShadow?: boolean; receiveShadow?: boolean }
+        if (m.isMesh) {
+          m.castShadow = wantShadow
+          m.receiveShadow = wantShadow
+        }
+      })
+    }
   })
 
   return (

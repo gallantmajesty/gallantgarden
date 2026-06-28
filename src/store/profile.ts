@@ -43,6 +43,12 @@ interface ProfileState {
   /** the intentionally-public profile blob */
   pub: ProfilePublic
 
+  // ---- progression (synced from DB, authoritative) ----
+  /** total leaves (regular XP) */
+  xp: number
+  /** total golden leaves (premium XP) */
+  premiumXp: number
+
   /** Load onboarding data for a user from the (already-fetched) profile cache. */
   hydrate: (userId: string) => Promise<void>
   /** Persist a completed onboarding document (jsonb + country/rank columns). */
@@ -55,6 +61,8 @@ interface ProfileState {
   savePublic: (patch: Partial<ProfilePublic>) => Promise<boolean>
   /** Set the uploaded profile-picture URL (or null to clear). */
   setAvatarUrl: (url: string | null) => Promise<boolean>
+  /** Refresh XP from DB (called after magnet sync). */
+  refreshXp: () => Promise<void>
   /** Reset to empty on sign-out. */
   reset: () => void
 }
@@ -68,6 +76,8 @@ export const useProfile = create<ProfileState>((set, get) => ({
   displayName: 'Explorer',
   avatarUrl: null,
   pub: { ...EMPTY_PROFILE_PUBLIC },
+  xp: 0,
+  premiumXp: 0,
 
   hydrate: async (userId) => {
     // runUserInit calls loadProfileSettings() before this, so the cache is
@@ -81,10 +91,12 @@ export const useProfile = create<ProfileState>((set, get) => ({
     let displayName = 'Explorer'
     let avatarUrl: string | null = null
     let pub = { ...EMPTY_PROFILE_PUBLIC }
+    let xp = 0
+    let premiumXp = 0
     try {
       const { data: row } = await insforge.database
         .from('profiles')
-        .select('username, display_name, avatar_url, public_profile')
+        .select('username, display_name, avatar_url, public_profile, xp, premium_xp')
         .eq('id', userId)
         .maybeSingle()
       if (row) {
@@ -93,12 +105,14 @@ export const useProfile = create<ProfileState>((set, get) => ({
         displayName = (r.display_name as string) || 'Explorer'
         avatarUrl = (r.avatar_url as string | null) ?? null
         pub = parseProfilePublic(r.public_profile)
+        xp = (r.xp as number) ?? 0
+        premiumXp = (r.premium_xp as number) ?? 0
       }
     } catch {
       /* offline / columns missing — fall back to empties */
     }
 
-    set({ userId, data, onboarded: data.completed, ready: true, username, displayName, avatarUrl, pub })
+    set({ userId, data, onboarded: data.completed, ready: true, username, displayName, avatarUrl, pub, xp, premiumXp })
   },
 
   complete: async (partial) => {
@@ -172,6 +186,22 @@ export const useProfile = create<ProfileState>((set, get) => ({
     return true
   },
 
+  refreshXp: async () => {
+    const userId = get().userId
+    if (!userId) return
+    try {
+      const { data: row } = await insforge.database
+        .from('profiles')
+        .select('xp, premium_xp')
+        .eq('id', userId)
+        .maybeSingle()
+      if (row) {
+        const r = row as Record<string, unknown>
+        set({ xp: (r.xp as number) ?? 0, premiumXp: (r.premium_xp as number) ?? 0 })
+      }
+    } catch { /* offline */ }
+  },
+
   reset: () =>
     set({
       userId: null,
@@ -182,5 +212,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       displayName: 'Explorer',
       avatarUrl: null,
       pub: { ...EMPTY_PROFILE_PUBLIC },
+      xp: 0,
+      premiumXp: 0,
     }),
 }))

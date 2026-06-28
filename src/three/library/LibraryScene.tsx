@@ -1,9 +1,10 @@
-import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Vignette, N8AO, DepthOfField, GodRays } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
+import { useSettings } from '../../store/settings'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -12,6 +13,9 @@ import { StudyTables } from './StudyTable'
 import { Decor } from './Decor'
 import { Lanterns } from './Lanterns'
 import { KnowledgeTree } from './KnowledgeTree'
+import { Fireflies } from './Fireflies'
+import { Aurora } from './Aurora'
+import { FloatingBooks } from './FloatingBooks'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
@@ -36,6 +40,14 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean 
 export function LibraryScene({ onReady }: { onReady?: () => void }) {
   // The merged quality budget (user's six axes + transient Ctrl+F perf override).
   const preset = useScenePreset()
+  // First-person only for the Ultra depth-of-field (blurring the avatar in
+  // third-person looks wrong).
+  const cameraMode = useSettings((s) => s.cameraMode)
+
+  // The sun disc mesh feeds the Ultra GodRays effect. It lives in DayNightWeather;
+  // we hold a ref to it here and only mount GodRays once the mesh exists.
+  const sunRef = useRef<Mesh | null>(null)
+  const [sunReady, setSunReady] = useState(false)
 
   // Runtime device-pixel-ratio. Starts at the quality ceiling and is auto-scaled
   // DOWN by the PerformanceMonitor below when the GPU can't keep up (and back up
@@ -45,11 +57,13 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   const [dpr, setDpr] = useState(preset.dpr)
   useEffect(() => setDpr(preset.dpr), [preset.dpr])
 
-  // DPR floor: the PerformanceMonitor is allowed to drop all the way to 0.6 when
-  // the GPU is struggling. The previous value (0.85) gave almost no headroom and
-  // prevented the governor from doing anything useful on weak integrated GPUs.
-  // 0.6 still renders recognisable avatars and furniture at typical screen sizes.
-  const dprFloor = 0.6
+  // DPR floor: the PerformanceMonitor may drop to this when the GPU struggles.
+  // Now that the per-frame cost is much lower (≈5 forward lights instead of ~13,
+  // dpr ceiling 1.5, far less overdraw), the governor rarely needs to shed pixels —
+  // so the floor is raised back to 0.85. This is the direct fix for the
+  // "sharp at first, then blurry a few seconds in" report: the scene stays crisp
+  // because it no longer collapses to a soft 0.6 under transient load.
+  const dprFloor = 0.85
 
   // Warm-up gate. The first few seconds after entering the realm are dominated
   // by one-time stalls (Suspense asset loads, shader/program compilation,
@@ -96,7 +110,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
 
       <SoftBoundary>
         <Suspense fallback={null}>
-          <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} />
+          <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
         </Suspense>
       </SoftBoundary>
@@ -112,21 +126,49 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       <Lanterns />
       <KnowledgeTree />
 
+      {/* Magical layer — all instanced/particle/shader, zero extra real lights and
+          zero full-screen passes. Gated by the same particle/detail budget so they
+          shed on low-end settings and Performance Mode. */}
+      {preset.particles && <Fireflies count={Math.round(18 + preset.dust)} />}
+      {preset.particles && <Aurora />}
+      {preset.lodBias < 1 && <FloatingBooks count={preset.lodBias < 0.5 ? 8 : 5} />}
+
       {preset.dust > 0 && (
-        <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={2.6} speed={0.16} color="#ffe6b0" opacity={0.5} />
+        // PERF: small, soft motes. Smaller size + lower opacity keeps the blended
+        // overdraw down (these sprites span the whole hall volume); the count is
+        // already capped at 24 in scenePreset().
+        <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.8} speed={0.14} color="#ffe6b0" opacity={0.4} />
       )}
 
       <PlayerController />
       <RemotePlayers />
       <PerfLogger />
 
-      {preset.bloom && (
-        // multisampling 0 disables the composer's expensive MSAA pass; the small
-        // mipmap bloom kernel keeps the lantern/window glow at a fraction of the
-        // cost of the previous full-resolution bloom.
+      {/* Standard post tier (default): cheap mipmap bloom + vignette. multisampling
+          0 disables the composer's expensive MSAA pass. */}
+      {preset.bloom && !preset.ultra && (
         <EffectComposer enableNormalPass={false} multisampling={0}>
           <Bloom luminanceThreshold={0.75} luminanceSmoothing={0.3} intensity={0.5} kernelSize={KernelSize.SMALL} mipmapBlur />
           <Vignette eskil={false} offset={0.14} darkness={0.85} />
+        </EffectComposer>
+      )}
+
+      {/* Ultra post tier (opt-in, off by default): adds N8 ambient occlusion for
+          corner depth, god-ray shafts from the sun, and (first-person only) a
+          shallow depth-of-field. Heavier full-screen passes — for strong GPUs that
+          accept lower FPS. Bloom + vignette stay. The effects are assembled as a
+          filtered array because EffectComposer's children type rejects `false`. */}
+      {preset.ultra && (
+        <EffectComposer enableNormalPass={false} multisampling={2}>
+          {[
+            <N8AO key="ao" aoRadius={1.4} distanceFalloff={1} intensity={2.2} quality="medium" halfRes />,
+            <Bloom key="bloom" luminanceThreshold={0.7} luminanceSmoothing={0.3} intensity={0.6} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
+            sunReady ? (
+              <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={60} density={0.92} decay={0.92} weight={0.4} exposure={0.5} clampMax={1} blur />
+            ) : null,
+            cameraMode === 'first' ? <DepthOfField key="dof" focusDistance={0.012} focalLength={0.04} bokehScale={3} /> : null,
+            <Vignette key="vig" eskil={false} offset={0.14} darkness={0.85} />,
+          ].filter(Boolean) as ReactElement[]}
         </EffectComposer>
       )}
     </Canvas>

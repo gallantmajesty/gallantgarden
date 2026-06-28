@@ -166,3 +166,16 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   animation: floaty 5s ease-in-out infinite;
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .back-btn { top: 12px; left: 12px; font-size: 14px; padding: 8px 12px; }
+  .sticky-entry-stage { padding: 60px 16px 30px; gap: 24px; }
+  .sticky-entry-head h1 { font-size: 28px; margin: 6px 0 2px; }
+  .sticky-entry-head p { font-size: 14px; }
+  .sticky-choices { flex-direction: column; gap: 16px; }
+  .sticky-choice { width: 100%; max-width: 100%; padding: 18px; }
+  .choice-art { height: 100px; }
+  .sticky-choice h2 { font-size: 20px; }
+  .sticky-choice p { font-size: 13px; }
+}

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useWebTheme } from '../../store/webTheme'
 import {
   FONT_COLOR_PRESETS,
@@ -7,13 +8,8 @@ import {
 } from '../../lib/webThemes'
 import './WebCustomization.css'
 
-/**
- * Web Customization content — the theme / background / accent / font-colour
- * controls, all in one view. Rendered inside the main Settings drawer (the
- * "Theme" tab), not as its own panel. Everything applies live: the store is the
- * source of truth and <App> re-applies the theme vars + background on change.
- */
 export function WebCustomizationContent() {
+  const { t } = useTranslation()
   const themeId = useWebTheme((s) => s.themeId)
   const bgId = useWebTheme((s) => s.bgId)
   const accent = useWebTheme((s) => s.accent)
@@ -27,9 +23,8 @@ export function WebCustomizationContent() {
 
   return (
     <div className="wc">
-      {/* ----------------------------------------------------- Theme */}
       <section className="wc-section">
-        <h3 className="wc-h3">Theme</h3>
+        <h3 className="wc-h3">{t('webCustomization.theme')}</h3>
         <div className="wc-theme-grid">
           {WEB_THEMES.map((t) => (
             <button
@@ -47,14 +42,14 @@ export function WebCustomizationContent() {
               {t.id === themeId && <span className="wc-tick">✓</span>}
             </button>
           ))}
-          {WEB_THEMES_SOON.map((t) => (
-            <div key={t.id} className="wc-theme-card soon" aria-disabled>
+          {WEB_THEMES_SOON.map((wt) => (
+            <div key={wt.id} className="wc-theme-card soon" aria-disabled>
               <span className="wc-theme-veil" />
               <span className="wc-theme-meta">
-                <span className="wc-theme-emoji">{t.emoji}</span>
-                <span className="wc-theme-name">{t.name}</span>
+                <span className="wc-theme-emoji">{wt.emoji}</span>
+                <span className="wc-theme-name">{wt.name}</span>
               </span>
-              <span className="wc-soon-tag">Soon</span>
+              <span className="wc-soon-tag">{t('common.soon')}</span>
             </div>
           ))}
         </div>
@@ -63,9 +58,8 @@ export function WebCustomizationContent() {
         </p>
       </section>
 
-      {/* ------------------------------------------------ Background */}
       <section className="wc-section">
-        <h3 className="wc-h3">Background</h3>
+        <h3 className="wc-h3">{t('webCustomization.background')}</h3>
         <div className="wc-bg-grid">
           {theme.backgrounds.map((b) => (
             <button
@@ -82,13 +76,12 @@ export function WebCustomizationContent() {
           ))}
         </div>
         {theme.backgrounds.length === 1 && (
-          <p className="wc-note">More {theme.name} backgrounds are on the way.</p>
+          <p className="wc-note">{t('webCustomization.moreBackgrounds', { theme: theme.name })}</p>
         )}
       </section>
 
-      {/* ---------------------------------------------------- Accent */}
       <section className="wc-section">
-        <h3 className="wc-h3">Accent</h3>
+        <h3 className="wc-h3">{t('webCustomization.accent')}</h3>
         <div className="wc-accents">
           {theme.accents.map((hex) => (
             <button
@@ -96,10 +89,10 @@ export function WebCustomizationContent() {
               className={`wc-swatch ${accent === hex ? 'on' : ''}`}
               style={{ background: hex }}
               onClick={() => setAccent(hex)}
-              aria-label={`Accent ${hex}`}
+              aria-label={t('webCustomization.accentColor', { hex })}
             />
           ))}
-          <label className="wc-swatch wc-swatch-custom" title="Custom colour">
+          <label className="wc-swatch wc-swatch-custom" title={t('webCustomization.customColour')}>
             <input
               type="color"
               value={accent || theme.palette.accent}
@@ -110,23 +103,22 @@ export function WebCustomizationContent() {
         </div>
         {accent && (
           <button className="wc-reset" onClick={() => setAccent(null)}>
-            Reset to theme default
+            {t('webCustomization.resetToDefault')}
           </button>
         )}
       </section>
 
-      {/* ------------------------------------------------ Font colour */}
       <section className="wc-section">
-        <h3 className="wc-h3">Font colour</h3>
+        <h3 className="wc-h3">{t('webCustomization.fontColour')}</h3>
         <p className="wc-note" style={{ margin: '0 0 10px' }}>
-          Override the text colour so it stays readable on any background.
+          {t('webCustomization.fontColourDescription')}
         </p>
         <div className="wc-accents">
           <button
             className={`wc-swatch wc-swatch-auto ${fontColor === null ? 'on' : ''}`}
             onClick={() => setFontColor(null)}
-            title="Auto (match theme)"
-            aria-label="Auto font colour"
+            title={t('webCustomization.autoMatchTheme')}
+            aria-label={t('webCustomization.autoFontColour')}
           >
             <span className="wc-auto-label">A</span>
           </button>
@@ -136,11 +128,11 @@ export function WebCustomizationContent() {
               className={`wc-swatch ${fontColor === c.hex ? 'on' : ''}`}
               style={{ background: c.hex }}
               onClick={() => setFontColor(c.hex)}
-              aria-label={`Font colour ${c.label}`}
+              aria-label={t('webCustomization.fontColourLabel', { label: c.label })}
               title={c.label}
             />
           ))}
-          <label className="wc-swatch wc-swatch-custom" title="Custom font colour">
+          <label className="wc-swatch wc-swatch-custom" title={t('webCustomization.customFontColour')}>
             <input
               type="color"
               value={fontColor || '#ffffff'}
@@ -152,8 +144,7 @@ export function WebCustomizationContent() {
       </section>
 
       <p className="wc-foot">
-        Your theme follows you across the lobby and stays put while you open panels — only stepping
-        into a different world (Realm Library, Study Magnet…) changes the scene.
+        {t('webCustomization.footNote')}
       </p>
     </div>
   )

@@ -42,24 +42,50 @@ export function Realm() {
 function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
   return (
     <>
-      <header className="realm-head">
+      <div className="realm-topright">
         <CharacterOrb />
+      </div>
+      <header className="realm-head">
         <span className="sf-pill">Realm</span>
         <h1>Choose your study world</h1>
         <p>Step into a shared public world or open a private realm of your own.</p>
       </header>
 
       <div className="realm-cards">
-        <button className="realm-card water-glass" onClick={() => onPick('global')}>
+        <button
+          className="realm-card water-glass"
+          onClick={() => onPick('global')}
+          onMouseMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
           <div className="realm-card-orb">
             <PngIcon name="realm" size={72} alt="Global Realm" />
           </div>
-          <h2>🌐 Global Realm</h2>
+          <h2>Global Realm</h2>
           <p>Join a shared study hall — Library halls or Train Station platforms alongside others.</p>
           <span className="realm-card-cta">Enter the realm ›</span>
         </button>
 
-        <button className="realm-card water-glass" onClick={() => onPick('custom')}>
+        <button
+          className="realm-card water-glass"
+          onClick={() => onPick('custom')}
+          onMouseMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
           <div className="realm-card-orb">
             <PngIcon name="realm" size={72} alt="Custom Realm" />
           </div>
@@ -84,7 +110,19 @@ function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
       </header>
 
       <div className="realm-cards">
-        <button className="realm-card water-glass" onClick={() => onPick('library')}>
+        <button
+          className="realm-card water-glass"
+          onClick={() => onPick('library')}
+          onMouseMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
           <div className="realm-card-orb">
             <PngIcon name="study-rooms" size={72} alt="Library" />
           </div>
@@ -93,7 +131,19 @@ function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <span className="realm-card-cta">Enter the library ›</span>
         </button>
 
-        <button className="realm-card water-glass" onClick={() => onPick('train')}>
+        <button
+          className="realm-card water-glass"
+          onClick={() => onPick('train')}
+          onMouseMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
           <div className="realm-card-orb">
             <PngIcon name="realm" size={72} alt="Train Station" />
           </div>
@@ -115,7 +165,7 @@ function CharacterOrb() {
   const navigate = useNavigate()
   const config = useAvatar((s) => s.config)
   return (
-    <div className="realm-avatar">
+    <button className="realm-avatar" onClick={() => navigate('/avatar')} title="Customize character">
       <div className="realm-avatar-orb">
         <Canvas
           shadows={false}
@@ -133,13 +183,11 @@ function CharacterOrb() {
         </Canvas>
       </div>
       <div className="realm-avatar-meta">
-        <span className="realm-avatar-you">Your avatar</span>
-        <strong>Study companion</strong>
-        <button className="realm-avatar-change" onClick={() => navigate('/avatar')}>
-          Customize ›
-        </button>
+        <span className="realm-avatar-you">YOUR AVATAR</span>
+        <span className="realm-avatar-name">Study companion</span>
+        <span className="realm-avatar-change">Customize ›</span>
       </div>
-    </div>
+    </button>
   )
 }
 

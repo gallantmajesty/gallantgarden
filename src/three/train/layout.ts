@@ -20,13 +20,13 @@ export const FLOOR_Y = 0
 /** One platform + its track to the east form a repeating bay. Platforms are
  *  deliberately NARROW (an island platform you can cross in three strides) so the
  *  terminus reads intimate, not as a void — width is for crowds we don't have. */
-export const PLAT_W = 8 // platform walkable width (X) — roomy enough to stroll
-export const TRACK_W = 6 // track bed width (X)
-export const BAY_W = PLAT_W + TRACK_W // 11.5
+export const PLAT_W = 10 // platform walkable width (X)
+export const TRACK_W = 9 // track bed width (X) — wider for the bigger train
+export const BAY_W = PLAT_W + TRACK_W
 
 /** Platforms run from the concourse edge (z = 0) north to here. */
 export const PLAT_Z0 = 0
-export const PLAT_LEN = 82
+export const PLAT_LEN = 130 // longer platform for the bigger train rake
 export const PLAT_Z1 = PLAT_Z0 + PLAT_LEN
 
 /** Where a berthed train comes to rest (its southern, buffer end). The train
@@ -141,9 +141,10 @@ export const SPAWN = SPAWN_POINTS[0]
 
 export const EYE_HEIGHT = 1.62
 
-/** Outer playable extent (boundary blockers sit just outside). */
+/** Outer playable extent (boundary blockers sit just outside).
+ *  minX extends west to cover Platform 1 access. */
 export const PLAYER_BOUNDS = {
-  minX: CONCOURSE.minX + 1.2,
+  minX: -50,
   maxX: CONCOURSE.maxX - 1.2,
   minZ: CONCOURSE.z0 + 1.2,
   maxZ: PLAT_Z1 - 1.2,
@@ -284,3 +285,43 @@ export const CLOCK_TOWER = { pos: [0, 0, -38] as [number, number, number] }
 
 /** Ticket-hall counter run along the south wall, flanking the entrance. */
 export const TICKET_HALL = { z: -43, y: 0, booths: [-26, -19, 19, 26] }
+
+/** Vending machines along platform spines (each platform gets one). */
+export function vendingMachines(): { pos: [number, number, number]; yaw: number }[] {
+  return TRAIN_LINES.map((_, i) => {
+    const westX = platformWestX(i)
+    const eastX = westX + PLAT_W
+    // on the platform spine, just south of centre, facing the walkway
+    return { pos: [(westX + eastX) / 2, 0, PLAT_Z0 + 35], yaw: Math.PI / 2 }
+  })
+}
+
+/** Trash cans near benches / gathering spots on each platform. */
+export function platformTrashCans(): { pos: [number, number, number] }[] {
+  return TRAIN_LINES.map((_, i) => {
+    const westX = platformWestX(i)
+    const eastX = westX + PLAT_W
+    const cx = (westX + eastX) / 2
+    return { pos: [cx + 2.8, 0, PLAT_Z0 + 28] }
+  })
+}
+
+/** Platform railings: posts + top rail along the WEST edge of each platform
+ *  (between platforms). The east/track side has NO railing — the train body
+ *  serves as the barrier when berthed, and removing the railing lets players
+ *  walk up to the open doors for walk-through boarding. */
+export function platformRailings(): { pos: [number, number, number]; yaw: number; len: number }[] {
+  const out: { pos: [number, number, number]; yaw: number; len: number }[] = []
+  TRAIN_LINES.forEach((_, i) => {
+    const westX = platformWestX(i)
+    // west edge railing (between platforms, not on the first platform's west wall)
+    if (i > 0) {
+      const westSideX = westX - 0.4
+      for (let z = PLAT_Z0 + 4; z < PLAT_Z1; z += 4) {
+        out.push({ pos: [westSideX, 0.55, z], yaw: 0, len: 0 }) // post
+      }
+      out.push({ pos: [westSideX, 1.1, PLAT_Z0 + PLAT_LEN / 2], yaw: 0, len: PLAT_LEN })
+    }
+  })
+  return out
+}

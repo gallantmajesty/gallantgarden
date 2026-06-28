@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import type { Habit } from '../../../lib/magnet/types'
 import { dayKey, addDays } from '../../../lib/magnet/insights'
@@ -21,6 +22,7 @@ function habitStreak(history: string[], now: Date): number {
 }
 
 export function HabitsView() {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const addHabit = useMagnet((s) => s.addHabit)
   const deleteHabit = useMagnet((s) => s.deleteHabit)
@@ -54,11 +56,11 @@ export function HabitsView() {
     <div className="mg-view">
       <SectionHead
         icon="fire"
-        title="Habits"
-        subtitle="Small repeated actions — the quiet engine of every big change"
+        title={t('habits.title')}
+        subtitle={t('habits.subtitle')}
         action={
           <button className="mg-btn primary" onClick={() => setModalOpen(true)}>
-            <Icon name="plus" size={16} /> New habit
+            <Icon name="plus" size={16} />{t('habits.newHabit')}
           </button>
         }
       />
@@ -66,8 +68,8 @@ export function HabitsView() {
       {data.habits.length === 0 ? (
         <EmptyState
           icon="leaf"
-          title="Start one tiny ritual"
-          body="Pick something so small it feels easy. Consistency, not size, is what rewires you."
+          title={t('habits.emptyTitle')}
+          body={t('habits.emptyBody')}
         />
       ) : (
         <div className="mg-habitlist">
@@ -85,12 +87,12 @@ export function HabitsView() {
         </div>
       )}
 
-      <MgModal open={modalOpen} title="New habit" onClose={() => setModalOpen(false)}>
+      <MgModal open={modalOpen} title={t('habits.newHabitModal')} onClose={() => setModalOpen(false)}>
         <form className="mg-form" onSubmit={save}>
-          <Field label="Habit">
-            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Read 20 minutes" />
+          <Field label={t('habits.habitLabel')}>
+            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('habits.habitPlaceholder')} />
           </Field>
-          <Field label="Icon">
+          <Field label={t('common.icon')}>
             <div className="mg-iconpick">
               {HABIT_ICONS.map((ic) => (
                 <button
@@ -104,7 +106,7 @@ export function HabitsView() {
               ))}
             </div>
           </Field>
-          <Field label="Color">
+          <Field label={t('goals.colorLabel')}>
             <div className="mg-swatches">
               {HABIT_COLORS.map((c) => (
                 <button
@@ -146,6 +148,7 @@ function HabitRow({
   onToggleToday: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
   const set = useMemo(() => new Set(habit.history), [habit.history])
   const doneToday = set.has(today)
   return (
@@ -155,7 +158,7 @@ function HabitRow({
           <button
             className={`mg-habit-toggle ${doneToday ? 'done' : ''}`}
             onClick={onToggleToday}
-            aria-label="Toggle today"
+            aria-label={t('habits.toggleToday')}
           >
             <Icon name={doneToday ? 'check' : habit.icon} size={18} />
           </button>
@@ -175,7 +178,7 @@ function HabitRow({
             />
           ))}
         </div>
-        <button className="mg-iconbtn danger" onClick={onDelete} aria-label="Delete habit">
+        <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('habits.deleteHabit')}>
           <Icon name="trash" size={15} />
         </button>
       </div>

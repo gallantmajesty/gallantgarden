@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { MagnetView } from '../../../screens/TaskMagnet'
 import { useMagnet } from '../../../store/magnet'
 import { computeStats, computeStreak, generateInsights } from '../../../lib/magnet/insights'
@@ -23,6 +24,7 @@ function todayKey(now: Date): string {
 }
 
 export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: MagnetView) => void }) {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const addTask = useMagnet((s) => s.addTask)
   const toggleTask = useMagnet((s) => s.toggleTask)
@@ -74,7 +76,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
       <div className="mg-hero mg-panel pad">
         <div className="mg-hero-text">
           <span className="mg-hero-kicker">
-            <Icon name="sparkle" size={15} /> Your headquarters
+            <Icon name="sparkle" size={15} /> t('dashboard.headquarters')
           </span>
           <h1>
             {greeting(now)}, {name}.
@@ -88,9 +90,9 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
             <input
               value={quick}
               onChange={(e) => setQuick(e.target.value)}
-              placeholder="Capture a task for today…"
+              placeholder={t('dashboard.quickCapturePlaceholder')}
             />
-            <button type="submit" aria-label="Add">
+            <button type="submit" aria-label={t('common.add')}>
               <Icon name="plus" size={18} />
             </button>
           </form>
@@ -102,17 +104,17 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
 
       {/* today's pulse */}
       <div className="mg-statrow">
-        <StatCard icon="check" label="Done today" value={stats.completed} tone={AREA_META.academic.color} />
+        <StatCard icon="check" label={t('dashboard.doneToday')} value={stats.completed} tone={AREA_META.academic.color} />
         <StatCard
           icon="clock"
-          label="Focus today"
+          label={t('dashboard.focusToday')}
           value={stats.focusMinutes ? `${focusH}h ${focusM}m` : '—'}
           tone={AREA_META.health.color}
         />
-        <StatCard icon="fire" label="Day streak" value={streak} tone="#ff7a3d" />
+        <StatCard icon="fire" label={t('dashboard.dayStreak')} value={streak} tone="#ff7a3d" />
         <StatCard
           icon="trophy"
-          label="Achievements"
+          label={t('dashboard.achievements')}
           value={data.achievements.length}
           tone={AREA_META.career.color}
         />
@@ -123,14 +125,14 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
         <Panel className="mg-dash-agenda">
           <div className="mg-panel-head">
             <h3>
-              <Icon name="calendar" size={18} /> On today
+              <Icon name="calendar" size={18} /> t('dashboard.onToday')
             </h3>
             <button className="mg-link" onClick={() => onNavigate('tasks')}>
-              All tasks <Icon name="chevron" size={14} />
+              {t('dashboard.allTasks') + ' '}<Icon name="chevron" size={14} />
             </button>
           </div>
           {agenda.length === 0 ? (
-            <EmptyState icon="leaf" title="Nothing scheduled" body="Capture a task above or open Tasks to plan your day." />
+            <EmptyState icon="leaf" title={t('dashboard.nothingScheduled')} body={t('dashboard.nothingScheduledBody')} />
           ) : (
             <ul className="mg-agenda-list">
               {agenda.map(({ t, bucket }) => {
@@ -194,7 +196,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
               </button>
             </div>
             {data.habits.length === 0 ? (
-              <p className="mg-muted">No habits yet — build one in the Habits room.</p>
+              <p className="mg-muted">t('dashboard.noHabits')</p>
             ) : (
               <div className="mg-habit-chips">
                 {data.habits.slice(0, 6).map((h) => {

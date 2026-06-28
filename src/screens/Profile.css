@@ -470,4 +470,17 @@
     align-items: flex-start;
     flex-direction: row;
   }
+  .pf-banner { height: 120px; }
+  .pf-name { font-size: 22px; gap: 8px; }
+  .pf-flag { font-size: 16px; }
+  .pf-handle { font-size: 13px; }
+  .pf-counts { gap: 12px; }
+  .pf-count { font-size: 13px; }
+  .pf-count strong { font-size: 14px; }
+  .pf-widget { padding: 14px 16px; }
+  .pf-widget-title { font-size: 15px; margin-bottom: 10px; }
+  .pf-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pf-chip { padding: 4px 10px; font-size: 12px; }
+  .pf-banner-picker { max-width: 85%; }
+  .pf-banner-swatch { width: 28px; height: 18px; }
 }

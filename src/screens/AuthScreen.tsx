@@ -1,16 +1,12 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
 import './AuthScreen.css'
 
 type Mode = 'in' | 'up'
 
-const PROVIDERS: { id: OAuthProvider; label: string }[] = [
-  { id: 'google', label: 'Continue with Google' },
-  { id: 'github', label: 'Continue with GitHub' },
-  { id: 'microsoft', label: 'Continue with Microsoft' },
-]
-
 export function AuthScreen() {
+  const { t } = useTranslation()
   const { signIn, signUp, signInWithProvider } = useAuth()
   const [mode, setMode] = useState<Mode>('in')
   const [name, setName] = useState('')
@@ -21,6 +17,12 @@ export function AuthScreen() {
   const [pending, setPending] = useState<OAuthProvider | null>(null)
   const [showEmail, setShowEmail] = useState(false)
 
+  const providers: { id: OAuthProvider; label: string }[] = [
+    { id: 'google', label: t('auth.continueGoogle') },
+    { id: 'github', label: t('auth.continueGithub') },
+    { id: 'microsoft', label: t('auth.continueMicrosoft') },
+  ]
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError(null)
@@ -28,18 +30,15 @@ export function AuthScreen() {
     const err =
       mode === 'in'
         ? await signIn(email.trim(), password)
-        : await signUp(email.trim(), password, name.trim() || 'Explorer')
+        : await signUp(email.trim(), password, name.trim() || t('auth.defaultName'))
     setBusy(false)
     if (err) setError(err)
-    // On success the AuthProvider flips user -> app re-renders to the lobby.
   }
 
   async function oauth(provider: OAuthProvider) {
     setError(null)
     setPending(provider)
     const err = await signInWithProvider(provider)
-    // On success the browser redirects to the provider, so we only land here on
-    // an error (e.g. the provider isn't configured in InsForge yet).
     if (err) {
       setError(err)
       setPending(null)
@@ -50,16 +49,15 @@ export function AuthScreen() {
     <div className="auth-root">
       <div className="auth-card sf-panel">
         <div className="auth-crest">
-          <img className="auth-crest-glyph" src="/icons/focus-lily-logo.png" alt="Focus Lily" />
+          <img className="auth-crest-glyph" src="/icons/focus-lily-logo.png" alt={t('common.appName')} />
         </div>
-        <h1 className="auth-title">Focus Lily</h1>
+        <h1 className="auth-title">{t('common.appName')}</h1>
         <p className="auth-sub">
-          A calm magical world for focused study. Plant trees, grow your notes.
+          {t('auth.subtitle')}
         </p>
 
-        {/* ---------- primary: OAuth sign-in ---------- */}
         <div className="auth-oauth">
-          {PROVIDERS.map((p) => (
+          {providers.map((p) => (
             <button
               key={p.id}
               type="button"
@@ -68,69 +66,68 @@ export function AuthScreen() {
               onClick={() => oauth(p.id)}
             >
               <ProviderIcon provider={p.id} />
-              <span>{pending === p.id ? 'Redirecting…' : p.label}</span>
+              <span>{pending === p.id ? t('auth.redirecting') : p.label}</span>
             </button>
           ))}
         </div>
 
         {error && <div className="auth-error">{error}</div>}
 
-        {/* ---------- secondary: email / password fallback ---------- */}
         <button
           type="button"
           className="auth-email-toggle"
           onClick={() => setShowEmail((v) => !v)}
           aria-expanded={showEmail}
         >
-          {showEmail ? 'Hide email sign-in' : 'or continue with email'}
+          {showEmail ? t('auth.hideEmail') : t('auth.orContinueEmail')}
         </button>
 
         {showEmail && (
           <>
             <div className="auth-tabs">
               <button
-                className={`auth-tab ${mode === 'in' ? 'active' : ''}`}
+                className={`auth-tab ${mode === "in" ? "active" : ""}`}
                 onClick={() => setMode('in')}
                 type="button"
               >
-                Sign In
+                {t('auth.signIn')}
               </button>
               <button
-                className={`auth-tab ${mode === 'up' ? 'active' : ''}`}
+                className={`auth-tab ${mode === "up" ? "active" : ""}`}
                 onClick={() => setMode('up')}
                 type="button"
               >
-                Create Account
+                {t('auth.createAccount')}
               </button>
             </div>
 
             <form onSubmit={submit} className="auth-form">
               {mode === 'up' && (
                 <div>
-                  <label className="sf-label">Explorer name</label>
+                  <label className="sf-label">{t('auth.explorerName')}</label>
                   <input
                     className="sf-input"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="What should we call you?"
+                    placeholder={t('auth.namePlaceholder')}
                     autoComplete="name"
                   />
                 </div>
               )}
               <div>
-                <label className="sf-label">Email</label>
+                <label className="sf-label">{t('auth.email')}</label>
                 <input
                   className="sf-input"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   autoComplete="email"
                 />
               </div>
               <div>
-                <label className="sf-label">Password</label>
+                <label className="sf-label">{t('auth.password')}</label>
                 <input
                   className="sf-input"
                   type="password"
@@ -138,13 +135,13 @@ export function AuthScreen() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder={t('auth.passwordPlaceholder')}
                   autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
                 />
               </div>
 
               <button className="sf-btn auth-submit" disabled={busy} type="submit">
-                {busy ? 'Opening the gate…' : mode === 'in' ? 'Enter the Forest' : 'Begin Adventure'}
+                {busy ? t('auth.openingGate') : mode === 'in' ? t('auth.enterForest') : t('auth.beginAdventure')}
               </button>
             </form>
           </>
@@ -154,8 +151,6 @@ export function AuthScreen() {
   )
 }
 
-/** Brand glyphs for each provider. Kept inline so the auth screen has no extra
- *  asset dependencies; colors follow each provider's brand guidelines. */
 function ProviderIcon({ provider }: { provider: OAuthProvider }) {
   if (provider === 'google') {
     return (
@@ -174,7 +169,6 @@ function ProviderIcon({ provider }: { provider: OAuthProvider }) {
       </svg>
     )
   }
-  // microsoft — four-square logo
   return (
     <svg className="auth-oauth-icon" viewBox="0 0 24 24" aria-hidden width={20} height={20}>
       <path fill="#F25022" d="M3 3h8.5v8.5H3z" />

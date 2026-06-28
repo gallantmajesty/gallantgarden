@@ -1,10 +1,18 @@
 import { create } from 'zustand'
-import type { RealmKind } from '../lib/realm'
+import { GLOBAL_ROOMS, type RealmKind } from '../lib/realm'
 import type { RealmVisibility } from '../lib/realms'
 
 /** Which 3D world a realm renders. Defaults to the great Library; the Waterfall
  *  Realm is the second flagship world; the Train Station is the third. */
 export type RealmWorld = 'library' | 'waterfall' | 'train-station'
+
+/** Which world a global room renders, looked up from its definition. Train-station
+ *  rooms (concourse + platforms) render the Train Station; everything else the
+ *  Library. Fixes the bug where every global room was forced to 'library', which
+ *  sent the Train rooms into the Library scene. */
+function worldForRoom(roomId: string): RealmWorld {
+  return GLOBAL_ROOMS.find((r) => r.id === roomId)?.world ?? 'library'
+}
 
 /** The realm the player is currently inside (drives the label in the 3D scene,
  *  which world to render, and — later — which presence channel to join). `null` =
@@ -69,7 +77,7 @@ export const useRealm = create<RealmState>((set, get) => ({
   active: null,
   custom: loadCustom(),
 
-  enterGlobal: (roomId, name) => set({ active: { kind: 'global', name, roomId, world: 'library' } }),
+  enterGlobal: (roomId, name) => set({ active: { kind: 'global', name, roomId, world: worldForRoom(roomId) } }),
 
   enterFlagship: (world, name) => set({ active: { kind: 'global', name, world } }),
 

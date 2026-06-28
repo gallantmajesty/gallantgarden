@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { Group, MathUtils, type PerspectiveCamera as TPerspectiveCamera } from 'three'
-import { pickSpawn, PLAYER_BOUNDS, FLOOR_Y, platforms, TRAIN_REST_Z } from './layout'
+import { pickSpawn, PLAYER_BOUNDS, FLOOR_Y, platforms, TRAIN_REST_Z, TRACK_W } from './layout'
 import { buildCollision, isBlocked, rayHit, PLAYER_RADIUS } from './colliders'
 import { isTypingFocused, joystick } from '../library/input'
 import { useSettings } from '../../store/settings'
@@ -15,6 +15,7 @@ import { setLocalState } from '../../multiplayer/net'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
 import { useAvatar } from '../../avatar/store'
+import { stationSpeedRef } from './audio'
 
 // Player controller for walking the concourse and platforms. Behaviourally the
 // same first/third/front-person rig as the Library and Waterfall realms (drag to
@@ -35,7 +36,7 @@ const FRONT_DIST = 4.2
 const STEP_UP = 0.5
 // boarding zone: standing alongside the berthed train on a platform
 const BOARD_Z0 = TRAIN_REST_Z - 2
-const BOARD_Z1 = TRAIN_REST_Z + 48
+const BOARD_Z1 = TRAIN_REST_Z + 98
 
 export function StationPlayerController() {
   const gl = useThree((s) => s.gl)
@@ -267,13 +268,16 @@ export function StationPlayerController() {
     }
 
     // broadcast to the realm (net layer throttles + dedupes)
-    setLocalState({ x: st.x, y: st.y, z: st.z, yaw: av ? av.rotation.y : st.yaw, speed: Math.hypot(st.vx, st.vz), grounded: st.grounded, seated: false })
+    const horizSpeed = Math.hypot(st.vx, st.vz)
+    setLocalState({ x: st.x, y: st.y, z: st.z, yaw: av ? av.rotation.y : st.yaw, speed: horizSpeed, grounded: st.grounded, seated: false })
+    // feed station audio for footsteps
+    stationSpeedRef.current = horizSpeed
 
     // boarding-zone detection: which platform am I standing beside a train on?
     let near: number | null = null
     if (st.z > BOARD_Z0 && st.z < BOARD_Z1) {
       for (const pl of plats) {
-        if (st.x > pl.westX && st.x < pl.eastX) {
+        if (st.x > pl.westX && st.x < pl.eastX + TRACK_W) {
           near = pl.index
           break
         }
@@ -281,6 +285,21 @@ export function StationPlayerController() {
     }
     st.nearPlat = near
     if (useStation.getState().nearPlatform !== near) useStation.getState().setNearPlatform(near)
+
+    // walk-through boarding: if the player has walked past the platform edge and
+    // is close to the train body during the boarding phase, auto-trigger boarding.
+    // This replaces the E-key gate with natural walk-in immersion.
+    if (near != null && useTrain.getState().phase === 'browsing') {
+      const line = TRAIN_LINES[near]
+      const pl = plats[near]
+      if (statusById(line.id).boardable) {
+        // player walked past the platform east edge into the track zone
+        const distToTrain = Math.abs(st.x - pl.trackX)
+        if (distToTrain < 3.5) {
+          useTrain.getState().beginBoarding(line.id)
+        }
+      }
+    }
   })
 
   return (

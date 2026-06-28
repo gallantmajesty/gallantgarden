@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useSocial } from '../store/social'
 
@@ -12,6 +13,7 @@ export function FollowButton({
   className?: string
   onChange?: (following: boolean) => void
 }) {
+  const { t } = useTranslation()
   const meId = useSocial((s) => s.meId)
   const following = useSocial((s) => (targetId ? s.following.has(targetId) : false))
   const toggleFollow = useSocial((s) => s.toggleFollow)
@@ -30,12 +32,12 @@ export function FollowButton({
   return (
     <button
       type="button"
-      className={`sf-btn ${following ? 'secondary' : ''} follow-btn ${following ? 'is-following' : ''} ${className}`.trim()}
+      className={`sf-btn follow-btn ${className}`.trim()}
       onClick={onClick}
       disabled={busy}
       aria-pressed={following}
     >
-      {following ? 'Following' : 'Follow'}
+      {following ? t('followButton.following') : t('followButton.follow')}
     </button>
   )
 }

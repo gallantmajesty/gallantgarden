@@ -882,6 +882,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               step={0.25}
               onChange={(v) => s.setQualityAxis('lodBias', v)}
             />
+            <Toggle label="Ultra effects (SSAO · god rays · DoF) — high-end GPU" value={s.ultra} onChange={(v) => s.set('ultra', v)} />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
           </Section>
 

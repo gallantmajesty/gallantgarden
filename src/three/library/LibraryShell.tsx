@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { DoubleSide, type MeshStandardMaterial, type Texture } from 'three'
 import { HALL, WINDOW, windowStep, windowZs } from './layout'
 import { balconyPlatforms, columns, GALLERY_FRONT_Z, staircases } from './furniture'
-import { makePlasterTexture, makeStainedGlassTexture, makeWoodTexture } from './textures'
+import { makePlasterTexture, makeStainedGlassTexture, makeStoneNormalTexture, makeWoodNormalTexture, makeWoodTexture } from './textures'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { env } from './env'
 import { useScenePreset } from '../../store/quality'
@@ -25,8 +25,10 @@ export function LibraryShell() {
   // both shadows and post-processing are disabled (the Low preset / heavy custom).
   const realLights = preset.shadows || preset.bloom
   const wood = useMemo(() => makeWoodTexture(14, 7), [])
+  const woodNormal = useMemo(() => makeWoodNormalTexture(14, 7), [])
   const balconyWood = useMemo(() => makeWoodTexture(10, 13), [])
   const plaster = useMemo(() => makePlasterTexture(4, 19), [])
+  const stoneNormal = useMemo(() => makeStoneNormalTexture(4, 19), [])
   const glass = useMemo(() => makeStainedGlassTexture(5), [])
   const { halfW, halfL, wallH, balconyY, balconyDepth } = HALL
 
@@ -64,10 +66,11 @@ export function LibraryShell() {
 
   return (
     <group>
-      {/* floor */}
+      {/* floor — wood grain + a normal map so plank seams and grain catch the
+          lantern light with real depth */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[halfW * 2, halfL * 2]} />
-        <meshStandardMaterial map={wood} roughness={0.7} metalness={0.04} />
+        <meshStandardMaterial map={wood} normalMap={woodNormal} roughness={0.7} metalness={0.04} />
       </mesh>
 
       {/* ceiling + beams */}
@@ -75,26 +78,28 @@ export function LibraryShell() {
         <planeGeometry args={[halfW * 2, halfL * 2]} />
         <meshStandardMaterial color={CEIL} roughness={1} side={DoubleSide} />
       </mesh>
-      {/* ceiling beams — one instanced draw (was one mesh per beam) */}
-      <InstancedBoxes items={beamItems} roughness={0.9} castShadow />
+      {/* ceiling beams — one instanced draw (was one mesh per beam).
+          PERF: no castShadow — they sit flush under a dark ceiling where their
+          shadow never reads, so they're dropped from the directional shadow pass. */}
+      <InstancedBoxes items={beamItems} roughness={0.9} />
 
       {/* end walls */}
       {[-1, 1].map((s) => (
         <mesh key={`end-${s}`} position={[0, wallH / 2, s * (halfL + 0.3)]} receiveShadow>
           <boxGeometry args={[halfW * 2 + 1.2, wallH, 0.6]} />
-          <meshStandardMaterial map={plaster} color={STONE} roughness={1} />
+          <meshStandardMaterial map={plaster} normalMap={stoneNormal} color={STONE} roughness={1} />
         </mesh>
       ))}
 
       {/* long window-walls — solid plaster spandrels above/below + every bay's
           glass, tracery and arch built as instanced batches (was ~6-9 meshes per
           bay × 22 bays). */}
-      <WindowWalls glass={glass} plaster={plaster} windowDetail={preset.windowDetail} />
+      <WindowWalls glass={glass} plaster={plaster} stoneNormal={stoneNormal} windowDetail={preset.windowDetail} />
 
       {/* columns — carved magical pillars (plinth, fluted shaft, glowing rune
           band, capital). Every pillar in the hall is built from a handful of
           INSTANCED batches instead of ~12 meshes each (~216 → 6 draws). */}
-      <Pillars cols={cols} h={wallH} />
+      <Pillars cols={cols} h={wallH} stoneNormal={stoneNormal} />
 
       {/* balcony platforms + rails */}
       {platforms.map((pf, i) => (
@@ -115,7 +120,9 @@ export function LibraryShell() {
         <boxGeometry args={[halfW * 2 - 1, 0.18, 0.18]} />
         <meshStandardMaterial color={TRIM} roughness={0.7} />
       </mesh>
-      <InstancedBoxes items={balusters} color={STONE_DARK} roughness={0.8} castShadow />
+      {/* PERF: thin balcony balusters dropped from the shadow pass — their hairline
+          shadows are invisible at this scale but cost a full extra caster batch. */}
+      <InstancedBoxes items={balusters} color={STONE_DARK} roughness={0.8} />
 
       {/* grand staircases with stringers, carved banisters, newels & lanterns */}
       {/* grand staircases — steps, stringers, banisters, balusters, newels &
@@ -149,7 +156,7 @@ export function LibraryShell() {
  *  the mullions/tracery/glass/arches for all ~22 bays collapse to a fixed handful
  *  of draw calls regardless of bay count (was ~6-9 meshes per bay). The
  *  high-quality ornamental ring/keystone/oculus stay gated behind `windowDetail`. */
-function WindowWalls({ glass, plaster, windowDetail }: { glass: Texture; plaster: Texture; windowDetail: boolean }) {
+function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Texture; plaster: Texture; stoneNormal: Texture; windowDetail: boolean }) {
   const { halfW, halfL, wallH } = HALL
   const glassMat = useRef<MeshStandardMaterial>(null)
 
@@ -210,11 +217,11 @@ function WindowWalls({ glass, plaster, windowDetail }: { glass: Texture; plaster
           <group key={`spandrel-${s}`}>
             <mesh position={[x, WINDOW.sillY / 2, 0]} receiveShadow>
               <boxGeometry args={[0.6, WINDOW.sillY, halfL * 2]} />
-              <meshStandardMaterial map={plaster} color={STONE} roughness={1} />
+              <meshStandardMaterial map={plaster} normalMap={stoneNormal} color={STONE} roughness={1} />
             </mesh>
             <mesh position={[x, (WINDOW.headY + wallH) / 2, 0]} receiveShadow>
               <boxGeometry args={[0.6, wallH - WINDOW.headY, halfL * 2]} />
-              <meshStandardMaterial map={plaster} color={STONE} roughness={1} />
+              <meshStandardMaterial map={plaster} normalMap={stoneNormal} color={STONE} roughness={1} />
             </mesh>
           </group>
         )
@@ -350,7 +357,7 @@ function Staircases({ stairs, wood }: { stairs: StairData[]; wood: Texture }) {
  *  plinth, gently tapered fluted shaft, a band of softly glowing runes at eye
  *  level, and a flared capital under the balcony. One draw per distinct part
  *  across all columns instead of ~12 meshes per pillar. */
-function Pillars({ cols, h }: { cols: [number, number, number][]; h: number }) {
+function Pillars({ cols, h, stoneNormal }: { cols: [number, number, number][]; h: number; stoneNormal: Texture }) {
   const shaftH = h - 1.6
   const ROT_X: [number, number, number] = [Math.PI / 2, 0, 0]
 
@@ -380,8 +387,8 @@ function Pillars({ cols, h }: { cols: [number, number, number][]; h: number }) {
   return (
     <group>
       <InstancedBoxes items={boxes} roughness={0.9} castShadow receiveShadow />
-      {/* fluted shaft */}
-      <InstancedShape items={shafts} color={STONE} roughness={0.8} castShadow receiveShadow>
+      {/* fluted shaft — stone normal map for carved surface depth */}
+      <InstancedShape items={shafts} color={STONE} normalMap={stoneNormal} roughness={0.8} castShadow receiveShadow>
         <cylinderGeometry args={[0.52, 0.66, shaftH, 24, 1]} />
       </InstancedShape>
       {/* flared capital */}

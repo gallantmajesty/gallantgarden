@@ -3,6 +3,14 @@
    ============================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
+@font-face {
+  font-family: 'Modern Tokyo';
+  src: url('/modern-tokyo.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* palette */
   --sky-top: #6fc7d8;
@@ -57,6 +65,7 @@
 
   --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --display: 'Baloo 2', system-ui, sans-serif;
+  --display-accent: 'Modern Tokyo', sans-serif;
 
   font: 16px/1.5 var(--sans);
   color: var(--ink);
@@ -423,4 +432,27 @@ button {
 @keyframes pop-in {
   0% { transform: scale(0.9); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---- Global mobile utilities ---- */
+@media (max-width: 640px) {
+  /* prevent horizontal overflow on all scrollable containers */
+  .sf-panel { border-radius: 16px; }
+  .sf-btn { font-size: 14px; padding: 10px 18px; border-radius: 12px; }
+  .sf-input { font-size: 16px; padding: 10px 12px; border-radius: 10px; }
+  .sf-pill { font-size: 10px; padding: 3px 10px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 22px; }
+  h3 { font-size: 18px; }
+
+  /* ensure tap targets are at least 44px */
+  button, a, [role='button'] { min-height: 32px; }
+
+  /* safe area insets for notch devices */
+  .lobby-topleft, .realm-topleft, .explore-topleft, .forest-topleft {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .lobby-topright, .realm-topright, .explore-topright, .forest-topright {
+    padding-top: env(safe-area-inset-top, 0);
+  }
 }

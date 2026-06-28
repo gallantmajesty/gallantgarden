@@ -1,6 +1,5 @@
 import { insforge } from './insforge'
-import { getRank } from './ranks'
-import { levelForXp } from './magnet/types'
+import { getRank, rankForTotalXp } from './ranks'
 
 // Profile statistics. We surface REAL numbers wherever a data source exists
 // (focus sessions + minutes from the pomodoro store, notes/trees from the DB,
@@ -62,7 +61,9 @@ export interface StatsInput {
 /** Assemble the ordered set of stat cards from real + pending sources. */
 export function buildProfileStats(i: StatsInput): StatCard[] {
   const rank = getRank(i.rankId)
-  const level = levelForXp(i.xp)
+  const totalXp = i.xp
+  const rankObj = rankForTotalXp(totalXp)
+  const rankIdx = Math.max(0, ['brown-leaf', 'yellow-leaf', 'green-leaf', 'bronze-leaf', 'silver-leaf', 'golden-leaf', 'red-flower', 'fire-flower', 'platinum-bunch', 'forest-guardian'].indexOf(rankObj.id))
   return [
     {
       id: 'study-hours',
@@ -104,10 +105,10 @@ export function buildProfileStats(i: StatsInput): StatCard[] {
       id: 'rank',
       label: 'Current Rank',
       icon: 'trophy',
-      value: rank.name,
-      sub: `Level ${level}`,
+      value: rankObj.name,
+      sub: `Tier ${rankIdx + 1}`,
       state: 'ready',
-      accent: rank.accent,
+      accent: rankObj.accent,
     },
     {
       id: 'achievements',

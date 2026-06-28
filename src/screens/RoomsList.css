@@ -135,3 +135,33 @@
   .room-row { flex-wrap: wrap; }
   .room-row__count { order: 3; }
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .rooms { padding: 20px 14px 48px; }
+  .rooms__head { gap: 12px; margin-bottom: 20px; }
+  .rooms__back { font-size: 12px; padding: 7px 12px; }
+  .rooms__title { gap: 10px; }
+  .rooms__logo { width: 42px; height: 42px; border-radius: 12px; }
+  .rooms__title h1 { font-size: 22px; }
+  .rooms__title p { font-size: 13px; }
+  .rooms__choice { padding: 18px; gap: 12px; }
+  .rooms__choice-emoji { width: 48px; height: 48px; border-radius: 14px; font-size: 24px; }
+  .rooms__choice-body b { font-size: 18px; }
+  .rooms__choice-body small { font-size: 12px; }
+  .rooms__choice-go { font-size: 20px; }
+  .room-row { padding: 14px 16px; gap: 12px; margin-bottom: 10px; }
+  .room-row__emoji { width: 44px; height: 44px; border-radius: 12px; font-size: 22px; }
+  .room-row__name { font-size: 17px; }
+  .room-row__blurb { font-size: 12px; }
+  .room-row__count { font-size: 12px; }
+  .room-row__join { padding: 8px 18px; font-size: 13px; }
+  .mindmap__root { font-size: 15px; padding: 8px 14px; }
+  .mindmap__branches { padding-left: 28px; }
+  .mindmap__branches::before { left: 14px; }
+  .rooms__custom { padding: 22px 18px; }
+  .rooms__custom-emoji { width: 52px; height: 52px; }
+  .rooms__custom h2 { font-size: 20px; }
+  .rooms__custom p { font-size: 13px; }
+  .rooms__custom-join .sf-input { width: 160px; font-size: 14px; }
+}

@@ -55,22 +55,16 @@ export async function unfollowUser(meId: string, targetId: string): Promise<bool
 
 /** Ids of everyone `userId` follows. */
 export async function getFollowingIds(userId: string): Promise<string[]> {
-  const { data, error } = await insforge.database
-    .from('follows')
-    .select('following_id')
-    .eq('follower_id', userId)
+  const { data, error } = await insforge.database.rpc('get_following_ids', { p_user_id: userId })
   if (error || !data) return []
-  return (data as { following_id: string }[]).map((r) => r.following_id)
+  return data as string[]
 }
 
 /** Ids of everyone who follows `userId`. */
 export async function getFollowerIds(userId: string): Promise<string[]> {
-  const { data, error } = await insforge.database
-    .from('follows')
-    .select('follower_id')
-    .eq('following_id', userId)
+  const { data, error } = await insforge.database.rpc('get_follower_ids', { p_user_id: userId })
   if (error || !data) return []
-  return (data as { follower_id: string }[]).map((r) => r.follower_id)
+  return data as string[]
 }
 
 export interface FollowCounts {
@@ -80,29 +74,26 @@ export interface FollowCounts {
 
 /** Follower + following counts for a user (derived from the follows table). */
 export async function getCounts(userId: string): Promise<FollowCounts> {
-  const [followers, following] = await Promise.all([
-    getFollowerIds(userId),
-    getFollowingIds(userId),
-  ])
-  return { followers: followers.length, following: following.length }
+  const { data, error } = await insforge.database.rpc('get_follow_count', { p_user_id: userId })
+  if (error || !data) return { followers: 0, following: 0 }
+  return data as FollowCounts
 }
 
 /** Does `meId` follow `targetId`? */
 export async function isFollowing(meId: string, targetId: string): Promise<boolean> {
-  const { data } = await insforge.database
-    .from('follows')
-    .select('follower_id')
-    .eq('follower_id', meId)
-    .eq('following_id', targetId)
-    .maybeSingle()
-  return !!data
+  const { data, error } = await insforge.database.rpc('get_is_following', {
+    p_follower_id: meId,
+    p_following_id: targetId,
+  })
+  if (error || typeof data !== 'boolean') return false
+  return data
 }
 
 /** Users that BOTH `a` and `b` follow in common (mutual connections). */
 export async function getMutualIds(a: string, b: string): Promise<string[]> {
-  const [fa, fb] = await Promise.all([getFollowingIds(a), getFollowingIds(b)])
-  const set = new Set(fb)
-  return fa.filter((id) => set.has(id))
+  const { data, error } = await insforge.database.rpc('get_mutual_following_ids', { p_a: a, p_b: b })
+  if (error || !data) return []
+  return data as string[]
 }
 
 // -------------------------------------------------------------- public reads

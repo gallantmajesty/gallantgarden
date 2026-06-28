@@ -40,20 +40,29 @@
 
 /* ---- personal character orb on the realm hub ---- */
 .realm-avatar {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 10px;
+  padding: 5px 16px 5px 5px;
+  border-radius: 999px;
+  background: rgba(16, 20, 28, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.2s;
 }
+.realm-avatar:hover { transform: translateY(-1px); background: rgba(16, 20, 28, 0.68); }
 .realm-avatar-orb {
-  width: 148px;
-  height: 148px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   overflow: hidden;
   background: radial-gradient(120% 120% at 50% 25%, rgba(138, 108, 255, 0.28), rgba(20, 16, 32, 0.55));
   border: 2px solid rgba(202, 168, 74, 0.55);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 0 26px rgba(138, 108, 255, 0.25), 0 0 22px rgba(255, 206, 84, 0.25);
+  flex: none;
 }
 .realm-avatar-orb canvas {
   display: block;
@@ -63,37 +72,37 @@
 .realm-avatar-meta {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1px;
+  gap: 0;
+  text-align: left;
 }
 .realm-avatar-you {
   font-family: var(--display);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: rgba(255, 255, 255, 0.6);
 }
-.realm-avatar-meta strong {
+.realm-avatar-name {
   font-family: var(--display);
-  font-size: 18px;
-  color: var(--wood-dark);
-  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.7);
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .realm-avatar-change {
-  margin-top: 2px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--gold-dark, #b8923a);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s, transform 0.1s;
+  transition: color 0.15s;
 }
-.realm-avatar-change:hover {
+.realm-avatar:hover .realm-avatar-change {
   color: var(--gold, #caa84a);
-  transform: translateY(-1px);
 }
 .realm-head h1 {
   font-size: 34px;
@@ -125,12 +134,32 @@
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   text-align: center;
+  position: relative;
+  isolation: isolate;
   animation: pop-in 0.4s ease both;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.realm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  opacity: 0;
+  background: radial-gradient(
+    120px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    color-mix(in srgb, var(--accent) 40%, transparent),
+    transparent 100%
+  );
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: 1;
 }
 .realm-card:hover {
   transform: translateY(-6px);
   box-shadow: var(--glass-shadow-hover);
+}
+.realm-card:hover::before {
+  opacity: 1;
 }
 .realm-card:active {
   transform: translateY(2px);
@@ -143,10 +172,13 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.55), rgba(190, 228, 246, 0.16));
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(90, 160, 200, 0.18);
+  background: radial-gradient(circle at 38% 30%, rgba(45, 55, 65, 0.9), rgba(30, 38, 48, 0.95));
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.2), inset 0 -6px 14px rgba(0, 0, 0, 0.25);
+  color: var(--on-glass, var(--wood-dark));
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 .realm-card-orb .png-icon {
   filter: drop-shadow(0 1px 2px rgba(58, 42, 23, 0.18));
@@ -487,4 +519,34 @@
   border: 1px solid var(--glass-border);
   padding: 8px 12px;
   border-radius: 10px;
+}
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .realm-topleft { top: 12px; left: 12px; }
+  .realm-topright { top: 12px; right: 12px; }
+  .realm-stage { padding: 70px 12px 30px; gap: 16px; }
+  .realm-head h1 { font-size: 26px; margin: 6px 0 2px; }
+  .realm-head p { font-size: 13px; }
+  .realm-cards { gap: 14px; max-width: 100%; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .realm-cards::-webkit-scrollbar { display: none; }
+  .realm-card { min-width: 260px; flex: 0 0 auto; scroll-snap-align: center; padding: 20px 16px 18px; }
+  .realm-card-orb { width: 80px; height: 80px; margin-bottom: 10px; }
+  .realm-card h2 { font-size: 18px; }
+  .realm-card p { font-size: 12.5px; min-height: 32px; }
+  .realm-card-cta { font-size: 13px; }
+  .realm-rooms { gap: 8px; }
+  .realm-room { padding: 10px 12px; gap: 10px; }
+  .realm-room-icon { width: 44px; height: 44px; border-radius: 10px; }
+  .realm-room-top strong { font-size: 15px; }
+  .realm-room-count { font-size: 12px; padding: 2px 8px; }
+  .realm-join { padding: 8px 16px; font-size: 14px; }
+  .realm-create { flex-direction: column; gap: 8px; }
+  .realm-create .sf-btn { width: 100%; }
+  .realm-vis { flex-direction: column; }
+  .realm-mine-list { gap: 6px; }
+  .realm-mine-item { padding: 8px 12px; font-size: 13px; }
+  .realm-invite-row { flex-direction: column; align-items: flex-start; }
+  .realm-invite-label { width: auto; }
+  .realm-invite-value { width: 100%; }
 }

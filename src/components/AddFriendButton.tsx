@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useFriends } from '../store/friends'
 
@@ -14,6 +15,7 @@ export function AddFriendButton({
   targetId: string | null
   className?: string
 }) {
+  const { t } = useTranslation()
   const meId = useFriends((s) => s.meId)
   const isFriend = useFriends((s) => (targetId ? s.friendIds.has(targetId) : false))
   const outgoing = useFriends((s) => (targetId ? s.outgoing.some((r) => r.addressee_id === targetId) : false))
@@ -38,11 +40,11 @@ export function AddFriendButton({
         className={`sf-btn secondary friend-btn is-friend ${className}`.trim()}
         disabled={busy}
         onClick={() => {
-          if (window.confirm('Remove this friend? You will no longer be able to chat.'))
+          if (window.confirm(t('addFriend.confirmUnfriend')))
             void run(() => unfriend(targetId))
         }}
       >
-        Friends
+        {t('addFriend.friends')}
       </button>
     )
   }
@@ -54,14 +56,14 @@ export function AddFriendButton({
         disabled={busy}
         onClick={() => void run(() => accept(incoming.id))}
       >
-        Accept request
+        {t('addFriend.acceptRequest')}
       </button>
     )
   }
   if (outgoing) {
     return (
       <button type="button" className={`sf-btn secondary friend-btn ${className}`.trim()} disabled>
-        Requested
+        {t('addFriend.requested')}
       </button>
     )
   }
@@ -72,7 +74,7 @@ export function AddFriendButton({
       disabled={busy}
       onClick={() => void run(() => sendRequest(targetId))}
     >
-      Add friend
+      {t('addFriend.addFriend')}
     </button>
   )
 }

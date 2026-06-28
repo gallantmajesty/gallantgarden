@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
@@ -26,19 +27,8 @@ export type MagnetView =
   | 'sanctuary'
   | 'themes'
 
-// Top-level rooms use the custom watercolour PNG icons where one fits; the
-// dashboard keeps the crisp inline line-icon (no matching PNG in the set).
-const NAV: { key: MagnetView; label: string; icon: string; png?: PngIconName }[] = [
-  { key: 'dashboard', label: 'Headquarters', icon: 'home' },
-  { key: 'tasks', label: 'Tasks', icon: 'check', png: 'tasks' },
-  { key: 'analytics', label: 'Analytics', icon: 'chart', png: 'analytics' },
-  { key: 'goals', label: 'Goals & Dreams', icon: 'target', png: 'goals' },
-  { key: 'habits', label: 'Habits', icon: 'fire', png: 'habits' },
-  { key: 'sanctuary', label: 'Sanctuary', icon: 'vault', png: 'achievements' },
-  { key: 'themes', label: 'Personalize', icon: 'palette', png: 'settings' },
-]
-
 export function TaskMagnet() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const hydrate = useMagnet((s) => s.hydrate)
@@ -54,11 +44,10 @@ export function TaskMagnet() {
     if (user?.id) hydrate(user.id)
   }, [user?.id, hydrate])
 
-  // auto-dismiss the unlock / level-up toast
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(clearToast, 4200)
-    return () => clearTimeout(t)
+    const timer = setTimeout(clearToast, 4200)
+    return () => clearTimeout(timer)
   }, [toast, clearToast])
 
   const theme = getTheme(data.themeId)
@@ -80,22 +69,29 @@ export function TaskMagnet() {
     } as React.CSSProperties
   }, [theme, accent, data.accent, data.font])
 
-  // Use the canonical profile name (the same source the Lobby, Profile and
-  // presence use) so the student's name is universal across the whole app.
-  // Fall back to the auth profile / email only before the profile has hydrated.
+  const NAV: { key: MagnetView; label: string; icon: string; png?: PngIconName }[] = [
+    { key: 'dashboard', label: t('taskMagnet.navDashboard'), icon: 'home' },
+    { key: 'tasks', label: t('taskMagnet.navTasks'), icon: 'check', png: 'tasks' },
+    { key: 'analytics', label: t('taskMagnet.navAnalytics'), icon: 'chart', png: 'analytics' },
+    { key: 'goals', label: t('taskMagnet.navGoals'), icon: 'target', png: 'goals' },
+    { key: 'habits', label: t('taskMagnet.navHabits'), icon: 'fire', png: 'habits' },
+    { key: 'sanctuary', label: t('taskMagnet.navSanctuary'), icon: 'vault', png: 'achievements' },
+    { key: 'themes', label: t('taskMagnet.navThemes'), icon: 'palette', png: 'settings' },
+  ]
+
   const profileName = useProfile((s) => s.displayName)
   const displayName =
     (profileName && profileName !== 'Explorer' ? profileName : null) ||
     user?.profile?.name ||
     user?.email?.split('@')[0] ||
-    'Explorer'
+    t('auth.defaultName')
   const lp = levelProgress(data.xp)
 
   if (!ready) {
     return (
       <div className="mg-root mg-loading" style={rootStyle}>
         <ThemeBackdrop theme={theme} density={data.particleDensity} accent={data.accent} />
-        <div className="mg-loading-card">Opening your world…</div>
+        <div className="mg-loading-card">{t('taskMagnet.openingWorld')}</div>
       </div>
     )
   }
@@ -104,10 +100,9 @@ export function TaskMagnet() {
     <div className={`mg-root ${theme.dark ? 'dark' : 'light'}`} style={rootStyle}>
       <ThemeBackdrop theme={theme} density={data.particleDensity} accent={data.accent} />
 
-      {/* ---------------- sidebar ---------------- */}
       <aside className={`mg-sidebar ${navOpen ? 'open' : ''}`}>
         <button className="mg-back" onClick={() => navigate('/')}>
-          <Icon name="back" size={18} /> Lobby
+          <Icon name="back" size={18} /> {t('common.lobby')}
         </button>
 
         <div className="mg-brand">
@@ -115,7 +110,7 @@ export function TaskMagnet() {
             <Icon name="spark" size={20} />
           </span>
           <div>
-            <strong>Task Magnet</strong>
+            <strong>{t('taskMagnet.brand')}</strong>
             <small>{theme.name}</small>
           </div>
         </div>
@@ -142,20 +137,19 @@ export function TaskMagnet() {
 
         <div className="mg-levelcard">
           <div className="mg-levelcard-top">
-            <span className="mg-levelbadge">Lv {lp.level}</span>
-            <span className="mg-levelxp">{data.xp} XP</span>
+            <span className="mg-levelbadge">{t('taskMagnet.level', { level: lp.level })}</span>
+            <span className="mg-levelxp">{t('taskMagnet.xpValue', { xp: data.xp })}</span>
           </div>
           <div className="mg-levelbar">
             <div className="mg-levelbar-fill" style={{ width: `${lp.pct * 100}%` }} />
           </div>
-          <small>{lp.span - lp.into} XP to level {lp.level + 1}</small>
+          <small>{t('taskMagnet.xpToLevel', { xp: lp.span - lp.into, nextLevel: lp.level + 1 })}</small>
         </div>
       </aside>
 
-      {/* ---------------- main ---------------- */}
       <main className="mg-main">
         <header className="mg-topbar">
-          <button className="mg-burger" onClick={() => setNavOpen((o) => !o)} aria-label="Menu">
+          <button className="mg-burger" onClick={() => setNavOpen((o) => !o)} aria-label={t('taskMagnet.menu')}>
             <Icon name={navOpen ? 'close' : 'chevron'} size={20} />
           </button>
           <div className="mg-topbar-title">
@@ -178,7 +172,6 @@ export function TaskMagnet() {
         </div>
       </main>
 
-      {/* ---------------- unlock / level-up toast ---------------- */}
       {toast && (
         <div className="mg-toast" onClick={clearToast}>
           <span className="mg-toast-icon">

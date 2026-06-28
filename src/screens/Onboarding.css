@@ -329,3 +329,27 @@
 }
 .ob-primary { flex: 1 1 auto; }
 .ob-actions .secondary { flex: none; min-width: 96px; }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .ob-root { padding: 16px; }
+  .ob-card { padding: 18px 20px 20px; border-radius: 18px; }
+  .ob-title { font-size: 22px; }
+  .ob-q { font-size: 18px; }
+  .ob-hint { font-size: 12px; }
+  .ob-lead { font-size: 14px; }
+  .ob-welcome { padding: 12px 2px 4px; }
+  .ob-seedling { font-size: 44px; }
+  .ob-username { gap: 6px; }
+  .ob-username-at { font-size: 20px; }
+  .ob-username-input { font-size: 16px; }
+  .ob-country-list { max-height: 260px; }
+  .ob-country { padding: 7px 10px; font-size: 13px; }
+  .ob-age-value { min-width: 80px; }
+  .ob-age-input { font-size: 42px; width: 80px; }
+  .ob-stepper { width: 44px; height: 44px; font-size: 22px; }
+  .ob-goal-chips { gap: 5px; }
+  .ob-chip { padding: 6px 11px; font-size: 12px; }
+  .ob-chip.wide { padding: 7px 14px; font-size: 13px; }
+  .ob-actions { margin-top: 14px; }
+}

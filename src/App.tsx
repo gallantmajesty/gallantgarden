@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './store/auth'
+import './i18n'
 import { useProfile } from './store/profile'
 import { applyVisualSettings, useSettings } from './store/settings'
 import { useWebTheme } from './store/webTheme'

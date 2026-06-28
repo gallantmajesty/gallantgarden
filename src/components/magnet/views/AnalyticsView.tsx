@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import {
   RANGES,
@@ -14,6 +15,7 @@ import { Icon } from '../Icon'
 const TONE_ICON: Record<string, string> = { good: 'star', watch: 'fire', tip: 'bulb' }
 
 export function AnalyticsView() {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const logFocus = useMagnet((s) => s.logFocus)
 
@@ -93,11 +95,11 @@ export function AnalyticsView() {
     <div className="mg-view">
       <SectionHead
         icon="chart"
-        title="Analytics"
-        subtitle="Your patterns, drawn from your own history"
+        title={t('analytics.title')}
+        subtitle={t('analytics.subtitle')}
         action={
           <button className="mg-btn primary" onClick={() => setFocusOpen(true)}>
-            <Icon name="clock" size={16} /> Log focus
+            <Icon name="clock" size={16} />{t('analytics.logFocus')}
           </button>
         }
       />
@@ -113,27 +115,27 @@ export function AnalyticsView() {
       {!hasData ? (
         <EmptyState
           icon="chart"
-          title="No data yet"
-          body="Complete a task or log a focus session — your analytics fill in automatically as you go."
+          title={t('analytics.noDataTitle')}
+          body={t('analytics.noDataBody')}
         />
       ) : (
         <>
           <div className="mg-statrow wide">
-            <StatCard icon="check" label="Tasks done" value={stats.completed} />
-            <StatCard icon="clock" label="Focus hours" value={totalFocus} tone={AREA_META.health.color} />
-            <StatCard icon="brain" label="Deep work hrs" value={totalDeep} tone={AREA_META.creative.color} />
-            <StatCard icon="calendar" label="Active days" value={stats.activeDays} tone={AREA_META.academic.color} />
+            <StatCard icon="check" label={t('analytics.tasksDone')} value={stats.completed} />
+            <StatCard icon="clock" label={t('analytics.focusHours')} value={totalFocus} tone={AREA_META.health.color} />
+            <StatCard icon="brain" label={t('analytics.deepWorkHrs')} value={totalDeep} tone={AREA_META.creative.color} />
+            <StatCard icon="calendar" label={t('analytics.activeDays')} value={stats.activeDays} tone={AREA_META.academic.color} />
             <StatCard
               icon="target"
-              label="Follow-through"
+              label={t('analytics.followThrough')}
               value={`${Math.round(stats.completionRate * 100)}%`}
               tone={AREA_META.career.color}
             />
-            <StatCard icon="fire" label="Streak" value={streak} tone="#ff7a3d" />
+            <StatCard icon="fire" label={t('analytics.streak')} value={streak} tone="#ff7a3d" />
             {data.goals.length > 0 && (
               <StatCard
                 icon="target"
-                label="Goal progress"
+                label={t('analytics.goalProgress')}
                 value={`${Math.round(stats.avgGoalProgress * 100)}%`}
                 tone={AREA_META.personal.color}
               />
@@ -141,7 +143,7 @@ export function AnalyticsView() {
             {data.habits.length > 0 && (
               <StatCard
                 icon="spark"
-                label="Habit consistency"
+                label={t('analytics.habitConsistency')}
                 value={`${Math.round(stats.habitConsistency * 100)}%`}
                 tone={AREA_META.social.color}
               />
@@ -152,7 +154,7 @@ export function AnalyticsView() {
             <Panel>
               <div className="mg-panel-head">
                 <h3>
-                  <Icon name="check" size={17} /> Tasks completed
+                  <Icon name="check" size={17} />{t('analytics.tasksCompleted')}
                 </h3>
               </div>
               <MiniBars data={bars.map((b) => ({ label: b.label, value: b.tasks }))} color="var(--mg-accent)" height={120} />
@@ -160,7 +162,7 @@ export function AnalyticsView() {
             <Panel>
               <div className="mg-panel-head">
                 <h3>
-                  <Icon name="clock" size={17} /> Focus minutes
+                  <Icon name="clock" size={17} />{t('analytics.focusMinutes')}
                 </h3>
               </div>
               <MiniBars data={bars.map((b) => ({ label: b.label, value: b.minutes }))} color="var(--mg-accent2)" height={120} />
@@ -169,11 +171,11 @@ export function AnalyticsView() {
             <Panel>
               <div className="mg-panel-head">
                 <h3>
-                  <Icon name="book" size={17} /> By subject
+                  <Icon name="book" size={17} />{t('analytics.bySubject')}
                 </h3>
               </div>
               {stats.perSubject.length === 0 ? (
-                <p className="mg-muted">Tag tasks with a subject to see this breakdown.</p>
+                <p className="mg-muted">t('analytics.tagTasksHint')</p>
               ) : (
                 <ul className="mg-subjectlist">
                   {stats.perSubject.slice(0, 6).map((s) => {
@@ -201,11 +203,11 @@ export function AnalyticsView() {
             <Panel>
               <div className="mg-panel-head">
                 <h3>
-                  <Icon name="palette" size={17} /> Life balance
+                  <Icon name="palette" size={17} />{t('analytics.lifeBalance')}
                 </h3>
               </div>
               {areaTotal === 0 ? (
-                <p className="mg-muted">Complete tasks across life areas to see your balance.</p>
+                <p className="mg-muted">t('analytics.completeAreasHint')</p>
               ) : (
                 <ul className="mg-arealist">
                   {areaEntries.map((e) => (
@@ -228,14 +230,14 @@ export function AnalyticsView() {
             <Panel>
               <div className="mg-panel-head">
                 <h3>
-                  <Icon name="target" size={17} /> Goal progress
+                  <Icon name="target" size={17} />{t('analytics.goalProgressPanel')}
                 </h3>
               </div>
               {activeGoals.length === 0 ? (
                 <p className="mg-muted">
                   {data.goals.length > 0
-                    ? 'Every goal is complete — set a new horizon in the Goals room.'
-                    : 'Set a goal and track milestones to watch progress here.'}
+                    ? t('analytics.goalsComplete')
+                    : t('analytics.setGoalHint')}
                 </p>
               ) : (
                 <ul className="mg-subjectlist">
@@ -266,11 +268,11 @@ export function AnalyticsView() {
             <Panel>
               <div className="mg-panel-head">
                 <h3>
-                  <Icon name="fire" size={17} /> Habit consistency
+                  <Icon name="fire" size={17} />{t('analytics.habitConsistencyPanel')}
                 </h3>
               </div>
               {habitRows.length === 0 ? (
-                <p className="mg-muted">Build a habit to track your consistency over time.</p>
+                <p className="mg-muted">t('analytics.buildHabitHint')</p>
               ) : (
                 <ul className="mg-subjectlist">
                   {habitRows.slice(0, 6).map((h) => (
@@ -294,7 +296,7 @@ export function AnalyticsView() {
           <Panel className="mg-insightpanel">
             <div className="mg-panel-head">
               <h3>
-                <Icon name="brain" size={18} /> Performance intelligence
+                <Icon name="brain" size={18} />{t('analytics.performanceIntel')}
               </h3>
             </div>
             <div className="mg-insightgrid">
@@ -314,17 +316,17 @@ export function AnalyticsView() {
         </>
       )}
 
-      <MgModal open={focusOpen} title="Log a focus session" onClose={() => setFocusOpen(false)}>
+      <MgModal open={focusOpen} title={t('analytics.logFocusTitle')} onClose={() => setFocusOpen(false)}>
         <form className="mg-form" onSubmit={submitFocus}>
-          <Field label="Minutes focused">
+          <Field label={t('analytics.minutesFocused')}>
             <input type="number" min={1} step={5} value={focusMin} onChange={(e) => setFocusMin(Number(e.target.value))} autoFocus />
           </Field>
-          <Field label="Subject">
+          <Field label={t('analytics.subjectLabel')}>
             <input
               list="mg-subjects-an"
               value={focusSubject}
               onChange={(e) => setFocusSubject(e.target.value)}
-              placeholder="e.g. Chemistry"
+              placeholder={t('analytics.subjectPlaceholder')}
             />
             <datalist id="mg-subjects-an">
               {data.subjects.map((s) => (

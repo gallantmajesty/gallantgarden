@@ -117,27 +117,45 @@ export function Station() {
         <planeGeometry args={[concourseW, concourseL]} />
         <meshStandardMaterial map={floorTex} color={palette.stoneFloorWarm} roughness={0.82} metalness={0.04} />
       </mesh>
+      {/* floor extension through the west wall gap to Platform 1 */}
+      <mesh rotation-x={-Math.PI / 2} position={[(CONCOURSE.minX + (-37.5)) / 2, 0.001, (-40 + (-2)) / 2]} receiveShadow>
+        <planeGeometry args={[Math.abs(-37.5 - CONCOURSE.minX), 38]} />
+        <meshStandardMaterial map={floorTex} color={palette.stoneFloorWarm} roughness={0.82} metalness={0.04} />
+      </mesh>
 
       {/* west + east plastered walls with a timber dado + cornice */}
-      {[CONCOURSE.minX, CONCOURSE.maxX].map((x) => (
-        <group key={x}>
-          <mesh position={[x, CONCOURSE.wallH / 2, concourseCZ]} receiveShadow material={MAT.brick()}>
-            <boxGeometry args={[0.6, CONCOURSE.wallH, concourseL]} />
-          </mesh>
-          {/* pale stone string-course banding the brick (King's Cross) */}
-          <mesh position={[x + (x < 0 ? 0.32 : -0.32), 3.4, concourseCZ]} material={MAT.mortar()}>
-            <boxGeometry args={[0.14, 0.3, concourseL]} />
-          </mesh>
-          {/* warm timber dado rail */}
-          <mesh position={[x + (x < 0 ? 0.32 : -0.32), 1.4, concourseCZ]} material={MAT.teak()}>
-            <boxGeometry args={[0.12, 0.4, concourseL]} />
-          </mesh>
-          {/* cornice */}
-          <mesh position={[x + (x < 0 ? 0.32 : -0.32), CONCOURSE.wallH - 0.5, concourseCZ]} material={MAT.oak()}>
-            <boxGeometry args={[0.18, 0.5, concourseL]} />
-          </mesh>
-        </group>
-      ))}
+      {[
+        // east wall — solid
+        { x: CONCOURSE.maxX, segs: [{ cz: concourseCZ, len: concourseL }] },
+        // west wall — split with a gap for Platform 1 access (z = -40 to -2)
+        {
+          x: CONCOURSE.minX,
+          segs: [
+            { cz: (CONCOURSE.z0 + (-40)) / 2, len: (-40) - CONCOURSE.z0 },
+            { cz: ((-2) + CONCOURSE.z1) / 2, len: CONCOURSE.z1 - (-2) },
+          ],
+        },
+      ].map((wall) =>
+        wall.segs.map((seg, si) => (
+          <group key={`w-${wall.x}-${si}`}>
+            <mesh position={[wall.x, CONCOURSE.wallH / 2, seg.cz]} receiveShadow material={MAT.brick()}>
+              <boxGeometry args={[0.6, CONCOURSE.wallH, seg.len]} />
+            </mesh>
+            {/* pale stone string-course banding the brick (King's Cross) */}
+            <mesh position={[wall.x + (wall.x < 0 ? 0.32 : -0.32), 3.4, seg.cz]} material={MAT.mortar()}>
+              <boxGeometry args={[0.14, 0.3, seg.len]} />
+            </mesh>
+            {/* warm timber dado rail */}
+            <mesh position={[wall.x + (wall.x < 0 ? 0.32 : -0.32), 1.4, seg.cz]} material={MAT.teak()}>
+              <boxGeometry args={[0.12, 0.4, seg.len]} />
+            </mesh>
+            {/* cornice */}
+            <mesh position={[wall.x + (wall.x < 0 ? 0.32 : -0.32), CONCOURSE.wallH - 0.5, seg.cz]} material={MAT.oak()}>
+              <boxGeometry args={[0.18, 0.5, seg.len]} />
+            </mesh>
+          </group>
+        )),
+      )}
 
       {/* south wall, split around the grand entrance arch */}
       {[

@@ -1,20 +1,22 @@
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import './StickyEntry.css'
 
 export function StickyEntry() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   return (
     <div className="sticky-entry-root">
       <button className="sf-btn secondary back-btn" onClick={() => navigate('/')}>
-        ← Lobby
+        ← {t('common.lobby')}
       </button>
 
       <div className="sticky-entry-stage">
         <div className="sticky-entry-head">
-          <span className="sf-pill">Sticky Notes</span>
-          <h1>How do you want to study?</h1>
-          <p>Two ways to work with your notes — pick your mood.</p>
+          <span className="sf-pill">{t('stickyEntry.pill')}</span>
+          <h1>{t('stickyEntry.title')}</h1>
+          <p>{t('stickyEntry.subtitle')}</p>
         </div>
 
         <div className="sticky-choices">
@@ -26,9 +28,9 @@ export function StickyEntry() {
               <span className="custom-string s1" />
               <span className="custom-string s2" />
             </div>
-            <h2>Custom Sticky Notes</h2>
-            <p>An investigation board. Pin notes and photos, then link them with strings — your ideas, connected.</p>
-            <span className="choice-cta">Open the Board →</span>
+            <h2>{t('stickyEntry.customTitle')}</h2>
+            <p>{t('stickyEntry.customDescription')}</p>
+            <span className="choice-cta">{t('stickyEntry.openBoard')}</span>
           </button>
 
           <button className="sticky-choice casual soon" disabled>
@@ -38,9 +40,9 @@ export function StickyEntry() {
               <span className="casual-row" />
               <span className="casual-card" />
             </div>
-            <h2>Casual Sticky Notes</h2>
-            <p>A fast, searchable list with flashcards — same notes, study-ready.</p>
-            <span className="choice-cta soon-tag">Coming soon</span>
+            <h2>{t('stickyEntry.casualTitle')}</h2>
+            <p>{t('stickyEntry.casualDescription')}</p>
+            <span className="choice-cta soon-tag">{t('common.soon')}</span>
           </button>
         </div>
       </div>

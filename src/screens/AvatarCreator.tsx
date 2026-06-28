@@ -1,8 +1,9 @@
-import { Suspense, useRef, useState } from 'react'
+import { Suspense, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import * as THREE from 'three'
 import { AvatarRig, type AvatarRigHandle } from '../avatar/AvatarRig'
 import { AvatarAnimator } from '../avatar/AvatarAnimator'
 import { BASE_BODY } from '../avatar/baseBody'
@@ -24,13 +25,15 @@ import {
   type StyleOption,
   type Swatch,
 } from '../avatar/config'
-import { accessoriesByCategory } from '../avatar/accessories/catalog'
+import { accessoriesByCategory, getAccessory } from '../avatar/accessories/catalog'
 import {
   CATEGORY_LABEL,
   CATEGORY_ORDER,
   SLOT_FOR_ACCESSORY_CATEGORY,
 } from '../avatar/accessories/types'
 import { RARITY_COLOR, RARITY_LABEL } from '../marketplace/types'
+import { useProfile } from '../store/profile'
+import { useShop } from '../shop/store'
 import { LoadingVeil } from '../components/LoadingVeil'
 import './AvatarCreator.css'
 
@@ -53,9 +56,12 @@ export function AvatarCreator() {
   const set = useAvatar((s) => s.set)
   const reset = useAvatar((s) => s.reset)
   const save = useAvatar((s) => s.save)
+  const userXp = useProfile((s) => s.xp)
+  const userPremiumXp = useProfile((s) => s.premiumXp)
+  const shopOwned = useShop((s) => s.ownedItems)
+  const shopPurchase = useShop((s) => s.purchase)
 
   const [dock, setDock] = useState<DockTab>('customize')
-  const [auto, setAuto] = useState(true)
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
 
@@ -93,10 +99,10 @@ export function AvatarCreator() {
 
         <div className="ac-wallet">
           <span className="ac-coin ac-coin-petal">
-            <span className="ac-coin-dot ac-coin-dot-petal">✿</span> 12,450
+            <img className="ac-coin-icon" src="/icons/leaf.png" alt="" draggable={false} /> {userXp.toLocaleString()}
           </span>
           <span className="ac-coin ac-coin-gem">
-            <span className="ac-coin-dot ac-coin-dot-gem">◆</span> 320
+            <img className="ac-coin-icon" src="/icons/golden-leaf.png" alt="" draggable={false} /> {userPremiumXp.toLocaleString()}
           </span>
           <button className="ac-gear" onClick={() => navigate('/')} aria-label="Settings">
             <Glyph kind="gear" />
@@ -108,12 +114,8 @@ export function AvatarCreator() {
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <Suspense fallback={<div className="ac-stage-veil"><LoadingVeil label="Summoning your avatar…" /></div>}>
-            <AvatarCanvas config={config} auto={auto} controlsRef={controls} />
+            <AvatarCanvas config={config} controlsRef={controls} />
           </Suspense>
-
-          <button className="ac-rotate" onClick={() => setAuto((v) => !v)} data-on={auto}>
-            <Glyph kind="auto" /> {auto ? 'Auto-rotate' : 'Manual'}
-          </button>
         </section>
 
         {/* ---- right: light dock ---- */}
@@ -148,7 +150,7 @@ export function AvatarCreator() {
             </div>
           ) : (
             <div className="ac-dock-scroll">
-              <AccessoriesPanel config={config} set={set} />
+              <AccessoriesPanel config={config} set={set} shopOwned={shopOwned} shopPurchase={shopPurchase} userXp={userXp} />
             </div>
           )}
 
@@ -318,16 +320,14 @@ function SwatchField({
 }
 
 /* ----------------------------------------------------------------- my items */
-// Cosmetics live here, not in Customize: hair + clothing are OWNED items you
-// equip (and later unlock/purchase with Focus Points). For now every catalog
-// entry is treated as owned so the avatar stays fully functional; the locked
-// categories below are placeholders for the cosmetic types still to come.
+// Base-body cosmetics: hair + clothing. These are always available.
+// Accessories (glasses, hats, wings, etc.) are bought with leaves in the Accessories tab.
 
 function MyItems({ config, set }: { config: AvatarConfig; set: SetFn }) {
   return (
     <>
       <p className="ac-items-note">
-        Your owned cosmetics. Earn Focus Points to unlock more — new items appear here.
+        Base cosmetics — always available. Buy accessories with leaves in the Accessories tab.
       </p>
       <StyleField
         label="Hairstyles"
@@ -347,9 +347,13 @@ function MyItems({ config, set }: { config: AvatarConfig; set: SetFn }) {
 /* ----------------------------------------------------------------- accessories */
 // The cosmetic accessory wardrobe: 7 categories, one item per conflicting slot,
 // but every slot can be worn at once (hat + glasses + scarf + wings + a book…).
-// Clicking a tile equips it, or unequips it if it's already on. All items are
-// shown unlocked for now — ownership + the marketplace land in a later pass.
-function AccessoriesPanel({ config, set }: { config: AvatarConfig; set: SetFn }) {
+// Clicking a tile equips it, or unequips it if it's already on. Items show
+// leaf prices — buy to unlock, then equip freely.
+function AccessoriesPanel({ config, set, shopOwned, shopPurchase, userXp }: {
+  config: AvatarConfig; set: SetFn
+  shopOwned: string[]; shopPurchase: (id: string, price: number, leaves: number) => number
+  userXp: number
+}) {
   const eq = config.accessories
   return (
     <>
@@ -363,19 +367,36 @@ function AccessoriesPanel({ config, set }: { config: AvatarConfig; set: SetFn })
           <Field key={cat} label={CATEGORY_LABEL[cat]}>
             <div className="ac-acc-grid">
               {accessoriesByCategory(cat).map((it) => {
+                const owned = shopOwned.includes(it.id) || it.price === 0
                 const on = equippedId === it.id
+                const canBuy = !owned && userXp >= it.price
                 return (
                   <button
                     key={it.id}
-                    className="ac-acc-tile"
+                    className={`ac-acc-tile ${!owned ? 'ac-acc-tile--locked' : ''}`}
                     data-on={on}
                     style={{ ['--rarity' as string]: RARITY_COLOR[it.rarity] }}
-                    title={`${it.name} · ${RARITY_LABEL[it.rarity]}`}
-                    onClick={() => set({ accessories: { ...eq, [slot]: on ? null : it.id } })}
+                    title={`${it.name} · ${RARITY_LABEL[it.rarity]}${!owned ? ` · ${it.price} leaves` : ''}`}
+                    onClick={() => {
+                      if (owned) {
+                        set({ accessories: { ...eq, [slot]: on ? null : it.id } })
+                      } else if (canBuy) {
+                        const newLeaves = shopPurchase(it.id, it.price, userXp)
+                        if (newLeaves !== userXp) {
+                          useProfile.setState({ xp: newLeaves })
+                          set({ accessories: { ...eq, [slot]: it.id } })
+                        }
+                      }
+                    }}
                   >
                     <span className="ac-acc-dot" />
                     <span className="ac-acc-name">{it.name}</span>
-                    {on && <span className="ac-acc-tick"><Glyph kind="check" /></span>}
+                    {!owned && (
+                      <span className="ac-acc-price" style={{ color: canBuy ? '#6fb86a' : '#ff6a6a' }}>
+                        <img src="/icons/leaf.png" alt="" style={{ width: 12, height: 12, verticalAlign: 'middle', marginRight: 2 }} /> {it.price}
+                      </span>
+                    )}
+                    {owned && on && <span className="ac-acc-tick"><Glyph kind="check" /></span>}
                   </button>
                 )
               })}
@@ -395,11 +416,9 @@ const STATIC_LOCO: Locomotion = { speed: 0, grounded: true, vy: 0, turnRate: 0, 
 
 function AvatarCanvas({
   config,
-  auto,
   controlsRef,
 }: {
   config: AvatarConfig
-  auto: boolean
   controlsRef: React.RefObject<OrbitControlsImpl | null>
 }) {
   return (
@@ -409,34 +428,29 @@ function AvatarCanvas({
       camera={{ position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
-      {/* clean lighting only — no bloom/vignette/SSAO/DoF, and no external HDR
-          fetch (keeps the editor fast + offline-safe) */}
-      <hemisphereLight args={['#cfe0ff', '#3a2f4a', 0.8]} />
-      <directionalLight position={[3, 5, 2]} intensity={1.2} color="#fff3df" />
-      <directionalLight position={[-3, 2, -2]} intensity={0.45} color="#9a8cff" />
-      <ambientLight intensity={0.25} />
+      {/* warm café lighting — golden key + soft amber fill */}
+      <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
+      <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
+      <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
+      <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
+      <ambientLight intensity={0.25} color="#ffe8d0" />
+
+      {/* warm dust motes floating in lamplight */}
+      <DustMotes count={60} />
 
       <group position={[0, -0.9, 0]}>
         <PreviewAvatar config={config} />
-        {/* magic-circle pedestal */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-          <ringGeometry args={[0.55, 0.85, 48]} />
-          <meshBasicMaterial color="#8a6cff" transparent opacity={0.5} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.9, 48]} />
-          <meshStandardMaterial color="#2a2440" roughness={0.6} />
-        </mesh>
-        <ContactShadows position={[0, 0.002, 0]} opacity={0.45} scale={3} blur={2.4} far={2} resolution={256} color="#1a1430" />
+
+        {/* warm wooden pedestal with glowing edge */}
+        <CafePedestal />
+
+        <ContactShadows position={[0, 0.002, 0]} opacity={0.4} scale={3} blur={2.6} far={2} resolution={256} color="#2a1a0a" />
       </group>
 
       <OrbitControls
         ref={controlsRef}
         enablePan={false}
-        autoRotate={auto}
-        autoRotateSpeed={1.4}
-        // Roblox-style turntable: damped click-drag glides to rest (no abrupt
-        // stop / snap), with a calmer rotate speed for fine control.
+        autoRotate={false}
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.8}
@@ -447,6 +461,100 @@ function AvatarCanvas({
         target={[0, 0.1, 0]}
       />
     </Canvas>
+  )
+}
+
+/** Warm dust motes drifting in lamplight */
+function DustMotes({ count = 60 }: { count?: number }) {
+  const ref = useRef<THREE.Points>(null!)
+  const positions = useRef(new Float32Array(count * 3))
+
+  useMemo(() => {
+    const pos = positions.current
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 8
+      pos[i * 3 + 1] = Math.random() * 5 - 0.5
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 8 - 1
+    }
+  }, [count])
+
+  useFrame((_, dt) => {
+    if (!ref.current) return
+    const pos = ref.current.geometry.attributes.position as THREE.BufferAttribute
+    const arr = pos.array as Float32Array
+    for (let i = 0; i < count; i++) {
+      arr[i * 3 + 1] += dt * 0.04
+      arr[i * 3] += Math.sin(i * 0.7) * dt * 0.02
+      if (arr[i * 3 + 1] > 4.5) arr[i * 3 + 1] = -0.5
+    }
+    pos.needsUpdate = true
+  })
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions.current}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.035}
+        color="#ffe0a0"
+        transparent
+        opacity={0.5}
+        sizeAttenuation
+        depthWrite={false}
+      />
+    </points>
+  )
+}
+
+/** Warm wooden café pedestal with glowing ring edge */
+function CafePedestal() {
+  const ringRef = useRef<THREE.Mesh>(null!)
+  const glowRef = useRef<THREE.Mesh>(null!)
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    if (ringRef.current) {
+      const mat = ringRef.current.material as THREE.MeshBasicMaterial
+      mat.opacity = 0.45 + Math.sin(t * 1.2) * 0.1
+    }
+    if (glowRef.current) {
+      const mat = glowRef.current.material as THREE.MeshBasicMaterial
+      mat.opacity = 0.12 + Math.sin(t * 0.8) * 0.05
+    }
+  })
+
+  return (
+    <group>
+      {/* soft warm floor glow */}
+      <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
+        <circleGeometry args={[1.2, 48]} />
+        <meshBasicMaterial color="#d49040" transparent opacity={0.12} />
+      </mesh>
+
+      {/* dark wooden floor disc */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.9, 48]} />
+        <meshStandardMaterial color="#3a2a18" roughness={0.85} metalness={0.05} />
+      </mesh>
+
+      {/* glowing warm ring — like a lantern edge */}
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}>
+        <ringGeometry args={[0.82, 0.88, 48]} />
+        <meshBasicMaterial color="#ff9040" transparent opacity={0.45} />
+      </mesh>
+
+      {/* inner accent ring */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
+        <ringGeometry args={[0.54, 0.58, 48]} />
+        <meshBasicMaterial color="#c07030" transparent opacity={0.3} />
+      </mesh>
+    </group>
   )
 }
 

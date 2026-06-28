@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useChat } from '../../store/chat'
 import { useFriends } from '../../store/friends'
 import { effectiveStatus } from '../../lib/presence'
@@ -28,6 +29,7 @@ function loadChatSize(): ChatSize {
 // focus session is active the window stays usable but never pops or sounds —
 // the panel/edge tab simply hold any new messages quietly.
 export function ChatWindow() {
+  const { t } = useTranslation()
   const meId = useChat((s) => s.meId)
   const friendId = useChat((s) => s.activeFriendId)
   const conversationId = useChat((s) => s.activeConversationId)
@@ -109,34 +111,34 @@ export function ChatWindow() {
           </span>
         )}
         <span className="lcw-head-text">
-          <span className="lcw-head-name">{friend?.display_name ?? 'Chat'}</span>
+          <span className="lcw-head-name">{friend?.display_name ?? t("chat.defaultName")}</span>
           <span className="lcw-head-status">
             <StatusDot status={status} size={7} /> {STUDY_STATUS_LABEL[status]}
           </span>
         </span>
-        <div className="lcw-size" role="group" aria-label="Chat size">
+        <div className="lcw-size" role="group" aria-label={t("chat.size")}>
           {SIZES.map((s) => (
             <button
               key={s.id}
               className={`lcw-size-btn ${size === s.id ? 'on' : ''}`}
               onClick={() => changeSize(s.id)}
-              title={`${s.id === 'sm' ? 'Small' : s.id === 'md' ? 'Medium' : 'Large'} chat`}
+              title={t('chat.sizeTooltip')}
               aria-pressed={size === s.id}
             >
               {s.label}
             </button>
           ))}
         </div>
-        <button className="lcw-ico" onClick={() => setMenuOpen((v) => !v)} title="More" aria-label="More">⋯</button>
-        <button className="lcw-ico" onClick={() => useChat.getState().closeChat()} title="Close" aria-label="Close">✕</button>
+        <button className="lcw-ico" onClick={() => setMenuOpen((v) => !v)} title={t('chat.more')} aria-label={t('chat.more')}>⋯</button>
+        <button className="lcw-ico" onClick={() => useChat.getState().closeChat()} title={t('common.close')} aria-label={t('common.close')}>✕</button>
         {menuOpen && friendId && <SafetyMenu targetId={friendId} onClose={() => setMenuOpen(false)} />}
       </header>
 
       <div className="lcw-msgs" ref={listRef} onScroll={onScroll}>
-        {opening && <p className="lcw-hint">Opening…</p>}
-        {!opening && hasMore && <p className="lcw-hint">Scroll up for earlier messages</p>}
+        {opening && <p className="lcw-hint">{t('chat.opening')}</p>}
+        {!opening && hasMore && <p className="lcw-hint">{t('chat.scrollUp')}</p>}
         {!opening && messages.length === 0 && (
-          <p className="lcw-hint">Say hi — this is the start of your conversation.</p>
+          <p className="lcw-hint">t('chat.sayHi')</p>
         )}
         {messages.map((m, i) => {
           const mine = m.sender_id === meId
@@ -148,12 +150,12 @@ export function ChatWindow() {
             </div>
           )
         })}
-        {seen && <div className="lcw-seen">Seen</div>}
+        {seen && <div className="lcw-seen">{t('chat.seen')}</div>}
         <div ref={bottomRef} />
       </div>
 
       <form className="lcw-compose" onSubmit={send}>
-        <button type="button" className="lcw-emoji-btn" onClick={() => setEmojiOpen((v) => !v)} title="Emoji">
+        <button type="button" className="lcw-emoji-btn" onClick={() => setEmojiOpen((v) => !v)} title={t('chat.emoji')}>
           🙂
         </button>
         {emojiOpen && (
@@ -167,14 +169,14 @@ export function ChatWindow() {
         )}
         <input
           className="lcw-input"
-          placeholder="Message…"
+          placeholder={t('chat.messagePlaceholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={4000}
           data-no-hotkeys
           autoFocus
         />
-        <button type="submit" className="lcw-send" disabled={!text.trim()} title="Send">
+        <button type="submit" className="lcw-send" disabled={!text.trim()} title={t('chat.send')}>
           ➤
         </button>
       </form>
@@ -188,12 +190,13 @@ function timeGap(a: string, b: string): number {
 
 /* ----- block / report / unfriend menu ----- */
 function SafetyMenu({ targetId, onClose }: { targetId: string; onClose: () => void }) {
+  const { t } = useTranslation()
   const { block, unfriend, report } = useFriends()
   const [reporting, setReporting] = useState(false)
   const REASONS: [ReportReason, string][] = [
-    ['spam', 'Spam'],
-    ['harassment', 'Harassment'],
-    ['inappropriate', 'Inappropriate content'],
+    ['spam', t('chat.reasonSpam')],
+    ['harassment', t('chat.reasonHarassment')],
+    ['inappropriate', t('chat.reasonInappropriate')],
   ]
   return (
     <>
@@ -201,11 +204,11 @@ function SafetyMenu({ targetId, onClose }: { targetId: string; onClose: () => vo
       <div className="lcw-menu">
         {!reporting ? (
           <>
-            <button className="lcw-menu-item" onClick={() => setReporting(true)}>Report…</button>
+            <button className="lcw-menu-item" onClick={() => setReporting(true)}>{t('chat.report')}</button>
             <button
               className="lcw-menu-item danger"
               onClick={() => {
-                if (window.confirm('Block this user? This removes the friendship and stops all messages.')) {
+                if (window.confirm(t('chat.confirmBlock'))) {
                   void block(targetId)
                   useChat.getState().closeChat()
                   onClose()
@@ -217,7 +220,7 @@ function SafetyMenu({ targetId, onClose }: { targetId: string; onClose: () => vo
             <button
               className="lcw-menu-item"
               onClick={() => {
-                if (window.confirm('Remove this friend?')) {
+                if (window.confirm(t('chat.confirmRemoveFriend'))) {
                   void unfriend(targetId)
                   useChat.getState().closeChat()
                   onClose()
@@ -229,7 +232,7 @@ function SafetyMenu({ targetId, onClose }: { targetId: string; onClose: () => vo
           </>
         ) : (
           <>
-            <div className="lcw-menu-label">Report for…</div>
+            <div className="lcw-menu-label">{t('chat.reportFor')}</div>
             {REASONS.map(([r, label]) => (
               <button
                 key={r}
@@ -237,7 +240,7 @@ function SafetyMenu({ targetId, onClose }: { targetId: string; onClose: () => vo
                 onClick={() => {
                   void report(targetId, r)
                   onClose()
-                  window.alert('Thanks — your report has been submitted.')
+                  window.alert(t('chat.reportSubmitted'))
                 }}
               >
                 {label}

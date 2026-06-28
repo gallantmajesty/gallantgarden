@@ -216,3 +216,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .forest-topleft { top: 12px; left: 12px; gap: 6px; }
+  .forest-topright { top: 12px; right: 12px; }
+  .forest-toolbar { bottom: 12px; gap: 8px; padding: 8px 12px; }
+  .forest-divider { height: 24px; }
+  .forest-hint { font-size: 12px; padding: 0 4px; }
+  .forest-treeinfo { gap: 2px; }
+  .forest-treename { font-size: 15px; }
+  .forest-treesub { font-size: 11px; }
+  .mode-toggle { padding: 3px; }
+  .mode-toggle button { font-size: 12px; padding: 5px 10px; }
+  .forest-edit-hint { font-size: 12px; padding: 5px 12px; }
+  .forest-search { top: 56px; left: 12px; width: calc(100vw - 24px); padding: 10px; }
+  .rename-box { width: 100%; padding: 16px; }
+}

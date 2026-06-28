@@ -528,3 +528,32 @@
     transform: scale(1) translateY(0);
   }
 }
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+  .ss { padding: 8px; gap: 8px; }
+  .ss-rail { width: 44px; border-radius: 12px; padding: 8px 0; }
+  .ss-rail__btn { width: 32px; height: 32px; border-radius: 8px; }
+  .ss-main { gap: 8px; }
+  .ss-bottom { padding: 8px 10px; border-radius: 12px; gap: 6px; }
+  .ss-bottom__logo { width: 28px; height: 28px; }
+  .ss-bottom__divider { height: 22px; margin: 0 2px; }
+  .ss-finish { padding: 6px 10px; font-size: 11px; }
+  .ss-bottom__room { font-size: 11px; padding: 5px 8px; }
+  .ss-find { font-size: 10px; padding: 6px 8px; }
+  .ss-count { font-size: 11px; padding: 6px 8px; }
+  .ss-you { padding: 3px 4px; }
+  .ss-you__tag { font-size: 9px; padding: 4px 8px; }
+  .ss-you__ic { width: 26px; height: 26px; }
+  .ss-status { font-size: 10px; padding: 6px 10px; }
+  .ss-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ss-tile { border-radius: 10px; }
+  .ss-tile__name { left: 6px; bottom: 36px; padding: 3px 8px 3px 3px; font-size: 11px; }
+  .ss-tile__init, .ss-tile__ava { width: 56px; height: 56px; }
+  .ss-tile__off { font-size: 11px; }
+  .ss-tile__status { padding: 8px 10px; font-size: 10px; }
+  .ss-bubble { height: 24px; min-width: 24px; padding: 0 6px; font-size: 10px; }
+  .ss-bubble img, .ss-rankbadge img, .ss-rankbadge .rank-badge { width: 22px; height: 22px; }
+  .ss-pager { font-size: 11px; gap: 4px; }
+  .ss-pager button { width: 22px; height: 22px; }
+}

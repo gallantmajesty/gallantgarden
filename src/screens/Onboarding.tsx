@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { COUNTRIES } from '../lib/countries'
@@ -15,6 +16,7 @@ const LAST_STEP: StepId = 6
 const STEP_COUNT = 7
 
 export function Onboarding() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const complete = useProfile((s) => s.complete)
   const setUsername = useProfile((s) => s.setUsername)
@@ -30,7 +32,7 @@ export function Onboarding() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const displayName = user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
+  const displayName = user?.profile?.name || user?.email?.split('@')[0] || t('onboarding.explorerLabel')
 
   // Per-step gating for the Continue button.
   const canAdvance =
@@ -60,7 +62,7 @@ export function Onboarding() {
       setSaving(false)
       setUsernameOk(false)
       setStep(1)
-      setError('That username was just taken — please pick another.')
+      setError(t('onboarding.usernameTaken'))
       return
     }
     const ok = await complete({
@@ -72,7 +74,7 @@ export function Onboarding() {
       rank: DEFAULT_RANK_ID,
     })
     setSaving(false)
-    if (!ok) setError("We couldn't save your profile. Check your connection and try again.")
+    if (!ok) setError(t('onboarding.saveError'))
     // On success, useProfile.onboarded flips true and App swaps to the lobby.
   }
 
@@ -148,13 +150,13 @@ function ProgressDots({ step }: { step: StepId }) {
 /* --------------------------------------------------------------- step 1: welcome */
 
 function WelcomeStep() {
+  const { t } = useTranslation()
   return (
     <div className="ob-welcome">
       <div className="ob-seedling">🌱</div>
-      <h1 className="ob-title">Welcome to FocusLily</h1>
+      <h1 className="ob-title">{t('onboarding.welcomeTitle')}</h1>
       <p className="ob-lead">
-        Let&rsquo;s set up your profile. This information helps personalize your experience.
-        Sensitive information such as age will never be displayed publicly.
+        {t('onboarding.welcomeBody')}
       </p>
     </div>
   )
@@ -173,6 +175,7 @@ function UsernameStep({
   onChange: (s: string) => void
   onValidity: (ok: boolean) => void
 }) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<UsernameCheck & { checking?: boolean }>({ ok: false })
 
   // Suggest an available handle from the display name on first mount (once).
@@ -215,10 +218,9 @@ function UsernameStep({
 
   return (
     <div className="ob-step">
-      <h2 className="ob-q">Choose your username</h2>
+      <h2 className="ob-q">{t('onboarding.chooseUsername')}</h2>
       <p className="ob-hint">
-        Your unique handle for mentions, your profile link and friend requests. Letters, numbers and _
-        only — it can&rsquo;t be changed often, but your display name can be anything.
+        {t('onboarding.usernameHint')}
       </p>
       <div className="ob-username">
         <span className="ob-username-at">@</span>
@@ -226,14 +228,14 @@ function UsernameStep({
           className="sf-input ob-username-input"
           value={value}
           maxLength={20}
-          placeholder="username"
+          placeholder={t('onboarding.usernamePlaceholder')}
           autoFocus
           onChange={(e) => onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
         />
       </div>
       <p className={`ob-username-status ${status.checking ? '' : status.ok ? 'ok' : value ? 'bad' : ''}`}>
         {status.checking
-          ? 'Checking availability…'
+          ? t('onboarding.checkingAvailability')
           : status.ok
             ? `@${value} is available`
             : value
@@ -247,6 +249,7 @@ function UsernameStep({
 /* -------------------------------------------------------------- step 3: country */
 
 function CountryStep({ value, onChange }: { value: string | null; onChange: (c: string) => void }) {
+  const { t } = useTranslation()
   const [q, setQ] = useState('')
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -256,11 +259,11 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
 
   return (
     <div className="ob-step">
-      <h2 className="ob-q">Which country are you from?</h2>
-      <p className="ob-hint">Shown publicly beside your name and rank.</p>
+      <h2 className="ob-q">{t('onboarding.countryTitle')}</h2>
+      <p className="ob-hint">{t('onboarding.countryHint')}</p>
       <input
         className="sf-input ob-search"
-        placeholder="Search countries…"
+        placeholder={t('common.searchCountries')}
         value={q}
         onChange={(e) => setQ(e.target.value)}
         autoFocus
@@ -280,7 +283,7 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
             {value === c.code && <span className="ob-check">✓</span>}
           </button>
         ))}
-        {results.length === 0 && <p className="ob-empty">No countries match “{q}”.</p>}
+        {results.length === 0 && <p className="ob-empty">{t('common.noCountriesMatch', { query: q })}</p>}
       </div>
     </div>
   )
@@ -289,14 +292,14 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
 /* ------------------------------------------------------------------ step 3: age */
 
 function AgeStep({ value, onChange }: { value: number | null; onChange: (n: number) => void }) {
+  const { t } = useTranslation()
   return (
     <div className="ob-step">
-      <h2 className="ob-q">How old are you?</h2>
+      <h2 className="ob-q">{t('onboarding.ageTitle')}</h2>
       <div className="ob-private-notice">
         <span className="ob-lock">🔒</span>
         <span>
-          Your age is private and will never be shown publicly to other users. It is only used to
-          personalize your experience.
+          {t('onboarding.agePrivacy')}
         </span>
       </div>
       <div className="ob-age">
@@ -304,7 +307,7 @@ function AgeStep({ value, onChange }: { value: number | null; onChange: (n: numb
           className="ob-stepper"
           type="button"
           onClick={() => onChange(Math.max(MIN_AGE, (value ?? MIN_AGE) - 1))}
-          aria-label="Decrease age"
+          aria-label={t('onboarding.decreaseAge')}
         >
           −
         </button>
@@ -321,13 +324,13 @@ function AgeStep({ value, onChange }: { value: number | null; onChange: (n: numb
               if (!Number.isNaN(n)) onChange(Math.min(MAX_AGE, Math.max(MIN_AGE, Math.round(n))))
             }}
           />
-          <span className="ob-age-label">years</span>
+          <span className="ob-age-label">{t('onboarding.years')}</span>
         </div>
         <button
           className="ob-stepper"
           type="button"
           onClick={() => onChange(Math.min(MAX_AGE, (value ?? MIN_AGE) + 1))}
-          aria-label="Increase age"
+          aria-label={t('onboarding.increaseAge')}
         >
           +
         </button>
@@ -339,6 +342,7 @@ function AgeStep({ value, onChange }: { value: number | null; onChange: (n: numb
 /* ----------------------------------------------------------- step 4: study goals */
 
 function GoalsStep({ value, onChange }: { value: string[]; onChange: (g: string[]) => void }) {
+  const { t } = useTranslation()
   const [q, setQ] = useState('')
   const sel = new Set(value)
   const toggle = (id: string) =>
@@ -355,11 +359,11 @@ function GoalsStep({ value, onChange }: { value: string[]; onChange: (g: string[
 
   return (
     <div className="ob-step">
-      <h2 className="ob-q">What are you currently studying for?</h2>
-      <p className="ob-hint">Pick all that apply — we use these to tailor rooms and recommendations.</p>
+      <h2 className="ob-q">{t('onboarding.goalsTitle')}</h2>
+      <p className="ob-hint">{t('onboarding.goalsHint')}</p>
       <input
         className="sf-input ob-search"
-        placeholder="Search exams, classes, goals…"
+        placeholder={t('onboarding.goalsSearch')}
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
@@ -384,7 +388,7 @@ function GoalsStep({ value, onChange }: { value: string[]; onChange: (g: string[
         ))}
         {groups.length === 0 && <p className="ob-empty">No goals match “{q}”.</p>}
       </div>
-      {value.length > 0 && <p className="ob-selected-count">{value.length} selected</p>}
+      {value.length > 0 && <p className="ob-selected-count">{t('onboarding.selected', { count: value.length })}</p>}
     </div>
   )
 }
@@ -402,9 +406,10 @@ function ReferralStep({
   onChange: (r: ReferralOption) => void
   onOther: (s: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="ob-step">
-      <h2 className="ob-q">How did you discover FocusLily?</h2>
+      <h2 className="ob-q">{t('onboarding.referralTitle')}</h2>
       <div className="ob-referrals">
         {REFERRAL_OPTIONS.map((opt) => (
           <button
@@ -421,7 +426,7 @@ function ReferralStep({
       {value === 'Other' && (
         <input
           className="sf-input ob-search"
-          placeholder="Tell us where…"
+          placeholder={t('onboarding.referralPlaceholder')}
           value={other}
           onChange={(e) => onOther(e.target.value)}
           autoFocus
@@ -445,15 +450,16 @@ function FinishStep({
   country: string | null
   goals: string[]
 }) {
+  const { t } = useTranslation()
   const rank = getRank(DEFAULT_RANK_ID)
   const countryObj = COUNTRIES.find((c) => c.code === country)
   return (
     <div className="ob-step ob-finish">
-      <h1 className="ob-title">Your FocusLily profile is ready</h1>
+      <h1 className="ob-title">{t('onboarding.profileReady')}</h1>
       <div className="ob-finish-badge">
         <RankBadge rankId={rank.id} size={120} />
         <p className="ob-finish-rank">
-          Starting Rank: <strong>{rank.name}</strong>
+          {t('onboarding.startingRank')}: <strong>{rank.name}</strong>
         </p>
       </div>
 

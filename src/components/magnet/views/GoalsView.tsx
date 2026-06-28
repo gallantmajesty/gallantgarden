@@ -1,14 +1,15 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import type { Goal, GoalKind } from '../../../lib/magnet/types'
 import { SectionHead, Panel, ProgressRing, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
 
-const KINDS: { key: GoalKind; label: string; icon: string; blurb: string }[] = [
-  { key: 'short', label: 'Short-term', icon: 'flag', blurb: 'This term' },
-  { key: 'long', label: 'Long-term', icon: 'target', blurb: 'This year' },
-  { key: 'life', label: 'Life goals', icon: 'star', blurb: 'The big picture' },
-  { key: 'dream', label: 'Dream projects', icon: 'rocket', blurb: 'Someday / maybe' },
+const KINDS: { key: GoalKind; labelKey: string; icon: string; blurbKey: string }[] = [
+  { key: 'short', labelKey: 'goals.kindShort', icon: 'flag', blurbKey: 'goals.blurbShort' },
+  { key: 'long', labelKey: 'goals.kindLong', icon: 'target', blurbKey: 'goals.blurbLong' },
+  { key: 'life', labelKey: 'goals.kindLife', icon: 'star', blurbKey: 'goals.blurbLife' },
+  { key: 'dream', labelKey: 'goals.kindDream', icon: 'rocket', blurbKey: 'goals.blurbDream' },
 ]
 const GOAL_COLORS = ['#9a6cff', '#ff6f9c', '#46d6a0', '#ffb454', '#4fd1e0', '#b76cff', '#ff5d6c']
 
@@ -24,6 +25,7 @@ function emptyDraft(): Draft {
 }
 
 export function GoalsView() {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const addGoal = useMagnet((s) => s.addGoal)
   const updateGoal = useMagnet((s) => s.updateGoal)
@@ -54,11 +56,11 @@ export function GoalsView() {
     <div className="mg-view">
       <SectionHead
         icon="target"
-        title="Goals & Dreams"
-        subtitle="From this term's targets to the life you're building toward"
+        title={t('goals.title')}
+        subtitle={t('goals.subtitle')}
         action={
           <button className="mg-btn primary" onClick={() => setModalOpen(true)}>
-            <Icon name="plus" size={16} /> New goal
+            <Icon name="plus" size={16} />{t('goals.newGoal')}
           </button>
         }
       />
@@ -66,8 +68,8 @@ export function GoalsView() {
       {data.goals.length === 0 ? (
         <EmptyState
           icon="rocket"
-          title="Name what you're reaching for"
-          body="A goal you can see is a goal you can grow toward. Add your first — big or small."
+          title={t('goals.emptyTitle')}
+          body={t('goals.emptyBody')}
         />
       ) : (
         KINDS.map((k) => {
@@ -76,8 +78,8 @@ export function GoalsView() {
           return (
             <div key={k.key} className="mg-goalgroup">
               <h3 className="mg-goalgroup-head">
-                <Icon name={k.icon} size={17} /> {k.label}
-                <span className="mg-muted">{k.blurb}</span>
+                <Icon name={k.icon} size={17} /> {t(k.labelKey)}
+                <span className="mg-muted">{t(k.blurbKey)}</span>
               </h3>
               <div className="mg-goalgrid">
                 {goals.map((g) => (
@@ -103,39 +105,39 @@ export function GoalsView() {
         })
       )}
 
-      <MgModal open={modalOpen} title="New goal" onClose={() => setModalOpen(false)} width={520}>
+      <MgModal open={modalOpen} title={t('goals.newGoalModal')} onClose={() => setModalOpen(false)} width={520}>
         <form className="mg-form" onSubmit={save}>
-          <Field label="Goal">
+          <Field label={t('goals.goalLabel')}>
             <input
               autoFocus
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              placeholder="What do you want to achieve?"
+              placeholder={t('goals.goalPlaceholder')}
             />
           </Field>
-          <Field label="Why it matters">
+          <Field label={t('goals.whyLabel')}>
             <textarea
               rows={2}
               value={draft.detail}
               onChange={(e) => setDraft({ ...draft, detail: e.target.value })}
-              placeholder="The reason behind it — your future self reading this will thank you."
+              placeholder={t('goals.whyPlaceholder')}
             />
           </Field>
           <div className="mg-form-row">
-            <Field label="Horizon">
+            <Field label={t('goals.horizonLabel')}>
               <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as GoalKind })}>
                 {KINDS.map((k) => (
                   <option key={k.key} value={k.key}>
-                    {k.label}
+                    {t(k.labelKey)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Target date">
+            <Field label={t('goals.targetDateLabel')}>
               <input type="date" value={draft.target} onChange={(e) => setDraft({ ...draft, target: e.target.value })} />
             </Field>
           </div>
-          <Field label="Color">
+          <Field label={t('goals.colorLabel')}>
             <div className="mg-swatches">
               {GOAL_COLORS.map((c) => (
                 <button
@@ -179,6 +181,7 @@ function GoalCard({
   onProgress: (p: number) => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
   const hasMs = goal.milestones.length > 0
   return (
     <Panel className="mg-goalcard">
@@ -192,7 +195,7 @@ function GoalCard({
             </span>
           )}
         </div>
-        <button className="mg-iconbtn danger" onClick={onDelete} aria-label="Delete goal">
+        <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('goals.deleteGoal')}>
           <Icon name="trash" size={15} />
         </button>
       </div>
@@ -201,7 +204,7 @@ function GoalCard({
 
       {!hasMs && (
         <label className="mg-goal-slider">
-          <span>Progress</span>
+          <span>{t('goals.progress')}</span>
           <input
             type="range"
             min={0}
@@ -230,7 +233,7 @@ function GoalCard({
           onAddMs()
         }}
       >
-        <input value={msInput} onChange={(e) => onMsInput(e.target.value)} placeholder="Add a milestone…" />
+        <input value={msInput} onChange={(e) => onMsInput(e.target.value)} placeholder={t('goals.addMilestone')} />
         <button type="submit">
           <Icon name="plus" size={14} />
         </button>

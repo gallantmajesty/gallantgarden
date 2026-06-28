@@ -6,17 +6,17 @@ allowed_redirect_urls = [
   "http://localhost:5173",
   "http://localhost:4173",
 ]
-require_email_verification = false
+require_email_verification = true
 verify_email_method = "code"
 reset_password_method = "code"
 disable_signup = false
 
 [auth.password]
-min_length = 6
-require_number = false
-require_lowercase = false
-require_uppercase = false
-require_special_char = false
+min_length = 8
+require_number = true
+require_lowercase = true
+require_uppercase = true
+require_special_char = true
 
 [auth.smtp]
 enabled = false

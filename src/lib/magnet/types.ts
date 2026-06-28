@@ -114,6 +114,7 @@ export interface MagnetData {
 
   // progression / connection to Focus Lily
   xp: number
+  premiumXp: number // golden leaves — premium XP from high-commitment achievements
   unlockedThemes: string[]
 
   // personalization

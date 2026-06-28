@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
+import { useProfile } from '../../../store/profile'
+import { useShop } from '../../../shop/store'
 import { THEMES, THEME_CATEGORIES, getTheme } from '../../../lib/magnet/themes'
-import { levelForXp } from '../../../lib/magnet/types'
 import { SectionHead, Panel } from '../ui'
 import { Icon } from '../Icon'
 
@@ -25,31 +27,58 @@ const ACCENTS = [
 const FONTS = ['Inter', 'Georgia', 'Courier New', 'Trebuchet MS', 'Palatino Linotype', 'Verdana', 'Garamond', 'Consolas']
 
 export function ThemesView() {
+  const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const setTheme = useMagnet((s) => s.setTheme)
   const setAccent = useMagnet((s) => s.setAccent)
   const setParticleDensity = useMagnet((s) => s.setParticleDensity)
   const setFont = useMagnet((s) => s.setFont)
+  const userXp = useProfile((s) => s.xp)
+  const setXp = useProfile((s) => s.xp)
+  const shopOwned = useShop((s) => s.ownedItems)
+  const shopPurchase = useShop((s) => s.purchase)
 
-  const level = levelForXp(data.xp)
+  const totalXp = userXp
+
+  function handleBuyTheme(themeId: string, price: number) {
+    const newLeaves = shopPurchase(themeId, price, totalXp)
+    if (newLeaves !== totalXp) {
+      // Deduct leaves from profile
+      useProfile.setState({ xp: newLeaves })
+      // Also add to magnet's unlockedThemes so the theme system stays in sync
+      useMagnet.setState((s) => ({
+        data: { ...s.data, unlockedThemes: [...new Set([...s.data.unlockedThemes, themeId])] }
+      }))
+    }
+  }
 
   return (
     <div className="mg-view">
       <SectionHead
         icon="palette"
-        title="Personalize"
-        subtitle="Reshape your whole world — themes unlock as you grow"
+        title={t('themes.title')}
+        subtitle={t('themes.subtitle')}
       />
+
+      {/* leaf balance display */}
+      <Panel className="mg-prefs">
+        <div className="mg-pref">
+          <span className="mg-field-label"><img src="/icons/leaf.png" alt="" style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 4 }} /> Leaves</span>
+          <span style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 18, color: 'var(--accent)' }}>
+            {totalXp.toLocaleString()}
+          </span>
+        </div>
+      </Panel>
 
       {/* live preferences */}
       <Panel className="mg-prefs">
         <div className="mg-pref">
-          <span className="mg-field-label">Accent color</span>
+          <span className="mg-field-label">{t('themes.accentColor')}</span>
           <div className="mg-swatches">
             <button
               className={`mg-swatch theme-default ${data.accent === null ? 'active' : ''}`}
               onClick={() => setAccent(null)}
-              title="Theme default"
+              title={t('themes.themeDefault')}
             >
               <Icon name="palette" size={14} />
             </button>
@@ -65,7 +94,7 @@ export function ThemesView() {
         </div>
 
         <div className="mg-pref">
-          <span className="mg-field-label">Particle density</span>
+          <span className="mg-field-label">{t('themes.particleDensity')}</span>
           <input
             type="range"
             min={0}
@@ -77,7 +106,7 @@ export function ThemesView() {
         </div>
 
         <div className="mg-pref">
-          <span className="mg-field-label">Font</span>
+          <span className="mg-field-label">{t('themes.font')}</span>
           <select value={data.font} onChange={(e) => setFont(e.target.value)}>
             {FONTS.map((f) => (
               <option key={f} value={f}>
@@ -97,26 +126,39 @@ export function ThemesView() {
             <h3 className="mg-themegroup-head">{cat}</h3>
             <div className="mg-themegrid">
               {themes.map((t) => {
-                const owned = data.unlockedThemes.includes(t.id)
+                const owned = data.unlockedThemes.includes(t.id) || shopOwned.includes(t.id)
                 const active = data.themeId === t.id
                 const v = t.vars
+                const canBuy = !owned && t.leafPrice > 0 && totalXp >= t.leafPrice
+                const isFree = t.leafPrice === 0
                 return (
                   <button
                     key={t.id}
                     className={`mg-themecard ${active ? 'active' : ''} ${owned ? '' : 'locked'}`}
-                    onClick={() => owned && setTheme(t.id)}
-                    disabled={!owned}
+                    onClick={() => {
+                      if (owned) {
+                        setTheme(t.id)
+                      } else if (canBuy || isFree) {
+                        handleBuyTheme(t.id, t.leafPrice)
+                      }
+                    }}
+                    disabled={!owned && !canBuy && !isFree}
                   >
                     <span className="mg-themecard-preview" style={{ background: v.bg }}>
                       <span className="mg-themecard-glow" style={{ background: v.glowA }} />
                       <span className="mg-themecard-chip" style={{ background: v.accent }} />
                       <span className="mg-themecard-chip2" style={{ background: v.accent2 }} />
-                      {!owned && (
+                      {!owned && !isFree && (
                         <span className="mg-themecard-lock">
-                          <Icon name="vault" size={16} /> Lv {t.unlockLevel}
+                          <Icon name="vault" size={14} /> <img src="/icons/leaf.png" alt="" style={{ width: 12, height: 12, verticalAlign: 'middle' }} /> {t.leafPrice}
                         </span>
                       )}
-                      {active && (
+                      {!owned && isFree && (
+                        <span className="mg-themecard-lock">
+                          Free
+                        </span>
+                      )}
+                      {owned && (
                         <span className="mg-themecard-active">
                           <Icon name="check" size={14} />
                         </span>
@@ -125,6 +167,12 @@ export function ThemesView() {
                     <span className="mg-themecard-meta">
                       <strong>{t.name}</strong>
                       <small>{t.mood}</small>
+                      {!owned && !isFree && (
+                        <small style={{ color: canBuy ? '#6fe0a0' : '#ff6a6a', fontWeight: 700 }}>
+                          <img src="/icons/leaf.png" alt="" style={{ width: 12, height: 12, verticalAlign: 'middle' }} /> {t.leafPrice} {canBuy ? '(Buy)' : '(Need more leaves)'}
+                        </small>
+                      )}
+                      {owned && <small style={{ color: '#6fe0a0' }}>Owned</small>}
                     </span>
                   </button>
                 )
@@ -135,9 +183,7 @@ export function ThemesView() {
       })}
 
       <p className="mg-themes-foot">
-        <Icon name="spark" size={14} /> You're level {level}. Keep completing tasks, focusing and building
-        habits — every level opens new worlds. Preview of the active theme:{' '}
-        <strong>{getTheme(data.themeId).name}</strong>.
+        Earn leaves by studying in rooms, the Train, or the Library.
       </p>
     </div>
   )

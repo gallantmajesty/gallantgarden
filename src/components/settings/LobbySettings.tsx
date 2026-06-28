@@ -1,14 +1,12 @@
+import { useTranslation } from 'react-i18next'
+import { LANGUAGES, changeLanguage } from '../../i18n'
 import { WebCustomizationContent } from './WebCustomization'
 import './LobbySettings.css'
 
-/**
- * Lobby settings — a modern game-style drawer. Now a single view: the web
- * theme / background / accent / font customization. Visual mode, audio,
- * performance and controls were removed from here (audio moved into the Realm).
- * The underlying `useSettings` store still drives the app via applyVisualSettings;
- * this drawer just no longer exposes those knobs.
- */
 export function LobbySettings({ onClose }: { onClose: () => void }) {
+  const { i18n } = useTranslation()
+  const current = i18n.language
+
   return (
     <div className="settings-scrim" onPointerDown={onClose}>
       <div className="settings-panel" onPointerDown={(e) => e.stopPropagation()}>
@@ -20,6 +18,21 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="settings-body">
+          <div className="settings-section">
+            <div className="settings-section-title">Language</div>
+            <div className="lang-grid">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang.code}
+                  className={`lang-btn${current === lang.code ? ' lang-btn--active' : ''}`}
+                  onClick={() => changeLanguage(lang.code)}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <WebCustomizationContent />
         </div>
       </div>

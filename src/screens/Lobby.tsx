@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
-import { getRank, RANKS } from '../lib/ranks'
+import { ResourceBar } from '../components/ResourceBar'
+import { getRank, RANKS, rankProgress } from '../lib/ranks'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
@@ -13,61 +15,140 @@ import './Lobby.css'
 
 interface LobbyObject {
   key: string
-  label: string
-  caption: string
+  labelKey: string
+  captionKey: string
   png: PngIconName
   route?: string
   soon?: boolean
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'room', label: 'Study Rooms', caption: 'Study on camera, together', png: 'study-rooms', route: '/rooms' },
-  { key: 'sticky', label: 'Sticky Notes', caption: 'Your visual thinking space', png: 'notes', route: '/sticky' },
-  { key: 'realm', label: 'Realm', caption: 'Step into a shared study world', png: 'realm', route: '/realm' },
-  { key: 'magnet', label: 'Task Magnet', caption: 'Your private productivity HQ', png: 'tasks', route: '/magnet' },
-  { key: 'focus', label: 'Focus Timer', caption: 'Beat procrastination', png: 'focus-timer', soon: true },
+  { key: 'room', labelKey: 'lobby.objStudyRooms', captionKey: 'lobby.objStudyRoomsCaption', png: 'study-rooms', route: '/rooms' },
+  { key: 'sticky', labelKey: 'lobby.objStickyNotes', captionKey: 'lobby.objStickyNotesCaption', png: 'notes', route: '/sticky' },
+  { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm' },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
+  { key: 'focus', labelKey: 'lobby.objFocusTimer', captionKey: 'lobby.objFocusTimerCaption', png: 'focus-timer', soon: true },
 ]
 
 export function Lobby() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends'>(null)
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
+  const userXp = useProfile((s) => s.xp)
+  const userPremiumXp = useProfile((s) => s.premiumXp)
 
-  // Use the canonical profile display name (the same source the Profile screen
-  // shows) so the name is consistent app-wide; fall back to auth/email only
-  // until the profile has hydrated.
+  // Transition animation state
+  const [transition, setTransition] = useState<{
+    active: boolean
+    index: number
+    phase: 'emit' | 'center' | 'ultra'
+    originX: number
+    originY: number
+  } | null>(null)
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  // Profile rank transition
+  const [rankTransition, setRankTransition] = useState<{
+    active: boolean
+    phase: 'slide' | 'fire' | 'go'
+    originX: number
+    originY: number
+  } | null>(null)
+  const rankTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
   const profileName = useProfile((s) => s.displayName)
   const displayName =
     profileName && profileName !== 'Explorer'
       ? profileName
       : user?.profile?.name || user?.email?.split('@')[0] || 'Explorer'
 
-  // XP widget — the bar colour follows the current rank (so it re-tints on every
-  // level-up), and fill grows with the rank tier. Progression is cosmetic until
-  // a real XP system lands; the colour/rank wiring is already in place.
   const rankObj = getRank(rank)
   const rankAccent = rankObj.accent
-  const rankIdx = Math.max(0, RANKS.findIndex((r) => r.id === rankObj.id))
-  const xpPct = Math.round(((rankIdx + 1) / RANKS.length) * 100)
+  // Use the new rank progress system based on actual XP
+  const totalXp = userXp + userPremiumXp
+  const { rank: currentRank, nextRank, pct: xpPctRaw } = rankProgress(totalXp)
+  const xpPct = Math.round(xpPctRaw * 100)
 
-  function pick(o: LobbyObject) {
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(clearTimeout)
+      rankTimersRef.current.forEach(clearTimeout)
+    }
+  }, [])
+
+  const pickProfile = useCallback((e: React.MouseEvent) => {
+    if (transition?.active || rankTransition?.active) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+
+    rankTimersRef.current.forEach(clearTimeout)
+    rankTimersRef.current = []
+
+    // Phase 1: badge slides to center, bg darkens
+    setRankTransition({ active: true, phase: 'slide', originX: cx, originY: cy })
+
+    // Phase 2: fire shine — hold for ~2.5s
+    rankTimersRef.current.push(setTimeout(() => {
+      setRankTransition((p) => p ? { ...p, phase: 'fire' } : null)
+    }, 500))
+
+    // Phase 3: navigate
+    rankTimersRef.current.push(setTimeout(() => {
+      setRankTransition((p) => p ? { ...p, phase: 'go' } : null)
+    }, 3000))
+
+    rankTimersRef.current.push(setTimeout(() => {
+      navigate('/profile')
+    }, 3250))
+  }, [navigate, transition, rankTransition])
+
+  const pick = useCallback((o: LobbyObject, idx: number, e: React.MouseEvent) => {
     if (o.soon || !o.route) {
       setPanel(null)
-      // gentle "coming soon" — handled inline via the disabled style + toast later
       return
     }
-    navigate(o.route)
-  }
+    if (transition?.active) return
+
+    // Capture the clicked card's center position for the logo origin
+    const rect = e.currentTarget.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
+
+    // Phase 1: emit — logo flies out of the card, other cards slide away
+    setTransition({ active: true, index: idx, phase: 'emit', originX: cx, originY: cy })
+
+    // Phase 2: center — logo arrives at center, card fades
+    timersRef.current.push(setTimeout(() => {
+      setTransition((p) => p ? { ...p, phase: 'center' } : null)
+    }, 400))
+
+    // Phase 3: ultra — logo zooms to fill the entire screen
+    timersRef.current.push(setTimeout(() => {
+      setTransition((p) => p ? { ...p, phase: 'ultra' } : null)
+    }, 800))
+
+    // Navigate at peak zoom
+    timersRef.current.push(setTimeout(() => {
+      navigate(o.route!)
+    }, 1250))
+  }, [navigate, transition])
 
   return (
     <div className="lobby-root">
       {/* ---------- top-left: profile + Interact ---------- */}
       <div className="lobby-topleft">
         <button
-          className="lobby-xp"
-          onClick={() => navigate('/profile')}
+          className={`lobby-xp ${rankTransition?.active ? 'lobby-xp--transitioning' : ''}`}
+          onClick={pickProfile}
           title={`${displayName} · ${rankObj.name}`}
           style={{ ['--xp' as string]: rankAccent, ['--pct' as string]: xpPct }}
         >
@@ -77,81 +158,139 @@ export function Lobby() {
           <span className="lobby-xp__name">{displayName}</span>
         </button>
         <button className="sf-btn ghost lobby-iconbtn" onClick={() => setPanel('interact')}>
-          <Glyph name="people" /> Interact
+          <Glyph name="people" />{t('lobby.interact')}
           {incomingCount > 0 && <span className="lobby-dot" />}
         </button>
       </div>
 
       {/* ---------- top-right: avatar / settings ---------- */}
       <div className="lobby-topright">
-        <button className="lobby-round" title="Choose character" onClick={() => navigate('/avatar')}>
+        <button className="lobby-round" title={t('lobby.chooseCharacter')} onClick={() => navigate('/avatar')}>
           <Glyph name="face" />
         </button>
-        <button className="lobby-round" title="Settings" onClick={() => setPanel('settings')}>
+        <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
           <Glyph name="gear" />
         </button>
       </div>
 
       {/* ---------- center stage: floating objects ---------- */}
-      <div className="lobby-stage">
+      <div className={`lobby-stage ${transition?.active ? 'lobby-stage--transitioning' : ''}`}>
         <div className="lobby-welcome">
-          <span className="sf-pill">Lobby</span>
+          <span className="sf-pill">{t('common.lobby')}</span>
           <h1>Welcome back, <span className="lobby-welcome__name">{displayName}</span></h1>
-          <p>Pick where your mind wants to wander.</p>
+          <p>{t('lobby.pickWhere')}</p>
         </div>
 
         <div className="lobby-objects">
-          {OBJECTS.map((o, i) => (
-            <button
-              key={o.key}
-              className={`lobby-object water-glass ${o.soon ? 'soon' : ''}`}
-              style={{ animationDelay: `${i * 70}ms` }}
-              onClick={() => pick(o)}
-              onMouseMove={(e) => {
-                const r = e.currentTarget.getBoundingClientRect()
-                const x = ((e.clientX - r.left) / r.width) * 100
-                const y = ((e.clientY - r.top) / r.height) * 100
-                e.currentTarget.style.setProperty('--glow-x', `${x}%`)
-                e.currentTarget.style.setProperty('--glow-y', `${y}%`)
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.removeProperty('--glow-x')
-                e.currentTarget.style.removeProperty('--glow-y')
-              }}
-            >
-              <div className="lobby-object-orb">
-                <PngIcon name={o.png} size={64} alt={o.label} />
-              </div>
-              <div className="lobby-object-label">{o.label}</div>
-              <div className="lobby-object-caption">{o.caption}</div>
-              {o.soon && <div className="lobby-soon-tag">Soon</div>}
-            </button>
-          ))}
+          {OBJECTS.map((o, i) => {
+            const isTransitioning = transition?.active
+            const isSelected = isTransitioning && transition.index === i
+            const isLeft = isTransitioning && transition.index > i
+            const isRight = isTransitioning && transition.index < i
+
+            let animClass = ''
+            if (isSelected && transition.phase === 'emit') animClass = 'lobby-obj--emit'
+            else if (isSelected && (transition.phase === 'center' || transition.phase === 'ultra')) animClass = 'lobby-obj--card-fade'
+            else if (isLeft) animClass = 'lobby-obj--exit-left'
+            else if (isRight) animClass = 'lobby-obj--exit-right'
+
+            return (
+              <button
+                key={o.key}
+                className={`lobby-object water-glass ${o.soon ? 'soon' : ''} ${animClass}`}
+                style={{ animationDelay: `${i * 70}ms` }}
+                onClick={(e) => pick(o, i, e)}
+                disabled={transition?.active && !isSelected}
+                onMouseMove={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  const x = ((e.clientX - r.left) / r.width) * 100
+                  const y = ((e.clientY - r.top) / r.height) * 100
+                  e.currentTarget.style.setProperty('--glow-x', `${x}%`)
+                  e.currentTarget.style.setProperty('--glow-y', `${y}%`)
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.removeProperty('--glow-x')
+                  e.currentTarget.style.removeProperty('--glow-y')
+                }}
+              >
+                <div className="lobby-object-orb">
+                  <PngIcon name={o.png} size={64} alt={t(o.labelKey)} />
+                </div>
+                <div className="lobby-object-label">{t(o.labelKey)}</div>
+                <div className="lobby-object-caption">{t(o.captionKey)}</div>
+                {o.soon && <div className="lobby-soon-tag">{t('common.soon')}</div>}
+              </button>
+            )
+          })}
         </div>
       </div>
 
+      {/* ---------- transition overlay ---------- */}
+      {transition?.active && (
+        <div className={`lobby-transition-overlay lobby-transition--${transition.phase}`}>
+          <div
+            className="lobby-transition-logo"
+            style={{
+              ['--ox' as string]: `${transition.originX}px`,
+              ['--oy' as string]: `${transition.originY}px`,
+            }}
+          >
+            <PngIcon
+              name={OBJECTS[transition.index].png}
+              size={120}
+              alt={t(OBJECTS[transition.index].labelKey)}
+            />
+          </div>
+          <div className="lobby-transition-label">
+            {t(OBJECTS[transition.index].labelKey)}
+          </div>
+        </div>
+      )}
+
+      {/* ---------- rank transition overlay ---------- */}
+      {rankTransition?.active && (
+        <div className={`rank-transition-overlay rank-transition--${rankTransition.phase}`}>
+          <div className="rank-mountains">
+            <div className="rank-mountain rank-mountain--far" />
+            <div className="rank-mountain rank-mountain--mid" />
+            <div className="rank-mountain rank-mountain--near" />
+          </div>
+          <div
+            className="rank-transition-badge"
+            style={{
+              ['--ox' as string]: `${rankTransition.originX}px`,
+              ['--oy' as string]: `${rankTransition.originY}px`,
+            }}
+          >
+            <RankBadge rankId={rank} size={120} />
+          </div>
+          <div className="rank-transition-name">{displayName}</div>
+          <div className="rank-transition-rank">{rankObj.name}</div>
+        </div>
+      )}
+
       {/* ---------- panels ---------- */}
-      <Modal open={panel === 'interact'} title="Interact" onClose={() => setPanel(null)}>
+      <Modal open={panel === 'interact'} title={t('lobby.interact')} onClose={() => setPanel(null)}>
         <div className="menu-list">
           <button className="menu-item" onClick={() => setPanel('friends')}>
             <span className="menu-item-icon"><Glyph name="people" /></span>
             <span>
-              <strong>Friends</strong>
-              <small>Requests, friends & explorers</small>
+              <strong>{t('friendsPanel.tabFriends')}</strong>
+              <small>{t('lobby.friendsSub')}</small>
             </span>
             {incomingCount > 0 && <span className="menu-badge">{incomingCount}</span>}
           </button>
           <button className="menu-item" onClick={() => navigate('/profile')}>
             <span className="menu-item-icon"><Glyph name="face" /></span>
             <span>
-              <strong>Your Profile</strong>
-              <small>Customize your study base</small>
+              <strong>{t('lobby.yourProfile')}</strong>
+              <small>{t('lobby.profileSub')}</small>
             </span>
           </button>
           {[
-            { t: 'Controls', s: 'How to move & interact', g: 'gear', soon: true },
-            { t: 'Info', s: 'About FocusLily', g: 'star', route: '/about' },
-            { t: 'Help', s: 'Tips & support', g: 'book', soon: true },
+            { t: t('lobby.menuControls'), s: t('lobby.menuControlsSub'), g: 'gear', soon: true },
+            { t: t('lobby.menuInfo'), s: t('lobby.menuInfoSub'), g: 'star', route: '/about' },
+            { t: t('lobby.menuHelp'), s: t('lobby.menuHelpSub'), g: 'book', soon: true },
           ].map((it) => (
             <button
               key={it.t}
@@ -175,6 +314,9 @@ export function Lobby() {
       {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
 
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
+
+      {/* ---------- resource bar (CoC-style currency display) ---------- */}
+      <ResourceBar />
     </div>
   )
 }

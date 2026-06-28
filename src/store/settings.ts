@@ -62,8 +62,12 @@ export interface QualityPreset {
 
 export const QUALITY_PRESET: Record<QualityPresetName, QualityPreset> = {
   low:    { shadows: false, shadowMap: 0,    bloom: false, dust: 0,  particles: false, rainScale: 0.3, rainDrops: 50,  forest: 35,  lampLights: 0, grandLights: 0, treeLight: false, mountains: 18, clouds: 4, pillarDetail: false, windowDetail: false, dpr: 1.0 },
-  medium: { shadows: true,  shadowMap: 1024, bloom: true,  dust: 16, particles: true,  rainScale: 0.6, rainDrops: 90,  forest: 80,  lampLights: 0, grandLights: 0, treeLight: true,  mountains: 26, clouds: 6, pillarDetail: false, windowDetail: false, dpr: 1.25 },
-  high:   { shadows: true,  shadowMap: 2048, bloom: true,  dust: 60, particles: true,  rainScale: 1,   rainDrops: 200, forest: 200, lampLights: 4, grandLights: 4, treeLight: true,  mountains: 40, clouds: 9, pillarDetail: true,  windowDetail: true,  dpr: 2.0 },
+  medium: { shadows: true,  shadowMap: 1024, bloom: true,  dust: 12, particles: true,  rainScale: 0.6, rainDrops: 90,  forest: 80,  lampLights: 0, grandLights: 0, treeLight: true,  mountains: 26, clouds: 6, pillarDetail: false, windowDetail: false, dpr: 1.25 },
+  // PERF: grand lanterns & desk lamps no longer cast real point-lights at any tier
+  // (they read identically via emissive + bloom). Only 3 hero lights remain in the
+  // hall — the centre lantern, the fireplace and the knowledge tree — so the
+  // forward renderer evaluates ~5 lights/fragment instead of ~13. dpr ceiling 1.5.
+  high:   { shadows: true,  shadowMap: 2048, bloom: true,  dust: 24, particles: true,  rainScale: 1,   rainDrops: 200, forest: 200, lampLights: 0, grandLights: 0, treeLight: true,  mountains: 40, clouds: 9, pillarDetail: true,  windowDetail: true,  dpr: 1.5 },
 }
 
 /* -------------------------------------------------------------------------- */
@@ -119,38 +123,50 @@ export interface ScenePreset extends QualityPreset {
   far: number // camera far plane
   anisotropy: number // texture anisotropic-filtering level
   lodBias: number
+  /** Opt-in heavy post-FX (SSAO + DoF + god rays). Off by default; for strong
+   *  GPUs that accept lower FPS. Forced off while Performance Mode is active. */
+  ultra: boolean
 }
 
 /** Collapse the six axes (optionally with the Performance-Mode override) into the
- *  object the 3D components consume. Pure — safe to call in render/useMemo. */
-export function scenePreset(axes: QualityAxes, perfMode: boolean): ScenePreset {
+ *  object the 3D components consume. Pure — safe to call in render/useMemo.
+ *  `ultra` enables the opt-in heavy post-FX tier (ignored under Performance Mode). */
+export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false): ScenePreset {
   const a = perfMode ? PERF_OVERRIDE : axes
   const vd = clamp01((a.viewDistance - 0.6) / 0.4) // 0 at 0.6 … 1 at 1.0
   const lod = a.lodBias
   const post = a.postProcessing
   const detail = Math.max(0, 1 - lod / 1.5) // 1 at lod0 … 0 at lod1.5
-  const lampCap = a.shadowQuality === 'high' ? 4 : 0 // limit real-time lights
   return {
     shadows: a.shadowQuality !== 'off',
     shadowMap: SHADOW_MAP[a.shadowQuality],
     bloom: post !== 'off',
     fog: post !== 'off',
-    dust: Math.round(60 * detail),
+    // PERF: dust motes are large blended (transparent) sprites spanning the whole
+    // hall volume — pure overdraw. Capped low (24 at full detail) so they read as
+    // atmosphere without dominating fill-rate.
+    dust: Math.round(24 * detail),
     particles: post !== 'off' && detail > 0,
     rainScale: 0.3 + 0.7 * vd,
     rainDrops: Math.round(50 + 150 * vd),
     forest: Math.round(35 + 165 * vd),
     mountains: Math.round(18 + 22 * vd),
     clouds: Math.round(4 + 5 * vd),
-    lampLights: lampCap,
-    grandLights: lampCap,
+    // PERF: real point-lights are the dominant forward-render cost. The grand
+    // lanterns and desk lamps glow via emissive + bloom and read identically, so
+    // none of them cast a real light — only the 3 hero lights remain.
+    lampLights: 0,
+    grandLights: 0,
     treeLight: a.shadowQuality !== 'off' || post !== 'off',
     pillarDetail: lod < 0.5,
     windowDetail: lod < 0.75,
-    dpr: Math.round(2 * a.resolutionScale * 100) / 100,
+    // dpr ceiling capped at 1.5: 2.0 quadruples fragment count for no visible gain
+    // on this fill-bound scene. The PerformanceMonitor still scales within this.
+    dpr: Math.min(1.5, Math.round(2 * a.resolutionScale * 100) / 100),
     far: Math.round(700 + 700 * vd),
     anisotropy: ANISO_LEVEL[a.textureQuality],
     lodBias: lod,
+    ultra: ultra && !perfMode,
   }
 }
 
@@ -184,6 +200,9 @@ interface SettingsState {
   postProcessing: PostQuality
   textureQuality: TextureQuality
   lodBias: number
+  /** Opt-in heavy post-FX (SSAO + DoF + god rays). Default off; separate from the
+   *  six axes so toggling it never reshuffles the named-preset selector. */
+  ultra: boolean
   fps: boolean
   animations: boolean // master switch for non-essential UI animation
   reduceMotion: boolean // accessibility: minimise motion app-wide
@@ -283,7 +302,9 @@ export const DEFAULT_AXES: QualityAxes = {
   viewDistance: 0.7,
   shadowQuality: 'low',
   postProcessing: 'high', // bloom + fog on, full strength
-  textureQuality: 'low',
+  // 'high' = anisotropy 16. Aniso has a one-time cost only; 'low' (aniso 1) was the
+  // chief cause of the "blurry textures" report on the procedural floor/walls/glass.
+  textureQuality: 'high',
   lodBias: 0,
 }
 
@@ -302,6 +323,7 @@ const DEFAULTS: SettingsData = {
   themePreset: 'forest',
   quality: 'custom', // the default axes below aren't a named preset
   ...DEFAULT_AXES, // resolutionScale / viewDistance / shadow / post / texture / lodBias
+  ultra: false, // heavy post-FX tier — opt-in
   fps: false,
   animations: true,
   reduceMotion: false,

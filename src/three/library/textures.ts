@@ -33,10 +33,56 @@ function finish(c: HTMLCanvasElement, repeat: number) {
   return tex
 }
 
-/** Warm wooden planks with subtle grain — for the floor. */
+/** Like `finish` but for non-colour data (normal maps): NO sRGB transform, or the
+ *  GPU would mis-decode the encoded vectors and the lighting would look wrong. */
+function finishLinear(c: HTMLCanvasElement, repeat: number) {
+  const tex = new CanvasTexture(c)
+  // leave colorSpace at the default (linear) — normal maps are data, not colour
+  tex.wrapS = tex.wrapT = RepeatWrapping
+  tex.repeat.set(repeat, repeat)
+  tex.anisotropy = ANISO
+  return tex
+}
+
+/**
+ * Convert a grayscale height canvas into a tangent-space normal map (one-time
+ * cost at load). Sobel-style central differences give per-texel slopes; `strength`
+ * scales how pronounced the bumps read under lighting. This is what turns the flat
+ * procedural wood/stone into surfaces with real grain/imperfection depth without
+ * shipping any image files.
+ */
+function heightToNormal(src: HTMLCanvasElement, strength: number, repeat: number): CanvasTexture {
+  const n = src.width
+  const sctx = src.getContext('2d')!
+  const h = sctx.getImageData(0, 0, n, n).data
+  const out = canvas(n)
+  const octx = out.getContext('2d')!
+  const img = octx.createImageData(n, n)
+  const o = img.data
+  const at = (x: number, y: number) => h[((((y + n) % n) * n + ((x + n) % n)) << 2)] / 255
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const dx = (at(x - 1, y) - at(x + 1, y)) * strength
+      const dy = (at(x, y - 1) - at(x, y + 1)) * strength
+      const len = Math.hypot(dx, dy, 1)
+      const i = (y * n + x) << 2
+      o[i] = ((dx / len) * 0.5 + 0.5) * 255
+      o[i + 1] = ((dy / len) * 0.5 + 0.5) * 255
+      o[i + 2] = (1 / len) * 0.5 * 255 + 127.5
+      o[i + 3] = 255
+    }
+  }
+  octx.putImageData(img, 0, 0)
+  return finishLinear(out, repeat)
+}
+
+/** Warm wooden planks with subtle grain — for the floor. Rendered at 2× and let
+ *  the context scale so the grain stays crisp at grazing angles (one-time cost). */
 export function makeWoodTexture(repeat = 8, seed = 7): CanvasTexture {
-  const c = canvas(256)
+  const SS = 2
+  const c = canvas(256 * SS)
   const ctx = c.getContext('2d')!
+  ctx.scale(SS, SS)
   const rand = rng(seed)
   ctx.fillStyle = '#6b4423'
   ctx.fillRect(0, 0, 256, 256)
@@ -67,10 +113,11 @@ export function makeWoodTexture(repeat = 8, seed = 7): CanvasTexture {
 export function makeStainedGlassTexture(seed = 5): CanvasTexture {
   const W = 256
   const H = 512
-  // Render at 2× and let the context scale, so the tall window panels stay crisp
+  // Render at 3× and let the context scale, so the tall window panels stay crisp
   // (no blocky diamonds) without touching any of the drawing maths below. This is
-  // a one-time generation cost — zero per-frame impact.
-  const SS = 2
+  // a one-time generation cost — zero per-frame impact. Bumped 2×→3× to clear the
+  // "blurry stained glass" report (768×1536 effective).
+  const SS = 3
   const c = document.createElement('canvas')
   c.width = W * SS
   c.height = H * SS
@@ -214,10 +261,13 @@ export function makeBannerTexture(): CanvasTexture {
   return tex
 }
 
-/** Soft warm plaster / stone wall with faint mottling. */
+/** Soft warm plaster / stone wall with faint mottling. Supersampled 2× for crisp
+ *  grazing-angle detail. */
 export function makePlasterTexture(repeat = 4, seed = 19): CanvasTexture {
-  const c = canvas(256)
+  const SS = 2
+  const c = canvas(256 * SS)
   const ctx = c.getContext('2d')!
+  ctx.scale(SS, SS)
   const rand = rng(seed)
   ctx.fillStyle = '#caa97e'
   ctx.fillRect(0, 0, 256, 256)
@@ -232,4 +282,63 @@ export function makePlasterTexture(repeat = 4, seed = 19): CanvasTexture {
     ctx.fill()
   }
   return finish(c, repeat)
+}
+
+/** Tangent-space normal map for the wooden floor: plank seams cut grooves and the
+ *  long grain adds fine ridges, so the floor catches the lantern light with real
+ *  depth instead of reading as a flat decal. Pair with `makeWoodTexture` (same
+ *  repeat). */
+export function makeWoodNormalTexture(repeat = 14, seed = 7): CanvasTexture {
+  const N = 256
+  const c = canvas(N)
+  const ctx = c.getContext('2d')!
+  const rand = rng(seed)
+  // mid-grey height baseline
+  ctx.fillStyle = '#808080'
+  ctx.fillRect(0, 0, N, N)
+  const plankH = 32
+  for (let y = 0; y < N; y += plankH) {
+    // long grain ridges (subtle brighter/darker streaks = micro height)
+    for (let i = 0; i < 26; i++) {
+      ctx.strokeStyle = `rgba(${rand() > 0.5 ? 255 : 0},${rand() > 0.5 ? 255 : 0},${rand() > 0.5 ? 255 : 0},${0.04 + rand() * 0.06})`
+      ctx.beginPath()
+      const gy = y + rand() * plankH
+      ctx.moveTo(0, gy)
+      ctx.bezierCurveTo(80, gy + (rand() - 0.5) * 3, 170, gy + (rand() - 0.5) * 3, N, gy)
+      ctx.stroke()
+    }
+    // deep seam between planks (dark = recessed groove)
+    ctx.fillStyle = '#1a1a1a'
+    ctx.fillRect(0, y + plankH - 2, N, 2)
+    ctx.fillStyle = '#d8d8d8'
+    ctx.fillRect(0, y + plankH - 3, N, 1)
+  }
+  return heightToNormal(c, 2.4, repeat)
+}
+
+/** Tangent-space normal map for stone/plaster: rounded mottled bumps so columns
+ *  and walls show surface imperfections under the warm lights. Pair with
+ *  `makePlasterTexture` (same repeat). */
+export function makeStoneNormalTexture(repeat = 4, seed = 19): CanvasTexture {
+  const N = 256
+  const c = canvas(N)
+  const ctx = c.getContext('2d')!
+  const rand = rng(seed)
+  ctx.fillStyle = '#808080'
+  ctx.fillRect(0, 0, N, N)
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * N
+    const y = rand() * N
+    const r = 2 + rand() * 7
+    const up = rand() > 0.5
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    const lvl = up ? 210 : 60
+    g.addColorStop(0, `rgba(${lvl},${lvl},${lvl},0.5)`)
+    g.addColorStop(1, 'rgba(128,128,128,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  return heightToNormal(c, 1.6, repeat)
 }
