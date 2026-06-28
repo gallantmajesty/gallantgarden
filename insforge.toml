@@ -5,8 +5,14 @@
 allowed_redirect_urls = [
   "http://localhost:5173",
   "http://localhost:4173",
+  "https://www.focuslily.com",
+  "https://focuslily.com",
 ]
-require_email_verification = true
+# Email verification stays OFF: there is no SMTP server configured (see [auth.smtp]),
+# so requiring a verification code would make email/password signup impossible. OAuth
+# (GitHub/Google) is the primary, frictionless path; email is a working fallback.
+# Turn this back on only after SMTP is configured AND a code-entry screen exists.
+require_email_verification = false
 verify_email_method = "code"
 reset_password_method = "code"
 disable_signup = false

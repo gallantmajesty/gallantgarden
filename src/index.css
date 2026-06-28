@@ -436,17 +436,20 @@ button {
 
 /* ---- Global mobile utilities ---- */
 @media (max-width: 640px) {
-  /* prevent horizontal overflow on all scrollable containers */
+  /* kill default tap highlight and overscroll bounce */
+  *, *::before, *::after { -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior: none; }
+
   .sf-panel { border-radius: 16px; }
-  .sf-btn { font-size: 14px; padding: 10px 18px; border-radius: 12px; }
+  .sf-btn { font-size: 14px; padding: 10px 18px; border-radius: 12px; min-height: 44px; }
   .sf-input { font-size: 16px; padding: 10px 12px; border-radius: 10px; }
   .sf-pill { font-size: 10px; padding: 3px 10px; }
-  h1 { font-size: 28px; }
-  h2 { font-size: 22px; }
-  h3 { font-size: 18px; }
+  h1 { font-size: 26px; line-height: 1.2; }
+  h2 { font-size: 20px; line-height: 1.25; }
+  h3 { font-size: 17px; line-height: 1.3; }
 
-  /* ensure tap targets are at least 44px */
-  button, a, [role='button'] { min-height: 32px; }
+  /* enforce Apple 44px minimum touch targets */
+  button, a, [role='button'] { min-height: 44px; min-width: 44px; }
 
   /* safe area insets for notch devices */
   .lobby-topleft, .realm-topleft, .explore-topleft, .forest-topleft {
@@ -455,4 +458,7 @@ button {
   .lobby-topright, .realm-topright, .explore-topright, .forest-topright {
     padding-top: env(safe-area-inset-top, 0);
   }
+
+  /* prevent content from hiding behind home indicator */
+  .lobby-stage, .realm-stage, .explore-root { padding-bottom: max(16px, env(safe-area-inset-bottom, 0)); }
 }

@@ -30,6 +30,7 @@ import {
   CATEGORY_LABEL,
   CATEGORY_ORDER,
   SLOT_FOR_ACCESSORY_CATEGORY,
+  type AccessoryItem,
 } from '../avatar/accessories/types'
 import { RARITY_COLOR, RARITY_LABEL } from '../marketplace/types'
 import { useProfile } from '../store/profile'
@@ -64,6 +65,16 @@ export function AvatarCreator() {
   const [dock, setDock] = useState<DockTab>('customize')
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
+  const [previewItem, setPreviewItem] = useState<AccessoryItem | null>(null)
+
+  // When previewing an unowned item, merge it into the config so the 3D rig shows it
+  const displayConfig = useMemo(() => {
+    if (!previewItem) return config
+    return {
+      ...config,
+      accessories: { ...config.accessories, [previewItem.slot]: previewItem.id },
+    }
+  }, [config, previewItem])
 
   async function onSave() {
     setSaving(true)
@@ -114,7 +125,7 @@ export function AvatarCreator() {
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <Suspense fallback={<div className="ac-stage-veil"><LoadingVeil label="Summoning your avatar…" /></div>}>
-            <AvatarCanvas config={config} controlsRef={controls} />
+            <AvatarCanvas config={displayConfig} controlsRef={controls} />
           </Suspense>
         </section>
 
@@ -150,7 +161,7 @@ export function AvatarCreator() {
             </div>
           ) : (
             <div className="ac-dock-scroll">
-              <AccessoriesPanel config={config} set={set} shopOwned={shopOwned} shopPurchase={shopPurchase} userXp={userXp} />
+              <AccessoriesPanel config={config} set={set} shopOwned={shopOwned} userXp={userXp} onPreview={setPreviewItem} />
             </div>
           )}
 
@@ -163,6 +174,34 @@ export function AvatarCreator() {
             </button>
           </div>
         </aside>
+
+        {/* ---- preview bar: try-before-you-buy ---- */}
+        {previewItem && (
+          <div className="ac-preview-bar">
+            <div className="ac-preview-info">
+              <span className="ac-preview-name">{previewItem.name}</span>
+              <span className="ac-preview-price">
+                <img src="/icons/leaf.png" alt="" style={{ width: 14, height: 14, verticalAlign: 'middle', marginRight: 3 }} />
+                {previewItem.price}
+              </span>
+            </div>
+            <div className="ac-preview-actions">
+              <button className="ac-preview-buy" onClick={() => {
+                const newLeaves = shopPurchase(previewItem.id, previewItem.price, userXp)
+                if (newLeaves !== userXp) {
+                  useProfile.setState({ xp: newLeaves })
+                  set({ accessories: { ...config.accessories, [previewItem.slot]: previewItem.id } })
+                  setPreviewItem(null)
+                }
+              }} disabled={userXp < previewItem.price}>
+                Buy &amp; Equip
+              </button>
+              <button className="ac-preview-cancel" onClick={() => setPreviewItem(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -349,16 +388,17 @@ function MyItems({ config, set }: { config: AvatarConfig; set: SetFn }) {
 // but every slot can be worn at once (hat + glasses + scarf + wings + a book…).
 // Clicking a tile equips it, or unequips it if it's already on. Items show
 // leaf prices — buy to unlock, then equip freely.
-function AccessoriesPanel({ config, set, shopOwned, shopPurchase, userXp }: {
+function AccessoriesPanel({ config, set, shopOwned, userXp, onPreview }: {
   config: AvatarConfig; set: SetFn
-  shopOwned: string[]; shopPurchase: (id: string, price: number, leaves: number) => number
+  shopOwned: string[]
   userXp: number
+  onPreview: (item: AccessoryItem | null) => void
 }) {
   const eq = config.accessories
   return (
     <>
       <p className="ac-items-note">
-        Mix &amp; match — wear a hat, glasses, a scarf, wings and a handheld all at once.
+        Mix &amp; match — wear a hat, glasses, a scarf, wings and a handheld all at once. Tap an item to preview it first.
       </p>
       {CATEGORY_ORDER.map((cat) => {
         const slot = SLOT_FOR_ACCESSORY_CATEGORY[cat]
@@ -379,13 +419,10 @@ function AccessoriesPanel({ config, set, shopOwned, shopPurchase, userXp }: {
                     title={`${it.name} · ${RARITY_LABEL[it.rarity]}${!owned ? ` · ${it.price} leaves` : ''}`}
                     onClick={() => {
                       if (owned) {
+                        onPreview(null)
                         set({ accessories: { ...eq, [slot]: on ? null : it.id } })
                       } else if (canBuy) {
-                        const newLeaves = shopPurchase(it.id, it.price, userXp)
-                        if (newLeaves !== userXp) {
-                          useProfile.setState({ xp: newLeaves })
-                          set({ accessories: { ...eq, [slot]: it.id } })
-                        }
+                        onPreview(it)
                       }
                     }}
                   >

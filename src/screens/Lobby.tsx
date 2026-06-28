@@ -201,14 +201,14 @@ export function Lobby() {
                 style={{ animationDelay: `${i * 70}ms` }}
                 onClick={(e) => pick(o, i, e)}
                 disabled={transition?.active && !isSelected}
-                onMouseMove={(e) => {
+                onPointerMove={(e) => {
                   const r = e.currentTarget.getBoundingClientRect()
                   const x = ((e.clientX - r.left) / r.width) * 100
                   const y = ((e.clientY - r.top) / r.height) * 100
                   e.currentTarget.style.setProperty('--glow-x', `${x}%`)
                   e.currentTarget.style.setProperty('--glow-y', `${y}%`)
                 }}
-                onMouseLeave={(e) => {
+                onPointerLeave={(e) => {
                   e.currentTarget.style.removeProperty('--glow-x')
                   e.currentTarget.style.removeProperty('--glow-y')
                 }}

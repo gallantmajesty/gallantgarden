@@ -479,18 +479,20 @@
   .lobby-xp__name { font-size: 12px; max-width: 100px; }
   .lobby-webcustom { height: 36px; padding: 0 12px 0 10px; font-size: 12px; }
   .lobby-webcustom .glyph { width: 16px; height: 16px; }
-  .lobby-round { width: 36px; height: 36px; }
-  .lobby-round .glyph { width: 18px; height: 18px; }
-  .lobby-stage { padding: 70px 16px 30px; gap: 20px; }
+  .lobby-round { width: 44px; height: 44px; border-radius: 12px; }
+  .lobby-round .glyph { width: 20px; height: 20px; }
+  .lobby-stage { padding: 70px 16px env(safe-area-inset-bottom, 16px); gap: 20px; }
   .lobby-welcome h1 { font-size: 28px; margin: 6px 0 2px; }
   .lobby-welcome__name { padding: 4px 18px 6px; font-size: 14px; }
   .lobby-objects { gap: 12px; max-width: 100%; }
-  .lobby-object { width: 100%; max-width: 320px; padding: 16px 12px 14px; }
+  .lobby-object { width: 100%; max-width: 360px; padding: 16px 12px 14px; }
   .lobby-object-orb { width: 64px; height: 64px; margin-bottom: 8px; }
   .lobby-object-orb .glyph { width: 30px; height: 30px; }
   .lobby-object-orb .png-icon { width: 50px; height: 50px; }
   .lobby-object-label { font-size: 16px; }
   .lobby-object-caption { font-size: 11.5px; }
+  /* glow effect on touch for cards */
+  .lobby-object:active::before { opacity: 1; }
 }
 
 .glyph {

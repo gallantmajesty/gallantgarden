@@ -1096,7 +1096,7 @@
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
   }
   .mg-sidebar.open { transform: none; }
-  .mg-burger { display: grid; place-items: center; }
+  .mg-burger { display: grid; place-items: center; min-width: 44px; min-height: 44px; }
   .mg-scrim { display: block; position: fixed; inset: 0; z-index: 2; background: rgba(0, 0, 0, 0.4); }
   .mg-content { padding: 16px; }
   .mg-hero { flex-direction: column; align-items: flex-start; }
@@ -1108,9 +1108,17 @@
   .mg-topbar-title { font-size: 16px; }
   .mg-hero-text h1 { font-size: 22px; }
   .mg-quickadd { flex-direction: column; }
-  .mg-quickadd button { width: 100%; }
+  .mg-quickadd button { width: 100%; min-height: 44px; }
   .mg-dash-grid { grid-template-columns: 1fr; }
   .mg-rooms { grid-template-columns: 1fr 1fr; }
   .mg-toast { right: 12px; bottom: 12px; left: 12px; max-width: none; }
   .mg-habitgrid { overflow-x: auto; flex-wrap: nowrap; }
+}
+/* very small phones */
+@media (max-width: 400px) {
+  .mg-statrow, .mg-statrow.wide { grid-template-columns: 1fr; }
+  .mg-rooms { grid-template-columns: 1fr; }
+  .mg-hero-text h1 { font-size: 20px; }
+  .mg-content { padding: 12px; }
+  .mg-topbar { padding: 8px 12px; }
 }

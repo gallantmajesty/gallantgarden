@@ -55,12 +55,12 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
         <button
           className="realm-card water-glass"
           onClick={() => onPick('global')}
-          onMouseMove={(e) => {
+          onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
             e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
           }}
-          onMouseLeave={(e) => {
+          onPointerLeave={(e) => {
             e.currentTarget.style.removeProperty('--glow-x')
             e.currentTarget.style.removeProperty('--glow-y')
           }}
@@ -76,12 +76,12 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
         <button
           className="realm-card water-glass"
           onClick={() => onPick('custom')}
-          onMouseMove={(e) => {
+          onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
             e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
           }}
-          onMouseLeave={(e) => {
+          onPointerLeave={(e) => {
             e.currentTarget.style.removeProperty('--glow-x')
             e.currentTarget.style.removeProperty('--glow-y')
           }}
@@ -113,12 +113,12 @@ function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
         <button
           className="realm-card water-glass"
           onClick={() => onPick('library')}
-          onMouseMove={(e) => {
+          onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
             e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
           }}
-          onMouseLeave={(e) => {
+          onPointerLeave={(e) => {
             e.currentTarget.style.removeProperty('--glow-x')
             e.currentTarget.style.removeProperty('--glow-y')
           }}
@@ -134,12 +134,12 @@ function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
         <button
           className="realm-card water-glass"
           onClick={() => onPick('train')}
-          onMouseMove={(e) => {
+          onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
             e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
           }}
-          onMouseLeave={(e) => {
+          onPointerLeave={(e) => {
             e.currentTarget.style.removeProperty('--glow-x')
             e.currentTarget.style.removeProperty('--glow-y')
           }}

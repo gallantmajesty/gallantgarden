@@ -117,8 +117,8 @@ async function publish(event: string, payload: unknown): Promise<void> {
   if (!currentChannel) return
   try {
     await insforge.realtime.publish(currentChannel, event, payload)
-  } catch {
-    /* transient — the move/heartbeat loops will retry on their next tick */
+  } catch (err) {
+    console.warn(`[multiplayer] publish "${event}" failed:`, err)
   }
 }
 
@@ -162,6 +162,7 @@ function handleHello(msg: unknown) {
   if (!forUs(channel)) return
   const id = body.id as string | undefined
   if (!id || id === selfId || !body.avatar) return
+  console.log('[multiplayer] hello from', id, body.name)
   const now = Date.now()
   const known = !!useRealmNet.getState().roster[id]
   setRoster(id, {
@@ -210,6 +211,11 @@ function bindListeners() {
   insforge.realtime.on('hello', handleHello)
   insforge.realtime.on('move', handleMove)
   insforge.realtime.on('bye', handleBye)
+  // Also listen for raw socket events to diagnose message format
+  insforge.realtime.on('connect', () => console.log('[multiplayer] socket connected'))
+  insforge.realtime.on('connect_error', (err) => console.error('[multiplayer] socket connect_error:', err))
+  insforge.realtime.on('disconnect', (reason) => console.warn('[multiplayer] socket disconnected:', reason))
+  insforge.realtime.on('error', (err) => console.error('[multiplayer] socket error:', err))
   listenersBound = true
 }
 
@@ -278,10 +284,14 @@ export async function joinRealm(channel: string, identity: PlayerIdentity): Prom
   bindListeners()
   try {
     await insforge.realtime.connect()
-    await insforge.realtime.subscribe(channel)
-  } catch {
-    // Realtime unreachable → stay solo. The player still studies; they just
-    // don't see others until the connection recovers on a later join.
+    const sub = await insforge.realtime.subscribe(channel)
+    if (!sub.ok) {
+      console.error('[multiplayer] subscribe failed:', sub.error)
+      return
+    }
+    console.log('[multiplayer] subscribed to', channel)
+  } catch (err) {
+    console.error('[multiplayer] connect/subscribe failed:', err)
     return
   }
   await publish('hello', helloPayload())

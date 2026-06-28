@@ -903,23 +903,23 @@
   .explore-pomo { top: 12px; padding: 5px 8px 5px 12px; }
   .explore-pomo-label { font-size: 11px; }
   .explore-pomo-time { font-size: 15px; }
-  .explore-pomo-btn { width: 24px; height: 24px; font-size: 10px; }
+  .explore-pomo-btn { width: 32px; height: 32px; font-size: 12px; }
   .explore-topbar { top: 12px; right: 12px; padding: 4px 8px; gap: 6px; }
-  .explore-iconbtn { width: 30px; height: 30px; }
+  .explore-iconbtn { width: 36px; height: 36px; }
   .explore-cam { bottom: 158px; left: 12px; padding: 4px; gap: 4px; }
-  .explore-cam-btn { width: 60px; font-size: 11px; padding: 7px 4px; }
-  .explore-joy { left: 16px; bottom: 16px; width: 100px; height: 100px; }
-  .explore-joy-knob { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
-  .explore-jump { right: 20px; bottom: 30px; width: 64px; height: 64px; font-size: 24px; }
+  .explore-cam-btn { width: 64px; font-size: 12px; padding: 8px 5px; min-height: 44px; }
+  .explore-joy { left: 16px; bottom: 16px; width: 110px; height: 110px; }
+  .explore-joy-knob { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+  .explore-jump { right: 20px; bottom: 30px; width: 70px; height: 70px; font-size: 26px; }
   .explore-sit { bottom: 60px; font-size: 13px; padding: 8px 16px; }
-  .explore-sit-btn { font-size: 13px; padding: 6px 14px; }
-  .explore-restore { bottom: 16px; font-size: 12px; padding: 6px 12px; }
+  .explore-sit-btn { font-size: 13px; padding: 6px 14px; min-height: 44px; }
+  .explore-restore { bottom: 16px; font-size: 12px; padding: 6px 12px; min-height: 44px; }
   .explore-hint { bottom: 20px; font-size: 12px; padding: 7px 14px; }
-  .station { right: 10px; width: min(360px, 90vw); max-height: 80vh; padding: 12px 14px; }
+  .station { right: 10px; width: min(340px, 92vw); max-height: 80vh; padding: 12px 14px; }
   .station-head h2 { font-size: 17px; }
   .station-time { font-size: 24px; }
-  .room-roster { top: 64px; right: 12px; width: 190px; }
-  .room-roster-list { max-height: 240px; }
+  .room-roster { top: 64px; right: 12px; width: 200px; }
+  .room-roster-list { max-height: 260px; }
   .wip-card { margin: 16px; padding: 24px 20px 22px; }
   .wip-card h1 { font-size: 22px; }
   .desktop-gate-card { padding: 24px 20px; }

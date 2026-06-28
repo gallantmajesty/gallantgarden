@@ -525,16 +525,17 @@
 @media (max-width: 640px) {
   .realm-topleft { top: 12px; left: 12px; }
   .realm-topright { top: 12px; right: 12px; }
-  .realm-stage { padding: 70px 12px 30px; gap: 16px; }
+  .realm-stage { padding: 70px 12px env(safe-area-inset-bottom, 16px); gap: 16px; }
   .realm-head h1 { font-size: 26px; margin: 6px 0 2px; }
   .realm-head p { font-size: 13px; }
-  .realm-cards { gap: 14px; max-width: 100%; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .realm-cards { gap: 14px; max-width: 100%; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .realm-cards::-webkit-scrollbar { display: none; }
-  .realm-card { min-width: 260px; flex: 0 0 auto; scroll-snap-align: center; padding: 20px 16px 18px; }
+  .realm-card { min-width: 280px; flex: 0 0 auto; scroll-snap-align: center; padding: 20px 16px 18px; }
   .realm-card-orb { width: 80px; height: 80px; margin-bottom: 10px; }
   .realm-card h2 { font-size: 18px; }
   .realm-card p { font-size: 12.5px; min-height: 32px; }
   .realm-card-cta { font-size: 13px; }
+  .realm-card:active::before { opacity: 1; }
   .realm-rooms { gap: 8px; }
   .realm-room { padding: 10px 12px; gap: 10px; }
   .realm-room-icon { width: 44px; height: 44px; border-radius: 10px; }
