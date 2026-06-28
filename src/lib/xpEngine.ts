@@ -14,7 +14,7 @@
 //   3. No hard cap on focus — it requires real time commitment
 
 import { insforge } from './insforge'
-import { RANKS, rankForTotalXp } from './ranks'
+import { rankForTotalXp } from './ranks'
 
 // ---- XP values per action ---------------------------------------------------
 // Tasks/habits/milestones award 0 — leaves are study-only currency
@@ -186,11 +186,8 @@ export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number)
 export function getDailyCapInfo() {
   const daily = loadDaily()
   return {
-    tasksRemaining: Math.max(0, DAILY_CAPS.tasks - daily.tasks),
-    habitsRemaining: Math.max(0, DAILY_CAPS.habits - daily.habits),
-    milestonesRemaining: Math.max(0, DAILY_CAPS.milestones - daily.milestones),
-    totalRemaining: Math.max(0, DAILY_CAPS.total - daily.total),
+    minutesRemaining: Math.max(0, DAILY_CAPS.total - daily.journeyMinutes),
     totalCap: DAILY_CAPS.total,
-    totalEarned: daily.total,
+    totalEarned: daily.journeyMinutes,
   }
 }

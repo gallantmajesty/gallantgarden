@@ -424,7 +424,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const goal = d.goals.find((g) => g.id === goalId)
         if (!goal) return d
         const ms = goal.milestones.find((m) => m.id === mId)
-        const becomingDone = ms ? !ms.done : false
+        void ms
         const milestones = goal.milestones.map((m) => (m.id === mId ? { ...m, done: !m.done } : m))
         const doneCount = milestones.filter((m) => m.done).length
         const progress = milestones.length ? Math.round((doneCount / milestones.length) * 100) : goal.progress

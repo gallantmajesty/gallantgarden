@@ -7,7 +7,7 @@ import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
 import { ResourceBar } from '../components/ResourceBar'
-import { getRank, RANKS, rankProgress } from '../lib/ranks'
+import { getRank, rankProgress } from '../lib/ranks'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
@@ -69,7 +69,7 @@ export function Lobby() {
   const rankAccent = rankObj.accent
   // Use the new rank progress system based on actual XP
   const totalXp = userXp + userPremiumXp
-  const { rank: currentRank, nextRank, pct: xpPctRaw } = rankProgress(totalXp)
+  const { pct: xpPctRaw } = rankProgress(totalXp)
   const xpPct = Math.round(xpPctRaw * 100)
 
   // Cleanup timers on unmount

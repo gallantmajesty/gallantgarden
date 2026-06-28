@@ -25,7 +25,7 @@ import {
   type StyleOption,
   type Swatch,
 } from '../avatar/config'
-import { accessoriesByCategory, getAccessory } from '../avatar/accessories/catalog'
+import { accessoriesByCategory } from '../avatar/accessories/catalog'
 import {
   CATEGORY_LABEL,
   CATEGORY_ORDER,
@@ -495,9 +495,7 @@ function DustMotes({ count = 60 }: { count?: number }) {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={count}
-          array={positions.current}
-          itemSize={3}
+          args={[positions.current, 3]}
         />
       </bufferGeometry>
       <pointsMaterial

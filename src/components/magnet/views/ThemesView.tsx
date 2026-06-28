@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import { useProfile } from '../../../store/profile'
 import { useShop } from '../../../shop/store'
-import { THEMES, THEME_CATEGORIES, getTheme } from '../../../lib/magnet/themes'
+import { THEMES, THEME_CATEGORIES } from '../../../lib/magnet/themes'
 import { SectionHead, Panel } from '../ui'
 import { Icon } from '../Icon'
 
@@ -34,7 +34,6 @@ export function ThemesView() {
   const setParticleDensity = useMagnet((s) => s.setParticleDensity)
   const setFont = useMagnet((s) => s.setFont)
   const userXp = useProfile((s) => s.xp)
-  const setXp = useProfile((s) => s.xp)
   const shopOwned = useShop((s) => s.ownedItems)
   const shopPurchase = useShop((s) => s.purchase)
 

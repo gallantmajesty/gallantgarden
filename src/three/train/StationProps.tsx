@@ -200,7 +200,7 @@ export function StationProps({ lanternLights }: { lanternLights: number }) {
         <boxGeometry args={[1.6, 2.2, 0.9]} />
       </InstancedShape>
       {/* vending machine emissive front panels */}
-      <InstancedShape items={vendings} color={'#0f0f1f'} emissive={'#00bfff'} emissiveIntensity={0.8} toneMapped={false}>
+      <InstancedShape items={vendings} color={'#0f0f1f'} emissive={'#00bfff'} emissiveIntensity={0.8}>
         <planeGeometry args={[1.4, 1.4]} />
       </InstancedShape>
 

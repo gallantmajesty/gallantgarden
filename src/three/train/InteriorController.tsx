@@ -116,7 +116,7 @@ export function InteriorController() {
   function updateStanding(
     cam: TPerspectiveCamera,
     av: Group | null,
-    state: { clock: { elapsedTime: number } },
+    _state: { clock: { elapsedTime: number } },
     dt: number,
   ) {
     const s = useSettings.getState()
