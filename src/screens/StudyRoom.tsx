@@ -2,46 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
-import { RankBadge } from '../components/RankBadge'
 import { STATUS_COLOR } from '../lib/presence'
 import type { StudyStatus } from '../lib/types'
 import { getStudyRoom, channelFor, roomKey } from '../lib/studyRooms'
 import { joinStudyRoom, leaveStudyRoom, updateMe, useStudyRoom, type StudyPeer } from '../lib/studyRoomNet'
 import { startHeartbeat, leavePresence } from '../lib/realmPresence'
 import './StudyRoom.css'
-
-/* ============================================================
-   StudyRoom session — StudyStream-style focus grid, themed to match the
-   magical lobby (frosted glass over the ambient background).
-
-   REAL rooms, not dummies: presence is live over InsForge realtime
-   (studyRoomNet) — you see who is actually in the room (name, our rank
-   badge, status) and a PUBLIC session stopwatch on every tile that
-   counts from the moment each person joined. Occupancy is also written
-   to realm_presence so the chooser's N/100 counts are real.
-
-   Your tile is a live local webcam (video-only — mic-free by design).
-   Remote webcam video is the next layer (WebRTC); peers currently show
-   their avatar + presence. No fake users — empty slots are "open seats."
-   ============================================================ */
-
-const STATUS_LABEL: Record<StudyStatus, string> = {
-  available: 'Available',
-  studying: 'Studying',
-  focus: 'Deep Focus',
-  break: 'On Break',
-  offline: 'Away',
-}
-const STATUS_ORDER: StudyStatus[] = ['studying', 'focus', 'break', 'available']
-
-function fmtDur(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const ss = s % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`
-}
 
 export function StudyRoom() {
   const navigate = useNavigate()
@@ -58,27 +24,16 @@ export function StudyRoom() {
   const roster = useStudyRoom((s) => s.roster)
   const peers = useMemo(() => Object.values(roster).sort((a, b) => a.sessionStart - b.sessionStart), [roster])
 
-  const [myStatus, setMyStatus] = useState<StudyStatus>('studying')
-  const [status, setStatus] = useState('')
   const [camOn, setCamOn] = useState(false)
+  const [muted, setMuted] = useState(true)
+  const [showParticipants, setShowParticipants] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [chrome, setChrome] = useState(true) // show/hide the top + left bars
-  const [gridSize, setGridSize] = useState<4 | 6 | 9 | 12>(6) // users per page
-  const [sidebarOpen, setSidebarOpen] = useState(true) // left rail visible
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
-  // session stopwatch anchor — fixed for this visit (the public clock counts up
-  // from here, and we broadcast it so everyone sees the same number).
   const sessionStart = useRef(Date.now()).current
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(t)
-  }, [])
 
-  // join presence (realtime roster) + occupancy heartbeat (realm_presence)
   useEffect(() => {
     void joinStudyRoom(
       channelFor(id),
@@ -99,7 +54,6 @@ export function StudyRoom() {
       void leavePresence()
       void leaveStudyRoom()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function startCam() {
@@ -113,10 +67,11 @@ export function StudyRoom() {
       setCamOn(true)
       updateMe({ camOn: true })
     } catch {
-      setToast('Camera blocked — allow access to show your face')
-      setTimeout(() => setToast(null), 3200)
+      setToast('Camera blocked')
+      setTimeout(() => setToast(null), 3000)
     }
   }
+
   function stopCam() {
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
@@ -124,259 +79,186 @@ export function StudyRoom() {
     setCamOn(false)
     updateMe({ camOn: false })
   }
-  useEffect(() => () => stopCam(), [])
 
-  function cycleStatus() {
-    const next = STATUS_ORDER[(STATUS_ORDER.indexOf(myStatus) + 1) % STATUS_ORDER.length]
-    setMyStatus(next)
-    updateMe({ status: next })
-  }
+  useEffect(() => () => stopCam(), [])
 
   function leave() {
     navigate('/rooms')
   }
 
   const online = peers.length + 1
-  // pad the grid with honest "open seats" so the room reads as a space, not a
-  // sparse list — never with fake people.
-  const filled = 1 + peers.length
-  const openSeats = Math.max(0, Math.max(gridSize, Math.ceil(filled / 4) * 4) - filled)
-
-  // grid columns based on gridSize
-  const gridCols = gridSize <= 4 ? 2 : gridSize <= 6 ? 3 : gridSize <= 9 ? 3 : 4
+  const total = Math.max(4, online)
 
   return (
-    <div className="ss" data-chrome={chrome ? 'on' : 'off'} data-sidebar={sidebarOpen ? 'on' : 'off'}>
-      {/* =====================  LEFT ICON RAIL  ===================== */}
-      {sidebarOpen && (
-        <nav className="ss-rail water-glass">
-          <button className="ss-rail__btn" title="Hide sidebar" onClick={() => setSidebarOpen(false)}><Ic n="panelleft" /></button>
-          <button className="ss-rail__btn is-active" title="Rooms" onClick={() => navigate('/rooms')}><Ic n="home" /></button>
-          <button className="ss-rail__btn" title="Friends"><Ic n="group" /></button>
-          <button className="ss-rail__btn" title="Chat"><Ic n="chat" /></button>
-          <button className="ss-rail__btn" title="Leaderboard"><Ic n="chart" /></button>
-          <button className="ss-rail__btn" title="Profile" onClick={() => navigate('/profile')}><Ic n="user" /></button>
-          <div className="ss-rail__spacer" />
-          <button className="ss-rail__btn" title="Settings"><Ic n="gear" /></button>
-          <div className="ss-rail__sigil">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
-              <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" />
-            </svg>
-          </div>
-        </nav>
-      )}
-
-      {/* sidebar toggle when hidden */}
-      {!sidebarOpen && (
-        <button className="ss-sidebar-toggle" onClick={() => setSidebarOpen(true)} title="Show sidebar">
-          <Ic n="panelright" />
-        </button>
-      )}
-
-      <div className="ss-main">
-        {/* =====================  WEBCAM GRID  ===================== */}
-        <div className="ss-grid-wrap">
-          <div className="ss-grid" style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
-            {/* YOUR live tile */}
-            <div className="ss-tile is-you">
-              {/* the <video> is ALWAYS mounted (just hidden when off) so the ref
-                  exists when startCam attaches the stream — otherwise the feed
-                  silently never shows. */}
-              <video ref={videoRef} className="ss-tile__feed mirror" muted playsInline style={{ display: camOn ? 'block' : 'none' }} />
-              {!camOn && (
-                <div className="ss-tile__off">
-                  {avatarUrl ? <img src={avatarUrl} alt="" className="ss-tile__ava" /> : <div className="ss-tile__init">{myName[0]?.toUpperCase()}</div>}
-                  <small>Click "Show Face" to reveal yourself</small>
-                </div>
-              )}
-
-              <div className="ss-tile__tl">
-                <span className="ss-bubble light"><Ic n="pin" /></span>
-              </div>
-              <div className="ss-tile__tr">
-                <span className="ss-bubble clock"><Ic n="clock" /> {fmtDur(now - sessionStart)}</span>
-                <span className="ss-rankbadge"><RankBadge rankId={myRank} size={30} /></span>
-              </div>
-
-              <div className="ss-tile__name">
-                <span className="ava">{myName[0]?.toUpperCase()}</span>
-                {myName}
-              </div>
-
-              <input
-                className="ss-tile__statusinput"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                placeholder="Set a study status..."
-                maxLength={80}
-              />
-            </div>
-
-            {/* REAL peers — live presence from the room roster */}
-            {peers.map((p) => (
-              <PeerTile key={p.id} peer={p} now={now} />
-            ))}
-
-            {/* open seats — honest placeholders, no fake users */}
-            {Array.from({ length: openSeats }).map((_, i) => (
-              <div key={`open-${i}`} className="ss-tile is-open">
-                <div className="ss-seat">
-                  <div className="ss-seat__ic">
-                    <Ic n="cam" />
-                  </div>
-                  <b>Open Seat</b>
-                  <small>Awaiting a study companion</small>
-                </div>
-              </div>
-            ))}
-          </div>
+    <div className="zm">
+      {/* =====================  TOP BAR  ===================== */}
+      <header className="zm-top">
+        <div className="zm-top__left">
+          <button className="zm-icon-btn" onClick={leave} title="Leave">
+            <ZmIc n="back" />
+          </button>
+          <button className="zm-icon-btn" title="Camera">
+            <ZmIc n="cam" />
+          </button>
+          <button className="zm-icon-btn" title="Audio">
+            <ZmIc n="volume" />
+          </button>
         </div>
+        <div className="zm-top__center">
+          <span className="zm-top__shield"><ZmIc n="shield" /></span>
+          <span className="zm-top__room">{room.name}</span>
+          <ZmIc n="chevr" />
+        </div>
+        <div className="zm-top__right">
+          <button className="zm-leave" onClick={leave}>Leave</button>
+        </div>
+      </header>
 
-        {/* =====================  BOTTOM BAR (Google Meet style)  ===================== */}
-        <div className="ss-bottom-bar">
-          <header className="ss-bottom water-glass">
-            {/* Chrome toggle */}
-            <button className="ss-chrome-toggle" onClick={() => setChrome((c) => !c)} title={chrome ? 'Hide bar' : 'Show bar'}>
-              <Ic n={chrome ? 'chevd' : 'chevu'} />
-            </button>
-
-            {/* Left: Finish + room info */}
-            <button className="ss-finish" onClick={leave}>
-              <Ic n="check" /> Finish
-            </button>
-
-            <span className="ss-bottom__room" style={{ ['--rc' as string]: room.accent }}>
-              <span className="ss-bottom__room-emoji">{room.emoji}</span>{room.name}
-            </span>
-
-            <div className="ss-bottom__divider" />
-
-            {/* Center: cam + mic + status */}
-            <div className="ss-you water-glass">
-              <span className="ss-you__tag"><RuneIcon /> <span className="dot">{myName[0]?.toUpperCase()}</span>YOU</span>
-              <button className={`ss-you__ic${camOn ? ' on' : ' off'}`} title={camOn ? 'Turn camera off' : 'Show your face'} onClick={() => (camOn ? stopCam() : startCam())}>
-                <Ic n={camOn ? 'cam' : 'camoff'} />
-              </button>
-              <button className="ss-you__ic muted" title="No mic — silent room"><Ic n="micoff" /></button>
+      {/* =====================  GRID  ===================== */}
+      <div className="zm-grid-wrap">
+        <div className="zm-grid">
+          {/* YOUR tile */}
+          <div className={`zm-tile${camOn ? ' has-video' : ''}`}>
+            <video ref={videoRef} className="zm-tile__feed mirror" muted playsInline style={{ display: camOn ? 'block' : 'none' }} />
+            {!camOn && (
+              <div className="zm-tile__off">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="zm-tile__ava" />
+                ) : (
+                  <div className="zm-tile__init">{myName[0]?.toUpperCase()}</div>
+                )}
+              </div>
+            )}
+            <div className="zm-tile__name">
+              {muted && <span className="zm-tile__mic"><ZmIc n="micoff" /></span>}
+              {myName} (You)
             </div>
+            {camOn && <div className="zm-tile__cam-border" />}
+          </div>
 
-            <button className="ss-status" onClick={cycleStatus} title="Set your study mode">
-              <i style={{ background: STATUS_COLOR[myStatus] }} />
-              {STATUS_LABEL[myStatus]}
-            </button>
+          {/* PEERS */}
+          {peers.map((p) => (
+            <PeerTile key={p.id} peer={p} />
+          ))}
 
-            <div className="ss-bottom__spacer" />
+          {/* OPEN SEATS */}
+          {Array.from({ length: Math.max(0, total - online) }).map((_, i) => (
+            <div key={`open-${i}`} className="zm-tile zm-tile--open">
+              <div className="zm-tile__off">
+                <div className="zm-tile__init zm-tile__init--empty">
+                  <ZmIc n="cam" />
+                </div>
+              </div>
+              <div className="zm-tile__name">
+                <span className="zm-tile__mic"><ZmIc n="micoff" /></span>
+                Open Seat
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-            {/* Grid size selector */}
-            <div className="ss-gridsize">
-              {[4, 6, 9, 12].map((n) => (
-                <button
-                  key={n}
-                  className={`ss-gridsize__btn${gridSize === n ? ' on' : ''}`}
-                  onClick={() => setGridSize(n as 4 | 6 | 9 | 12)}
-                  title={`${n} users per page`}
-                >
-                  {n === 4 && <Ic n="grid4" />}
-                  {n === 6 && <Ic n="grid6" />}
-                  {n === 9 && <Ic n="grid9" />}
-                  {n === 12 && <Ic n="grid12" />}
-                </button>
+      {/* =====================  BOTTOM BAR  ===================== */}
+      <footer className="zm-bottom">
+        <button className={`zm-bar-btn${muted ? ' active' : ''}`} onClick={() => setMuted((m) => !m)}>
+          <ZmIc n={muted ? 'micoff' : 'mic'} />
+          <span>{muted ? 'Unmute' : 'Mute'}</span>
+        </button>
+        <button className={`zm-bar-btn${camOn ? '' : ' active'}`} onClick={() => (camOn ? stopCam() : startCam())}>
+          <ZmIc n={camOn ? 'cam' : 'camoff'} />
+          <span>{camOn ? 'Stop Video' : 'Start Video'}</span>
+        </button>
+        <button className="zm-bar-btn" onClick={() => setShowParticipants((v) => !v)}>
+          <ZmIc n="users" />
+          <span>Participants</span>
+          <span className="zm-bar-badge">{online}</span>
+        </button>
+        <button className="zm-bar-btn">
+          <ZmIc n="chat" />
+          <span>Chat</span>
+        </button>
+        <button className="zm-bar-btn">
+          <ZmIc n="smile" />
+          <span>Reactions</span>
+        </button>
+        <button className="zm-bar-btn">
+          <ZmIc n="share" />
+          <span>Share</span>
+        </button>
+        <button className="zm-bar-btn">
+          <ZmIc n="more" />
+          <span>More</span>
+        </button>
+      </footer>
+
+      {/* =====================  PARTICIPANTS PANEL  ===================== */}
+      {showParticipants && (
+        <div className="zm-panel" onClick={() => setShowParticipants(false)}>
+          <div className="zm-panel__card" onClick={(e) => e.stopPropagation()}>
+            <div className="zm-panel__header">
+              <h3>Participants ({online})</h3>
+              <button onClick={() => setShowParticipants(false)}><ZmIc n="x" /></button>
+            </div>
+            <div className="zm-panel__list">
+              <div className="zm-panel__item">
+                <span className="zm-panel__dot" style={{ background: '#0ea55c' }} />
+                <span>{myName} (You)</span>
+                <span className="zm-panel__role">Host</span>
+              </div>
+              {peers.map((p) => (
+                <div key={p.id} className="zm-panel__item">
+                  <span className="zm-panel__dot" style={{ background: STATUS_COLOR[(p.status || 'studying') as StudyStatus] }} />
+                  <span>{p.name}</span>
+                </div>
               ))}
             </div>
-
-            <div className="ss-bottom__divider" />
-
-            <button className="ss-find">
-              <Ic n="filter" /> Find Buddies
-            </button>
-            <div className="ss-count"><Ic n="users" /> {online}</div>
-          </header>
+          </div>
         </div>
+      )}
 
-        {/* Unhide button - shows when bottom bar is hidden */}
-        {!chrome && (
-          <button className="ss-unhide-btn" onClick={() => setChrome(true)} title="Show controls">
-            <Ic n="chevu" />
-          </button>
+      {toast && <div className="zm-toast">{toast}</div>}
+    </div>
+  )
+}
+
+function PeerTile({ peer }: { peer: StudyPeer }) {
+  return (
+    <div className="zm-tile">
+      <div className="zm-tile__off">
+        {peer.avatarUrl ? (
+          <img src={peer.avatarUrl} alt="" className="zm-tile__ava" />
+        ) : (
+          <div className="zm-tile__init">{peer.name[0]?.toUpperCase()}</div>
         )}
       </div>
-
-      {toast && <div className="ss-toast">{toast}</div>}
-    </div>
-  )
-}
-
-/* a real remote peer's tile — presence now, live video in the WebRTC layer */
-function PeerTile({ peer, now }: { peer: StudyPeer; now: number }) {
-  const status = (peer.status || 'studying') as StudyStatus
-  return (
-    <div className="ss-tile">
-      <div className="ss-tile__off">
-        {peer.avatarUrl ? <img src={peer.avatarUrl} alt="" className="ss-tile__ava" /> : <div className="ss-tile__init">{peer.name[0]?.toUpperCase()}</div>}
-      </div>
-      <div className="ss-tile__tr">
-        <span className="ss-bubble clock"><Ic n="clock" /> {fmtDur(now - peer.sessionStart)}</span>
-        <span className="ss-rankbadge"><RankBadge rankId={peer.rank} size={30} /></span>
-      </div>
-      <div className="ss-tile__name">
-        <span className="ava">{peer.name[0]?.toUpperCase()}</span>
+      <div className="zm-tile__name">
+        <span className="zm-tile__mic"><ZmIc n="micoff" /></span>
         {peer.name}
       </div>
-      <div className="ss-tile__status" style={{ color: STATUS_COLOR[status] }}>
-        {STATUS_LABEL[status]}
-      </div>
     </div>
   )
 }
 
-/* ------------------------------------------------------------------
-   Magical rune icon — decorative sparkle element
-   ------------------------------------------------------------------ */
-function RuneIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.8 }}>
-      <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
-    </svg>
-  )
-}
-
-/* ------------------------------------------------------------------
-   Inline monochrome icons (no icon dependency) — currentColor, 24px box.
-   ------------------------------------------------------------------ */
-function Ic({ n }: { n: string }) {
-  const p = (d: string) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
-  )
+/* ---- Zoom-style monochrome icons ---- */
+function ZmIc({ n }: { n: string }) {
+  const s: React.SVGProps<SVGSVGElement> = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  const p = (d: string) => <svg {...s}><path d={d} /></svg>
+  const c = (ch: React.ReactNode) => <svg {...s}>{ch}</svg>
   switch (n) {
-    case 'home': return p('M4 11l8-7 8 7M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9')
-    case 'user': return p('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0')
-    case 'chat': return p('M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 3V6a1 1 0 0 1 1-1z')
-    case 'group': return p('M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19a6 6 0 0 1 12 0M16 11a3 3 0 1 0-1-5.8M21 19a6 6 0 0 0-5-5.9')
-    case 'chart': return p('M5 20V10M12 20V4M19 20v-7')
-    case 'gear': return p('M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M5 5l2 2M17 17l2 2M2 12h3M19 12h3M5 19l2-2M17 7l2-2')
-    case 'check': return p('M5 12l5 5L20 7')
-    case 'clock': return p('M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z')
+    case 'back': return p('M19 12H5M12 5l-7 7 7 7')
     case 'cam': return p('M3 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM15 10l6-3v10l-6-3')
-    case 'camoff': return p('M3 7a1 1 0 0 1 1-1h8M15 10l6-3v10M3 17V8M3 17a1 1 0 0 0 1 1h10M4 4l16 16')
-    case 'micoff': return p('M5 5l14 14M9 5a3 3 0 0 1 6 0v3M15 11v0M8 11a4 4 0 0 0 6.5 3.1M12 17v3')
-    case 'shield': return p('M12 3l7 3v5c0 4-3 7-7 9-4-2-7-5-7-9V6z')
-    case 'chevl': return p('M15 6l-6 6 6 6')
+    case 'camoff': return c(<><path d="M3 7a1 1 0 0 1 1-1h8" /><path d="M15 10l6-3v10" /><path d="M3 17V8" /><path d="M3 17a1 1 0 0 0 1 1h10" /><line x1="3" y1="3" x2="21" y2="21" /></>)
+    case 'volume': return p('M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14')
+    case 'shield': return c(<><path d="M12 2l8 4v5c0 5.25-3.5 8.75-8 10-4.5-1.25-8-4.75-8-10V6z" fill="currentColor" opacity="0.2" /><path d="M9 12l2 2 4-4" /></>)
     case 'chevr': return p('M9 6l6 6-6 6')
-    case 'chevd': return p('M6 9l6 6 6-6')
-    case 'chevu': return p('M18 15l-6-6-6 6')
-    case 'filter': return p('M4 5h16l-6 8v5l-4 2v-7z')
-    case 'users': return p('M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19a6 6 0 0 1 12 0M16 11a3 3 0 1 0-1-5.8M21 19a6 6 0 0 0-5-5.9')
-    case 'pin': return p('M9 4h6l-1 6 3 3H7l3-3z M12 13v7')
-    case 'eye': return p('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z')
-    case 'eyeoff': return p('M4 4l16 16M9.5 9.5a3 3 0 0 0 4.2 4.2M7 7C4 8.7 2 12 2 12s3.5 7 10 7c2 0 3.7-.6 5.1-1.4M21.5 13.5C22 12.9 22 12 22 12s-3.5-7-10-7c-.5 0-1 0-1.5.1')
-    case 'panelleft': return p('M3 3h18v18H3zM9 3v18')
-    case 'panelright': return p('M3 3h18v18H3zM15 3v18')
-    case 'grid4': return p('M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z')
-    case 'grid6': return p('M3 3h5v5H3zM10 3h5v5h-5zM17 3h5v5h-5zM3 10h5v5H3zM10 10h5v5h-5zM17 10h5v5h-5zM3 17h5v5H3zM10 17h5v5h-5zM17 17h5v5h-5z')
-    case 'grid9': return p('M3 3h4v4H3zM9 3h4v4H9zM15 3h4v4h-4zM3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4zM3 15h4v4H3zM9 15h4v4H9zM15 15h4v4h-4z')
-    case 'grid12': return p('M2 2h3v3H2zM7 2h3v3H7zM12 2h3v3h-3zM17 2h3v3h-3zM2 7h3v3H2zM7 7h3v3H7zM12 7h3v3h-3zM17 7h3v3h-3zM2 12h3v3H2zM7 12h3v3H7zM12 12h3v3h-3zM17 12h3v3h-3zM2 17h3v3H2zM7 17h3v3H7zM12 17h3v3h-3zM17 17h3v3h-3z')
+    case 'mic': return p('M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v1a7 7 0 0 1-14 0v-1M12 19v4')
+    case 'micoff': return c(<><path d="M15 9.34V5a3 3 0 0 0-5.94-.6" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12" /><path d="M15 19v1a7 7 0 0 1-7-7" /><path d="M12 19v4" /><line x1="3" y1="3" x2="21" y2="21" /></>)
+    case 'users': return c(<><circle cx="9" cy="7" r="3" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><circle cx="17" cy="7" r="3" /><path d="M21 21v-2a4 4 0 0 0-3-3.87" /></>)
+    case 'chat': return p('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z')
+    case 'smile': return c(<><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></>)
+    case 'share': return p('M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13')
+    case 'more': return c(<><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="19" cy="12" r="1" fill="currentColor" /><circle cx="5" cy="12" r="1" fill="currentColor" /></>)
+    case 'x': return p('M18 6L6 18M6 6l12 12')
     default: return p('M12 12')
   }
 }

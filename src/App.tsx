@@ -12,7 +12,6 @@ import { IntroVeil } from './components/IntroVeil'
 import { AuthScreen } from './screens/AuthScreen'
 import { Onboarding } from './screens/Onboarding'
 import { LoadingVeil } from './components/LoadingVeil'
-import { MobileFullscreenGate, useIsDesktop } from './components/DesktopOnly'
 
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
 const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
@@ -34,7 +33,6 @@ export default function App() {
   const { user, loading } = useAuth()
   const onboarded = useProfile((s) => s.onboarded)
   const profileReady = useProfile((s) => s.ready)
-  const isDesktop = useIsDesktop()
   const location = useLocation()
 
   // Apply visual + theme settings app-wide and keep them in sync. Both stores
@@ -56,10 +54,6 @@ export default function App() {
       offWeb()
     }
   }, [])
-
-  // Focus Lily now opens on phones & tablets too. Mobile visitors aren't blocked;
-  // instead a fullscreen prompt (MobileFullscreenGate, rendered below) asks them
-  // to enter fullscreen before starting and re-prompts if they leave it.
 
   // TEMP (torso review): a no-auth screenshot harness. Remove with ShotHarness.
   if (window.location.pathname === '/__shot') return <ShotHarness />
@@ -92,9 +86,6 @@ export default function App() {
     <>
       <WebBackground />
       <IntroVeil ready={appReady} />
-      {/* mobile only: ask the visitor to enter fullscreen before starting, and
-          re-prompt if they leave it. Desktop never mounts this. */}
-      {!isDesktop && <MobileFullscreenGate />}
       {loading ? (
         <LoadingVeil />
       ) : !user ? (
