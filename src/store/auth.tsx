@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionLocked, setSessionLocked] = useState(false)
+  const [lockedWhere, setLockedWhere] = useState<string | undefined>(undefined)
 
   const refresh = useCallback(async () => {
     const { data, error } = await insforge.auth.getCurrentUser()
@@ -49,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     // Single-session guard: each tab gets a session_id + lock-change callback.
-    initSession(setSessionLocked)
+    // `where` is the device label of the holder we lost the lock to (PC/mobile).
+    initSession((locked, where) => {
+      setSessionLocked(locked)
+      setLockedWhere(where)
+    })
     // Once-per-device first-launch config (independent of who signs in).
     void runGlobalInit()
     void (async () => {
@@ -120,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await insforge.auth.signOut()
     runUserTeardown()
     setSessionLocked(false)
+    setLockedWhere(undefined)
     setUser(null)
   }, [])
 
@@ -131,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      <SessionLockOverlay visible={sessionLocked && !!user} />
+      <SessionLockOverlay visible={sessionLocked && !!user} where={lockedWhere} />
     </AuthContext.Provider>
   )
 }

@@ -17,12 +17,17 @@ import { insforge } from './insforge'
 let sessionId: string | null = null
 let heartbeatTimer: number | null = null
 let bc: BroadcastChannel | null = null
-let lockCallback: ((locked: boolean) => void) | null = null
+let lockCallback: ((locked: boolean, where?: string) => void) | null = null
 
 const HEARTBEAT_MS = 10_000
 
-/** Initialize the session guard. Call once on mount (before sign-in check). */
-export function initSession(onLockChange: (locked: boolean) => void): void {
+/**
+ * Initialize the session guard. Call once on mount (before sign-in check).
+ * `onLockChange(locked, where)` — `where` is the human label of the device that
+ * currently holds the session (e.g. "Windows PC", "iPhone"), so the locked-out
+ * tab can tell the user exactly where their account is open.
+ */
+export function initSession(onLockChange: (locked: boolean, where?: string) => void): void {
   sessionId = crypto.randomUUID()
   lockCallback = onLockChange
 
@@ -31,7 +36,8 @@ export function initSession(onLockChange: (locked: boolean) => void): void {
     bc = new BroadcastChannel('focus-lily-session')
     bc.onmessage = (e) => {
       if (e.data?.type === 'claim' && e.data.sessionId !== sessionId) {
-        lockCallback?.(true) // Another tab in this browser claimed the lock.
+        // Another tab in this browser claimed the lock; it told us its device.
+        lockCallback?.(true, e.data.deviceLabel || undefined)
       }
     }
   }
@@ -41,7 +47,7 @@ export function initSession(onLockChange: (locked: boolean) => void): void {
 export async function claimSession(deviceLabel = getDeviceLabel()): Promise<void> {
   if (!sessionId) return
   await insforge.database.rpc('claim_session', { p_session_id: sessionId, p_device_label: deviceLabel })
-  bc?.postMessage({ type: 'claim', sessionId })
+  bc?.postMessage({ type: 'claim', sessionId, deviceLabel })
   lockCallback?.(false)
   startHeartbeat()
 }
@@ -66,7 +72,11 @@ function startHeartbeat(): void {
   const beat = async () => {
     if (!sessionId) return
     const { data } = await insforge.database.rpc('session_heartbeat', { p_session_id: sessionId })
-    if (data === false) lockCallback?.(true) // Lock stolen by another instance.
+    if (data === false) {
+      // Lock stolen by another instance — look up where it's now active so the
+      // overlay can say "open on your iPhone" instead of a generic message.
+      lockCallback?.(true, await fetchHolderDevice())
+    }
   }
   void beat()
   heartbeatTimer = window.setInterval(beat, HEARTBEAT_MS)
@@ -77,11 +87,30 @@ function stopHeartbeat(): void {
   heartbeatTimer = null
 }
 
+/** Read the device label of whoever currently holds my account's session.
+ *  RLS lets a user read only their own active_session row, so this returns the
+ *  holder we just lost the lock to. Returns undefined if it can't be read. */
+async function fetchHolderDevice(): Promise<string | undefined> {
+  try {
+    const { data } = await insforge.database
+      .from('active_session')
+      .select('device_label')
+      .single()
+    const label = (data as { device_label?: string } | null)?.device_label
+    return label || undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Friendly "where am I" label, distinguishing PC from phone/tablet. */
 function getDeviceLabel(): string {
   const ua = navigator.userAgent
-  if (/Windows/i.test(ua)) return 'Windows'
-  if (/Mac/i.test(ua)) return 'Mac'
-  if (/Android/i.test(ua)) return 'Android'
-  if (/iPhone|iPad/i.test(ua)) return 'iOS'
-  return 'Web'
+  if (/iPhone/i.test(ua)) return 'iPhone'
+  if (/iPad/i.test(ua)) return 'iPad'
+  if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? 'Android phone' : 'Android tablet'
+  if (/Windows/i.test(ua)) return 'Windows PC'
+  if (/Macintosh|Mac OS/i.test(ua)) return 'Mac'
+  if (/Linux/i.test(ua)) return 'Linux PC'
+  return 'another device'
 }
