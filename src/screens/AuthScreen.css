@@ -344,9 +344,9 @@
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   }
   .auth-card {
+    width: 100%;
     padding: 24px 20px 28px;
     border-radius: 20px;
-    max-width: 460px;
   }
   .auth-crest {
     width: 68px;
