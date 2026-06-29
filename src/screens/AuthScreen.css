@@ -41,6 +41,59 @@
 }
 
 /* ---------- animated gradient border on card ---------- */
+.auth-castle {
+  position: absolute;
+  bottom: -5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(90vw, 600px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 1;
+  animation: castle-float 8s ease-in-out infinite;
+  filter: blur(0.5px);
+}
+.auth-castle-svg {
+  width: 100%;
+  height: auto;
+}
+
+@keyframes castle-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-8px); }
+}
+
+.castle-window {
+  animation: window-glow 4s ease-in-out infinite;
+}
+.cw2  { animation-delay: 0.4s; }
+.cw3  { animation-delay: 0.9s; }
+.cw4  { animation-delay: 1.3s; }
+.cw5  { animation-delay: 1.8s; }
+.cw6  { animation-delay: 0.2s; }
+.cw7  { animation-delay: 0.6s; }
+.cw8  { animation-delay: 1.1s; }
+.cw9  { animation-delay: 1.5s; }
+.cw10 { animation-delay: 0.7s; }
+.cw11 { animation-delay: 1.9s; }
+.cw12 { animation-delay: 0.3s; }
+.cw13 { animation-delay: 0.8s; }
+.cw14 { animation-delay: 1.4s; }
+.cw15 { animation-delay: 0.1s; }
+.cw16 { animation-delay: 1.7s; }
+.cw17 { animation-delay: 0.5s; }
+.cw18 { animation-delay: 1.2s; }
+.cw19 { animation-delay: 1.6s; }
+.cw20 { animation-delay: 0.9s; }
+.cw21 { animation-delay: 1.0s; }
+.cw22 { animation-delay: 1.4s; }
+
+@keyframes window-glow {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.85; }
+}
+
+/* ---------- animated gradient border on card ---------- */
 .auth-card {
   position: relative;
   z-index: 2;
@@ -301,8 +354,9 @@
 }
 
 .auth-oauth-btn.google {
-  background: #fff;
+  background: #1a1108;
   border-color: rgba(212, 175, 55, 0.3);
+  color: #f6e8c8;
 }
 .auth-oauth-btn.github {
   background: #1e120a;
@@ -310,8 +364,9 @@
   border-color: rgba(212, 175, 55, 0.2);
 }
 .auth-oauth-btn.microsoft {
-  background: #fff;
+  background: #1a1108;
   border-color: rgba(212, 175, 55, 0.3);
+  color: #f6e8c8;
 }
 .auth-oauth-icon {
   flex: none;
@@ -347,6 +402,11 @@
     width: 100%;
     padding: 24px 20px 28px;
     border-radius: 20px;
+  }
+  .auth-castle {
+    width: 95vw;
+    opacity: 0.25;
+    bottom: -3%;
   }
   .auth-crest {
     width: 68px;

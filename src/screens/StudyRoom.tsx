@@ -313,7 +313,6 @@ function PeerTile({ peer, now }: { peer: StudyPeer; now: number }) {
     <div className="ss-tile">
       <div className="ss-tile__off">
         {peer.avatarUrl ? <img src={peer.avatarUrl} alt="" className="ss-tile__ava" /> : <div className="ss-tile__init">{peer.name[0]?.toUpperCase()}</div>}
-        <small style={{ color: STATUS_COLOR[status] }}>{STATUS_LABEL[status]}</small>
       </div>
       <div className="ss-tile__tr">
         <span className="ss-bubble clock"><Ic n="clock" /> {fmtDur(now - peer.sessionStart)}</span>

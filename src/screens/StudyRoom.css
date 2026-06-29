@@ -569,32 +569,81 @@
 
 /* ---- Mobile responsive ---- */
 @media (max-width: 640px) {
-  .ss { padding: 8px; gap: 8px; }
+  .ss { padding: 6px; gap: 6px; }
   .ss-rail { display: none; }
   .ss-rail__sigil { display: none; }
-  .ss-sidebar-toggle { display: grid; }
-  .ss-main { gap: 8px; }
-  .ss-bottom { padding: 8px 10px; border-radius: 12px; gap: 6px; }
-  .ss-bottom__logo { width: 28px; height: 28px; }
-  .ss-bottom__divider { height: 22px; margin: 0 2px; }
-  .ss-finish { padding: 6px 10px; font-size: 11px; }
-  .ss-bottom__room { font-size: 11px; padding: 5px 8px; }
-  .ss-find { font-size: 10px; padding: 6px 8px; }
-  .ss-count { font-size: 11px; padding: 6px 8px; }
-  .ss-you { padding: 3px 4px; }
-  .ss-you__tag { font-size: 9px; padding: 4px 8px; }
-  .ss-you__ic { width: 26px; height: 26px; }
-  .ss-status { font-size: 10px; padding: 6px 10px; }
-  .ss-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .ss-tile { border-radius: 10px; }
-  .ss-tile__name { left: 6px; bottom: 36px; padding: 3px 8px 3px 3px; font-size: 11px; }
-  .ss-tile__init, .ss-tile__ava { width: 56px; height: 56px; }
-  .ss-tile__off { font-size: 11px; }
-  .ss-tile__status { padding: 8px 10px; font-size: 10px; }
-  .ss-bubble { height: 24px; min-width: 24px; padding: 0 6px; font-size: 10px; }
-  .ss-bubble img, .ss-rankbadge img, .ss-rankbadge .rank-badge { width: 22px; height: 22px; }
-  .ss-pager { font-size: 11px; gap: 4px; }
-  .ss-pager button { width: 22px; height: 22px; }
+  .ss-sidebar-toggle { display: none; }
+  .ss-main { gap: 6px; }
+
+  /* bottom bar — Google Meet style single row */
+  .ss-bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; }
+  .ss-bottom {
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
+    padding: 10px 12px; border-radius: 0; border: none;
+    background: rgba(20, 13, 8, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(202, 138, 4, 0.2);
+  }
+  .ss-bottom::before, .ss-bottom::after { display: none; }
+  .ss-chrome-toggle { display: none; }
+  .ss-bottom__room { display: none; }
+  .ss-bottom__divider { display: none; }
+  .ss-bottom__spacer { display: none; }
+  .ss-find { display: none; }
+  .ss-count { display: none; }
+  .ss-gridsize { display: none; }
+  .ss-finish { padding: 8px 14px; font-size: 11px; border-radius: 8px; }
+  .ss-you { padding: 0; border: none; background: none; gap: 2px; }
+  .ss-you__tag { display: none; }
+  .ss-you__ic { width: 42px; height: 42px; border-radius: 50%; background: rgba(202, 138, 4, 0.15); border: 1px solid rgba(202, 138, 4, 0.25); }
+  .ss-you__ic.on { background: rgba(202, 138, 4, 0.3); }
+  .ss-status { padding: 8px 12px; font-size: 11px; border-radius: 8px; }
+
+  /* grid — 1 column, tiles fill width */
+  .ss-grid-wrap { padding-bottom: 72px; }
+  .ss-grid { grid-template-columns: 1fr !important; gap: 8px; }
+
+  /* tile — clean centered layout */
+  .ss-tile {
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+  }
+  .ss-tile.is-you {
+    box-shadow: 0 0 0 2px var(--gold), 0 4px 16px rgba(202, 138, 4, 0.25);
+  }
+
+  /* camera-off face — centered avatar + name */
+  .ss-tile__off {
+    gap: 6px;
+    padding: 10px;
+  }
+  .ss-tile__ava { width: 64px; height: 64px; }
+  .ss-tile__init { width: 64px; height: 64px; font-size: 26px; }
+  .ss-tile__off small { display: none; }
+
+  /* corner badges — smaller */
+  .ss-tile__tl, .ss-tile__tr { top: 6px; }
+  .ss-tile__tl { left: 6px; }
+  .ss-tile__tr { right: 6px; gap: 4px; }
+  .ss-bubble { height: 22px; min-width: 22px; padding: 0 5px; font-size: 9px; border-radius: 6px; }
+  .ss-rankbadge img, .ss-rankbadge .rank-badge { width: 20px; height: 20px; }
+
+  /* name pill — bottom left, compact */
+  .ss-tile__name {
+    left: 6px; bottom: 6px; top: auto;
+    padding: 3px 8px 3px 3px; font-size: 11px; max-width: 60%;
+  }
+  .ss-tile__name .ava { width: 18px; height: 18px; font-size: 8px; }
+
+  /* status input — hidden on mobile, shown as placeholder */
+  .ss-tile__statusinput { display: none; }
+  .ss-tile__status { padding: 6px 10px; font-size: 10px; }
+
+  /* open seat */
+  .ss-seat__ic { width: 40px; height: 40px; }
+  .ss-seat b { font-size: 12px; }
+  .ss-seat small { font-size: 10px; }
 }
 
 @media (max-width: 680px) { .ss-gridsize { display: none; } }
