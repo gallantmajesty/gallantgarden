@@ -5,8 +5,6 @@ import { ContactShadows, OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
-import { BASE_BODY } from '../avatar/baseBody'
-import type { Locomotion } from '../avatar/animation'
 import { useAvatar } from '../avatar/store'
 import {
   BOTTOMS,
@@ -449,10 +447,6 @@ function AccessoriesPanel({ config, set, shopOwned, userXp, onPreview }: {
 }
 
 /* ----------------------------------------------------------------- 3D canvas */
-
-// Static locomotion for the editor: the avatar stands in place; the emote bar
-// drives the pose via the animator's `preview` override.
-const STATIC_LOCO: Locomotion = { speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false }
 
 function AvatarCanvas({
   config,

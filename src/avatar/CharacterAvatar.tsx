@@ -1,7 +1,6 @@
 import {
   Component,
   Suspense,
-  useEffect,
   useMemo,
   useRef,
   type ReactNode,

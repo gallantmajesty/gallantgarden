@@ -2,7 +2,6 @@ import { useImperativeHandle, useMemo, useRef } from 'react'
 import { Group, type MeshStandardMaterial } from 'three'
 import {
   boxGeo,
-  detailSphereGeo,
   eyeHex,
   hairHex,
   shoeHex,
