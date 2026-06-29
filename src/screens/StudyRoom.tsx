@@ -63,6 +63,8 @@ export function StudyRoom() {
   const [camOn, setCamOn] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [chrome, setChrome] = useState(true) // show/hide the top + left bars
+  const [gridSize, setGridSize] = useState<4 | 6 | 9 | 12>(6) // users per page
+  const [sidebarOpen, setSidebarOpen] = useState(true) // left rail visible
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -138,30 +140,43 @@ export function StudyRoom() {
   // pad the grid with honest "open seats" so the room reads as a space, not a
   // sparse list — never with fake people.
   const filled = 1 + peers.length
-  const openSeats = Math.max(0, Math.max(8, Math.ceil(filled / 4) * 4) - filled)
+  const openSeats = Math.max(0, Math.max(gridSize, Math.ceil(filled / 4) * 4) - filled)
+
+  // grid columns based on gridSize
+  const gridCols = gridSize <= 4 ? 2 : gridSize <= 6 ? 3 : gridSize <= 9 ? 3 : 4
 
   return (
-    <div className="ss" data-chrome={chrome ? 'on' : 'off'}>
+    <div className="ss" data-chrome={chrome ? 'on' : 'off'} data-sidebar={sidebarOpen ? 'on' : 'off'}>
       {/* =====================  LEFT ICON RAIL  ===================== */}
-      <nav className="ss-rail water-glass">
-        <button className="ss-rail__btn is-active" title="Rooms" onClick={() => navigate('/rooms')}><Ic n="home" /></button>
-        <button className="ss-rail__btn" title="Friends"><Ic n="group" /></button>
-        <button className="ss-rail__btn" title="Chat"><Ic n="chat" /></button>
-        <button className="ss-rail__btn" title="Leaderboard"><Ic n="chart" /></button>
-        <button className="ss-rail__btn" title="Profile" onClick={() => navigate('/profile')}><Ic n="user" /></button>
-        <div className="ss-rail__spacer" />
-        <button className="ss-rail__btn" title="Settings"><Ic n="gear" /></button>
-        <div className="ss-rail__sigil">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
-            <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" />
-          </svg>
-        </div>
-      </nav>
+      {sidebarOpen && (
+        <nav className="ss-rail water-glass">
+          <button className="ss-rail__btn" title="Hide sidebar" onClick={() => setSidebarOpen(false)}><Ic n="panelleft" /></button>
+          <button className="ss-rail__btn is-active" title="Rooms" onClick={() => navigate('/rooms')}><Ic n="home" /></button>
+          <button className="ss-rail__btn" title="Friends"><Ic n="group" /></button>
+          <button className="ss-rail__btn" title="Chat"><Ic n="chat" /></button>
+          <button className="ss-rail__btn" title="Leaderboard"><Ic n="chart" /></button>
+          <button className="ss-rail__btn" title="Profile" onClick={() => navigate('/profile')}><Ic n="user" /></button>
+          <div className="ss-rail__spacer" />
+          <button className="ss-rail__btn" title="Settings"><Ic n="gear" /></button>
+          <div className="ss-rail__sigil">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
+              <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" />
+            </svg>
+          </div>
+        </nav>
+      )}
+
+      {/* sidebar toggle when hidden */}
+      {!sidebarOpen && (
+        <button className="ss-sidebar-toggle" onClick={() => setSidebarOpen(true)} title="Show sidebar">
+          <Ic n="panelright" />
+        </button>
+      )}
 
       <div className="ss-main">
         {/* =====================  WEBCAM GRID  ===================== */}
         <div className="ss-grid-wrap">
-          <div className="ss-grid">
+          <div className="ss-grid" style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
             {/* YOUR live tile */}
             <div className="ss-tile is-you">
               {/* the <video> is ALWAYS mounted (just hidden when off) so the ref
@@ -217,20 +232,26 @@ export function StudyRoom() {
           </div>
         </div>
 
-        {/* =====================  BOTTOM BAR (slides up)  ===================== */}
+        {/* =====================  BOTTOM BAR (Google Meet style)  ===================== */}
         <div className="ss-bottom-bar">
           <header className="ss-bottom water-glass">
-            {/* Chrome toggle - centered at top of bar */}
+            {/* Chrome toggle */}
             <button className="ss-chrome-toggle" onClick={() => setChrome((c) => !c)} title={chrome ? 'Hide bar' : 'Show bar'}>
               <Ic n={chrome ? 'chevd' : 'chevu'} />
             </button>
-            <img src="/icons/rooms/fairy.png" alt="" className="ss-bottom__logo" />
+
+            {/* Left: Finish + room info */}
             <button className="ss-finish" onClick={leave}>
               <Ic n="check" /> Finish
             </button>
 
+            <span className="ss-bottom__room" style={{ ['--rc' as string]: room.accent }}>
+              <span className="ss-bottom__room-emoji">{room.emoji}</span>{room.name}
+            </span>
+
             <div className="ss-bottom__divider" />
 
+            {/* Center: cam + mic + status */}
             <div className="ss-you water-glass">
               <span className="ss-you__tag"><RuneIcon /> <span className="dot">{myName[0]?.toUpperCase()}</span>YOU</span>
               <button className={`ss-you__ic${camOn ? ' on' : ' off'}`} title={camOn ? 'Turn camera off' : 'Show your face'} onClick={() => (camOn ? stopCam() : startCam())}>
@@ -246,15 +267,24 @@ export function StudyRoom() {
 
             <div className="ss-bottom__spacer" />
 
-            <span className="ss-bottom__room" style={{ ['--rc' as string]: room.accent }}>
-              <span className="ss-bottom__room-emoji">{room.emoji}</span>{room.name}
-            </span>
-
-            <div className="ss-pager">
-              <button><Ic n="chevl" /></button>
-              <span><b>1</b> / 1</span>
-              <button><Ic n="chevr" /></button>
+            {/* Grid size selector */}
+            <div className="ss-gridsize">
+              {[4, 6, 9, 12].map((n) => (
+                <button
+                  key={n}
+                  className={`ss-gridsize__btn${gridSize === n ? ' on' : ''}`}
+                  onClick={() => setGridSize(n as 4 | 6 | 9 | 12)}
+                  title={`${n} users per page`}
+                >
+                  {n === 4 && <Ic n="grid4" />}
+                  {n === 6 && <Ic n="grid6" />}
+                  {n === 9 && <Ic n="grid9" />}
+                  {n === 12 && <Ic n="grid12" />}
+                </button>
+              ))}
             </div>
+
+            <div className="ss-bottom__divider" />
 
             <button className="ss-find">
               <Ic n="filter" /> Find Buddies
@@ -342,6 +372,12 @@ function Ic({ n }: { n: string }) {
     case 'pin': return p('M9 4h6l-1 6 3 3H7l3-3z M12 13v7')
     case 'eye': return p('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z')
     case 'eyeoff': return p('M4 4l16 16M9.5 9.5a3 3 0 0 0 4.2 4.2M7 7C4 8.7 2 12 2 12s3.5 7 10 7c2 0 3.7-.6 5.1-1.4M21.5 13.5C22 12.9 22 12 22 12s-3.5-7-10-7c-.5 0-1 0-1.5.1')
+    case 'panelleft': return p('M3 3h18v18H3zM9 3v18')
+    case 'panelright': return p('M3 3h18v18H3zM15 3v18')
+    case 'grid4': return p('M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z')
+    case 'grid6': return p('M3 3h5v5H3zM10 3h5v5h-5zM17 3h5v5h-5zM3 10h5v5H3zM10 10h5v5h-5zM17 10h5v5h-5zM3 17h5v5H3zM10 17h5v5h-5zM17 17h5v5h-5z')
+    case 'grid9': return p('M3 3h4v4H3zM9 3h4v4H9zM15 3h4v4h-4zM3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4zM3 15h4v4H3zM9 15h4v4H9zM15 15h4v4h-4z')
+    case 'grid12': return p('M2 2h3v3H2zM7 2h3v3H7zM12 2h3v3h-3zM17 2h3v3h-3zM2 7h3v3H2zM7 7h3v3H7zM12 7h3v3h-3zM17 7h3v3h-3zM2 12h3v3H2zM7 12h3v3H7zM12 12h3v3h-3zM17 12h3v3h-3zM2 17h3v3H2zM7 17h3v3H7zM12 17h3v3h-3zM17 17h3v3h-3z')
     default: return p('M12 12')
   }
 }

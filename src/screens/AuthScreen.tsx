@@ -49,12 +49,18 @@ export function AuthScreen() {
     <div className="auth-root">
       <div className="auth-card sf-panel">
         <div className="auth-crest">
+          <span className="auth-sparkle auth-sparkle--1"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="2" fill="#d4af37"/></svg></span>
+          <span className="auth-sparkle auth-sparkle--2"><svg width="7" height="7" viewBox="0 0 7 7" fill="none"><circle cx="3.5" cy="3.5" r="1.5" fill="#f6e8c8"/></svg></span>
+          <span className="auth-sparkle auth-sparkle--3"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="1.8" fill="#d4af37"/></svg></span>
+          <span className="auth-sparkle auth-sparkle--4"><svg width="6" height="6" viewBox="0 0 6 6" fill="none"><circle cx="3" cy="3" r="1.2" fill="#f6e8c8"/></svg></span>
+          <span className="auth-sparkle auth-sparkle--5"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><circle cx="4" cy="4" r="1.5" fill="#d4af37"/></svg></span>
           <img className="auth-crest-glyph" src="/icons/focus-lily-logo.png" alt={t('common.appName')} />
         </div>
         <h1 className="auth-title">{t('common.appName')}</h1>
         <p className="auth-sub">
           {t('auth.subtitle')}
         </p>
+        <span className="auth-tagline">study · focus · thrive</span>
 
         <div className="auth-oauth">
           {providers.map((p) => (

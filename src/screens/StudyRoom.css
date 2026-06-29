@@ -18,15 +18,13 @@
   --parchment-mid: #2C1A10;
   --parchment-light: #3D2517;
   
-  /* gold accents */
+  /* coffee brown accents */
   --gold: #CA8A04;
   --gold-light: #E3B44F;
   --gold-dark: #92710A;
-  
-  /* mystical accents */
-  --purple-royal: #581C87;
-  --purple-light: #7C3AED;
-  --red-deep: #991B1B;
+  --coffee: #6F4E37;
+  --coffee-light: #A0826D;
+  --coffee-dark: #4A3428;
   
   /* text on parchment */
   --ink: #F5E6D3;
@@ -52,7 +50,7 @@
   overflow: hidden;
   /* magical dark background with subtle texture */
   background:
-    radial-gradient(80% 60% at 50% -15%, rgba(88, 28, 135, 0.15) 0%, transparent 50%),
+    radial-gradient(80% 60% at 50% -15%, rgba(111, 78, 55, 0.15) 0%, transparent 50%),
     radial-gradient(60% 40% at 80% 80%, rgba(202, 138, 4, 0.08) 0%, transparent 40%),
     linear-gradient(180deg, #1A0F0A 0%, #0D0805 100%);
 }
@@ -82,6 +80,8 @@
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 12px 0;
   border: 1px solid rgba(202, 138, 4, 0.2);
+  background: rgba(26, 15, 10, 0.7);
+  backdrop-filter: blur(8px);
 }
 .ss-rail__btn {
   width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
@@ -98,10 +98,34 @@
   box-shadow: inset 0 0 0 1px rgba(202, 138, 4, 0.4);
 }
 .ss-rail__spacer { flex: 1; }
+
 .ss-rail__sigil { 
   color: var(--gold-dark); 
   padding: 8px 0;
   opacity: 0.5;
+}
+.ss-sidebar-toggle {
+  position: fixed;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(26, 15, 10, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(202, 138, 4, 0.2);
+  display: grid;
+  place-items: center;
+  color: var(--gold-light);
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+.ss-sidebar-toggle:hover {
+  background: rgba(202, 138, 4, 0.25);
+  color: #fff;
+  transform: translateY(-50%) scale(1.1);
 }
 
 /* =====================  MAIN COLUMN  ===================== */
@@ -125,6 +149,9 @@
   border: 1px solid rgba(202, 138, 4, 0.2);
   position: relative;
   overflow: hidden;
+  background: rgba(26, 15, 10, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 /* ornate corner decorations */
 .ss-bottom::before,
@@ -179,9 +206,9 @@
   display: inline-flex; align-items: center; gap: 6px; 
   font-family: var(--display); font-weight: 700; font-size: 13px;
   padding: 7px 12px; border-radius: 10px; 
-  background: rgba(88, 28, 135, 0.25);
-  border: 1px solid rgba(124, 58, 237, 0.35);
-  color: #D8B4FE;
+  background: rgba(202, 138, 4, 0.3);
+  border: 1px solid rgba(202, 138, 4, 0.35);
+  color: var(--gold-light);
   letter-spacing: 0.3px;
 }
 .ss-bottom__room-emoji { font-size: 15px; }
@@ -220,10 +247,10 @@
 .ss-count { 
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; 
   border-radius: 10px; 
-  background: rgba(88, 28, 135, 0.2);
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  background: rgba(202, 138, 4, 0.2);
+  border: 1px solid rgba(202, 138, 4, 0.3);
   font-weight: 800; font-size: 13px;
-  color: #D8B4FE;
+  color: var(--gold-light);
 }
 
 /* ---- you pill (inside bottom bar) ---- */
@@ -277,6 +304,17 @@
 .ss-status i { 
   width: 9px; height: 9px; border-radius: 50%;
 }
+.ss-gridsize { display: flex; gap: 6px; }
+.ss-gridsize__btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  color: var(--ink-soft);
+  background: rgba(202, 138, 4, 0.12);
+  border: 1px solid rgba(202, 138, 4, 0.2);
+  transition: all 0.2s ease;
+}
+.ss-gridsize__btn:hover { background: rgba(202, 138, 4, 0.2); color: var(--gold-light); }
+.ss-gridsize__btn.on { background: var(--gold); color: #fff; box-shadow: 0 2px 6px rgba(202, 138, 4, 0.2); }
 
 /* ---- webcam grid ---- */
 .ss-grid-wrap { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
@@ -354,9 +392,9 @@
 }
 .ss-bubble.clock { 
   font-variant-numeric: tabular-nums;
-  background: rgba(88, 28, 135, 0.6);
-  border-color: rgba(124, 58, 237, 0.4);
-  color: #D8B4FE;
+  background: rgba(202, 138, 4, 0.6);
+  border-color: rgba(202, 138, 4, 0.4);
+  color: var(--gold-light);
 }
 .ss-rankbadge { 
   display: grid; place-items: center;
@@ -532,8 +570,9 @@
 /* ---- Mobile responsive ---- */
 @media (max-width: 640px) {
   .ss { padding: 8px; gap: 8px; }
-  .ss-rail { width: 44px; border-radius: 12px; padding: 8px 0; }
-  .ss-rail__btn { width: 32px; height: 32px; border-radius: 8px; }
+  .ss-rail { display: none; }
+  .ss-rail__sigil { display: none; }
+  .ss-sidebar-toggle { display: grid; }
   .ss-main { gap: 8px; }
   .ss-bottom { padding: 8px 10px; border-radius: 12px; gap: 6px; }
   .ss-bottom__logo { width: 28px; height: 28px; }
@@ -557,3 +596,5 @@
   .ss-pager { font-size: 11px; gap: 4px; }
   .ss-pager button { width: 22px; height: 22px; }
 }
+
+@media (max-width: 680px) { .ss-gridsize { display: none; } }
