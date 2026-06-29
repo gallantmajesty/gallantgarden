@@ -9,6 +9,8 @@ import {
 } from 'react'
 import { insforge } from '../lib/insforge'
 import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
+import { initSession, claimSession, releaseSession } from '../lib/session'
+import { SessionLockOverlay } from '../components/SessionLockOverlay'
 
 export interface AuthUser {
   id: string
@@ -37,6 +39,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionLocked, setSessionLocked] = useState(false)
 
   const refresh = useCallback(async () => {
     const { data, error } = await insforge.auth.getCurrentUser()
@@ -45,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
+    // Single-session guard: each tab gets a session_id + lock-change callback.
+    initSession(setSessionLocked)
     // Once-per-device first-launch config (independent of who signs in).
     void runGlobalInit()
     void (async () => {
@@ -53,7 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       const u = error ? null : ((data?.user as AuthUser) ?? null)
       setUser(u)
-      if (u) await runUserInit(u)
+      if (u) {
+        await runUserInit(u)
+        // Claim the single-session lock for this tab (steals it from any other
+        // tab/browser/device — newest-open-wins, like WhatsApp/Netflix).
+        await claimSession()
+      }
       if (!cancelled) setLoading(false)
     })()
     return () => {
@@ -66,7 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return error.message
     const u = (data?.user as AuthUser) ?? null
     setUser(u)
-    if (u) await runUserInit(u)
+    if (u) {
+      await runUserInit(u)
+      await claimSession()
+    }
     return null
   }, [])
 
@@ -77,7 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Email verification is disabled, so an accessToken comes back immediately.
       const u = (data?.user as AuthUser) ?? null
       setUser(u)
-      if (u) await runUserInit(u)
+      if (u) {
+        await runUserInit(u)
+        await claimSession()
+      }
       return null
     },
     [],
@@ -98,8 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    // Release the single-session lock first so a re-sign-in doesn't briefly
+    // see a stale holder, then tear down per-user state.
+    await releaseSession()
     await insforge.auth.signOut()
     runUserTeardown()
+    setSessionLocked(false)
     setUser(null)
   }, [])
 
@@ -108,7 +128,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, loading, signIn, signUp, signInWithProvider, signOut, refresh],
   )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <SessionLockOverlay visible={sessionLocked && !!user} />
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
