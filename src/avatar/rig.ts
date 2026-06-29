@@ -3,7 +3,7 @@
 // preview and the in-world avatar, and so the animation layer can reason about
 // bones by name without touching the scene graph.
 
-import { HEIGHT_REF, type BodyType } from './config'
+import { type BodyType } from './config'
 
 // Bone names the animator addresses. Kept small and flat-ish for cheap lookups.
 export type BoneName =
