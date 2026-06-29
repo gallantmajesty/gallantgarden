@@ -368,18 +368,24 @@ export function boxGeo(w: number, h: number, d: number): BufferGeometry {
 
 export function capsuleGeo(radius: number, length: number): BufferGeometry {
   const key = `cap:${radius}:${length}`
-  return cachedGeo(key, () => new CapsuleGeometry(radius, length, 4, 8))
+  return cachedGeo(key, () => new CapsuleGeometry(radius, length, 12, 24))
 }
 
 export function sphereGeo(radius: number): BufferGeometry {
   const key = `sph:${radius}`
-  return cachedGeo(key, () => new SphereGeometry(radius, 24, 18))
+  return cachedGeo(key, () => new SphereGeometry(radius, 48, 36))
+}
+
+/** High-resolution sphere for detailed features (eyes, nose, etc.) */
+export function detailSphereGeo(radius: number): BufferGeometry {
+  const key = `dsph:${radius}`
+  return cachedGeo(key, () => new SphereGeometry(radius, 64, 48))
 }
 
 /** Half-sphere (dome), opening downward — used for shoulders, hoods, shoe toes. */
 export function domeGeo(radius: number): BufferGeometry {
   const key = `dome:${radius}`
-  return cachedGeo(key, () => new SphereGeometry(radius, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2))
+  return cachedGeo(key, () => new SphereGeometry(radius, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2))
 }
 
 /**
@@ -389,18 +395,18 @@ export function domeGeo(radius: number): BufferGeometry {
  */
 export function taperGeo(rTop: number, rBot: number, len: number): BufferGeometry {
   const key = `tap:${rTop}:${rBot}:${len}`
-  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 16, 1, false))
+  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 32, 1, false))
 }
 
 /** A flowing skirt / robe-hem cone: open-ended truncated cone, wider at the bottom. */
 export function skirtGeo(rTop: number, rBot: number, len: number): BufferGeometry {
   const key = `skirt:${rTop}:${rBot}:${len}`
-  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 20, 1, true))
+  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 40, 1, true))
 }
 
 export function torusGeo(radius: number, tube: number): BufferGeometry {
   const key = `tor:${radius}:${tube}`
-  return cachedGeo(key, () => new TorusGeometry(radius, tube, 12, 24))
+  return cachedGeo(key, () => new TorusGeometry(radius, tube, 24, 48))
 }
 
 /**
@@ -410,7 +416,7 @@ export function torusGeo(radius: number, tube: number): BufferGeometry {
  */
 export function latheGeo(profile: Array<[number, number]>): BufferGeometry {
   const key = `lat:${profile.map((p) => `${p[0].toFixed(3)},${p[1].toFixed(3)}`).join('|')}`
-  return cachedGeo(key, () => new LatheGeometry(profile.map(([x, y]) => new Vector2(x, y)), 28))
+  return cachedGeo(key, () => new LatheGeometry(profile.map(([x, y]) => new Vector2(x, y)), 48))
 }
 
 /**
@@ -431,7 +437,7 @@ export interface TorsoRing {
   cz?: number
 }
 
-const TORSO_SEG = 24 // radial samples per ring (increased for smoother silhouette)
+const TORSO_SEG = 48 // radial samples per ring (increased for smoother silhouette)
 const TORSO_EXP = 3 // superellipse exponent: higher = boxier (squarer) corners
 
 export function torsoGeo(rings: TorsoRing[]): BufferGeometry {

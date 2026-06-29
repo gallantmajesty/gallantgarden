@@ -47,14 +47,12 @@ export function idlePose(t: number): Pose {
     hips: { x: 0, z: -sway * 0.018, y: sway * 0.018 },
     neck: { x: -0.02, y: headDrift * 0.05 },
     head: { y: headDrift * 0.045, x: breath * 0.01 },
-    // arms hang straight at the sides, close to the body, with only a whisper of
-    // outward splay (negative z = out for L, positive = out for R). The forearm
-    // keeps a *forward* micro-bend (negative x) so the hands settle just in front
-    // of the thighs — never swung out behind the back (the old +0.16 did that).
-    armUpperL: { x: 0.02 + breath * 0.012, z: -0.05 + sway * 0.01 },
-    armUpperR: { x: 0.02 + breath * 0.012, z: 0.05 - sway * 0.01 },
-    armLowerL: { x: -0.06, z: -0.03 },
-    armLowerR: { x: -0.06, z: 0.03 },
+    // arms hang naturally at the sides with slight forward carry and gentle outward
+    // splay — realistic human idle posture, not robotic or stiff
+    armUpperL: { x: 0.08 + breath * 0.008, z: -0.06 + sway * 0.008 },
+    armUpperR: { x: 0.08 + breath * 0.008, z: 0.06 - sway * 0.008 },
+    armLowerL: { x: 0.15, z: -0.04 },
+    armLowerR: { x: 0.15, z: 0.04 },
     legUpperL: { x: 0 },
     legUpperR: { x: 0 },
   }
@@ -236,16 +234,12 @@ export function sitPose(t: number): Pose {
     legLowerR: { x: 1.55 },
     footL: { x: 0.18 },
     footR: { x: 0.18 },
-    // upper arms hang down beside the torso with only a touch of forward swing and a
-    // small outward splay — so the elbows sit BESIDE the hips, never raised/floating
-    // or swung behind the back. The forearms then bend well forward and settle
-    // slightly INWARD so each hand comes to rest on its thigh (hands visible, no
-    // elbow-through-torso, face fully clear).
-    // (z: negative = outward for L / positive = outward for R, so inward flips sign.)
-    armUpperL: { x: -0.5, z: -0.1 },
-    armUpperR: { x: -0.5, z: 0.1 },
-    armLowerL: { x: 1.0, z: 0.12 },
-    armLowerR: { x: 1.0, z: -0.12 },
+    // upper arms hang DOWN beside the torso (positive x = forward rotation) so elbows
+    // sit at the sides, never behind the back. Forearms bend forward to rest on thighs.
+    armUpperL: { x: 0.15, z: -0.08 },
+    armUpperR: { x: 0.15, z: 0.08 },
+    armLowerL: { x: 1.1, z: 0.1 },
+    armLowerR: { x: 1.1, z: -0.1 },
   }
 }
 
@@ -257,11 +251,7 @@ export function sitPose(t: number): Pose {
 export function deskSitPose(t: number): Pose {
   const breath = Math.sin(t * 1.2)
   return {
-    // Torso stays UPRIGHT (only a whisper of breathing). A forward hunch opens a
-    // gap between the top hem and the waistband — which reads as "clothes
-    // detached" — so we keep the spine vertical and let only the ARMS reach the
-    // desk. The chibi desk is around seated elbow height, so this still looks like
-    // studying without tipping the whole body over the lap.
+    // Torso stays upright with a slight forward lean for studying posture
     hips: { x: 0.02 },
     spine: { x: 0.01 },
     chest: { x: 0.02 + breath * 0.012 },
@@ -273,14 +263,11 @@ export function deskSitPose(t: number): Pose {
     legLowerR: { x: 1.55 },
     footL: { x: 0.18 },
     footR: { x: 0.18 },
-    // arms reach FORWARD to the desk: upper arms hang down-and-slightly-forward
-    // beside the torso (elbows stay at the sides, never behind the back), and the
-    // forearms swing well forward to ~horizontal so the hands come to rest out in
-    // front on the desktop. A small inward z brings the hands together over the
-    // work surface. (z: + = inward for L, − = inward for R.)
-    armUpperL: { x: -0.58, z: -0.06 },
-    armUpperR: { x: -0.58, z: 0.06 },
-    armLowerL: { x: 1.32, z: 0.1 },
-    armLowerR: { x: 1.32, z: -0.1 },
+    // upper arms hang down-and-forward (positive x), not behind the back. Forearms
+    // reach forward to the desk with a natural bend.
+    armUpperL: { x: 0.2, z: -0.05 },
+    armUpperR: { x: 0.2, z: 0.05 },
+    armLowerL: { x: 1.4, z: 0.08 },
+    armLowerR: { x: 1.4, z: -0.08 },
   }
 }

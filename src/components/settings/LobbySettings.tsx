@@ -8,23 +8,23 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
   const current = i18n.language
 
   return (
-    <div className="settings-scrim" onPointerDown={onClose}>
-      <div className="settings-panel" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="settings-head">
+    <div className="ls-backdrop" onClick={onClose}>
+      <nav className="ls-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="ls-head">
           <h2>Settings</h2>
-          <button className="settings-x" onClick={onClose} aria-label="Close settings">
+          <button className="ls-close" onClick={onClose} aria-label="Close settings">
             ✕
           </button>
         </div>
 
-        <div className="settings-body">
-          <div className="settings-section">
-            <div className="settings-section-title">Language</div>
-            <div className="lang-grid">
+        <div className="ls-scroll">
+          <div className="ls-section">
+            <div className="ls-section-title">Language</div>
+            <div className="ls-lang-grid">
               {LANGUAGES.map((lang) => (
                 <button
                   key={lang.code}
-                  className={`lang-btn${current === lang.code ? ' lang-btn--active' : ''}`}
+                  className={`ls-lang-btn${current === lang.code ? ' active' : ''}`}
                   onClick={() => changeLanguage(lang.code)}
                 >
                   {lang.label}
@@ -35,7 +35,7 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
 
           <WebCustomizationContent />
         </div>
-      </div>
+      </nav>
     </div>
   )
 }

@@ -169,8 +169,12 @@ export function Lobby() {
         </button>
       </div>
 
-      {/* ---------- top-right: avatar / settings ---------- */}
+      {/* ---------- top-right: customization / avatar / settings ---------- */}
       <div className="lobby-topright">
+        <button className="lobby-webcustom" title={t('profile.customize')} onClick={() => setPanel('settings')}>
+          <Glyph name="palette" />
+          <span>{t('profile.customize')}</span>
+        </button>
         {isDesktop && (
           <button className="lobby-round" title={t('lobby.chooseCharacter')} onClick={() => navigate('/avatar')}>
             <Glyph name="face" />

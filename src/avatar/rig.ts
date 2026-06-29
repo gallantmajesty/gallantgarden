@@ -59,80 +59,65 @@ export interface Proportions {
   footLen: number
 }
 
-// Chibi proportions (~3.4 heads tall): a big head over a compact torso and short,
-// stubby limbs — the Focus Lily art direction, not a realistic 6-head adult.
-// Two clearance rules keep poses clean: shoulderW > chestW + shoulderR so arms
-// hang clear of the torso (no intersection), and hipW < shoulderW so straight
-// arms fall outside the hips. Feet still land at ~y=0 so editor/world framing is
-// unchanged. Bone names/hierarchy are identical, so the animator is untouched.
-// Chibi proportions (~3.4 heads tall): a big head over a compact torso and short,
-// stubby limbs — the Focus Lily art direction, not a realistic 6-head adult.
-// Absolute height is kept ≈ the old rig (~1.65 units at scale 1.0) so all the
-// in-world camera framing, the editor camera and the realm orb stay valid — only
-// the proportion RATIOS changed. Two clearance rules keep poses clean:
-//   shoulderW > chestW + shoulderR  → arms hang clear of the torso (no clipping)
-//   hipW < shoulderW                → straight arms fall outside the hips
-// Bone names/hierarchy are identical, so the animator is untouched.
+// Realistic human proportions (~7.5 heads tall): a proportional adult human
+// with natural body ratios. Korean/Japanese aesthetic: balanced, slim build
+// with natural limb lengths and realistic facial proportions.
 const MALE: Proportions = {
-  hipsY: 0.68,
-  spineLen: 0.165,
-  chestLen: 0.235,
-  neckLen: 0.05,
-  neckR: 0.082,
-  headR: 0.242,
-  shoulderW: 0.275, // narrower than the old 0.32 (arms tuck nearer the body)
-  hipW: 0.12,
-  upperArm: 0.26,
-  lowerArm: 0.21,
-  upperLeg: 0.3,
-  lowerLeg: 0.3,
-  shoulderR: 0.078, // slimmer arms (was 0.097 — the old shoulder ball was huge)
-  elbowR: 0.07,
-  wristR: 0.062,
-  thighR: 0.105, // slimmer legs (was 0.13 — read as thunder thighs)
-  kneeR: 0.092,
-  ankleR: 0.078,
-  chestW: 0.185,
-  waistW: 0.158,
-  hipBoneW: 0.168, // trimmer seat (was 0.195) — male is a V-taper, narrow hips
-  torsoD: 0.16,
+  hipsY: 0.88,
+  spineLen: 0.2,
+  chestLen: 0.26,
+  neckLen: 0.07,
+  neckR: 0.062,
+  headR: 0.12,
+  shoulderW: 0.19,
+  hipW: 0.095,
+  upperArm: 0.28,
+  lowerArm: 0.25,
+  upperLeg: 0.4,
+  lowerLeg: 0.4,
+  shoulderR: 0.052,
+  elbowR: 0.042,
+  wristR: 0.036,
+  thighR: 0.078,
+  kneeR: 0.058,
+  ankleR: 0.046,
+  chestW: 0.15,
+  waistW: 0.125,
+  hipBoneW: 0.13,
+  torsoD: 0.115,
   bust: 0,
-  handLen: 0.125,
-  footLen: 0.235,
+  handLen: 0.14,
+  footLen: 0.24,
 }
 
-// Female silhouette is tuned to read CLEARLY apart from male at a glance, not just
-// numerically: noticeably narrower shoulders + chest, a deep waist pinch, and a
-// wider pelvis than the chest give a soft hourglass; limbs/head/feet are daintier.
-// Clearance invariants still hold: shoulderW (0.272) > chestW + shoulderR (0.250),
-// and hipW (0.15) < shoulderW. Absolute height stays ≈ male (legs unchanged) so
-// camera framing is untouched.
+// Female silhouette: narrower shoulders than male, deeper waist pinch for
+// hourglass figure, wider pelvis. Daintier limbs and smaller head.
 const FEMALE: Proportions = {
-  hipsY: 0.68,
-  spineLen: 0.175,
-  chestLen: 0.22,
-  neckLen: 0.052,
-  neckR: 0.066,
-  headR: 0.232,
-  shoulderW: 0.242, // distinctly narrower than male's 0.275
-  hipW: 0.132, // hip sockets sit wider apart than male's 0.12
-  upperArm: 0.25,
-  lowerArm: 0.2,
-  upperLeg: 0.3,
-  lowerLeg: 0.3,
-  shoulderR: 0.066,
-  elbowR: 0.058,
-  wristR: 0.052,
-  thighR: 0.098, // slim legs
-  kneeR: 0.085,
-  ankleR: 0.07,
-  chestW: 0.155, // slim chest
-  waistW: 0.125, // deep waist pinch (vs male 0.158) — the defining cinch
-  hipBoneW: 0.2, // pelvis wider than the chest → hourglass, but not an oversized seat
-  torsoD: 0.142,
-  bust: 0.06,
-  handLen: 0.105,
-  footLen: 0.2,
+  hipsY: 0.88,
+  spineLen: 0.19,
+  chestLen: 0.24,
+  neckLen: 0.075,
+  neckR: 0.052,
+  headR: 0.115,
+  shoulderW: 0.165,
+  hipW: 0.105,
+  upperArm: 0.26,
+  lowerArm: 0.23,
+  upperLeg: 0.4,
+  lowerLeg: 0.4,
+  shoulderR: 0.045,
+  elbowR: 0.038,
+  wristR: 0.032,
+  thighR: 0.072,
+  kneeR: 0.052,
+  ankleR: 0.042,
+  chestW: 0.13,
+  waistW: 0.1,
+  hipBoneW: 0.15,
+  torsoD: 0.105,
+  bust: 0.055,
+  handLen: 0.12,
+  footLen: 0.22,
 }
 
 export function proportionsFor(bodyType: BodyType): Proportions {

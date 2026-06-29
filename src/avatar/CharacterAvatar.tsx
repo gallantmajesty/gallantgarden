@@ -7,43 +7,23 @@ import {
   type ReactNode,
 } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useAnimations, useGLTF } from '@react-three/drei'
-import { Box3, type AnimationAction, type Object3D } from 'three'
+import { useGLTF } from '@react-three/drei'
+import { Box3, Euler, type Object3D, type Bone } from 'three'
 import { SkeletonUtils } from 'three-stdlib'
 import { BASE_BODY } from './baseBody'
 import { AvatarRig, type AvatarRigHandle } from './AvatarRig'
 import { AvatarAnimator, type Lod } from './AvatarAnimator'
-import { gaitAmount, type Locomotion } from './animation'
+import { airPose, gaitAmount, gaitBounce, idlePose, landPose, locomotionPose, type Locomotion } from './animation'
 import type { AvatarConfig } from './config'
-
-// The ONE customizable base body, rendered from its baked .glb (mesh + clips) and
-// customized via the live AvatarConfig. Two modes:
-//   • animated (realm/world): a Locomotion ref drives clip selection + crossfade
-//     every frame — idle ⇄ walk ⇄ run, jump while airborne.
-//   • static (editor/preview): no Locomotion → holds a single calm idle frame.
-//
-// LOD SUPPORT: a `lod` ref (from RemotePlayers) allows the caller to drive the
-// LOD tier per-frame. 'near' = full detail; 'far' = reduced update rate;
-// 'cull' = animation frozen. Local player always uses 'near'. Remote players
-// update this ref from camera-distance checks in their own useFrame.
-//
-// Until `/models/avatars/base.glb` is baked, a ModelBoundary + Suspense fallback
-// renders the deterministic procedural rig (AvatarRig), driven by the SAME
-// AvatarConfig — so customization is fully live with zero art, and the glb later
-// drops in behind this boundary without touching callers.
 
 const AVATAR_DIR = '/models/avatars'
 
 interface CharacterAvatarProps {
-  /** the live look to render (skin / hair / eyes / clothing styles + colours) */
   config: AvatarConfig
-  /** live locomotion source; omit for a static (non-animated) display */
   locomotion?: React.RefObject<Locomotion>
-  /** mutable LOD ref written by RemotePlayers every frame; undefined = always 'near' */
   lod?: React.RefObject<Lod>
 }
 
-/** Catches a failed GLB load (file not baked yet) and renders the fallback rig. */
 class ModelBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
   static getDerivedStateFromError() {
@@ -54,12 +34,34 @@ class ModelBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   }
 }
 
+/** Map Mixamo bone names to procedural animation names. */
+const MIXAMO_TO_PROCEDURAL: Record<string, string> = {
+  'mixamorig:Hips': 'hips',
+  'mixamorig:Spine': 'spine',
+  'mixamorig:Spine1': 'spine',
+  'mixamorig:Spine2': 'chest',
+  'mixamorig:Neck': 'neck',
+  'mixamorig:Head': 'head',
+  // LeftArm = upper arm (bicep), NOT LeftShoulder (scapula)
+  'mixamorig:LeftArm': 'armUpperL',
+  'mixamorig:LeftForeArm': 'armLowerL',
+  'mixamorig:RightArm': 'armUpperR',
+  'mixamorig:RightForeArm': 'armLowerR',
+  // LeftLeg = thigh, LeftLeg.001 = shin (Blender auto-renamed duplicates)
+  'mixamorig:LeftLeg': 'legUpperL',
+  'mixamorig:LeftLeg.001': 'legLowerL',
+  'mixamorig:LeftFoot': 'footL',
+  'mixamorig:RightLeg': 'legUpperR',
+  'mixamorig:RightLeg.001': 'legLowerR',
+  'mixamorig:RightFoot': 'footR',
+}
+
+type BoneName = 'root' | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
+  | 'armUpperL' | 'armLowerL' | 'armUpperR' | 'armLowerR'
+  | 'legUpperL' | 'legLowerL' | 'footL' | 'legUpperR' | 'legLowerR' | 'footR'
+
 export function CharacterAvatar({ config, locomotion, lod }: CharacterAvatarProps) {
-  // Fallback = the procedural rig in the player's live look. When a locomotion ref
-  // is present we also mount the procedural animator so the fallback walks
-  // in-world; static previews stay still.
   const fallbackRig = useRef<AvatarRigHandle>(null)
-  // Stable 'near' ref used when no lod prop is provided (local player / previews).
   const nearLod = useRef<Lod>('near')
   const resolvedLod = lod ?? nearLod
 
@@ -79,22 +81,9 @@ export function CharacterAvatar({ config, locomotion, lod }: CharacterAvatarProp
   )
 }
 
-/* ------------------------------------------------------------- glb base body */
-
-/** Resolve a baked clip by fuzzy name so the bake script's exact naming doesn't
- *  have to be perfect (e.g. "Walking", "mixamo.com|walk" both match 'walk'). */
-function findAction(actions: Record<string, AnimationAction | null>, want: string): AnimationAction | null {
-  const keys = Object.keys(actions)
-  const hit = keys.find((k) => k.toLowerCase().includes(want))
-  return hit ? actions[hit] ?? null : null
-}
-
 function GLBCharacter({ locomotion, lod }: { locomotion?: React.RefObject<Locomotion>; lod: React.RefObject<Lod> }) {
-  const { scene, animations } = useGLTF(`${AVATAR_DIR}/${BASE_BODY.model}`)
+  const { scene } = useGLTF(`${AVATAR_DIR}/base.glb`)
 
-  // SkeletonUtils.clone (NOT Object3D.clone) so each instance gets its own
-  // skeleton — plain clone leaves skinned meshes bound to the original bones,
-  // which breaks animation and lets multiple avatars fight over one skeleton.
   const cloned = useMemo(() => {
     const c = SkeletonUtils.clone(scene)
     c.traverse((o: Object3D) => {
@@ -107,74 +96,80 @@ function GLBCharacter({ locomotion, lod }: { locomotion?: React.RefObject<Locomo
     return c
   }, [scene])
 
-  // Ground-align: shift so the model's feet sit at y=0 (export origins vary, and
-  // the editor/world both place the avatar with feet on the floor).
   const groundY = useMemo(() => {
     cloned.updateMatrixWorld(true)
     const box = new Box3().setFromObject(cloned)
     return Number.isFinite(box.min.y) ? -box.min.y : 0
   }, [cloned])
 
-  const { actions } = useAnimations(animations, cloned)
-
-  // Resolve the clips we drive between (any may be null if not baked in).
-  const clips = useMemo(
-    () => ({
-      idle: findAction(actions, 'idle'),
-      walk: findAction(actions, 'walk'),
-      run:  findAction(actions, 'run'),
-      jump: findAction(actions, 'jump'),
-    }),
-    [actions],
-  )
-
-  const current = useRef<AnimationAction | null>(null)
-
-  // Start on idle. With a locomotion ref (in-world) idle plays and the frame loop
-  // takes over. Without one (editor preview) we freeze idle on a natural mid-pose.
-  useEffect(() => {
-    const start = clips.idle ?? clips.walk ?? Object.values(actions)[0] ?? null
-    if (start) {
-      start.reset().play()
-      if (!locomotion) {
-        start.time = start.getClip().duration * 0.5
-        start.paused = true
+  const boneMap = useMemo(() => {
+    const map: Partial<Record<BoneName, Bone>> = {}
+    cloned.traverse((o: Object3D) => {
+      // @ts-expect-error three bone check
+      if (o.isBone) {
+        const procName = MIXAMO_TO_PROCEDURAL[o.name]
+        if (procName && !map[procName as BoneName]) {
+          map[procName as BoneName] = o as Bone
+        }
       }
-      current.current = start
-    }
-    return () => {
-      Object.values(actions).forEach((a) => a?.stop())
-    }
-  }, [actions, clips, locomotion])
+    })
+    return map
+  }, [cloned])
 
-  // Crossfade helper: ease from the current action to `next` over 0.2s.
-  const fadeTo = (next: AnimationAction | null) => {
-    if (!next || next === current.current) return
-    next.reset().play()
-    if (current.current) current.current.crossFadeTo(next, 0.2, false)
-    current.current = next
-  }
+  const clock = useRef(0)
+  const gaitPhase = useRef(0)
+  const land = useRef(0)
+  const wasGrounded = useRef(true)
+  const curEuler = useMemo(() => {
+    const e: Record<string, Euler> = {}
+    for (const k of Object.keys(boneMap)) e[k] = new Euler()
+    return e
+  }, [boneMap])
 
-  // Animated mode: pick a clip from locomotion every frame. Skip clip switching
-  // when the LOD tier is 'cull' — the animation mixer is still advancing (Three
-  // does that internally) but we avoid the crossfade bookkeeping cost.
-  // Without a locomotion ref we never touch the action — it holds the idle pose.
-  useFrame(() => {
+  useFrame((_, dtRaw) => {
     if (!locomotion) return
     const currentLod = lod.current
-    // 'cull' → skip clip logic entirely to save CPU
     if (currentLod === 'cull') return
 
+    const dt = Math.min(dtRaw, 0.05)
     const loco = locomotion.current
-    let want: AnimationAction | null
-    if (!loco.grounded) want = clips.jump ?? clips.run ?? clips.walk ?? clips.idle
-    else {
-      const g = gaitAmount(loco.speed)
-      if (g > 1.25) want = clips.run  ?? clips.walk ?? clips.idle
-      else if (g > 0.08) want = clips.walk ?? clips.run  ?? clips.idle
-      else want = clips.idle
+
+    if (!wasGrounded.current && loco.grounded) land.current = 1
+    wasGrounded.current = loco.grounded
+    land.current = Math.max(0, land.current - dt * 4)
+
+    const g = gaitAmount(loco.speed)
+    gaitPhase.current += dt * (4 + g * 3.5) * Math.min(1, g)
+    const phase = gaitPhase.current
+    clock.current += dt
+    const t = clock.current
+
+    let pose: Record<string, { x?: number; y?: number; z?: number }>
+    if (!loco.grounded) pose = airPose(loco.vy)
+    else if (land.current > 0.02) pose = landPose(land.current)
+    else if (g > 0.06) pose = locomotionPose(phase, Math.max(1, g))
+    else pose = idlePose(t)
+
+    const k = 1 - Math.pow(0.0001, dt * (g > 0.06 || !loco.grounded ? 1.6 : 1))
+    for (const [name, bone] of Object.entries(boneMap)) {
+      if (!bone) continue
+      const target = pose[name]
+      const cur = curEuler[name]
+      if (!cur || !target) continue
+
+      cur.x += ((target.x ?? 0) - cur.x) * k
+      cur.y += ((target.y ?? 0) - cur.y) * k
+      cur.z += ((target.z ?? 0) - cur.z) * k
+
+      bone.rotation.set(cur.x, cur.y, cur.z)
     }
-    fadeTo(want)
+
+    const root = boneMap.hips
+    if (root?.parent) {
+      root.parent.position.y = g > 0.06 && loco.grounded
+        ? Math.abs(Math.sin(phase)) * gaitBounce(Math.max(1, g))
+        : 0
+    }
   })
 
   return (

@@ -4,8 +4,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
-import { AvatarRig, type AvatarRigHandle } from '../avatar/AvatarRig'
-import { AvatarAnimator } from '../avatar/AvatarAnimator'
+import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { BASE_BODY } from '../avatar/baseBody'
 import type { Locomotion } from '../avatar/animation'
 import { useAvatar } from '../avatar/store'
@@ -597,18 +596,10 @@ function CafePedestal() {
   )
 }
 
-/** The customizable body, driven by the emote bar. Renders the procedural rig +
- *  animator directly (vs the static CharacterAvatar) so emotes play live; the
- *  baked base.glb's own emote clips can replace this path once that art lands. */
+/** The customizable body, driven by the emote bar. Uses CharacterAvatar
+ *  to render the GLB model (the Blender schoolboy). */
 function PreviewAvatar({ config }: { config: AvatarConfig }) {
-  const rig = useRef<AvatarRigHandle>(null)
-  const loco = useRef<Locomotion>(STATIC_LOCO)
-  return (
-    <group scale={BASE_BODY.scale} position={[0, BASE_BODY.yOffset, 0]}>
-      <AvatarRig ref={rig} config={config} />
-      <AvatarAnimator rig={rig} locomotion={loco} preview="idle" lod="near" />
-    </group>
-  )
+  return <CharacterAvatar config={config} />
 }
 
 /* -------------------------------------------------------------------- glyphs */

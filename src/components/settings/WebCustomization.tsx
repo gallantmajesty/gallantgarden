@@ -26,20 +26,20 @@ export function WebCustomizationContent() {
       <section className="wc-section">
         <h3 className="wc-h3">{t('webCustomization.theme')}</h3>
         <div className="wc-theme-grid">
-          {WEB_THEMES.map((t) => (
+          {WEB_THEMES.map((wt) => (
             <button
-              key={t.id}
-              className={`wc-theme-card ${t.id === themeId ? 'on' : ''}`}
-              style={{ backgroundImage: `url(${t.backgrounds[0].src})` }}
-              onClick={() => setTheme(t.id)}
-              aria-pressed={t.id === themeId}
+              key={wt.id}
+              className={`wc-theme-card ${wt.id === themeId ? 'on' : ''}`}
+              style={{ backgroundImage: `url(${wt.backgrounds[0].src})` }}
+              onClick={() => setTheme(wt.id)}
+              aria-pressed={wt.id === themeId}
             >
               <span className="wc-theme-veil" />
               <span className="wc-theme-meta">
-                <span className="wc-theme-emoji">{t.emoji}</span>
-                <span className="wc-theme-name">{t.name}</span>
+                <span className="wc-theme-emoji">{wt.emoji}</span>
+                <span className="wc-theme-name">{wt.name}</span>
               </span>
-              {t.id === themeId && <span className="wc-tick">✓</span>}
+              {wt.id === themeId && <span className="wc-tick">✓</span>}
             </button>
           ))}
           {WEB_THEMES_SOON.map((wt) => (
