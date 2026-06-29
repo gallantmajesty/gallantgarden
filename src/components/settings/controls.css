@@ -348,6 +348,7 @@
 
 /* ---- Mobile responsive ---- */
 @media (max-width: 640px) {
+  .settings-scrim { background: rgba(8, 6, 4, 0.82); }
   .settings-panel { width: 100%; border-left: none; }
   .settings-head { padding: 14px 16px; }
   .settings-head h2 { font-size: 18px; }

@@ -36,6 +36,7 @@ import { RARITY_COLOR, RARITY_LABEL } from '../marketplace/types'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
 import { LoadingVeil } from '../components/LoadingVeil'
+import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
 import './AvatarCreator.css'
 
 // Roblox-style customizer for the ONE base body, laid out like the product
@@ -53,6 +54,7 @@ type DockTab = 'customize' | 'items' | 'accessories'
 
 export function AvatarCreator() {
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const config = useAvatar((s) => s.config)
   const set = useAvatar((s) => s.set)
   const reset = useAvatar((s) => s.reset)
@@ -66,6 +68,8 @@ export function AvatarCreator() {
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
   const [previewItem, setPreviewItem] = useState<AccessoryItem | null>(null)
+
+  if (!isDesktop) return <DesktopOnly />
 
   // When previewing an unowned item, merge it into the config so the 3D rig shows it
   const displayConfig = useMemo(() => {

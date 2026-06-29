@@ -38,3 +38,10 @@
   pointer-events: none;
   background: radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(3, 8, 5, 0.55) 100%);
 }
+
+/* Mobile: contain the video so the logo is large and centred, not cropped */
+@media (max-width: 768px) {
+  .intro-video {
+    object-fit: contain;
+  }
+}

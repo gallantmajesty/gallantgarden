@@ -171,9 +171,11 @@ export function Lobby() {
 
       {/* ---------- top-right: avatar / settings ---------- */}
       <div className="lobby-topright">
-        <button className="lobby-round" title={t('lobby.chooseCharacter')} onClick={() => navigate('/avatar')}>
-          <Glyph name="face" />
-        </button>
+        {isDesktop && (
+          <button className="lobby-round" title={t('lobby.chooseCharacter')} onClick={() => navigate('/avatar')}>
+            <Glyph name="face" />
+          </button>
+        )}
         <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
           <Glyph name="gear" />
         </button>
