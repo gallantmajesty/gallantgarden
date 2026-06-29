@@ -465,8 +465,12 @@ button {
 
 /* ── Mobile: disable heavy visual effects to prevent hangs ── */
 @media (pointer: coarse), (max-width: 768px) {
-  /* Drastically reduce glass blur */
-  --glass-blur: blur(6px) saturate(120%);
+  /* Reduce blur on glass elements directly (avoids CSS var syntax issues) */
+  .water-glass, .sf-panel, .lobby-object, .lobby-round, .lobby-webcustom,
+  .realm-card, .realm-room, .realm-avatar, .menu-item, .sf-btn {
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+    backdrop-filter: blur(6px) saturate(120%);
+  }
 
   .water-glass::before { animation: none !important; opacity: 0 !important; }
   .water-glass::after { display: none !important; }
