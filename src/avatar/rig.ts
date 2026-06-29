@@ -139,7 +139,8 @@ export function proportionsFor(bodyType: BodyType): Proportions {
   return bodyType === 'female' ? FEMALE : MALE
 }
 
-/** Uniform scale that maps a config height (cm) onto the rig built at HEIGHT_REF. */
-export function heightScale(heightCm: number): number {
-  return heightCm / HEIGHT_REF
+/** Uniform scale that maps a config height (cm) onto the rig built at HEIGHT_REF.
+ *  Fixed at 1.0 so all avatars are the same height. */
+export function heightScale(_heightCm: number): number {
+  return 1.0
 }

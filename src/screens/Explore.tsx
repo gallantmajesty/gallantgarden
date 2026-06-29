@@ -36,12 +36,14 @@ import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
+import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
 export function Explore() {
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const realm = useRealm((s) => s.active)
   const [ready, setReady] = useState(false)
   const [hint, setHint] = useState(true)
@@ -50,11 +52,12 @@ export function Explore() {
   const fps = useSettings((s) => s.fps)
   const brightness = useSettings((s) => s.brightness)
   const set = useSettings((s) => s.set)
-  // Transient view state: Tab hides every widget; Ctrl+F enters Performance Mode.
   const hidden = useHud((s) => s.widgetsHidden)
   const perfMode = useHud((s) => s.perfMode)
   useAudio()
   useExploreShortcuts()
+
+  if (!isDesktop) return <DesktopOnly />
 
   useEffect(() => {
     const t = window.setTimeout(() => setHint(false), 8000)

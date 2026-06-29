@@ -14,6 +14,9 @@ import {
   topHex,
   bottomHex,
   sharedMaterial,
+  skinMaterial,
+  hairMaterial,
+  eyeMaterial,
   type AvatarConfig,
   type TorsoRing,
 } from './config'
@@ -96,18 +99,18 @@ export function AvatarRig({
   const P = proportionsFor(config.bodyType)
   const s = heightScale(config.height)
 
-  // shared material lookups (cached globally by colour/finish)
-  const skin = sharedMaterial(skinHex(config.skin), 0.78)
-  const hairM = sharedMaterial(hairHex(config.hairColor), 0.62)
+  // specialized material lookups (cached globally by colour/finish)
+  const skin = skinMaterial(skinHex(config.skin))
+  const hairM = hairMaterial(hairHex(config.hairColor))
   // Garment colour is a fixed property of the cosmetic item (no per-avatar picker).
   const topM = sharedMaterial(topHex(config.top), 0.82)
   const botM = sharedMaterial(bottomHex(config.bottom), 0.82)
   const shoeM = sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
-  const eyeWhite = sharedMaterial('#f6f3ec', 0.3)
-  const iris = sharedMaterial(eyeHex(config.eyes), 0.25)
-  const pupil = sharedMaterial('#1b1410', 0.2)
-  const mouthM = sharedMaterial('#9c5b54', 0.55)
+  const eyeWhite = eyeMaterial('#f6f3ec')
+  const iris = eyeMaterial(eyeHex(config.eyes))
+  const pupil = eyeMaterial('#1b1410')
+  const mouthM = sharedMaterial('#c47068', 0.6)
 
   const bind = (name: BoneName) => (g: Group | null) => {
     if (g) bones[name] = g
@@ -140,7 +143,8 @@ export function AvatarRig({
 
             {/* neck + head */}
             <group ref={bind('neck')} position={[0, P.chestLen * 0.86, 0]}>
-              <mesh geometry={taperGeo(P.neckR, P.neckR * 1.15, P.neckLen)} material={skin} position={[0, P.neckLen / 2, 0]} />
+              <mesh geometry={taperGeo(P.neckR, P.neckR * 1.12, P.neckLen)} material={skin} position={[0, P.neckLen / 2, 0]} />
+              <Blob m={skin} s={[P.neckR * 1.35, P.neckR * 0.9, P.neckR * 1.35]} p={[0, P.neckLen * 0.85, 0]} />
               <group ref={bind('head')} position={[0, P.neckLen, 0]}>
                 <Head P={P} skin={skin} eyeWhite={eyeWhite} iris={iris} pupil={pupil} mouthM={mouthM} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} />
                 <Hair config={config} P={P} hairM={hairM} />
@@ -195,56 +199,49 @@ function Head({
   lidsRef: React.Ref<Group>
 }) {
   const r = P.headR
-  // the head sits above the neck joint; everything below is in head-centre space
   const cy = r * 0.92
-  const fz = r * 0.72 // face plane (front +Z), eyes/nose/mouth ride near here
-  // big, low-set chibi eyes spaced wide across the face
-  const eyeX = r * 0.4
+  const fz = r * 0.72
+  const eyeX = r * 0.38
   const eyeY = -r * 0.05
-  const browArch = bodyType === 'female' ? 0.16 : 0.06
+  const browArch = bodyType === 'female' ? 0.18 : 0.08
+  const isF = bodyType === 'female'
   return (
     <group position={[0, cy, 0]}>
-      {/* cranium: a big, near-round chibi head (the silhouette's defining mass) */}
       <Blob m={skin} s={[r * 0.99, r * 1.0, r * 0.97]} p={[0, 0, 0]} cast />
-      {/* soft, gentle jaw — no harsh chin, just rounds the lower head */}
-      <Blob m={skin} s={[r * 0.74, r * 0.5, r * 0.74]} p={[0, -r * 0.64, r * 0.04]} />
+      <Blob m={skin} s={[r * 0.72, r * 0.48, r * 0.72]} p={[0, -r * 0.62, r * 0.04]} />
 
-      {/* eyes: big and shiny, both clearly visible on a common line */}
       <Eye x={-eyeX} y={eyeY} z={fz} r={r} eyeWhite={eyeWhite} iris={iris} pupil={pupil} />
       <Eye x={eyeX} y={eyeY} z={fz} r={r} eyeWhite={eyeWhite} iris={iris} pupil={pupil} />
 
-      {/* brows: short, soft strokes above each eye */}
-      <mesh geometry={boxGeo(r * 0.3, r * 0.055, r * 0.06)} material={hairM} position={[-eyeX, eyeY + r * 0.34, fz + r * 0.04]} rotation={[0, 0, browArch]} />
-      <mesh geometry={boxGeo(r * 0.3, r * 0.055, r * 0.06)} material={hairM} position={[eyeX, eyeY + r * 0.34, fz + r * 0.04]} rotation={[0, 0, -browArch]} />
+      <Blob m={sharedMaterial(isF ? '#e8a0a0' : '#d4908a', 0.9)} s={[r * 0.18, r * 0.12, r * 0.08]} p={[-r * 0.52, -r * 0.2, fz + r * 0.02]} />
+      <Blob m={sharedMaterial(isF ? '#e8a0a0' : '#d4908a', 0.9)} s={[r * 0.18, r * 0.12, r * 0.08]} p={[r * 0.52, -r * 0.2, fz + r * 0.02]} />
 
-      {/* nose: a single tiny soft tip (no bridge — keeps the face clean) */}
-      <Blob m={skin} s={[r * 0.07, r * 0.06, r * 0.08]} p={[0, eyeY - r * 0.26, fz + r * 0.12]} />
+      <mesh geometry={boxGeo(r * 0.28, r * 0.048, r * 0.05)} material={hairM} position={[-eyeX, eyeY + r * 0.36, fz + r * 0.04]} rotation={[0, 0, browArch]} />
+      <mesh geometry={boxGeo(r * 0.28, r * 0.048, r * 0.05)} material={hairM} position={[eyeX, eyeY + r * 0.36, fz + r * 0.04]} rotation={[0, 0, -browArch]} />
 
-      {/* mouth: a small soft smile (fuller for female) */}
-      <Blob m={mouthM} s={[r * 0.16, bodyType === 'female' ? r * 0.06 : r * 0.045, r * 0.05]} p={[0, -r * 0.5, fz + r * 0.04]} />
+      <Blob m={skin} s={[r * (isF ? 0.06 : 0.07), r * (isF ? 0.05 : 0.06), r * 0.08]} p={[0, eyeY - r * 0.28, fz + r * 0.14]} />
 
-      {/* ears: small, tucked to the sides */}
-      <Blob m={skin} s={[r * 0.09, r * 0.16, r * 0.12]} p={[-r * 0.95, eyeY, -r * 0.04]} />
-      <Blob m={skin} s={[r * 0.09, r * 0.16, r * 0.12]} p={[r * 0.95, eyeY, -r * 0.04]} />
+      <Blob m={mouthM} s={[r * 0.14, r * (isF ? 0.055 : 0.04), r * 0.04]} p={[0, -r * 0.48, fz + r * 0.04]} />
 
-      {/* blink lids: skin quads that drop over the eyes (scale.y 0 open → 1 closed) */}
+      <Blob m={skin} s={[r * 0.08, r * 0.14, r * 0.1]} p={[-r * 0.94, eyeY + r * 0.02, -r * 0.04]} />
+      <Blob m={skin} s={[r * 0.08, r * 0.14, r * 0.1]} p={[r * 0.94, eyeY + r * 0.02, -r * 0.04]} />
+
       <group ref={lidsRef} scale={[1, 0, 1]} position={[0, eyeY + r * 0.04, fz + r * 0.06]}>
-        <mesh geometry={boxGeo(r * 0.36, r * 0.34, r * 0.05)} material={skin} position={[-eyeX, 0, 0]} />
-        <mesh geometry={boxGeo(r * 0.36, r * 0.34, r * 0.05)} material={skin} position={[eyeX, 0, 0]} />
+        <mesh geometry={boxGeo(r * 0.34, r * 0.32, r * 0.04)} material={skin} position={[-eyeX, 0, 0]} />
+        <mesh geometry={boxGeo(r * 0.34, r * 0.32, r * 0.04)} material={skin} position={[eyeX, 0, 0]} />
       </group>
     </group>
   )
 }
 
 function Eye({ x, y, z, r, eyeWhite, iris, pupil }: { x: number; y: number; z: number; r: number; eyeWhite: Mat; iris: Mat; pupil: Mat }) {
-  // Big chibi eye: a tall white oval, a large coloured iris, a pupil, and a small
-  // white catchlight (the eyeWhite material) that gives it a lively, shiny read.
   return (
     <group position={[x, y, z]}>
-      <Blob m={eyeWhite} s={[r * 0.24, r * 0.3, r * 0.13]} p={[0, 0, 0]} />
-      <Blob m={iris} s={[r * 0.18, r * 0.21, r * 0.1]} p={[0, -r * 0.02, r * 0.06]} />
-      <Blob m={pupil} s={[r * 0.09, r * 0.11, r * 0.06]} p={[0, -r * 0.02, r * 0.11]} />
-      <Blob m={eyeWhite} s={[r * 0.05, r * 0.06, r * 0.03]} p={[r * 0.06, r * 0.08, r * 0.14]} />
+      <Blob m={eyeWhite} s={[r * 0.22, r * 0.28, r * 0.12]} p={[0, 0, 0]} />
+      <Blob m={iris} s={[r * 0.17, r * 0.2, r * 0.1]} p={[0, -r * 0.02, r * 0.06]} />
+      <Blob m={pupil} s={[r * 0.08, r * 0.1, r * 0.06]} p={[0, -r * 0.02, r * 0.11]} />
+      <Blob m={eyeWhite} s={[r * 0.05, r * 0.06, r * 0.03]} p={[r * 0.05, r * 0.08, r * 0.13]} />
+      <Blob m={eyeWhite} s={[r * 0.025, r * 0.03, r * 0.02]} p={[-r * 0.04, -r * 0.06, r * 0.12]} />
     </group>
   )
 }
@@ -567,12 +564,12 @@ function Arm({
 
       <group ref={bind(lower)} position={[0, -P.upperArm, 0]}>
         {/* elbow */}
-        <Blob m={skin} s={[P.elbowR, P.elbowR, P.elbowR]} p={[0, 0, 0]} />
+        <Blob m={skin} s={[P.elbowR * 1.02, P.elbowR * 1.02, P.elbowR * 1.02]} p={[0, 0, 0]} />
         <mesh geometry={taperGeo(P.elbowR, P.wristR, P.lowerArm)} material={skin} position={[0, -P.lowerArm / 2, 0]} castShadow />
-        {/* hand: a single rounded chibi mitt (the right hand also holds the
-            equipped handheld accessory, in front of the body) */}
+        {/* hand: a rounded chibi mitt */}
         <group position={[0, -P.lowerArm - P.wristR * 0.3, 0]}>
-          <Blob m={skin} s={[P.wristR * 1.15, P.handLen * 0.62, P.wristR * 0.95]} p={[0, -P.handLen * 0.42, 0]} cast />
+          <Blob m={skin} s={[P.wristR * 1.2, P.handLen * 0.58, P.wristR * 1.0]} p={[0, -P.handLen * 0.38, 0]} cast />
+          <Blob m={skin} s={[P.wristR * 0.35, P.wristR * 0.35, P.wristR * 0.35]} p={[P.wristR * 0.9, -P.handLen * 0.25, P.wristR * 0.3]} />
           {hand && <HandAccessory eq={hand} P={P} />}
         </group>
       </group>

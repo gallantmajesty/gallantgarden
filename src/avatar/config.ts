@@ -304,7 +304,46 @@ export function sharedMaterial(hex: string, roughness = 0.85, metalness = 0): Me
   const key = `${hex}|${roughness}|${metalness}`
   let m = matCache.get(key)
   if (!m) {
-    m = new MeshStandardMaterial({ color: hex, roughness, metalness })
+    m = new MeshStandardMaterial({ color: hex, roughness, metalness, flatShading: false })
+    matCache.set(key, m)
+  }
+  return m
+}
+
+/**
+ * Skin-specific material with subtle subsurface-like warmth.
+ */
+export function skinMaterial(hex: string): MeshStandardMaterial {
+  const key = `skin:${hex}`
+  let m = matCache.get(key)
+  if (!m) {
+    m = new MeshStandardMaterial({ color: hex, roughness: 0.72, metalness: 0, flatShading: false })
+    matCache.set(key, m)
+  }
+  return m
+}
+
+/**
+ * Hair material with subtle sheen.
+ */
+export function hairMaterial(hex: string): MeshStandardMaterial {
+  const key = `hair:${hex}`
+  let m = matCache.get(key)
+  if (!m) {
+    m = new MeshStandardMaterial({ color: hex, roughness: 0.58, metalness: 0.02, flatShading: false })
+    matCache.set(key, m)
+  }
+  return m
+}
+
+/**
+ * Eye material — glossy with a slight reflective quality.
+ */
+export function eyeMaterial(hex: string): MeshStandardMaterial {
+  const key = `eye:${hex}`
+  let m = matCache.get(key)
+  if (!m) {
+    m = new MeshStandardMaterial({ color: hex, roughness: 0.15, metalness: 0.05, flatShading: false })
     matCache.set(key, m)
   }
   return m
@@ -334,13 +373,13 @@ export function capsuleGeo(radius: number, length: number): BufferGeometry {
 
 export function sphereGeo(radius: number): BufferGeometry {
   const key = `sph:${radius}`
-  return cachedGeo(key, () => new SphereGeometry(radius, 16, 12))
+  return cachedGeo(key, () => new SphereGeometry(radius, 24, 18))
 }
 
 /** Half-sphere (dome), opening downward — used for shoulders, hoods, shoe toes. */
 export function domeGeo(radius: number): BufferGeometry {
   const key = `dome:${radius}`
-  return cachedGeo(key, () => new SphereGeometry(radius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2))
+  return cachedGeo(key, () => new SphereGeometry(radius, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2))
 }
 
 /**
@@ -350,18 +389,18 @@ export function domeGeo(radius: number): BufferGeometry {
  */
 export function taperGeo(rTop: number, rBot: number, len: number): BufferGeometry {
   const key = `tap:${rTop}:${rBot}:${len}`
-  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 12, 1, false))
+  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 16, 1, false))
 }
 
 /** A flowing skirt / robe-hem cone: open-ended truncated cone, wider at the bottom. */
 export function skirtGeo(rTop: number, rBot: number, len: number): BufferGeometry {
   const key = `skirt:${rTop}:${rBot}:${len}`
-  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 16, 1, true))
+  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 20, 1, true))
 }
 
 export function torusGeo(radius: number, tube: number): BufferGeometry {
   const key = `tor:${radius}:${tube}`
-  return cachedGeo(key, () => new TorusGeometry(radius, tube, 8, 16))
+  return cachedGeo(key, () => new TorusGeometry(radius, tube, 12, 24))
 }
 
 /**
@@ -371,7 +410,7 @@ export function torusGeo(radius: number, tube: number): BufferGeometry {
  */
 export function latheGeo(profile: Array<[number, number]>): BufferGeometry {
   const key = `lat:${profile.map((p) => `${p[0].toFixed(3)},${p[1].toFixed(3)}`).join('|')}`
-  return cachedGeo(key, () => new LatheGeometry(profile.map(([x, y]) => new Vector2(x, y)), 20))
+  return cachedGeo(key, () => new LatheGeometry(profile.map(([x, y]) => new Vector2(x, y)), 28))
 }
 
 /**
@@ -392,7 +431,7 @@ export interface TorsoRing {
   cz?: number
 }
 
-const TORSO_SEG = 16 // radial samples per ring
+const TORSO_SEG = 24 // radial samples per ring (increased for smoother silhouette)
 const TORSO_EXP = 3 // superellipse exponent: higher = boxier (squarer) corners
 
 export function torsoGeo(rings: TorsoRing[]): BufferGeometry {

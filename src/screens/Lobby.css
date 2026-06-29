@@ -484,7 +484,7 @@
   .lobby-stage { padding: 70px 16px env(safe-area-inset-bottom, 16px); gap: 20px; }
   .lobby-welcome h1 { font-size: 28px; margin: 6px 0 2px; }
   .lobby-welcome__name { padding: 4px 18px 6px; font-size: 14px; }
-  .lobby-objects { gap: 12px; max-width: 100%; }
+  .lobby-objects { gap: 12px; max-width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .lobby-object { width: 100%; max-width: 360px; padding: 16px 12px 14px; }
   .lobby-object-orb { width: 64px; height: 64px; margin-bottom: 8px; }
   .lobby-object-orb .glyph { width: 30px; height: 30px; }

@@ -462,3 +462,25 @@ button {
   /* prevent content from hiding behind home indicator */
   .lobby-stage, .realm-stage, .explore-root { padding-bottom: max(16px, env(safe-area-inset-bottom, 0)); }
 }
+
+/* ── Mobile: disable heavy visual effects to prevent hangs ── */
+@media (pointer: coarse), (max-width: 768px) {
+  /* Drastically reduce glass blur */
+  --glass-blur: blur(6px) saturate(120%);
+
+  .water-glass::before { animation: none !important; opacity: 0 !important; }
+  .water-glass::after { display: none !important; }
+
+  .lobby-object-orb { animation: none !important; }
+
+  .lobby-welcome__name { animation: none !important; }
+  .lobby-welcome__name::before { animation: none !important; opacity: 0 !important; }
+
+  .lobby-object::before { display: none !important; }
+
+  /* Remove filter transitions — they cause per-frame GPU recomputation */
+  .sf-btn, .lobby-round, .lobby-xp, .menu-item, .realm-card, .realm-room,
+  .lobby-object, .lobby-webcustom, .station-chip {
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease !important;
+  }
+}

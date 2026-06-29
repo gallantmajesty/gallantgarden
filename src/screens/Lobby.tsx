@@ -11,6 +11,7 @@ import { getRank, rankProgress } from '../lib/ranks'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
+import { useIsDesktop } from '../components/DesktopOnly'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -20,12 +21,13 @@ interface LobbyObject {
   png: PngIconName
   route?: string
   soon?: boolean
+  desktopOnly?: boolean
 }
 
 const OBJECTS: LobbyObject[] = [
   { key: 'room', labelKey: 'lobby.objStudyRooms', captionKey: 'lobby.objStudyRoomsCaption', png: 'study-rooms', route: '/rooms' },
   { key: 'sticky', labelKey: 'lobby.objStickyNotes', captionKey: 'lobby.objStickyNotesCaption', png: 'notes', route: '/sticky' },
-  { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm' },
+  { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm', desktopOnly: true },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
   { key: 'focus', labelKey: 'lobby.objFocusTimer', captionKey: 'lobby.objFocusTimerCaption', png: 'focus-timer', soon: true },
 ]
@@ -38,6 +40,7 @@ export function Lobby() {
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
   const userXp = useProfile((s) => s.xp)
+  const isDesktop = useIsDesktop()
   const userPremiumXp = useProfile((s) => s.premiumXp)
 
   // Transition animation state
@@ -113,6 +116,9 @@ export function Lobby() {
       setPanel(null)
       return
     }
+    if (o.desktopOnly && !isDesktop) {
+      return
+    }
     if (transition?.active) return
 
     // Capture the clicked card's center position for the logo origin
@@ -140,7 +146,7 @@ export function Lobby() {
     timersRef.current.push(setTimeout(() => {
       navigate(o.route!)
     }, 1250))
-  }, [navigate, transition])
+  }, [navigate, transition, isDesktop])
 
   return (
     <div className="lobby-root">
@@ -219,6 +225,7 @@ export function Lobby() {
                 <div className="lobby-object-label">{t(o.labelKey)}</div>
                 <div className="lobby-object-caption">{t(o.captionKey)}</div>
                 {o.soon && <div className="lobby-soon-tag">{t('common.soon')}</div>}
+                {o.desktopOnly && !isDesktop && <div className="lobby-soon-tag">Desktop only</div>}
               </button>
             )
           })}

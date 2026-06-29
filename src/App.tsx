@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import './i18n'
@@ -11,23 +11,24 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
 import { AuthScreen } from './screens/AuthScreen'
 import { Onboarding } from './screens/Onboarding'
-import { Lobby } from './screens/Lobby'
-import { Blueprint } from './screens/Blueprint'
-import { StickyEntry } from './screens/StickyEntry'
-import { Explore } from './screens/Explore'
-import { StudyRoom } from './screens/StudyRoom'
-import { RoomsList } from './screens/RoomsList'
-import { About } from './screens/About'
-import { Realm } from './screens/Realm'
-import { RealmInvite } from './screens/RealmInvite'
-import { TaskMagnet } from './screens/TaskMagnet'
-import { Profile } from './screens/Profile'
-import { AvatarCreator } from './screens/AvatarCreator'
-import { ShotHarness } from './screens/ShotHarness' // TEMP: torso-review screenshots
-import { PerfHarness } from './screens/PerfHarness' // TEMP: Forest Hall perf profiling
-import { CalcHub } from './calc/ui/CalcHub' // TEMP usage in /__calc verify route
 import { LoadingVeil } from './components/LoadingVeil'
 import { MobileFullscreenGate, useIsDesktop } from './components/DesktopOnly'
+
+const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
+const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
+const StickyEntry = lazy(() => import('./screens/StickyEntry').then(m => ({ default: m.StickyEntry })))
+const Explore = lazy(() => import('./screens/Explore').then(m => ({ default: m.Explore })))
+const StudyRoom = lazy(() => import('./screens/StudyRoom').then(m => ({ default: m.StudyRoom })))
+const RoomsList = lazy(() => import('./screens/RoomsList').then(m => ({ default: m.RoomsList })))
+const About = lazy(() => import('./screens/About').then(m => ({ default: m.About })))
+const Realm = lazy(() => import('./screens/Realm').then(m => ({ default: m.Realm })))
+const RealmInvite = lazy(() => import('./screens/RealmInvite').then(m => ({ default: m.RealmInvite })))
+const TaskMagnet = lazy(() => import('./screens/TaskMagnet').then(m => ({ default: m.TaskMagnet })))
+const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })))
+const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ default: m.AvatarCreator })))
+const ShotHarness = lazy(() => import('./screens/ShotHarness').then(m => ({ default: m.ShotHarness })))
+const PerfHarness = lazy(() => import('./screens/PerfHarness').then(m => ({ default: m.PerfHarness })))
+const CalcHub = lazy(() => import('./calc/ui/CalcHub').then(m => ({ default: m.CalcHub })))
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -104,23 +105,25 @@ export default function App() {
         <Onboarding />
       ) : (
         <ErrorBoundary resetKeys={[location.pathname]}>
-          <Routes>
-            <Route path="/" element={<Lobby />} />
-            <Route path="/sticky" element={<StickyEntry />} />
-            <Route path="/blueprint" element={<Blueprint />} />
-            <Route path="/realm" element={<Realm />} />
-            <Route path="/realm/:code" element={<RealmInvite />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/rooms" element={<RoomsList />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/room" element={<Navigate to="/rooms" replace />} />
-            <Route path="/room/:id" element={<StudyRoom />} />
-            <Route path="/magnet" element={<TaskMagnet />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/u/:username" element={<Profile />} />
-            <Route path="/avatar" element={<AvatarCreator />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<LoadingVeil />}>
+            <Routes>
+              <Route path="/" element={<Lobby />} />
+              <Route path="/sticky" element={<StickyEntry />} />
+              <Route path="/blueprint" element={<Blueprint />} />
+              <Route path="/realm" element={<Realm />} />
+              <Route path="/realm/:code" element={<RealmInvite />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/rooms" element={<RoomsList />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/room" element={<Navigate to="/rooms" replace />} />
+              <Route path="/room/:id" element={<StudyRoom />} />
+              <Route path="/magnet" element={<TaskMagnet />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/u/:username" element={<Profile />} />
+              <Route path="/avatar" element={<AvatarCreator />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       )}
     </>
