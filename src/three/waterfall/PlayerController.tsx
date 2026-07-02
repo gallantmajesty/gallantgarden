@@ -331,7 +331,7 @@ export function PlayerController() {
       av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       av.position.set(st.x, st.y, st.z)
       const prevYaw = av.rotation.y
-      const dYaw = Math.atan2(Math.sin(st.faceYaw + Math.PI - prevYaw), Math.cos(st.faceYaw + Math.PI - prevYaw))
+      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
       av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       const l = loco.current
       l.seated = false

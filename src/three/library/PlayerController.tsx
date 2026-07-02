@@ -342,7 +342,7 @@ export function PlayerController() {
       // Smooth body turn along the SHORTEST arc: ease over the wrapped delta so a
       // heading change across ±π (e.g. spinning around) rotates the short way
       // instead of unwinding a near-full turn (the old "sudden 180° flip").
-      const dYaw = Math.atan2(Math.sin(st.faceYaw + Math.PI - prevYaw), Math.cos(st.faceYaw + Math.PI - prevYaw))
+      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
       av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       // feed the procedural animator: horizontal speed drives the gait, grounded
       // / vy drive jump+land, and the smoothed facing delta drives turn-lean.

@@ -85,13 +85,17 @@
   position: relative;
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto;
   background: var(--bg);
   font-family: var(--font-body);
   color: var(--text);
   cursor: default;
-  /* Smooth scroll momentum */
   scroll-behavior: smooth;
 }
+
+/* Override global overflow:hidden from index.css so the landing page can scroll */
+#root:has(.fl-root) { overflow-y: auto !important; }
+body:has(.fl-root) { overflow-y: auto !important; }
 
 /* ══════════════════════════════════════════
    2. FIXED CANVAS BACKGROUND
@@ -1785,4 +1789,94 @@
   .fl-footer__cols { grid-template-columns: 1fr 1fr; }
   .fl-footer__inner { padding: 0 20px var(--space-lg); }
 }
+
+/* ══════════════════════════════════════════
+   21. SCROLL-REVEAL ANIMATIONS
+══════════════════════════════════════════ */
+.fl-scene {
+  opacity: 0;
+  transform: translateY(48px);
+  transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
+}
+.fl-scene.fl-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children inside revealed scenes */
+.fl-scene.fl-revealed .fl-eyebrow-text { animation: fl-reveal-fade 0.7s 0.1s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-hero__headline { animation: fl-reveal-fade-up 0.8s 0.2s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-hero__sub { animation: fl-reveal-fade-up 0.8s 0.35s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-hero__actions { animation: fl-reveal-fade-up 0.8s 0.5s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-hero__scroll-guide { animation: fl-reveal-fade 0.8s 0.7s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-philosophy__quote { animation: fl-reveal-fade-up 0.8s 0.15s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-philosophy__text { animation: fl-reveal-fade-up 0.8s 0.3s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-philosophy__highlight { animation: fl-reveal-glow 1s 0.5s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-section__header { animation: fl-reveal-fade-up 0.7s 0.1s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-tablet:nth-child(1) { animation: fl-reveal-fade-up 0.6s 0.1s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-tablet:nth-child(2) { animation: fl-reveal-fade-up 0.6s 0.2s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-tablet:nth-child(3) { animation: fl-reveal-fade-up 0.6s 0.3s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-tablet:nth-child(4) { animation: fl-reveal-fade-up 0.6s 0.4s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-tablet:nth-child(5) { animation: fl-reveal-fade-up 0.6s 0.5s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-tablet:nth-child(6) { animation: fl-reveal-fade-up 0.6s 0.6s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-milestone:nth-child(1) { animation: fl-reveal-slide-left 0.7s 0.1s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-milestone:nth-child(2) { animation: fl-reveal-slide-right 0.7s 0.25s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-milestone:nth-child(3) { animation: fl-reveal-slide-left 0.7s 0.4s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-milestone:nth-child(4) { animation: fl-reveal-slide-right 0.7s 0.55s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-scroll:nth-child(1) { animation: fl-reveal-fade-up 0.5s 0.1s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-scroll:nth-child(2) { animation: fl-reveal-fade-up 0.5s 0.18s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-scroll:nth-child(3) { animation: fl-reveal-fade-up 0.5s 0.26s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-scroll:nth-child(4) { animation: fl-reveal-fade-up 0.5s 0.34s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-scroll:nth-child(5) { animation: fl-reveal-fade-up 0.5s 0.42s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-farewell__title { animation: fl-reveal-fade-up 0.9s 0.1s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-farewell__sub { animation: fl-reveal-fade-up 0.8s 0.3s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-farewell__note { animation: fl-reveal-fade 0.8s 0.6s var(--ease-out) both; }
+
+.fl-scene.fl-revealed .fl-world-map { animation: fl-reveal-scale 0.9s 0.2s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-together__copy { animation: fl-reveal-slide-right 0.8s 0.15s var(--ease-out) both; }
+.fl-scene.fl-revealed .fl-islands { animation: fl-reveal-slide-left 0.8s 0.25s var(--ease-out) both; }
+
+@keyframes fl-reveal-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fl-reveal-fade-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fl-reveal-glow {
+  from { opacity: 0; transform: translateY(20px); box-shadow: 0 0 0 rgba(217,164,65,0); }
+  to   { opacity: 1; transform: translateY(0); box-shadow: 0 0 40px rgba(217,164,65,0.06); }
+}
+@keyframes fl-reveal-slide-left {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fl-reveal-slide-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fl-reveal-scale {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Hero scene is always visible (first screen) */
+.fl-scene--hero {
+  opacity: 1;
+  transform: none;
+}
+
+/* ══════════════════════════════════════════
+   22. FLOATING ISLANDS ANIMATION
+══════════════════════════════════════════ */
+.fl-island--main { animation: fl-isle-float 7s ease-in-out infinite, fl-reveal-slide-left 0.8s 0.25s var(--ease-out) both; }
+.fl-island--secondary { animation: fl-isle-float 9s 2s ease-in-out infinite, fl-reveal-fade 0.8s 0.4s var(--ease-out) both; }
+.fl-island--tertiary { animation: fl-isle-float 11s 4s ease-in-out infinite, fl-reveal-fade 0.8s 0.5s var(--ease-out) both; }
 

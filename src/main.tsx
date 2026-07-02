@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './store/auth'
 import { insforgeConfigured } from './lib/insforge'
+import { MobileBlocker } from './components/MobileBlocker'
 
 const rootEl = document.getElementById('root')!
 
@@ -29,11 +30,13 @@ if (!insforgeConfigured) {
 } else {
   createRoot(rootEl).render(
     <StrictMode>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
+      <MobileBlocker>
+        <BrowserRouter>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
+      </MobileBlocker>
     </StrictMode>,
   )
 }

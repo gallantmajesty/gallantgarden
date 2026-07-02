@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Lily – A Calm, Magical World for Deep Work</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #050712;
+      overflow-x: hidden;
+      position: relative;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    /* Cinematic fantasy background */
+    #webgl-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      display: block;
+      background: radial-gradient(circle at 30% 20%, rgba(120, 60, 200, 0.15), transparent 60%),
+                   radial-gradient(circle at 70% 80%, rgba(60, 120, 180, 0.15), transparent 60%),
+                   #050712;
+    }
+    
+    /* Quality layers for atmospheric perspective */
+    #fog-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -0.5;
+      background: linear-gradient(135deg, rgba(10, 30, 60, 0.8), rgba(60, 10, 40, 0.8));
+      pointer-events: none;
+    }
+    
+    #volumetric-lighting {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -0.8;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 220, 150, 0.15), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(100, 180, 255, 0.15), transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(200, 100, 255, 0.1), transparent 60%);
+      pointer-events: none;
+      animation: breathe 20s ease-in-out infinite;
+    }
+    
+    @keyframes breathe {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.02); }
+    }
+    
+    /* Cinematic overlay */
+    .cinematic-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 5;
+      background: linear-gradient(to bottom, 
+                  rgba(5, 7, 18, 0.4),
+                  rgba(5, 7, 18, 0.6),
+                  rgba(5, 7, 18, 0.8));
+      pointer-events: none;
+    }
+    
+    /* Content container */
+    .content-wrapper {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      width: 100%;
+    }
+    
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px 48px;
+      background: rgba(8, 12, 28, 0.4);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    nav.scrolled {
+      padding: 20px 48px;
+      background: rgba(8, 12, 28, 0.8);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      text-decoration: none;
+      position: relative;
+    }
+    
+    .logo::before {
+      content: '🌿';
+      font-size: 1.4rem;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 36px;
+      align-items: center;
+    }
+    
+    .nav-link {
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: all 0.3s ease;
+      position: relative;
+      padding: 8px 0;
+    }
+    
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #a78bfa, #60a5fa);
+      transition: width 0.3s ease;
+      border-radius: 1px;
+    }
+    
+    .nav-link:hover::after {
+      width: 100%;
+    }
+    
+    .nav-link:hover {
+      color: #fff;
+    }
+    
+    .nav-cta {
+      display: flex;
+      gap: 16px;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 28px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(255, 255, 255, 0.2), 
+                  transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .btn:hover::before {
+      left: 100%;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(124, 58, 237, 0.6);
+      background: linear-gradient(135deg, #8b5cf6, #4f46e5);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+      border-color: rgba(124, 58, 237, 0.5);
+    }
+    
+    /* Hero section */
+    header.hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 120px 24px 60px;
+      text-align: center;
+    }
+    
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      background: rgba(124, 58, 237, 0.15);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 100px;
+      backdrop-filter: blur(10px);
+      margin-bottom: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero-badge::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(255, 255, 255, 0.4), 
+                  transparent);
+      animation: shimmer 3s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    
+    .hero-badge span {
+      color: #a5b4fc;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #60a5fa;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 20px #60a5fa;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+    
+    h1 {
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      line-height: 1.1;
+      margin-bottom: 28px;
+      background: linear-gradient(135deg, #f8fafc, #94a3b8, #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      position: relative;
+    }
+    
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 4px;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(124, 58, 237, 0.8), 
+                  transparent);
+      border-radius: 2px;
+      animation: glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes glow {
+      0%, 100% { opacity: 0.5; transform: translateX(-50%) scaleX(0.8); }
+      50% { opacity: 1; transform: translateX(-50%) scaleX(1); }
+    }
+    
+    .gradient-text {
+      background: linear-gradient(135deg, #7c3aed, #60a5fa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-description {
+      font-size: 1.35rem;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.85);
+      max-width: 680px;
+      margin: 0 auto 48px;
+      letter-spacing: 0.03em;
+    }
+    
+    .hero-actions {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 64px;
+    }
+    
+    .btn-lg {
+      padding: 16px 36px;
+      font-size: 1.1rem;
+      border-radius: 14px;
+    }
+    
+    .pulse {
+      animation: pulse-hero 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-hero {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.5); }
+      50% { box-shadow: 0 0 0 20px rgba(124, 58, 237, 0); }
+    }
+    
+    .hero-stats {
+      display: flex;
+      gap: 60px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .stat {
+      text-align: center;
+      min-width: 120px;
+    }
+    
+    .stat .num {
+      font-size: 2.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7c3aed, #60a5fa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    
+    .stat .lbl {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    
+    /* Section styling */
+    section {
+      position: relative;
+      padding: 120px 0;
+      overflow: hidden;
+    }
+    
+    .container {
+      width: min(1200px, 92vw);
+      margin: 0 auto;
+      position: relative;
+      z-index: 10;
+    }
+    
+    .section-header {
+      text-align: center;
+      margin-bottom: 80px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #a78bfa;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .eyebrow::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(255, 255, 255, 0.4), 
+                  transparent);
+      animation: shimmer 4s infinite;
+    }
+    
+    .section-title {
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.15;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    
+    .section-sub {
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.7;
+      letter-spacing: 0.02em;
+    }
+    
+    .gradient-text {
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    /* Philosophy section */
+    .philosophy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 40px;
+      margin-top: 60px;
+    }
+    
+    .philosophy-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 24px;
+      padding: 40px;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+    }
+    
+    .philosophy-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(124, 58, 237, 0.8), 
+                  transparent);
+      animation: card-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes card-glow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
+    
+    .philosophy-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(124, 58, 237, 0.2);
+      border-color: rgba(124, 58, 237, 0.5);
+    }
+    
+    .card-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+    }
+    
+    .philosophy-card h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+    
+    .philosophy-card p {
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.7;
+      letter-spacing: 0.02em;
+    }
+    
+    /* Features section */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+      margin-top: 60px;
+    }
+    
+    .feature-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 36px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, 
+                  rgba(124, 58, 237, 0.1), 
+                  rgba(59, 130, 246, 0.1));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: 20px;
+    }
+    
+    .feature-card:hover::after {
+      opacity: 1;
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      border-color: rgba(124, 58, 237, 0.4);
+    }
+    
+    .feature-icon {
+      width: 50px;
+      height: 50px;
+      background: rgba(124, 58, 237, 0.2);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      color: #a78bfa;
+      font-size: 1.5rem;
+      transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover .feature-icon {
+      background: rgba(124, 58, 237, 0.4);
+      transform: scale(1.1) rotate(5deg);
+    }
+    
+    .feature-card h4 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    
+    .feature-card p {
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+    }
+    
+    /* Roadmap section */
+    .roadmap {
+      position: relative;
+      padding: 40px 0;
+    }
+    
+    .roadmap::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 60px;
+      bottom: 60px;
+      width: 2px;
+      background: linear-gradient(180deg, 
+                  rgba(124, 58, 237, 0.8), 
+                  rgba(59, 130, 246, 0.8));
+      transform: translateX(-50%);
+      border-radius: 1px;
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+    }
+    
+    .milestone {
+      position: relative;
+      margin-bottom: 60px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .milestone:not(.left) {
+      flex-direction: row-reverse;
+    }
+    
+    .milestone-dot {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 24px;
+      background: #7c3aed;
+      border: 4px solid #050712;
+      border-radius: 50%;
+      z-index: 10;
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.8);
+      animation: pulse-dot 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-dot {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.2); }
+    }
+    
+    .milestone-content {
+      width: calc(50% - 40px);
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 20px;
+      padding: 36px;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .milestone-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(124, 58, 237, 0.8), 
+                  transparent);
+      animation: border-flow 4s linear infinite;
+    }
+    
+    @keyframes border-flow {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .milestone-num {
+      font-size: 2.4rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #a78bfa, #818cf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    
+    .milestone-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    
+    .milestone-desc {
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.6;
+    }
+    
+    /* FAQ section */
+    .faq-grid {
+      max-width: 800px;
+      margin: 60px auto 0;
+    }
+    
+    .faq-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .faq-item:hover {
+      border-color: rgba(124, 58, 237, 0.5);
+      box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2);
+    }
+    
+    .faq-question {
+      width: 100%;
+      padding: 24px 32px;
+      background: none;
+      border: none;
+      text-align: left;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+    
+    .faq-question:hover {
+      background: rgba(124, 58, 237, 0.1);
+    }
+    
+    .faq-icon {
+      width: 24px;
+      height: 24px;
+      background: rgba(124, 58, 237, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: transform 0.3s ease;
+    }
+    
+    .faq-item.active .faq-question {
+      background: rgba(124, 58, 237, 0.2);
+      border-bottom: 1px solid rgba(124, 58, 237, 0.4);
+    }
+    
+    .faq-item.active .faq-icon {
+      transform: rotate(180deg);
+      background: rgba(124, 58, 237, 0.5);
+    }
+    
+    .faq-answer {
+      padding: 0 32px;
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.4s ease;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.7;
+    }
+    
+    .faq-item.active .faq-answer {
+      padding: 20px 32px;
+      max-height: 200px;
+    }
+    
+    /* CTA section */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+      border-top: 1px solid rgba(124, 58, 237, 0.3);
+      border-bottom: 1px solid rgba(124, 58, 237, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 200%;
+      background: linear-gradient(180deg, 
+                  transparent, 
+                  rgba(124, 58, 237, 0.15), 
+                  transparent);
+      animation: cta-wave 10s ease-in-out infinite;
+    }
+    
+    @keyframes cta-wave {
+      0%, 100% { transform: translateY(-10%); }
+      50% { transform: translateY(10%); }
+    }
+    
+    .cta-content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 100px 24px;
+    }
+    
+    .cta-title {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    
+    .cta-description {
+      font-size: 1.3rem;
+      color: rgba(255, 255, 255, 0.8);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+    
+    .cta-buttons {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    /* Footer */
+    footer {
+      background: #050712;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 80px 0 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, 
+                  transparent, 
+                  rgba(124, 58, 237, 0.8), 
+                  transparent);
+      animation: footer-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes footer-glow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
+    
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 60px;
+      margin-bottom: 60px;
+    }
+    
+    .footer-brand {
+      grid-column: span 2;
+    }
+    
+    .footer-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    
+    .footer-desc {
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.7;
+      margin-bottom: 32px;
+      max-width: 320px;
+    }
+    
+    .footer-links {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    
+    .footer-link {
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+    
+    .footer-link:hover {
+      color: #a78bfa;
+      padding-left: 8px;
+    }
+    
+    .footer-bottom {
+      padding-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.95rem;
+    }
+    
+    /* Animations */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .reveal.in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .reveal.d1 { transition-delay: 0.1s; }
+    .reveal.d2 { transition-delay: 0.2s; }
+    .reveal.d3 { transition-delay: 0.3s; }
+    .reveal.d4 { transition-delay: 0.4s; }
+    
+    /* Responsive */
+    @media (max-width: 968px) {
+      .milestone {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding-left: 40px;
+      }
+      
+      .milestone::before {
+        left: 20px;
+        transform: none;
+      }
+      
+      .milestone-dot {
+        left: 20px;
+        transform: none !important;
+      }
+      
+      .milestone-content {
+        width: 100%;
+        margin-left: 40px;
+      }
+      
+      .footer-brand {
+        grid-column: span 1;
+      }
+      
+      nav {
+        padding: 24px 32px;
+      }
+      
+      nav.scrolled {
+        padding: 16px 32px;
+      }
+    }
+    
+    /* Glow effect utility */
+    .glow-text {
+      text-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+    }
+    
+    /* Smooth scroll */
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #7c3aed, #3b82f6);
+      border-radius: 6px;
+      border: 2px solid rgba(15, 23, 42, 0.5);
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #8b5cf6, #4f46e5);
+    }
+  </style>
+  <script type="module">
+    // Navigation scroll effect
+    window.addEventListener('scroll', () => {
+      const nav = document.querySelector('nav');
+      if (window.scrollY > 50) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    });
+    
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+    
+    // FAQ accordion
+    document.querySelectorAll('.faq-question').forEach(button => {
+      button.addEventListener('click', () => {
+        const item = button.parentElement;
+        item.classList.toggle('active');
+      });
+    });
+    
+    // Scroll reveal animation
+    const observerOptions = {
+      threshold: 0.15,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, observerOptions);
+    
+    document.querySelectorAll('.reveal').forEach(el => {
+      observer.observe(el);
+    });
+    
+    // Add dynamic gradient particles to canvas
+    const canvas = document.getElementById('webgl-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    
+    // Draw mystical particles
+    function drawParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const time = Date.now() * 0.001;
+      const particleCount = 60;
+      
+      for (let i = 0; i < particleCount; i++) {
+        const x = Math.sin(time * 0.3 + i * 0.8) * canvas.width * 0.3 + canvas.width * 0.5;
+        const y = Math.cos(time * 0.4 + i * 0.9) * canvas.height * 0.3 + canvas.height * 0.3;
+        const radius = Math.sin(time * 0.6 + i) * 15 + 25;
+        
+        const hue = (time * 30 + i * 40) % 360;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.15)`;
+        ctx.fill();
+      }
+    }
+    
+    // Animation loop
+    function animate() {
+      drawParticles();
+      requestAnimationFrame(animate);
+    }
+    
+    animate();
+    
+    // Mouse movement effect
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+    
+    // Subtle camera movement based on mouse
+    let currentMouseX = 0;
+    let currentMouseY = 0;
+    
+    function updateCamera() {
+      const speed = 0.05;
+      currentMouseX += (mouseX - currentMouseX) * speed;
+      currentMouseY += (mouseY - currentMouseY) * speed;
+      
+      const varianceX = (currentMouseX - canvas.width / 2) * 0.001;
+      const varianceY = (currentMouseY - canvas.height / 2) * 0.001;
+      
+      // Apply subtle parallax to particles via CSS custom properties
+      document.documentElement.style.setProperty('--mouse-x', `${varianceX}deg`);
+      document.documentElement.style.setProperty('--mouse-y', `${varianceY}deg`);
+    }
+    
+    function cameraLoop() {
+      updateCamera();
+      requestAnimationFrame(cameraLoop);
+    }
+    
+    cameraLoop();
+    
+    // Add magical floating elements on scroll
+    let lastScroll = 0;
+    window.addEventListener('scroll', () => {
+      const currentScroll = window.pageYOffset;
+      const delta = currentScroll - lastScroll;
+      
+      if (delta > 0) {
+        // Scrolling down - subtle fade
+        document.body.style.filter = 'brightness(0.8)';
+      } else {
+        // Scrolling up - brighten
+        document.body.style.filter = 'brightness(1)';
+      }
+      
+      lastScroll = currentScroll;
+    });
+  </script>
+</head>
+<body>
+  <!-- Magical background canvas -->
+  <canvas id="webgl-canvas"></canvas>
+  
+  <!-- Cinematic lighting layers -->
+  <div id="volumetric-lighting"></div>
+  <div id="fog-layer"></div>
+  
+  <!-- Content wrapper -->
+  <div class="content-wrapper">
+    <!-- Navigation -->
+    <nav>
+      <a href="#" class="logo">Focus Lily</a>
+      
+      <div class="nav-links">
+        <a href="#philosophy" class="nav-link">Philosophy</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#roadmap" class="nav-link">Roadmap</a>
+        <a href="#faq" class="nav-link">FAQ</a>
+      </div>
+      
+      <div class="nav-cta">
+        <a href="#" class="btn btn-secondary">Sign in</a>
+        <a href="#" class="btn btn-primary">Launch App</a>
+      </div>
+    </nav>
+    
+    <!-- Hero Section -->
+    <header class="hero">
+      <span class="hero-badge">
+        <span class="dot"></span>
+        AI Physical Business Advisor
+      </span>
+      
+      <h1>Turn Land Into Profitable <span class="gradient-text">Business</span> Opportunities</h1>
+      
+      <p class="hero-description">
+        Terrynx analyzes your location, land, budget and skills with real-world map intelligence 
+        — then hands you a profitable business blueprint with costs, risks and growth potential.
+      </p>
+      
+      <div class="hero-actions">
+        <a href="#" class="btn btn-primary btn-lg pulse">Discover What Your Land Can Become →</a>
+        <a href="#how" class="btn btn-secondary btn-lg">See how it works</a>
+      </div>
+      
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="num">10</div>
+          <div class="lbl">Ideas per analysis</div>
+        </div>
+        <div class="stat">
+          <div class="num">Real-map</div>
+          <div class="lbl">Location intelligence</div>
+        </div>
+        <div class="stat">
+          <div class="num">2 Tiers</div>
+          <div class="lbl">Basic & Advanced</div>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Philosophy Section -->
+    <section id="philosophy" class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow reveal">Our Vision</span>
+          <h2 class="section-title reveal d1">Focus Lily <span class="gradient-text">Philosophy</span></h2>
+          <p class="section-sub reveal d2">
+            A calm, magical study world where deep work becomes an adventure.
+            Plant your focus. Grow your forest. Become a legend.
+          </p>
+        </div>
+        
+        <div class="philosophy-grid">
+          <div class="philosophy-card reveal">
+            <div class="card-icon">🌿</div>
+            <h3>The Forest</h3>
+            <p>
+              An enchanted study realm where ambient rooms float among ancient trees.
+              Each space is a unique biome crafted for different types of deep work,
+              with natural lighting that shifts through the canopy above.
+            </p>
+          </div>
+          
+          <div class="philosophy-card reveal d2">
+            <div class="card-icon">📊</div>
+            <h3>The Pomodoro Grove</h3>
+            <p>
+              Hourglass-shaped trees that mark time with gentle glows.
+              Visual progress tracking as real trees grow taller with each focused session.
+              Watch your productivity forest bloom in real-time.
+            </p>
+          </div>
+          
+          <div class="philosophy-card reveal d3">
+            <div class="card-icon">🤝</div>
+            <h3>Study Companions</h3>
+            <p>
+              Intelligent AI partners that feel like adventure friends, not widgets.
+              They remember your patterns, suggest optimal work sessions,
+              and celebrate your victories with the whole forest community.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Features Section -->
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow reveal">Features</span>
+          <h2 class="section-title reveal d1">Grow Your Forest,<br><span class="gradient-text">Master Your Focus</span></h2>
+          <p class="section-sub reveal d2">
+            Everything you need to transform from a solitary worker into a forest keeper.
+            Each feature is designed to feel natural, not forced.
+          </p>
+        </div>
+        
+        <div class="features-grid">
+          <div class="feature-card reveal">
+            <div class="feature-icon">🌊</div>
+            <h4>Lake Reflections</h4>
+            <p>
+              Mental clarity comes from serene water surfaces.
+              Your thoughts ripple and reflect beautifully as you work.
+            </p>
+          </div>
+          
+          <div class="feature-card reveal d2">
+            <div class="feature-icon">🍄</div>
+            <h4>Mushroom Maps</h4>
+            <p>
+              Track your productivity as mushrooms grow across your digital terrain.
+              Different species represent different achievements and milestones.
+            </p>
+          </div>
+          
+          <div class="feature-card reveal d3">
+            <div class="feature-icon">🦋</div>
+            <h4>Butterfly Goals</h4>
+            <p>
+              Set your intentions like beautiful butterflies that flutter
+              from one tree to another, gathering nectar (progress) along the way.
+            </p>
+          </div>
+          
+          <div class="feature-card reveal d4">
+            <div class="feature-icon">🪷</div>
+            <h4>Focus Lily Center</h4>
+            <p>
+              Your personal floating water lily home base.
+              Where everything converges — your stats, notes, and forest management.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Roadmap Section -->
+    <section id="roadmap" class="section roadmap">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow reveal">Roadmap</span>
+          <h2 class="section-title reveal d1">Your Journey <span class="gradient-text">Through the Forest</span></h2>
+          <p class="section-sub reveal d2">
+            Every great explorer has a path. Follow these milestones to become 
+            a legendary forest keeper.
+          </p>
+        </div>
+        
+        <div class="roadmap-container">
+          <div class="milestone reveal">
+            <div class="milestone-dot"></div>
+            <div class="milestone-content">
+              <div class="milestone-num">01</div>
+              <h3 class="milestone-title">Seed Your Forest</h3>
+              <p class="milestone-desc">
+                Start with your first focus session. Plant your initial tree in the digital soil.
+                Begin your journey from the Lake Rim, where all paths converge.
+              </p>
+            </div>
+          </div>
+          
+          <div class="milestone reveal d2">
+            <div class="milestone-dot"></div>
+            <div class="milestone-content">
+              <div class="milestone-num">02</div>
+              <h3 class="milestone-title">Gather Companions</h3>
+              <p class="milestone-desc">
+                Meet your first study friends. Each companion brings unique abilities
+                and perspectives to help you master different aspects of deep work.
+              </p>
+            </div>
+          </div>
+          
+          <div class="milestone reveal d3">
+            <div class="milestone-dot"></div>
+            <div class="milestone-content">
+              <div class="milestone-num">03</div>
+              <h3 class="milestone-title">Build Your Sanctuary</h3>
+              <p class="milestone-desc">
+                Create your personal spaces among the trees. Choose ambient rooms
+                that match your work style and nurture them with focused sessions.
+              </p>
+            </div>
+          </div>
+          
+          <div class="milestone reveal d4">
+            <div class="milestone-dot"></div>
+            <div class="milestone-content">
+              <div class="milestone-num">04</div>
+              <h3 class="milestone-title">Become the Legend</h3>
+              <p class="milestone-desc">
+                Your forest stands tall among others. Share your wisdom,
+                mentor new forest keepers, and leave a legacy that endures beyond you.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- FAQ Section -->
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow reveal">FAQ</span>
+          <h2 class="section-title reveal d1">Common <span class="gradient-text">Questions</span></h2>
+          <p class="section-sub reveal d2">
+            Everything you need to know about growing your forest of focus.
+            Can't find what you're looking for? Ask your companion.
+          </p>
+        </div>
+        
+        <div class="faq-grid">
+          <div class="faq-item reveal">
+            <button class="faq-question">
+              <span>What makes Focus Lily different from other study apps?</span>
+              <div class="faq-icon">▼</div>
+            </button>
+            <div class="faq-answer">
+              <p>Unlike traditional productivity apps that feel like corporate widgets, Focus Lily is a magical fantasy world where deep work becomes an adventure. Your productivity isn't tracked with cold metrics – it's visualized as a living forest that grows and prospers with every focused session. It's designed to feel like a game you want to play, not a chore you have to do.</p>
+            </div>
+          </div>
+          
+          <div class="faq-item reveal d2">
+            <button class="faq-question">
+              <span>How do I start my first forest session?</span>
+              <div class="faq-icon">▼</div>
+            </button>
+            <div class="faq-answer">
+              <p>Simply step into the Waterfall Realm from your Focus Lily center. You'll appear at the Lake Rim, where your floating lily pad awaits. Simply click and drag to navigate to your preferred work tree, then settle into your chosen ambient room. Your session begins automatically with a gentle breeze and the distant call of forest wildlife.</p>
+            </div>
+          </div>
+          
+          <div class="faq-item reveal d3">
+            <button class="faq-question">
+              <span>Can I access my progress across devices?</span>
+              <div class="faq-icon">▼</div>
+            </button>
+            <div class="faq-answer">
+              <p>Absolutely! Your forest syncs seamlessly across all your devices. When you step into the realm on one device, your trees and progress remain exactly where you left them, whether you're on desktop, tablet, or mobile. Your companions even remember your preferences and will greet you by name wherever you appear.</p>
+            </div>
+          </div>
+          
+          <div class="faq-item reveal d4">
+            <button class="faq-question">
+              <span>How does the focus timer actually work?</span>
+              <div class="faq-icon">▼</div>
+            </button>
+            <div class="faq-answer">
+              <p>Our system uses a modified Pomodoro technique inspired by natural forest cycles. You work for focused sessions while surrounding trees grow and flourish. The rhythm mimics nature – short bursts of intense activity followed by periods of rest, allowing you to work in harmony with your environment rather than fighting against it.</p>
+            </div>
+          </div>
+          
+          <div class="faq-item reveal">
+            <button class="faq-question">
+              <span>Is there a community or multiplayer aspect?</span>
+              <div class="faq-icon">▼</div>
+            </button>
+            <div class="faq-answer">
+              <p>Yes! Your forest connects you with other forest keepers worldwide. You can visit each other's trees, share tips, celebrate milestones together, and even collaborate on special projects. The community aspect is designed to feel organic – like a supportive troupe of adventurers on a shared quest.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="section cta-section">
+      <div class="container">
+        <div class="cta-content">
+          <h2 class="cta-title reveal">Ready to Grow Your <span class="gradient-text">Legendary Forest</span>?</h2>
+          <p class="cta-description reveal d1">
+            Join thousands of forest keepers who have transformed their productivity
+            by becoming one with nature. Your adventure awaits in the serene digital wilderness.
+          </p>
+          
+          <div class="cta-buttons reveal d2">
+            <a href="#" class="btn btn-primary btn-lg pulse">Start Your Journey</a>
+            <a href="#" class="btn btn-secondary btn-lg">View Demo World</a>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <div class="footer-title">
+              <span>🌿</span>
+              <span>Focus Lily</span>
+            </div>
+            <p class="footer-desc">
+              A calm, magical study world where deep work becomes an adventure.
+              Plant your focus. Grow your forest. Become a legend.
+            </p>
+          </div>
+          
+          <div class="footer-section">
+            <h4 style="color: #fff; margin-bottom: 20px; font-size: 1.1rem;">Explore</h4>
+            <div class="footer-links">
+              <a href="#philosophy" class="footer-link">Philosophy</a>
+              <a href="#features" class="footer-link">Features</a>
+              <a href="#roadmap" class="footer-link">Roadmap</a>
+              <a href="#faq" class="footer-link">FAQ</a>
+            </div>
+          </div>
+          
+          <div class="footer-section">
+            <h4 style="color: #fff; margin-bottom: 20px; font-size: 1.1rem;">Connect</h4>
+            <div class="footer-links">
+              <a href="#" class="footer-link">Community</a>
+              <a href="#" class="footer-link">Discord</a>
+              <a href="#" class="footer-link">Twitter</a>
+              <a href="#" class="footer-link">Instagram</a>
+            </div>
+          </div>
+          
+          <div class="footer-section">
+            <h4 style="color: #fff; margin-bottom: 20px; font-size: 1.1rem;">Legal</h4>
+            <div class="footer-links">
+              <a href="#" class="footer-link">Privacy</a>
+              <a href="#" class="footer-link">Terms</a>
+              <a href="#" class="footer-link">Cookies</a>
+              <a href="#" class="footer-link">Contact</a>
+            </div>
+          </div>
+        </div>
+        
+        <div class="footer-bottom">
+          <p>© 2026 Focus Lily. All rights reserved. Made with 🌿 in the digital forest.</p>
+          <p>Transforming productivity into peaceful adventure.</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
