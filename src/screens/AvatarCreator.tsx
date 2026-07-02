@@ -32,7 +32,6 @@ import {
 import { RARITY_COLOR, RARITY_LABEL } from '../marketplace/types'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
-import { LoadingVeil } from '../components/LoadingVeil'
 import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
 import './AvatarCreator.css'
 
@@ -125,7 +124,7 @@ export function AvatarCreator() {
       <div className="ac-body">
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
-          <Suspense fallback={<div className="ac-stage-veil"><LoadingVeil label="Summoning your avatar…" /></div>}>
+          <Suspense fallback={<div className="ac-stage-veil" />}>
             <AvatarCanvas config={displayConfig} controlsRef={controls} />
           </Suspense>
         </section>

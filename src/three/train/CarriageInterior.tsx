@@ -6,14 +6,15 @@ import { CARRIAGE, carriageSeats, seatTable, carriageWindows, ROWS, ROW_DZ, DOOR
 import { getInteriorTheme } from './interiorThemes'
 import type { TrainLine } from '../../lib/train/lines'
 import { useTrain } from '../../store/train'
+import { InteriorBuilder } from './interior/InteriorBuilder'
 
 // Per-line carriage cabin: each of the five train lines gets a distinct interior
 // — Study Car, Lounge, Panoramic, Silent Sleeper, or Library — driven by
 // interiorThemes.ts. The layout (seats, tables, windows) stays sacred; only
 // colours, lighting and decorative density change.
-
-// Carriage is now GRAND: wider body, tall ceiling, doors on BOTH sides at the
-// rear vestibule area so the player can board from either side.
+//
+// Phase 2: The InteriorBuilder provides the rich Hogwarts Express-style detail
+// with wood paneling, velvet upholstery, brass fixtures, and magical atmosphere.
 
 const DOOR_H = 2.2 // door opening height
 const DOOR_W = 0.9 // door opening width
@@ -21,21 +22,33 @@ const DOOR_W = 0.9 // door opening width
 function Seat({ x, z, accent, woodTex }: { x: number; z: number; accent: string; woodTex: any }) {
   return (
     <group position={[x, 0, z]}>
-      {/* cushion — wider for the grand carriage */}
+      {/* cushion — wider business-class seat */}
       <mesh position={[0, 0.5, 0]} castShadow>
-        <boxGeometry args={[0.95, 0.2, 1.1]} />
-        <meshStandardMaterial color={accent} roughness={0.8} />
+        <boxGeometry args={[1.1, 0.2, 1.1]} />
+        <meshStandardMaterial color={accent} roughness={0.4} metalness={0.05} />
       </mesh>
-      {/* backrest — taller for the higher ceiling */}
+      {/* backrest — taller with headrest */}
       <mesh position={[0, 1.15, -0.5]} castShadow>
-        <boxGeometry args={[0.95, 1.4, 0.2]} />
-        <meshStandardMaterial color={accent} roughness={0.8} />
+        <boxGeometry args={[1.1, 1.4, 0.2]} />
+        <meshStandardMaterial color={accent} roughness={0.4} metalness={0.05} />
       </mesh>
-      {/* armrests */}
-      {[-0.47, 0.47].map((dx) => (
+      {/* headrest */}
+      <mesh position={[0, 1.95, -0.5]} castShadow>
+        <boxGeometry args={[0.8, 0.25, 0.14]} />
+        <meshStandardMaterial color={accent} roughness={0.35} metalness={0.05} />
+      </mesh>
+      {/* armrests — polished chrome */}
+      {[-0.55, 0.55].map((dx) => (
         <mesh key={dx} position={[dx, 0.72, -0.12]}>
           <boxGeometry args={[0.12, 0.18, 0.85]} />
-          <meshStandardMaterial map={woodTex} color={'#8b7355'} roughness={0.7} />
+          <meshStandardMaterial color={'#c0c0c8'} roughness={0.2} metalness={0.7} />
+        </mesh>
+      ))}
+      {/* wing / bolster accent on each side */}
+      {[-0.55, 0.55].map((dx) => (
+        <mesh key={`bol-${dx}`} position={[dx, 0.9, -0.1]}>
+          <boxGeometry args={[0.06, 0.6, 0.7]} />
+          <meshStandardMaterial color={'#2a2a30'} roughness={0.5} metalness={0.3} />
         </mesh>
       ))}
     </group>
@@ -147,152 +160,6 @@ export function CarriageInterior({ line }: { line: TrainLine }) {
   const doorZoneZ0 = z0
   const doorZoneZ1 = z0 + 5.5
 
-  return (
-    <group>
-      {/* carpet floor — wider for the expanded cabin */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.01, midZ]} receiveShadow>
-        <planeGeometry args={[halfW * 2, len]} />
-        <meshStandardMaterial color={theme.floor} roughness={0.95} />
-      </mesh>
-      {/* runner stripe down the aisle — wider */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.02, midZ]}>
-        <planeGeometry args={[1.4, len]} />
-        <meshStandardMaterial color={theme.runner} roughness={0.9} opacity={0.5} transparent />
-      </mesh>
-
-      {/* ceiling — taller */}
-      <mesh rotation-x={Math.PI / 2} position={[0, ceilY, midZ]}>
-        <planeGeometry args={[halfW * 2, len]} />
-        <meshStandardMaterial map={woodTex} color={theme.ceiling} side={DoubleSide} roughness={0.9} />
-      </mesh>
-      {/* ceiling light strip — longer */}
-      <mesh position={[0, ceilY - 0.06, midZ]}>
-        <boxGeometry args={[0.6, 0.06, len - 1]} />
-        <meshStandardMaterial color={'#fff0d0'} emissive={theme.lampGlow} emissiveIntensity={theme.lampIntensity * 0.6} toneMapped={false} />
-      </mesh>
-
-      {/* ===== EXTERIOR SHELL — curved roof, livery, brass trim ===== */}
-      {/* curved roof */}
-      <mesh position={[0, 1.05, midZ]} rotation-x={Math.PI / 2}>
-        <cylinderGeometry args={[halfW + 0.22, halfW + 0.22, len + 0.7, 18, 1, true]} />
-        <meshStandardMaterial color={'#3a3742'} metalness={0.35} roughness={0.55} side={DoubleSide} />
-      </mesh>
-      {/* brass roof ridge */}
-      <mesh position={[0, halfW + 0.05 + 1.05, midZ]}>
-        <boxGeometry args={[0.18, 0.08, len]} />
-        <meshStandardMaterial color={palette.brass} metalness={0.5} roughness={0.35} />
-      </mesh>
-
-      {/* livery body sides + brass belt-lines + skirt, both sides */}
-      {[-1, 1].map((side) => (
-        <group key={`shell${side}`}>
-          {/* livery panel below the windows — split to leave door zone open */}
-          <mesh position={[side * (halfW + 0.06), 0.55, (doorZoneZ1 + z1) / 2]}>
-            <boxGeometry args={[0.16, 1.15, z1 - doorZoneZ1]} />
-            <meshStandardMaterial color={line.mood.accent} roughness={0.55} metalness={0.15} />
-          </mesh>
-          {/* brass belt under the windows — full length */}
-          <mesh position={[side * (halfW + 0.12), 1.16, midZ]}>
-            <boxGeometry args={[0.08, 0.08, len]} />
-            <meshStandardMaterial color={palette.brass} metalness={0.55} roughness={0.3} />
-          </mesh>
-          {/* brass belt above the windows */}
-          <mesh position={[side * (halfW + 0.04), 2.05, midZ]}>
-            <boxGeometry args={[0.08, 0.07, len]} />
-            <meshStandardMaterial color={palette.brass} metalness={0.55} roughness={0.3} />
-          </mesh>
-          {/* dark skirt */}
-          <mesh position={[side * (halfW + 0.05), 0.05, midZ]}>
-            <boxGeometry args={[0.12, 0.2, len]} />
-            <meshStandardMaterial color={'#23202a'} roughness={0.7} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* end walls */}
-      {[z0, z1].map((z) => (
-        <mesh key={z} position={[0, ceilY / 2, z]}>
-          <boxGeometry args={[halfW * 2, ceilY, 0.2]} />
-          <meshStandardMaterial map={wallTex} color={theme.walls} roughness={0.8} />
-        </mesh>
-      ))}
-      {/* panoramic front glass — taller */}
-      <mesh position={[0, 1.7, z1 - 0.11]}>
-        <planeGeometry args={[halfW * 1.8, 2.0]} />
-        <meshStandardMaterial color={'#bcd6e6'} transparent opacity={0.18} side={DoubleSide} />
-      </mesh>
-
-      {/* side walls — pillars between windows, skipping the door zone */}
-      {[-1, 1].map((side) =>
-        Array.from({ length: ROWS + 1 }, (_, r) => {
-          const z = z0 + 1 + r * ROW_DZ
-          if (z > doorZoneZ0 && z < doorZoneZ1) return null // skip door zone
-          return (
-            <mesh key={`${side}-${r}`} position={[side * halfW, ceilY / 2, z]}>
-              <boxGeometry args={[0.16, ceilY, 1.0]} />
-              <meshStandardMaterial map={wallTex} color={theme.walls} roughness={0.8} />
-            </mesh>
-          )
-        }),
-      )}
-
-      {/* lower side panelling — split to leave door zone open */}
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * halfW, 0.55, (doorZoneZ1 + z1) / 2]}>
-          <boxGeometry args={[0.14, 1.1, z1 - doorZoneZ1]} />
-          <meshStandardMaterial map={wallTex} color={theme.walls} roughness={0.8} />
-        </mesh>
-      ))}
-
-      {/* door openings on BOTH sides at the rear vestibule */}
-      {([-1, 1] as const).map((side) =>
-        DOOR_Z.map((dz) => <DoorOpening key={`door-${side}-${dz}`} side={side} z={dz} locked={doorsLocked} />),
-      )}
-
-      {/* window glass + curtains */}
-      {windows.map((w, i) => (
-        <group key={i} position={w.pos}>
-          <mesh>
-            <boxGeometry args={[0.06, 1.0, 1.7]} />
-            <meshStandardMaterial color={'#cfe2ee'} transparent opacity={0.12} side={DoubleSide} />
-          </mesh>
-          {theme.curtains &&
-            [-0.85, 0.85].map((dz) => (
-              <mesh key={dz} position={[w.side * 0.06, 0.1, dz]}>
-                <boxGeometry args={[0.05, 1.1, 0.18]} />
-                <meshStandardMaterial color={theme.curtain} roughness={0.85} />
-              </mesh>
-            ))}
-        </group>
-      ))}
-      {/* luggage racks — higher for the taller ceiling */}
-      {theme.luggageRacks &&
-        [-1, 1].map((side) => (
-          <mesh key={side} position={[side * (halfW - 0.35), 2.5, midZ]} rotation-z={side * 0.3}>
-            <boxGeometry args={[0.5, 0.05, len - 1]} />
-            <meshStandardMaterial color={theme.trim} metalness={0.5} roughness={0.5} />
-          </mesh>
-        ))}
-
-      {/* seats + tables */}
-      {seats.map((s) => (
-        <group key={s.id}>
-          <Seat x={s.pos[0]} z={s.pos[2]} accent={theme.seat} woodTex={woodTex} />
-          <StudyTable
-            x={seatTable(s).pos[0]}
-            z={seatTable(s).pos[2]}
-            woodTex={woodTex}
-            tableColor={theme.table}
-          />
-        </group>
-      ))}
-      {/* cabin lamps */}
-      {[0.25, 0.5, 0.75].map((f, i) => (
-        <pointLight key={i} position={[0, ceilY - 0.3, z0 + f * len]} color={theme.lampGlow} intensity={theme.lampIntensity * 3} distance={9} decay={2} />
-      ))}
-
-      {/* ambient fill */}
-      <pointLight position={[0, ceilY / 2, midZ]} color={theme.ambientFill} intensity={theme.lampIntensity * 1} distance={len} decay={2} />
-    </group>
-  )
+  // Use the rich Phase 2 InteriorBuilder for all themes
+  return <InteriorBuilder line={line} />
 }

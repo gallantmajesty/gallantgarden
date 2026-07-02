@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Group, MathUtils, type PointLight, type MeshStandardMaterial } from 'three'
+import { Group, MathUtils, type PointLight, type MeshStandardMaterial, type CanvasTexture } from 'three'
 import { makeWood } from './textures'
 import { glow } from './env'
 import { platforms, TRAIN_REST_Z, PLAT_Z1 } from './layout'
@@ -259,28 +259,52 @@ function Tender({ line }: { line: TrainLine }) {
 
 /* ── Carriage exterior ──────────────────────────────────────── */
 
-function Carriage({ z, line, woodTex }: { z: number; line: TrainLine; woodTex: any }) {
+function Carriage({ z, line, woodTex }: { z: number; line: TrainLine; woodTex: CanvasTexture }) {
   const halfW = 1.4
   const DOOR_Z = [-CAR_LEN / 4, CAR_LEN / 4]
   const doorRefs = useRef<(Group | null)[]>([])
   const doorGlowRefs = useRef<(MeshStandardMaterial | null)[]>([])
   const lockRefs = useRef<(MeshStandardMaterial | null)[]>([])
+  const doorWarningRef = useRef(0)
 
   useFrame(() => {
-    const open = platformStatus(line).phase === 'boarding'
-    const speed = 0.08
-    doorRefs.current.forEach((d) => {
+    const train = useTrain.getState()
+    const isPlayerTrain = train.line?.id === line.id && (train.phase === 'boarding' || train.phase === 'traveling')
+    // Platform-side doors open when the player is boarding this train or the
+    // schedule says boarding. Track-side doors stay closed.
+    const scheduleStatus = platformStatus(line)
+    const scheduleOpen = scheduleStatus.phase === 'boarding'
+    const playerOpen = isPlayerTrain && train.departureSec > 0
+    const platformOpen = scheduleOpen || playerOpen
+    // Door closing warning: flash when less than 10s remaining in boarding
+    const closingSoon = scheduleStatus.phase === 'boarding' && scheduleStatus.phaseRemaining < 10
+    const speed = platformOpen ? 0.18 : 0.12 // faster open, slightly slower close
+    // doorRefs layout: [0,1] = platform side (side=-1), [2,3] = track side (side=+1)
+    doorRefs.current.forEach((d, i) => {
       if (d) {
-        d.position.z = MathUtils.lerp(d.position.z, open ? 1.2 : 0, speed)
+        d.position.z = MathUtils.lerp(d.position.z, (i < 2 ? platformOpen : false) ? 1.2 : 0, speed)
       }
     })
-    // door glow: warm when open, dim when closed
-    doorGlowRefs.current.forEach((mat) => {
-      if (mat) mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, open ? 2.0 : 0.15, speed)
+    doorGlowRefs.current.forEach((mat, i) => {
+      if (mat) {
+        const target = (i < 2 ? platformOpen : false) ? 2.0 : 0.15
+        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, target, speed)
+      }
     })
-    // lock indicator: red glow when closed (locked), hidden when open
-    lockRefs.current.forEach((mat) => {
-      if (mat) mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, open ? 0 : 2.0, speed)
+    lockRefs.current.forEach((mat, i) => {
+      if (mat) {
+        const isPlatformDoor = i < 2
+        const locked = isPlatformDoor ? !platformOpen : true
+        // Flash red when doors are about to close
+        if (locked && closingSoon) {
+          doorWarningRef.current += 0.15
+          mat.emissiveIntensity = 1.5 + Math.sin(doorWarningRef.current) * 1.0
+          mat.emissive.setHex(0xff4444)
+        } else {
+          mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, locked ? 2.0 : 0, speed)
+          mat.emissive.setHex(0xff2222)
+        }
+      }
     })
   })
 
@@ -323,74 +347,61 @@ function Carriage({ z, line, woodTex }: { z: number; line: TrainLine; woodTex: a
         <meshStandardMaterial color={HOGWARTS_GOLD} metalness={0.6} roughness={0.25} />
       </mesh>
 
-      {/* ── Individual windows with magical warm glow ── */}
+      {/* ── Round brass-framed windows with magical warm glow ── */}
       {[-1, 1].map((side) => {
         const windowCount = 6
         const windowZone = CAR_LEN - 3.5
-        const windowW = windowZone / windowCount - 0.1
+        const windowSpacing = windowZone / windowCount
         const startZ = -windowZone / 2
+        const windowR = 0.42 // window radius
         return Array.from({ length: windowCount }, (_, wi) => {
-          const wz = startZ + wi * (windowW + 0.1) + windowW / 2
+          const wz = startZ + wi * windowSpacing + windowSpacing / 2
           return (
             <group key={`w-${side}-${wi}`} position={[side * halfW, 1.7, wz]}>
               {/* Deep recess — dark void behind the glass */}
-              <mesh position={[-side * 0.06, 0, 0]}>
-                <boxGeometry args={[0.12, 1.0, windowW]} />
-                <meshStandardMaterial color={'#080604'} roughness={0.95} />
+              <mesh position={[-side * 0.06, 0, 0]} rotation-y={side * Math.PI / 2}>
+                <circleGeometry args={[windowR + 0.08, 24]} />
+                <meshStandardMaterial color={'#080604'} roughness={0.95} side={2} />
               </mesh>
-              {/* Interior warmth — layered glow panels for depth */}
-              <mesh position={[-side * 0.03, 0, 0]}>
-                <boxGeometry args={[0.02, 0.8, windowW - 0.15]} />
-                <meshStandardMaterial color={'#1a0e04'} roughness={0.9} />
+              {/* Interior warmth — glow panel */}
+              <mesh position={[-side * 0.03, 0, 0]} rotation-y={side * Math.PI / 2}>
+                <circleGeometry args={[windowR - 0.02, 24]} />
+                <meshStandardMaterial color={'#2a1608'} emissive={'#ff9930'} emissiveIntensity={0.25} toneMapped={false} />
               </mesh>
-              <mesh position={[side * 0.01, 0, 0]}>
-                <boxGeometry args={[0.02, 0.6, windowW - 0.25]} />
-                <meshStandardMaterial color={'#2a1608'} emissive={'#ff9930'} emissiveIntensity={0.2} toneMapped={false} />
-              </mesh>
-              {/* Glass pane — slight tint, subtle reflection */}
-              <mesh position={[side * 0.02, 0, 0]}>
-                <boxGeometry args={[0.03, 0.7, windowW - 0.1]} />
+              {/* Glass pane — slight tint */}
+              <mesh position={[side * 0.01, 0, 0]} rotation-y={side * Math.PI / 2}>
+                <circleGeometry args={[windowR - 0.04, 24]} />
                 <meshStandardMaterial
                   color={'#4a6878'}
                   transparent
-                  opacity={0.12}
+                  opacity={0.15}
                   metalness={0.3}
                   roughness={0.1}
+                  side={2}
                 />
               </mesh>
               {/* Warm glow spill — the magical "candlelit interior" bloom */}
-              <mesh position={[side * 0.04, 0, 0]}>
-                <boxGeometry args={[0.01, 0.5, windowW - 0.3]} />
+              <mesh position={[side * 0.03, 0, 0]} rotation-y={side * Math.PI / 2}>
+                <circleGeometry args={[windowR - 0.08, 24]} />
                 <meshStandardMaterial
                   color={'#ffcc66'}
                   emissive={'#ffaa22'}
                   emissiveIntensity={0.5}
                   toneMapped={false}
                   transparent
-                  opacity={0.5}
+                  opacity={0.45}
                 />
               </mesh>
-              {/* Curtain edges (visible through glass) */}
-              {[-0.42, 0.42].map((dz) => (
-                <mesh key={dz} position={[side * 0.01, 0, dz]}>
-                  <boxGeometry args={[0.02, 0.6, 0.07]} />
-                  <meshStandardMaterial color={bodyColor(line)} roughness={0.85} transparent opacity={0.5} />
-                </mesh>
-              ))}
-              {/* Brass frame — top, bottom, sides */}
-              <mesh position={[0, -0.48, 0]}>
-                <boxGeometry args={[0.08, 0.05, windowW + 0.04]} />
-                <meshStandardMaterial color={HOGWARTS_GOLD} metalness={0.65} roughness={0.2} />
+              {/* Brass ring frame */}
+              <mesh position={[side * 0.02, 0, 0]} rotation-y={side * Math.PI / 2}>
+                <ringGeometry args={[windowR - 0.01, windowR + 0.04, 28]} />
+                <meshStandardMaterial color={HOGWARTS_GOLD} metalness={0.65} roughness={0.2} side={2} />
               </mesh>
-              <mesh position={[0, 0.48, 0]}>
-                <boxGeometry args={[0.08, 0.05, windowW + 0.04]} />
-                <meshStandardMaterial color={HOGWARTS_GOLD} metalness={0.65} roughness={0.2} />
-              </mesh>
-              {/* Side frame pillars */}
-              {[-1, 1].map((sx) => (
-                <mesh key={sx} position={[0, 0, sx * (windowW / 2 + 0.01)]}>
-                  <boxGeometry args={[0.08, 1.0, 0.04]} />
-                  <meshStandardMaterial color={HOGWARTS_GOLD} metalness={0.65} roughness={0.2} />
+              {/* Small decorative rivets on the frame */}
+              {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((a) => (
+                <mesh key={a} position={[side * 0.025, Math.sin(a) * (windowR + 0.02), Math.cos(a) * (windowR + 0.02)]} rotation-y={side * Math.PI / 2}>
+                  <sphereGeometry args={[0.025, 6, 4]} />
+                  <meshStandardMaterial color={HOGWARTS_GOLD} metalness={0.7} roughness={0.2} />
                 </mesh>
               ))}
             </group>
@@ -587,15 +598,13 @@ function TrainSet({ platformIndex }: { platformIndex: number }) {
     const tEl = st.clock.elapsedTime
 
     const targetZ = TRAIN_REST_Z + offset
-    // Snappy lerp: fast enough to feel responsive, smooth enough to avoid jumps.
-    // At 60fps this is ~0.38 per frame; at 30fps ~0.58 — both feel like a heavy
-    // train braking naturally rather than a teleport or a lazy drift.
     const lerpK = 1 - Math.pow(0.003, dt)
     g.position.z = MathUtils.lerp(g.position.z, targetZ, lerpK)
     g.position.x = pl.trackX + Math.sin(tEl * 7) * 0.05 * env
     g.position.y = TRAIN_SIT_Y
     g.rotation.z = Math.sin(tEl * 9) * 0.012 * env
-    g.visible = offset < AWAY_Z - TRAIN_REST_Z - 1
+    // Always show the player's train; other trains follow schedule visibility
+    g.visible = mine || offset < AWAY_Z - TRAIN_REST_Z - 1
   })
 
   return (

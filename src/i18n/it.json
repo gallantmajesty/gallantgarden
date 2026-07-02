@@ -209,7 +209,6 @@
     "camera": "Fotocamera",
     "firstPerson": "Prima (F1)",
     "thirdPerson": "Terza (F2)",
-    "frontPerson": "Frontale (F3)",
     "lookSensitivity": "Sensibilità visuale",
     "invertMouseY": "Inverti asse Y mouse",
     "exitFullscreen": "Esci da schermo intero"

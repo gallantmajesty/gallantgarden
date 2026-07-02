@@ -51,11 +51,10 @@ export function WaterfallScene({ onReady }: { onReady?: () => void }) {
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: [0, 4, 60], fov: 72, near: 0.08, far: preset.far }}
-      onCreated={() => onReady?.()}
     >
       <PerformanceMonitor
         bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
-        flipflops={3}
+        flipflops={1}
         factor={1}
         onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
         onFallback={() => setDpr(dprFloor)}
@@ -80,6 +79,7 @@ export function WaterfallScene({ onReady }: { onReady?: () => void }) {
             birds={preset.dust > 0 ? (preset.dust > 30 ? 16 : 8) : 0}
             butterflies={preset.dust > 0 ? (preset.dust > 30 ? 28 : 14) : 0}
           />
+          <SceneReady onReady={onReady} />
         </Suspense>
       </SoftBoundary>
 
@@ -129,5 +129,11 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
       }
     })
   }, [anisotropy, gl, scene])
+  return null
+}
+
+function SceneReady({ onReady }: { onReady?: () => void }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onReady?.() }, [])
   return null
 }

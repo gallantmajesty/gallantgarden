@@ -209,7 +209,6 @@
     "camera": "กล้อง",
     "firstPerson": "บุคคลที่หนึ่ง (F1)",
     "thirdPerson": "บุคคลที่สาม (F2)",
-    "frontPerson": "ด้านหน้า (F3)",
     "lookSensitivity": "ความไวในการมอง",
     "invertMouseY": "กลับด้านเมาส์ Y",
     "exitFullscreen": "ออกจากโหมดเต็มหน้าจอ"

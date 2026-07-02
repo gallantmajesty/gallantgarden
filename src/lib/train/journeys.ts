@@ -28,9 +28,11 @@ export interface JournalEntry {
 }
 
 export interface PersistedJourney {
-  phase: 'browsing' | 'boarding' | 'traveling' | 'arrived'
+  phase: 'browsing' | 'boarding' | 'traveling' | 'arriving' | 'arrived'
   lineId: LineId | null
   seat: number | null
+  departureSec?: number
+  arrivalSec?: number
   startedAt: number | null
   endsAt: number | null
   activeFocusSec: number

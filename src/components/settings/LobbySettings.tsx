@@ -1,11 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import { LANGUAGES, changeLanguage } from '../../i18n'
 import { WebCustomizationContent } from './WebCustomization'
+import { Toggle } from './controls'
+import { useSettings } from '../../store/settings'
 import './LobbySettings.css'
 
 export function LobbySettings({ onClose }: { onClose: () => void }) {
   const { i18n } = useTranslation()
   const current = i18n.language
+  const waitForLobby = useSettings((s) => s.waitForLobbyReady)
+  const setSetting = useSettings((s) => s.set)
 
   return (
     <div className="ls-backdrop" onClick={onClose}>
@@ -31,6 +35,14 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="ls-section">
+            <Toggle
+              label="Wait for lobby to load before closing intro"
+              value={waitForLobby}
+              onChange={(v) => setSetting('waitForLobbyReady', v)}
+            />
           </div>
 
           <WebCustomizationContent />

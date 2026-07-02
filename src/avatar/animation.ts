@@ -41,20 +41,21 @@ export function idlePose(t: number): Pose {
   const breath = Math.sin(t * 1.4)
   const sway = Math.sin(t * 0.55)
   const headDrift = Math.sin(t * 0.4 + 1)
+  const microShift = Math.sin(t * 0.23 + 0.7)
   return {
-    chest: { x: 0.03 + breath * 0.015 },
+    chest: { x: 0.03 + breath * 0.015, z: microShift * 0.006 },
     spine: { z: sway * 0.012 },
-    hips: { x: 0, z: -sway * 0.018, y: sway * 0.018 },
-    neck: { x: -0.02, y: headDrift * 0.05 },
-    head: { y: headDrift * 0.045, x: breath * 0.01 },
+    hips: { x: microShift * 0.01, z: -sway * 0.018, y: sway * 0.018 },
+    neck: { x: -0.02, y: headDrift * 0.05, z: microShift * 0.01 },
+    head: { y: headDrift * 0.045, x: breath * 0.01, z: microShift * 0.008 },
     // arms hang naturally at the sides with slight forward carry and gentle outward
     // splay — realistic human idle posture, not robotic or stiff
-    armUpperL: { x: 0.08 + breath * 0.008, z: -0.06 + sway * 0.008 },
-    armUpperR: { x: 0.08 + breath * 0.008, z: 0.06 - sway * 0.008 },
-    armLowerL: { x: 0.15, z: -0.04 },
-    armLowerR: { x: 0.15, z: 0.04 },
-    legUpperL: { x: 0 },
-    legUpperR: { x: 0 },
+    armUpperL: { x: 0.08 + breath * 0.008, z: -0.06 + sway * 0.008 + microShift * 0.01 },
+    armUpperR: { x: 0.08 + breath * 0.008, z: 0.06 - sway * 0.008 - microShift * 0.01 },
+    armLowerL: { x: 0.15 + microShift * 0.02, z: -0.04 },
+    armLowerR: { x: 0.15 - microShift * 0.02, z: 0.04 },
+    legUpperL: { x: microShift * 0.015 },
+    legUpperR: { x: -microShift * 0.015 },
   }
 }
 
@@ -79,27 +80,38 @@ export function locomotionPose(phase: number, g: number): Pose {
   const kneeL = Math.max(0, -c) * kneeBend
   const kneeR = Math.max(0, c) * kneeBend
 
-  // forearms keep a roughly constant carry angle and bend a touch more on the
-  // back-swing — natural follow-through, never the old wide "inflatable" flap
+  // natural arm carry angle + slight extra bend on back-swing (follow-through)
   const carry = 0.25 + 0.12 * g
+
+  // secondary motion: subtle shoulder roll, torso counter-rotation, head stabilization
+  const shoulderRoll = s * 0.08 * g
+  const torsoTwist = -s * 0.06 * g
+  const headStabilize = -s * 0.04 * g
+
+  // forearm follows upper arm with slight lag (natural pendulum)
+  const forearmLagL = Math.max(0, -s) * 0.15
+  const forearmLagR = Math.max(0, s) * 0.15
+
   return {
-    hips: { x: lean * 0.4, y: 0, z: 0 },
-    spine: { x: lean * 0.5 },
-    chest: { x: lean * 0.3, y: -s * 0.05 }, // slight counter-rotation
-    neck: { x: -lean * 0.3 },
-    head: { x: -lean * 0.2, y: s * 0.025 }, // head stabilizes against torso turn
-    // legs: opposite phase
-    legUpperL: { x: s * legSwing },
-    legUpperR: { x: -s * legSwing },
+    hips: { x: lean * 0.4, y: 0, z: torsoTwist * 0.5 },
+    spine: { x: lean * 0.5, y: torsoTwist * 0.3 },
+    chest: { x: lean * 0.3, y: -s * 0.05, z: shoulderRoll },
+    neck: { x: -lean * 0.3, y: headStabilize * 0.5 },
+    head: { x: -lean * 0.2, y: headStabilize },
+
+    // legs: opposite phase with natural hip/knee/ankle chain
+    legUpperL: { x: s * legSwing, z: Math.max(0, s) * 0.03 },
+    legUpperR: { x: -s * legSwing, z: Math.max(0, -s) * 0.03 },
     legLowerL: { x: kneeL },
     legLowerR: { x: kneeR },
-    footL: { x: -s * legSwing * 0.4 },
-    footR: { x: s * legSwing * 0.4 },
-    // arms swing opposite to legs, tucked close (small z) with a steady elbow bend
-    armUpperL: { x: -s * armSwing, z: 0.07 },
-    armUpperR: { x: s * armSwing, z: -0.07 },
-    armLowerL: { x: carry + Math.max(0, -s) * 0.18, z: 0.05 },
-    armLowerR: { x: carry + Math.max(0, s) * 0.18, z: -0.05 },
+    footL: { x: -s * legSwing * 0.45 + Math.max(0, -s) * 0.15 },
+    footR: { x: s * legSwing * 0.45 + Math.max(0, s) * 0.15 },
+
+    // arms swing opposite to legs, forearm lags upper arm naturally
+    armUpperL: { x: -s * armSwing, z: 0.07 + shoulderRoll },
+    armUpperR: { x: s * armSwing, z: -0.07 - shoulderRoll },
+    armLowerL: { x: carry + forearmLagL, z: 0.05 },
+    armLowerR: { x: carry + forearmLagR, z: -0.05 },
   }
 }
 

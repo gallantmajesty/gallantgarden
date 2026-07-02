@@ -7,7 +7,7 @@ export type QualityPresetName = 'low' | 'medium' | 'high'
 export type ShadowQuality = 'off' | 'low' | 'high'
 export type PostQuality = 'off' | 'low' | 'high'
 export type TextureQuality = 'low' | 'medium' | 'high'
-export type CameraMode = 'first' | 'third' | 'front'
+export type CameraMode = 'first' | 'third'
 export type Weather = 'clear' | 'light-rain' | 'heavy-rain' | 'fog'
 export type Theme = 'light' | 'dark'
 export type ThemePreset = 'forest' | 'dusk' | 'sakura' | 'ocean'
@@ -210,6 +210,9 @@ interface SettingsState {
   cameraMode: CameraMode
   sensitivity: number // 0.2 .. 2
   invertY: boolean
+  hideAvatarWhenMovingCamera: boolean
+  // lobby
+  waitForLobbyReady: boolean // keep intro veil until lobby icons are loaded
   // audio (0..1)
   master: number
   ambientVol: number
@@ -330,6 +333,8 @@ const DEFAULTS: SettingsData = {
   cameraMode: 'third', // see your chosen character by default (Roblox-style)
   sensitivity: 1,
   invertY: false,
+  hideAvatarWhenMovingCamera: false,
+  waitForLobbyReady: true,
   master: 0.8,
   ambientVol: 0.6,
   rainVol: 0.7,

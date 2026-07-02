@@ -23,13 +23,12 @@ const GRAVITY = -19
 const STAND_EYE = 1.62
 const CROUCH_EYE = 1.05
 const THIRD_DIST = 5.5
-const FRONT_DIST = 4.2
 
 /**
- * Minecraft-style first/third/front-person controller with AABB collision,
+ * Minecraft-style first/third-person controller with AABB collision,
  * gravity, jumping and auto-stepping. Drag to look (sensitivity + invert-Y from
  * settings), WASD to walk, Shift to run, Space to jump, Ctrl to crouch.
- * F1/F2/F3 (or the in-game keys) switch camera modes with a smooth blend.
+ * F1/F2 (or the in-game keys) switch camera modes with a smooth blend.
  */
 export function PlayerController() {
   const gl = useThree((s) => s.gl)
@@ -76,30 +75,9 @@ export function PlayerController() {
   // keyboard (movement + camera-mode hotkeys)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      // Text entry always wins: while an input / textarea / note editor / modal
-      // field is focused, every world hotkey is suppressed so the key (E, W,
-      // Space, …) types normally instead of driving the player.
       if (isTypingFocused()) return
       keys.current[e.code] = true
-      // Camera hotkeys: F1/F2/F3 (legacy) and 1/2/3 (per the UI plan: First /
-      // Front / Third). Digit keys must not fire while a modifier is held so they
-      // never clash with browser/OS chords (e.g. Ctrl+1 tab-switch).
-      if (e.code === 'F1') useSettings.getState().set('cameraMode', 'first')
-      if (e.code === 'F2') useSettings.getState().set('cameraMode', 'third')
-      if (e.code === 'F3') useSettings.getState().set('cameraMode', 'front')
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.code === 'Digit1') useSettings.getState().set('cameraMode', 'first')
-        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'front')
-        if (e.code === 'Digit3') useSettings.getState().set('cameraMode', 'third')
-      }
-      // F5 cycles first -> front -> third (Minecraft-style), preventing refresh
-      if (e.code === 'F5') {
-        e.preventDefault()
-        const order = ['first', 'front', 'third'] as const
-        const cur = useSettings.getState().cameraMode
-        const next = order[(order.indexOf(cur) + 1) % order.length]
-        useSettings.getState().set('cameraMode', next)
-      }
+      // Camera hotkeys disabled — locked to third-person
       if (e.code === 'KeyE' || e.code === 'Escape') {
         const w = useWorld.getState()
         if (w.seat != null) w.stand()
@@ -132,7 +110,7 @@ export function PlayerController() {
     }
   }, [seats])
 
-  // drag-to-look
+  // drag-to-look → rotates avatar (faceYaw), camera follows
   useEffect(() => {
     const el = gl.domElement
     const down = (e: PointerEvent) => {
@@ -145,7 +123,9 @@ export function PlayerController() {
       if (!d.on) return
       const s = useSettings.getState()
       const k = 0.0032 * s.sensitivity
-      p.current.yaw -= (e.clientX - d.lx) * k
+      // Rotate avatar facing direction (faceYaw) instead of camera yaw
+      p.current.faceYaw -= (e.clientX - d.lx) * k
+      // Optional: allow slight pitch for looking up/down
       p.current.pitch += (e.clientY - d.ly) * k * (s.invertY ? 1 : -1)
       p.current.pitch = MathUtils.clamp(p.current.pitch, -1.2, 1.2)
       d.lx = e.clientX
@@ -154,9 +134,8 @@ export function PlayerController() {
     const up = () => {
       drag.current.on = false
     }
-    // mouse-wheel zoom (third / front person distance)
+    // mouse-wheel zoom (third-person distance)
     const wheel = (e: WheelEvent) => {
-      if (useSettings.getState().cameraMode === 'first') return
       e.preventDefault()
       p.current.zoom = MathUtils.clamp(p.current.zoom + Math.sign(e.deltaY) * 0.6, 2.6, 10)
     }
@@ -223,38 +202,33 @@ export function PlayerController() {
         }
 
         const headY = seat.pos[1] + SEAT_EYE
-        if (s.cameraMode === 'first') {
-          // First-person stays AS-IS: seat-eye view looking toward the desk, body
-          // hidden, only a little look-around (yaw clamped near the desk heading).
-          if (av) av.visible = false
-          st.yaw = MathUtils.clamp(st.yaw, seat.yaw - 0.9, seat.yaw + 0.9)
-          st.pitch = MathUtils.clamp(st.pitch, -0.7, 0.4)
-          cam.position.set(seat.pos[0], headY, seat.pos[2])
-          cam.rotation.set(st.pitch, st.yaw, 0)
-        } else {
-          // Third / front: a true ORBIT around the seated avatar. Drag rotates the
-          // camera a full half-turn each way (so the player can swing all the way
-          // around — front, side, back), wheel zooms, and it always looks at the
-          // avatar. The body itself stays put facing the desk.
-          if (av) av.visible = true
-          st.yaw = MathUtils.clamp(st.yaw, seat.yaw - Math.PI, seat.yaw + Math.PI)
-          st.pitch = MathUtils.clamp(st.pitch, -0.5, 0.55)
-          const dist = MathUtils.clamp(st.zoom, 2.4, 6)
-          const cp = Math.cos(st.pitch)
-          const ox = Math.sin(st.yaw) * cp
-          const oy = Math.sin(st.pitch)
-          const oz = Math.cos(st.yaw) * cp
-          // pull in if a wall/pillar sits between the camera and the avatar
-          const hit = rayHit(seat.pos[0], headY, seat.pos[2], ox, oy, oz, dist + 0.4, collision.blockers)
-          const d = Math.min(dist, hit - 0.4)
-          st.camDist = MathUtils.lerp(st.camDist, Math.max(1.8, d), 1 - Math.pow(0.00005, dt))
-          cam.position.set(
-            seat.pos[0] + ox * st.camDist,
-            Math.max(0.5, headY + oy * st.camDist),
-            seat.pos[2] + oz * st.camDist,
-          )
-          cam.lookAt(seat.pos[0], headY - 0.15, seat.pos[2])
-        }
+        // Locked third-person: camera behind seated avatar (which faces the desk)
+        const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
+        const isDragging = drag.current.on
+        if (av) av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
+        const camYaw = seat.yaw + Math.PI // avatar faces desk, camera behind it
+        const camPitch = MathUtils.clamp(st.pitch, -0.5, 0.55)
+        const cp = Math.cos(camPitch)
+        const fx = -Math.sin(camYaw) * cp
+        const fy = Math.sin(camPitch)
+        const fz = -Math.cos(camYaw) * cp
+        const dist = MathUtils.clamp(st.zoom, 2.4, 6)
+        let ox = fx * -1
+        let oy = fy * -1 + 0.32
+        let oz = fz * -1
+        const ol = Math.hypot(ox, oy, oz) || 1
+        ox /= ol
+        oy /= ol
+        oz /= ol
+        const hit = rayHit(seat.pos[0], headY, seat.pos[2], ox, oy, oz, dist + 0.4, collision.blockers)
+        const d = Math.min(dist, hit - 0.4)
+        st.camDist = MathUtils.lerp(st.camDist, Math.max(1.8, d), 1 - Math.pow(0.00005, dt))
+        cam.position.set(
+          seat.pos[0] + ox * st.camDist,
+          Math.max(0.5, headY + oy * st.camDist),
+          seat.pos[2] + oz * st.camDist,
+        )
+        cam.rotation.set(camPitch, camYaw, 0)
         // broadcast the seated pose to the realm (parked at the chair, facing it)
         setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
       }
@@ -330,56 +304,44 @@ export function PlayerController() {
 
     // ---- camera placement per mode ----
     const headY = st.y + st.eye
-    const cp = Math.cos(st.pitch)
-    const fx = -Math.sin(st.yaw) * cp
-    const fy = Math.sin(st.pitch)
-    const fz = -Math.cos(st.yaw) * cp
     const mode = s.cameraMode
+    const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
 
-    if (mode === 'first') {
-      // a hair of head-bob while walking, set directly for zero lag/jitter
-      const bobY = Math.sin(st.bob * 9) * Math.min(0.04, Math.hypot(st.vx, st.vz) * 0.012)
-      cam.position.set(st.x, headY + bobY, st.z)
-      cam.rotation.set(st.pitch, st.yaw, 0)
-    } else {
-      const dir = mode === 'front' ? 1 : -1 // in front vs behind
-      const dist = mode === 'front' ? FRONT_DIST : st.zoom
-      // unit offset from the head toward the camera (slightly raised). The camera
-      // sits along the view-forward vector scaled by `dir`: third-person (dir=-1)
-      // pulls it BEHIND the player so the body is framed ahead; front-person
-      // (dir=+1) pushes it ahead and the rotation below spins it to look back.
-      // (A previous leading `-` here negated this and parked the camera on the
-      //  far side, facing away — the avatar fell behind the camera in both modes.)
-      let ox = fx * dir
-      let oy = fy * dir + 0.32
-      let oz = fz * dir
-      const ol = Math.hypot(ox, oy, oz) || 1
-      ox /= ol
-      oy /= ol
-      oz /= ol
-      // pull the camera in if a wall/pillar is between it and the player
-      const hit = rayHit(st.x, headY, st.z, ox, oy, oz, dist + 0.4, collision.blockers)
-      const d = Math.min(dist, hit - 0.4)
-      // Keep a real gap between camera and character so the body is ALWAYS framed
-      // — never let wall-collision collapse the camera onto (or inside) the
-      // avatar. Third-person needs more room than the tighter front view.
-      const minDist = mode === 'front' ? 1.6 : 2.8
-      st.camDist = MathUtils.lerp(st.camDist, Math.max(minDist, d), 1 - Math.pow(0.00005, dt))
-      cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
-      if (mode === 'front') cam.rotation.set(-st.pitch, st.yaw + Math.PI, 0)
-      else cam.rotation.set(st.pitch, st.yaw, 0)
-    }
+    // ---- camera placement: locked third-person (always behind avatar) ----
+    // Camera follows avatar's faceYaw so it stays glued to the back
+    const camYaw = st.faceYaw
+    const camPitch = st.pitch // slight up/down look preserved
+    const cp = Math.cos(camPitch)
+    const fx = -Math.sin(camYaw) * cp
+    const fy = Math.sin(camPitch)
+    const fz = -Math.cos(camYaw) * cp
+    const dist = st.zoom
+    // unit offset from head toward camera (slightly raised), pulled BEHIND avatar
+    let ox = fx * -1
+    let oy = fy * -1 + 0.32
+    let oz = fz * -1
+    const ol = Math.hypot(ox, oy, oz) || 1
+    ox /= ol
+    oy /= ol
+    oz /= ol
+    // collision pull-in
+    const hit = rayHit(st.x, headY, st.z, ox, oy, oz, dist + 0.4, collision.blockers)
+    const d = Math.min(dist, hit - 0.4)
+    st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
+    cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
+    cam.rotation.set(camPitch, camYaw, 0)
 
     // ---- avatar ----
     const av = avatarRef.current
     if (av) {
-      av.visible = mode !== 'first'
+      const isDragging = drag.current.on
+      av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       av.position.set(st.x, st.y, st.z)
       const prevYaw = av.rotation.y
       // Smooth body turn along the SHORTEST arc: ease over the wrapped delta so a
       // heading change across ±π (e.g. spinning around) rotates the short way
       // instead of unwinding a near-full turn (the old "sudden 180° flip").
-      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
+      const dYaw = Math.atan2(Math.sin(st.faceYaw + Math.PI - prevYaw), Math.cos(st.faceYaw + Math.PI - prevYaw))
       av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       // feed the procedural animator: horizontal speed drives the gait, grounded
       // / vy drive jump+land, and the smoothed facing delta drives turn-lean.

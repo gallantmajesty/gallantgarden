@@ -10,7 +10,6 @@ import { useScenePreset } from '../../store/quality'
 import { useStation } from '../../store/station'
 import { useTrain } from '../../store/train'
 import { TRAIN_LINES } from '../../lib/train/lines'
-import { statusById } from '../../lib/train/schedule'
 import { setLocalState } from '../../multiplayer/net'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
@@ -18,7 +17,7 @@ import { useAvatar } from '../../avatar/store'
 import { stationSpeedRef } from './audio'
 
 // Player controller for walking the concourse and platforms. Behaviourally the
-// same first/third/front-person rig as the Library and Waterfall realms (drag to
+// same first/third-person rig as the Library and Waterfall realms (drag to
 // look, WASD/joystick, jump, wheel zoom, 1/2/3 camera) but on a single flat floor
 // — no heightfield, no in-station seats (you study INSIDE the train, not on the
 // platform). Its extra job is detecting when you're standing in a platform's
@@ -32,11 +31,27 @@ const GRAVITY = -19
 const STAND_EYE = 1.62
 const CROUCH_EYE = 1.05
 const THIRD_DIST = 5.5
-const FRONT_DIST = 4.2
 const STEP_UP = 0.5
 // boarding zone: standing alongside the berthed train on a platform
 const BOARD_Z0 = TRAIN_REST_Z - 2
 const BOARD_Z1 = TRAIN_REST_Z + 98
+
+/** Check if a world position is over any track bed (danger zone when train is moving). */
+function isOnTrackBed(x: number, z: number): boolean {
+  for (const p of platforms()) {
+    const trackWest = p.eastX
+    const trackEast = p.trackX + TRACK_W / 2 + 1
+    if (x >= trackWest && x <= trackEast && z >= PLAT_Z0 && z <= PLAT_Z1) return true
+  }
+  return false
+}
+
+/** Check if the player's line has a train currently boarding (doors open, safe to approach). */
+function isTrainBoarding(): boolean {
+  const train = useTrain.getState()
+  if (!train.line) return false
+  return train.phase === 'boarding' || (train.phase === 'traveling' && train.departureSec > 0)
+}
 
 export function StationPlayerController() {
   const gl = useThree((s) => s.gl)
@@ -48,9 +63,13 @@ export function StationPlayerController() {
   const keys = useRef<Record<string, boolean>>({})
   const collision = useMemo(() => buildCollision(), [])
   const plats = useMemo(() => platforms(), [])
-  // pick one of the five concourse spawns ONCE per session so players fan out
-  // instead of stacking on a single spot.
-  const spawn = useMemo(() => pickSpawn(), [])
+  // Use return position if exiting the train, otherwise pick a concourse spawn.
+  const returnPos = useTrain((s) => s.returnPos)
+  const spawn = useMemo(() => {
+    if (returnPos) return { pos: [returnPos.x, FLOOR_Y, returnPos.z] as [number, number, number], yaw: returnPos.yaw }
+    return pickSpawn()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const p = useRef({
     x: spawn.pos[0],
@@ -85,11 +104,9 @@ export function StationPlayerController() {
       keys.current[e.code] = true
       if (e.code === 'F1') useSettings.getState().set('cameraMode', 'first')
       if (e.code === 'F2') useSettings.getState().set('cameraMode', 'third')
-      if (e.code === 'F3') useSettings.getState().set('cameraMode', 'front')
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.code === 'Digit1') useSettings.getState().set('cameraMode', 'first')
-        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'front')
-        if (e.code === 'Digit3') useSettings.getState().set('cameraMode', 'third')
+        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'third')
       }
       // E → board the train at the platform you're standing beside, but ONLY
       // while its doors are open (the live boarding window). Outside that window
@@ -99,7 +116,7 @@ export function StationPlayerController() {
         const near = p.current.nearPlat
         if (near != null && useTrain.getState().phase === 'browsing') {
           const line = TRAIN_LINES[near]
-          if (statusById(line.id).boardable) useTrain.getState().beginBoarding(line.id)
+          useTrain.getState().beginBoarding(line.id)
         }
       }
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault()
@@ -204,6 +221,18 @@ export function StationPlayerController() {
     const nz = st.z + st.vz * dt
     if (!isBlocked(st.x, nz, PLAYER_RADIUS, lo, hi, collision.blockers)) st.z = nz
     else st.vz = 0
+    // Safety: prevent walking onto track beds when train is not boarding
+    if (isOnTrackBed(st.x, st.z) && !isTrainBoarding()) {
+      // Push player back to nearest platform edge
+      for (const p of platforms()) {
+        const trackWest = p.eastX
+        if (st.x >= trackWest) {
+          st.x = trackWest - PLAYER_RADIUS - 0.1
+          break
+        }
+      }
+      st.vx = 0
+    }
     if (moving) st.bob += Math.hypot(st.vx, st.vz) * dt
     st.x = MathUtils.clamp(st.x, PLAYER_BOUNDS.minX, PLAYER_BOUNDS.maxX)
     st.z = MathUtils.clamp(st.z, PLAYER_BOUNDS.minZ, PLAYER_BOUNDS.maxZ)
@@ -228,13 +257,14 @@ export function StationPlayerController() {
     const fy = Math.sin(st.pitch)
     const fz = -Math.cos(st.yaw) * cp
     const mode = s.cameraMode
+    const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
     if (mode === 'first') {
       const bobY = Math.sin(st.bob * 9) * Math.min(0.04, Math.hypot(st.vx, st.vz) * 0.012)
       cam.position.set(st.x, headY + bobY, st.z)
       cam.rotation.set(st.pitch, st.yaw, 0)
     } else {
-      const dir = mode === 'front' ? 1 : -1
-      const dist = mode === 'front' ? FRONT_DIST : st.zoom
+      const dir = -1
+      const dist = st.zoom
       let ox = fx * dir
       let oy = fy * dir + 0.32
       let oz = fz * dir
@@ -244,20 +274,20 @@ export function StationPlayerController() {
       oz /= ol
       const hit = rayHit(st.x, headY, st.z, ox, oy, oz, dist + 0.4, collision.blockers)
       const d = Math.min(dist, hit - 0.4)
-      const minDist = mode === 'front' ? 1.6 : 2.8
-      st.camDist = MathUtils.lerp(st.camDist, Math.max(minDist, d), 1 - Math.pow(0.00005, dt))
+      st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
       cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
-      if (mode === 'front') cam.rotation.set(-st.pitch, st.yaw + Math.PI, 0)
-      else cam.rotation.set(st.pitch, st.yaw, 0)
+      cam.rotation.set(st.pitch, st.yaw, 0)
     }
 
     // avatar
     const av = avatarRef.current
     if (av) {
-      av.visible = mode !== 'first'
+      const isDragging = drag.current.on
+      av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       av.position.set(st.x, st.y, st.z)
       const prevYaw = av.rotation.y
-      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
+      const targetYaw = moving ? st.faceYaw : st.yaw + Math.PI
+      const dYaw = Math.atan2(Math.sin(targetYaw - prevYaw), Math.cos(targetYaw - prevYaw))
       av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       const l = loco.current
       l.seated = false
@@ -273,6 +303,12 @@ export function StationPlayerController() {
     // feed station audio for footsteps
     stationSpeedRef.current = horizSpeed
 
+    // Write position to store so boardTrain() can save it for return.
+    useStation.getState().setPlayerPos(st.x, st.z, st.yaw)
+
+    // Clear returnPos after first use so next visit uses default spawn.
+    if (useTrain.getState().returnPos) useTrain.setState({ returnPos: null })
+
     // boarding-zone detection: which platform am I standing beside a train on?
     let near: number | null = null
     if (st.z > BOARD_Z0 && st.z < BOARD_Z1) {
@@ -287,17 +323,15 @@ export function StationPlayerController() {
     if (useStation.getState().nearPlatform !== near) useStation.getState().setNearPlatform(near)
 
     // walk-through boarding: if the player has walked past the platform edge and
-    // is close to the train body during the boarding phase, auto-trigger boarding.
-    // This replaces the E-key gate with natural walk-in immersion.
+    // is close to the train body, auto-trigger boarding regardless of schedule.
+    // The train will appear berthed with open doors for the player to step through.
     if (near != null && useTrain.getState().phase === 'browsing') {
       const line = TRAIN_LINES[near]
       const pl = plats[near]
-      if (statusById(line.id).boardable) {
-        // player walked past the platform east edge into the track zone
-        const distToTrain = Math.abs(st.x - pl.trackX)
-        if (distToTrain < 3.5) {
-          useTrain.getState().beginBoarding(line.id)
-        }
+      // player walked past the platform east edge into the track zone
+      const distToTrain = Math.abs(st.x - pl.trackX)
+      if (distToTrain < 3.8) {
+        useTrain.getState().beginBoarding(line.id)
       }
     }
   })

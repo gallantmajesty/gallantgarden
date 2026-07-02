@@ -22,8 +22,56 @@ import ms from './ms.json'
 import nl from './nl.json'
 import pl from './pl.json'
 import ur from './ur.json'
+import he from './he.json'
 
-const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('fl-lang') : null
+const LANGUAGES_RAW = [
+  { code: 'en', label: 'English', dir: 'ltr' },
+  { code: 'es', label: 'Español', dir: 'ltr' },
+  { code: 'zh', label: '中文', dir: 'ltr' },
+  { code: 'hi', label: 'हिन्दी', dir: 'ltr' },
+  { code: 'ar', label: 'العربية', dir: 'rtl' },
+  { code: 'pt', label: 'Português', dir: 'ltr' },
+  { code: 'bn', label: 'বাংলা', dir: 'ltr' },
+  { code: 'ru', label: 'Русский', dir: 'ltr' },
+  { code: 'ja', label: '日本語', dir: 'ltr' },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ', dir: 'ltr' },
+  { code: 'de', label: 'Deutsch', dir: 'ltr' },
+  { code: 'ko', label: '한국어', dir: 'ltr' },
+  { code: 'fr', label: 'Français', dir: 'ltr' },
+  { code: 'tr', label: 'Türkçe', dir: 'ltr' },
+  { code: 'vi', label: 'Tiếng Việt', dir: 'ltr' },
+  { code: 'it', label: 'Italiano', dir: 'ltr' },
+  { code: 'th', label: 'ไทย', dir: 'ltr' },
+  { code: 'id', label: 'Bahasa Indonesia', dir: 'ltr' },
+  { code: 'ms', label: 'Bahasa Melayu', dir: 'ltr' },
+  { code: 'nl', label: 'Nederlands', dir: 'ltr' },
+  { code: 'pl', label: 'Polski', dir: 'ltr' },
+  { code: 'ur', label: 'اردو', dir: 'rtl' },
+  { code: 'he', label: 'עברית', dir: 'rtl' },
+]
+
+/* ── Language detection ─────────────────────────────────────────
+   Priority: saved preference > browser language > English fallback.
+   The browser's navigator.language / navigator.languages list is
+   matched against our supported codes (first 2 chars, case-insensitive).
+   If the browser reports "ko-KR" or "ko", we match it to "ko". ── */
+const SUPPORTED = new Set(LANGUAGES_RAW.map((l) => l.code))
+
+function detectLanguage(): string {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('fl-lang') : null
+  if (saved && SUPPORTED.has(saved)) return saved
+
+  if (typeof navigator !== 'undefined') {
+    const candidates = navigator.languages?.length ? navigator.languages : [navigator.language]
+    for (const tag of candidates) {
+      const code = tag.split('-')[0].toLowerCase()
+      if (SUPPORTED.has(code)) return code
+    }
+  }
+  return 'en'
+}
+
+const detected = detectLanguage()
 
 i18n.use(initReactI18next).init({
   resources: {
@@ -49,38 +97,16 @@ i18n.use(initReactI18next).init({
     nl: { translation: nl },
     pl: { translation: pl },
     ur: { translation: ur },
+    he: { translation: he },
   },
-  lng: saved || 'en',
+  lng: detected,
   fallbackLng: 'en',
   interpolation: {
     escapeValue: false,
   },
 })
 
-export const LANGUAGES = [
-  { code: 'en', label: 'English', dir: 'ltr' },
-  { code: 'es', label: 'Español', dir: 'ltr' },
-  { code: 'zh', label: '中文', dir: 'ltr' },
-  { code: 'hi', label: 'हिन्दी', dir: 'ltr' },
-  { code: 'ar', label: 'العربية', dir: 'rtl' },
-  { code: 'pt', label: 'Português', dir: 'ltr' },
-  { code: 'bn', label: 'বাংলা', dir: 'ltr' },
-  { code: 'ru', label: 'Русский', dir: 'ltr' },
-  { code: 'ja', label: '日本語', dir: 'ltr' },
-  { code: 'pa', label: 'ਪੰਜਾਬੀ', dir: 'ltr' },
-  { code: 'de', label: 'Deutsch', dir: 'ltr' },
-  { code: 'ko', label: '한국어', dir: 'ltr' },
-  { code: 'fr', label: 'Français', dir: 'ltr' },
-  { code: 'tr', label: 'Türkçe', dir: 'ltr' },
-  { code: 'vi', label: 'Tiếng Việt', dir: 'ltr' },
-  { code: 'it', label: 'Italiano', dir: 'ltr' },
-  { code: 'th', label: 'ไทย', dir: 'ltr' },
-  { code: 'id', label: 'Bahasa Indonesia', dir: 'ltr' },
-  { code: 'ms', label: 'Bahasa Melayu', dir: 'ltr' },
-  { code: 'nl', label: 'Nederlands', dir: 'ltr' },
-  { code: 'pl', label: 'Polski', dir: 'ltr' },
-  { code: 'ur', label: 'اردو', dir: 'rtl' },
-]
+export const LANGUAGES = LANGUAGES_RAW
 
 export function changeLanguage(code: string) {
   i18n.changeLanguage(code)

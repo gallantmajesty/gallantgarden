@@ -487,6 +487,14 @@ kbd {
   color: #fff;
   box-shadow: 0 0 0 1px var(--train-glow), 0 6px 18px color-mix(in srgb, var(--train-glow) 30%, transparent);
 }
+.train-seat.window {
+  background: rgba(255, 210, 122, 0.08);
+  border-color: rgba(255, 210, 122, 0.2);
+}
+.train-seat.window:hover {
+  background: rgba(255, 210, 122, 0.15);
+  border-color: rgba(255, 210, 122, 0.4);
+}
 .train-card-foot {
   display: flex;
   gap: 12px;
@@ -931,4 +939,60 @@ kbd {
     padding: 9px 16px;
     top: 70px;
   }
+}
+
+/* ── arrival cinematic ─────────────────────────────────────────────── */
+
+.train-arrival-cinematic {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 72px;
+  pointer-events: none;
+  gap: 12px;
+}
+
+.train-arrival-banner {
+  padding: 18px 36px;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 22px;
+  animation: train-arrival-in 0.6s ease-out both;
+  pointer-events: auto;
+}
+.train-arrival-banner strong {
+  display: block;
+  color: var(--train-glow);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--train-glow) 40%, transparent);
+  margin-bottom: 4px;
+}
+.train-arrival-timer {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.train-arrival-door {
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  animation: train-arrival-in 0.4s ease-out both;
+  pointer-events: auto;
+}
+
+.train-arrival-stand {
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0.85;
+  animation: train-arrival-in 0.4s ease-out both;
+  pointer-events: auto;
+}
+
+@keyframes train-arrival-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }

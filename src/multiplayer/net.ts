@@ -211,6 +211,8 @@ function bindListeners() {
   insforge.realtime.on('hello', handleHello)
   insforge.realtime.on('move', handleMove)
   insforge.realtime.on('bye', handleBye)
+  insforge.realtime.on('seat-claim', handleSeatClaim)
+  insforge.realtime.on('seat-release', handleSeatRelease)
   // Also listen for raw socket events to diagnose message format
   insforge.realtime.on('connect', () => console.log('[multiplayer] socket connected'))
   insforge.realtime.on('connect_error', (err) => console.error('[multiplayer] socket connect_error:', err))
@@ -261,6 +263,39 @@ function startLoops() {
 function stopLoops() {
   for (const t of [moveTimer, heartbeatTimer, pruneTimer]) if (t != null) window.clearInterval(t)
   moveTimer = heartbeatTimer = pruneTimer = null
+}
+
+/* --------------------------------------------------------- train seat sync -- */
+
+function handleSeatClaim(msg: unknown) {
+  const { channel, body } = parse(msg)
+  if (!forUs(channel)) return
+  const id = body.id as string | undefined
+  const seatIndex = body.seatIndex as number | undefined
+  const displayName = (body.displayName as string) || 'Explorer'
+  if (id === selfId || seatIndex == null) return
+  const { claimSeat } = require('../three/train/interior') as typeof import('../three/train/interior')
+  claimSeat(seatIndex, id, displayName)
+}
+
+function handleSeatRelease(msg: unknown) {
+  const { channel, body } = parse(msg)
+  if (!forUs(channel)) return
+  const id = body.id as string | undefined
+  const seatIndex = body.seatIndex as number | undefined
+  if (id === selfId || seatIndex == null) return
+  const { releaseSeat } = require('../three/train/interior') as typeof import('../three/train/interior')
+  releaseSeat(seatIndex)
+}
+
+/** Broadcast a seat claim to other passengers. */
+export function publishSeatClaim(seatIndex: number, displayName: string): void {
+  void publish('seat-claim', { id: selfId, seatIndex, displayName })
+}
+
+/** Broadcast a seat release to other passengers. */
+export function publishSeatRelease(seatIndex: number): void {
+  void publish('seat-release', { id: selfId, seatIndex })
 }
 
 /* -------------------------------------------------------------- public API -- */

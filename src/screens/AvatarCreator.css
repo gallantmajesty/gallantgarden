@@ -146,6 +146,8 @@
   cursor: grab;
   position: relative;
   z-index: 1;
+  outline: none;
+  border: none;
 }
 .ac-stage canvas:active { cursor: grabbing; }
 .ac-stage-veil {

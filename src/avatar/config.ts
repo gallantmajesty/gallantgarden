@@ -9,11 +9,9 @@ import {
   CapsuleGeometry,
   CylinderGeometry,
   Float32BufferAttribute,
-  LatheGeometry,
   MeshStandardMaterial,
   SphereGeometry,
   TorusGeometry,
-  Vector2,
 } from 'three'
 import { getAccessory } from './accessories/catalog'
 import { ACCESSORY_SLOTS, type EquippedAccessories } from './accessories/types'
@@ -30,7 +28,7 @@ import { ACCESSORY_SLOTS, type EquippedAccessories } from './accessories/types'
 // (glasses/hats/face/neck/back/handheld — see src/avatar/accessories/). At most
 // one item per slot; all slots can be worn at once. Item ids resolve to the
 // accessory catalog; normalizeAvatar drops any unknown / slot-mismatched id.
-export const AVATAR_SCHEMA_VERSION = 4
+export const AVATAR_SCHEMA_VERSION = 5
 
 export type BodyType = 'male' | 'female'
 
@@ -156,7 +154,7 @@ export const TOPS: GarmentOption[] = [
   { id: 'hoodie', name: 'Hoodie', hex: '#34507a' },
   { id: 'jacket', name: 'Jacket', hex: '#4a4f5c' },
   { id: 'blazer', name: 'Academic Blazer', hex: '#243049' },
-  { id: 'robe', name: 'Scholar Robe', hex: '#5a3a8a' },
+  { id: 'robe', name: 'Scholar Robe', hex: '#2a1a3a' },
 ]
 
 // Skirt removed: clothing determines appearance, not body type, and no body type
@@ -241,7 +239,12 @@ const LEGACY_HAIR: Record<string, string> = {
  *  retired cosmetic ids (legacy hair names, the removed `skirt`) onto valid
  *  current ids so old saves never render a missing/floating cosmetic. */
 export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined): AvatarConfig {
+  const prev = input?.v ?? 0
   const merged = { ...DEFAULT_AVATAR, ...(input ?? {}), v: AVATAR_SCHEMA_VERSION }
+
+  // v5: force-clear accessories from older saves (they were stored from
+  // exploratory sessions and show unwanted pencil/cap on every load).
+  if (prev < 5) merged.accessories = {}
 
   // hair: map legacy ids, then ensure the result is in this body's library.
   const mappedHair = LEGACY_HAIR[merged.hair] ?? merged.hair
@@ -416,7 +419,47 @@ export function torusGeo(radius: number, tube: number): BufferGeometry {
  */
 export function latheGeo(profile: Array<[number, number]>): BufferGeometry {
   const key = `lat:${profile.map((p) => `${p[0].toFixed(3)},${p[1].toFixed(3)}`).join('|')}`
-  return cachedGeo(key, () => new LatheGeometry(profile.map(([x, y]) => new Vector2(x, y)), 48))
+  return cachedGeo(key, () => buildLathe(profile))
+}
+
+function buildLathe(profile: Array<[number, number]>): BufferGeometry {
+  const seg = 48
+  const n = profile.length
+  const pos: number[] = []
+  const idx: number[] = []
+
+  for (const [r, y] of profile) {
+    for (let i = 0; i < seg; i++) {
+      const a = (i / seg) * Math.PI * 2
+      pos.push(r * Math.cos(a), y, r * Math.sin(a))
+    }
+  }
+
+  for (let ri = 0; ri < n - 1; ri++) {
+    const a0 = ri * seg
+    const a1 = (ri + 1) * seg
+    for (let i = 0; i < seg; i++) {
+      const j = (i + 1) % seg
+      idx.push(a0 + i, a1 + i, a1 + j, a0 + i, a1 + j, a0 + j)
+    }
+  }
+
+  const [bx, by] = profile[0]
+  const bC = pos.length / 3
+  pos.push(0, by, 0)
+  for (let i = 0; i < seg; i++) idx.push(bC, (i + 1) % seg, i)
+
+  const [tx, ty] = profile[n - 1]
+  const tStart = (n - 1) * seg
+  const tC = pos.length / 3
+  pos.push(0, ty, 0)
+  for (let i = 0; i < seg; i++) idx.push(tC, tStart + i, tStart + ((i + 1) % seg))
+
+  const g = new BufferGeometry()
+  g.setAttribute('position', new Float32BufferAttribute(pos, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
 }
 
 /**
@@ -486,7 +529,7 @@ function buildTorso(rings: TorsoRing[]): BufferGeometry {
   const topStart = (rings.length - 1) * seg
   const topC = pos.length / 3
   pos.push(0, last.y, last.cz ?? 0)
-  for (let i = 0; i < seg; i++) idx.push(topC, topStart + ((i + 1) % seg), topStart + i)
+  for (let i = 0; i < seg; i++) idx.push(topC, topStart + i, topStart + ((i + 1) % seg))
 
   const g = new BufferGeometry()
   g.setAttribute('position', new Float32BufferAttribute(pos, 3))

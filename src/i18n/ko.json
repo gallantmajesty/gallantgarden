@@ -209,7 +209,6 @@
     "camera": "카메라",
     "firstPerson": "1인칭 (F1)",
     "thirdPerson": "3인칭 (F2)",
-    "frontPerson": "정면 (F3)",
     "lookSensitivity": "시선 민감도",
     "invertMouseY": "마우스 Y축 반전",
     "exitFullscreen": "전체 화면 종료"
@@ -259,7 +258,7 @@
     "publicRealms": "공개 영역",
     "yourAvatar": "나의 아바타",
     "studyCompanion": "학습 동반자",
-    "customize": "_customize",
+    "customize": "사용자 정의",
     "realmCreated": "영역이 만들어졌습니다",
     "shareWithFriends": "친구와 공유하세요.",
     "inviteCode": "초대 코드",
@@ -382,7 +381,7 @@
     "onToday": "오늘 할 일",
     "allTasks": "모든 작업",
     "nothingScheduled": "일정 없음",
-    "nothingScheduleBody": "위에 작업을 기록하거나 작업을 열어 하루를 계획하세요.",
+    "nothingScheduledBody": "위에 작업을 기록하거나 작업을 열어 하루를 계획하세요.",
     "insight": "인사이트",
     "more": "더 보기",
     "habitsToday": "오늘의 습관",
@@ -554,7 +553,7 @@
   },
   "errorBoundary": {
     "title": "일시적인 문제가 발생했습니다",
-    "description": "Focus Lily의 일부에 문제가 발생하여 중지되었습니다. 데이터는 안전합니다 —这只是 화면 문제입니다. 다시 시도하거나 새로고침하여 처음부터 시작할 수 있습니다.",
+    "description": "Focus Lily의 일부에 문제가 발생하여 중지되었습니다. 데이터는 안전합니다 — 이것은 화면 문제입니다. 다시 시도하거나 새로고침하여 처음부터 시작할 수 있습니다.",
     "technicalDetails": "기술적 세부사항",
     "tryAgain": "다시 시도",
     "reload": "새로고침"

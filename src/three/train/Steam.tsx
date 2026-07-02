@@ -11,7 +11,7 @@ import { platformStatus } from '../../lib/train/schedule'
 // rising straight up with a gentle random drift. Only visible while the train is
 // at the platform (boarding phase).
 
-const PER_CHIMNEY = 4
+const PER_CHIMNEY = 2
 
 function Plume({ x, z, line }: { x: number; z: number; line: TrainLine }) {
   const tex = useMemo(makePuff, [])
@@ -28,13 +28,13 @@ function Plume({ x, z, line }: { x: number; z: number; line: TrainLine }) {
         mat.opacity = 0
         return
       }
-      const life = (t * 0.35 + seeds[i]) % 1
-      const y = 4.2 + life * 4.0
-      const driftX = Math.sin(seeds[i] * 100 + t * 0.2) * life * 0.6
-      const driftZ = Math.cos(seeds[i] * 50 + t * 0.15) * life * 0.4
+      const life = (t * 0.3 + seeds[i]) % 1
+      const y = 4.2 + life * 3.0
+      const driftX = Math.sin(seeds[i] * 100 + t * 0.15) * life * 0.4
+      const driftZ = Math.cos(seeds[i] * 50 + t * 0.12) * life * 0.3
       s.position.set(x + driftX, y, z + driftZ)
-      s.scale.setScalar(0.8 + life * 1.8)
-      mat.opacity = Math.max(0, 0.28 * (1 - life * life))
+      s.scale.setScalar(0.5 + life * 1.2)
+      mat.opacity = Math.max(0, 0.18 * (1 - life * life))
     })
   })
 

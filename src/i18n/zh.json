@@ -209,7 +209,6 @@
     "camera": "相机",
     "firstPerson": "第一人称（F1）",
     "thirdPerson": "第三人称（F2）",
-    "frontPerson": "正面（F3）",
     "lookSensitivity": "视角灵敏度",
     "invertMouseY": "反转鼠标 Y 轴",
     "exitFullscreen": "退出全屏"

@@ -11,8 +11,8 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
 import { AuthScreen } from './screens/AuthScreen'
 import { Onboarding } from './screens/Onboarding'
-import { LoadingVeil } from './components/LoadingVeil'
-
+import { Landing } from './screens/public/Landing'
+import { useLobbyReady } from './hooks/useLobbyReady'
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
 const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
 const StickyEntry = lazy(() => import('./screens/StickyEntry').then(m => ({ default: m.StickyEntry })))
@@ -34,6 +34,10 @@ export default function App() {
   const onboarded = useProfile((s) => s.onboarded)
   const profileReady = useProfile((s) => s.ready)
   const location = useLocation()
+
+  // Lobby readiness — preload icons so the intro veil can stay until they're loaded
+  const waitForLobby = useSettings((s) => s.waitForLobbyReady)
+  const lobbyReady = useLobbyReady()
 
   // Apply visual + theme settings app-wide and keep them in sync. Both stores
   // feed the same CSS custom properties, so we re-apply in a fixed order on any
@@ -64,7 +68,7 @@ export default function App() {
   if (window.location.pathname === '/__perf') return <PerfHarness />
 
   // TEMP (calc verify): a no-auth direct mount of the Calculator Hub for visual
-  // checks. Safe to remove — it short-circuits before auth.
+  // checks. Safe to remove — it short-circuts before auth.
   if (window.location.pathname === '/__calc') {
     return (
       <>
@@ -74,29 +78,44 @@ export default function App() {
     )
   }
 
+  const PUBLIC_PATHS = new Set(['/', '/about'])
+  const isPublic = PUBLIC_PATHS.has(location.pathname)
+
   // The opening scene plays over the boot. It cuts the moment the lobby (or auth
   // screen) is ready to paint — i.e. auth has resolved and, if signed in, the
   // profile has loaded — so the video stops "wherever it is" the instant we can
   // open the lobby, just like Clash of Clans.
   const appReady = !loading && (!user || profileReady)
+  const veilReady = appReady && (!waitForLobby || lobbyReady)
+
+  // Public marketing pages render without WebBackground/IntroVeil
+  // Only for unauthenticated users; signed-in users always see the app
+  if (isPublic && !loading && !user) {
+    return (
+      <ErrorBoundary resetKeys={[location.pathname]}>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/about" element={<About />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
 
   // The background is mounted once, above the auth/loading/router branch, so it
   // persists across every navigation and never remounts (zero flash).
   return (
     <>
-      <WebBackground />
-      <IntroVeil ready={appReady} />
-      {loading ? (
-        <LoadingVeil />
-      ) : !user ? (
+      {user && <WebBackground />}
+      {user && <IntroVeil ready={veilReady} />}
+      {loading ? null : !user ? (
         <AuthScreen />
-      ) : !profileReady ? (
-        <LoadingVeil />
-      ) : !onboarded ? (
+      ) : !profileReady ? null : !onboarded ? (
         <Onboarding />
       ) : (
         <ErrorBoundary resetKeys={[location.pathname]}>
-          <Suspense fallback={<LoadingVeil />}>
+          <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Lobby />} />
               <Route path="/sticky" element={<StickyEntry />} />
@@ -105,7 +124,7 @@ export default function App() {
               <Route path="/realm/:code" element={<RealmInvite />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/rooms" element={<RoomsList />} />
-              <Route path="/about" element={<About />} />
+              <Route path="/info" element={<About />} />
               <Route path="/room" element={<Navigate to="/rooms" replace />} />
               <Route path="/room/:id" element={<StudyRoom />} />
               <Route path="/magnet" element={<TaskMagnet />} />

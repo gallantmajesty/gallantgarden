@@ -209,7 +209,6 @@
     "camera": "カメラ",
     "firstPerson": "一人称（F1）",
     "thirdPerson": "三人称（F2）",
-    "frontPerson": "正面（F3）",
     "lookSensitivity": "視点感度",
     "invertMouseY": "マウスY軸を反転",
     "exitFullscreen": "フルスクリーンを終了"

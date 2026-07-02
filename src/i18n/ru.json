@@ -209,7 +209,6 @@
     "camera": "Камера",
     "firstPerson": "Первое лицо (F1)",
     "thirdPerson": "Третье лицо (F2)",
-    "frontPerson": "Вид спереди (F3)",
     "lookSensitivity": "Чувствительность обзора",
     "invertMouseY": "Инвертировать Y мыши",
     "exitFullscreen": "Выйти из полноэкранного режима"

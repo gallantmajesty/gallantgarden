@@ -1,11 +1,9 @@
 // Pure rig description: the bone hierarchy, rest-pose offsets, and proportions.
-// No three.js objects here — just data + math so the same spec drives the creator
-// preview and the in-world avatar, and so the animation layer can reason about
-// bones by name without touching the scene graph.
+// Chibi proportions: big head, short limbs, round body — the Harry Potter
+// magical game aesthetic, not a realistic mannequin.
 
 import { type BodyType } from './config'
 
-// Bone names the animator addresses. Kept small and flat-ish for cheap lookups.
 export type BoneName =
   | 'root'
   | 'hips'
@@ -25,107 +23,101 @@ export type BoneName =
   | 'footR'
 
 /**
- * Per-body-type proportions (in world units at HEIGHT_REF, scale applied later).
- * Limb fields carry a radius at each end so segments taper anatomically
- * (thigh→knee, shoulder→elbow→wrist) instead of reading as uniform capsules.
+ * Chibi proportions: ~3.5 heads tall, oversized head, short stubby limbs,
+ * round torso. Everything reads as soft and huggable, not robotic.
  */
 export interface Proportions {
-  hipsY: number // hip pivot height off the ground (feet at y=0)
+  hipsY: number
   spineLen: number
   chestLen: number
   neckLen: number
   neckR: number
-  headR: number // overall head scale reference
-  shoulderW: number // half-distance between shoulders
-  hipW: number // half-distance between hip sockets
+  headR: number
+  shoulderW: number
+  hipW: number
   upperArm: number
   lowerArm: number
   upperLeg: number
   lowerLeg: number
-  // tapered limb radii
-  shoulderR: number // upper-arm radius at the shoulder
-  elbowR: number // arm radius at the elbow
+  shoulderR: number
+  elbowR: number
   wristR: number
-  thighR: number // leg radius at the hip
+  thighR: number
   kneeR: number
   ankleR: number
-  // torso silhouette
-  chestW: number // half-width across the chest
-  waistW: number // half-width at the waist (narrowing reads as a figure)
-  hipBoneW: number // half-width across the pelvis
-  torsoD: number // torso depth (front-back)
-  bust: number // forward bust projection (0 for male)
+  chestW: number
+  waistW: number
+  hipBoneW: number
+  torsoD: number
+  bust: number
   handLen: number
   footLen: number
 }
 
-// Realistic human proportions (~7.5 heads tall): a proportional adult human
-// with natural body ratios. Korean/Japanese aesthetic: balanced, slim build
-// with natural limb lengths and realistic facial proportions.
+// Chibi male: big round head, compact body, stubby but defined limbs.
 const MALE: Proportions = {
-  hipsY: 0.88,
-  spineLen: 0.2,
-  chestLen: 0.26,
-  neckLen: 0.07,
-  neckR: 0.062,
-  headR: 0.12,
-  shoulderW: 0.19,
-  hipW: 0.095,
-  upperArm: 0.28,
-  lowerArm: 0.25,
-  upperLeg: 0.4,
-  lowerLeg: 0.4,
-  shoulderR: 0.052,
-  elbowR: 0.042,
-  wristR: 0.036,
-  thighR: 0.078,
-  kneeR: 0.058,
-  ankleR: 0.046,
-  chestW: 0.15,
-  waistW: 0.125,
-  hipBoneW: 0.13,
-  torsoD: 0.115,
-  bust: 0,
-  handLen: 0.14,
-  footLen: 0.24,
-}
-
-// Female silhouette: narrower shoulders than male, deeper waist pinch for
-// hourglass figure, wider pelvis. Daintier limbs and smaller head.
-const FEMALE: Proportions = {
-  hipsY: 0.88,
-  spineLen: 0.19,
-  chestLen: 0.24,
-  neckLen: 0.075,
-  neckR: 0.052,
-  headR: 0.115,
-  shoulderW: 0.165,
-  hipW: 0.105,
-  upperArm: 0.26,
-  lowerArm: 0.23,
-  upperLeg: 0.4,
-  lowerLeg: 0.4,
-  shoulderR: 0.045,
+  hipsY: 0.62,
+  spineLen: 0.12,
+  chestLen: 0.18,
+  neckLen: 0.04,
+  neckR: 0.055,
+  headR: 0.165,
+  shoulderW: 0.17,
+  hipW: 0.085,
+  upperArm: 0.17,
+  lowerArm: 0.15,
+  upperLeg: 0.24,
+  lowerLeg: 0.22,
+  shoulderR: 0.048,
   elbowR: 0.038,
   wristR: 0.032,
-  thighR: 0.072,
-  kneeR: 0.052,
-  ankleR: 0.042,
-  chestW: 0.13,
-  waistW: 0.1,
-  hipBoneW: 0.15,
-  torsoD: 0.105,
-  bust: 0.055,
-  handLen: 0.12,
-  footLen: 0.22,
+  thighR: 0.065,
+  kneeR: 0.048,
+  ankleR: 0.038,
+  chestW: 0.135,
+  waistW: 0.115,
+  hipBoneW: 0.12,
+  torsoD: 0.1,
+  bust: 0,
+  handLen: 0.1,
+  footLen: 0.18,
+}
+
+// Chibi female: same big head, slightly narrower shoulders, wider hips,
+// softer waist pinch, subtle bust.
+const FEMALE: Proportions = {
+  hipsY: 0.62,
+  spineLen: 0.11,
+  chestLen: 0.17,
+  neckLen: 0.045,
+  neckR: 0.048,
+  headR: 0.16,
+  shoulderW: 0.15,
+  hipW: 0.095,
+  upperArm: 0.16,
+  lowerArm: 0.14,
+  upperLeg: 0.24,
+  lowerLeg: 0.22,
+  shoulderR: 0.042,
+  elbowR: 0.034,
+  wristR: 0.028,
+  thighR: 0.06,
+  kneeR: 0.044,
+  ankleR: 0.035,
+  chestW: 0.12,
+  waistW: 0.098,
+  hipBoneW: 0.13,
+  torsoD: 0.095,
+  bust: 0.04,
+  handLen: 0.085,
+  footLen: 0.16,
 }
 
 export function proportionsFor(bodyType: BodyType): Proportions {
   return bodyType === 'female' ? FEMALE : MALE
 }
 
-/** Uniform scale that maps a config height (cm) onto the rig built at HEIGHT_REF.
- *  Fixed at 1.0 so all avatars are the same height. */
+/** Uniform scale — fixed at 1.0 so all avatars are the same height. */
 export function heightScale(_heightCm: number): number {
   return 1.0
 }

@@ -209,7 +209,6 @@
     "camera": "Kamera",
     "firstPerson": "Birinci (F1)",
     "thirdPerson": "Üçüncü (F2)",
-    "frontPerson": "Ön (F3)",
     "lookSensitivity": "Bakış hassasiyeti",
     "invertMouseY": "Fare Y eksenini ters çevir",
     "exitFullscreen": "Tam ekrandan çık"

@@ -42,7 +42,7 @@ class ErrorBoundaryBase extends Component<Props, State> {
     return (
       <div className="eb-root" role="alert">
         <div className="eb-card">
-          <img className="eb-logo" src="/icons/lotus.png" alt="" width={56} height={56} />
+          <img className="eb-logo" src="/icons/focus-lily-logo.png" alt="" width={56} height={56} />
           <h1>{t('errorBoundary.title')}</h1>
           <p>{t('errorBoundary.description')}</p>
           <details className="eb-details">

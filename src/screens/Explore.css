@@ -18,6 +18,7 @@
   position: absolute;
   inset: 0;
   z-index: 30;
+  background: #0d0a07;
 }
 
 /* ---------- experimental realm: under-development wall ---------- */
@@ -266,7 +267,7 @@
 
 /* ---------- camera view switch (horizontal, docked at the bottom-left) ----------
    Moved to the bottom-left corner so the left-middle edge is free for the
-   friends/chat tab. First · Front · Third sit in a compact horizontal rail. */
+   friends/chat tab. First · Third sit in a compact horizontal rail. */
 .explore-cam {
   position: absolute;
   left: 18px;

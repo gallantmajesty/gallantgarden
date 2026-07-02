@@ -110,3 +110,24 @@
   .ls-head h2  { font-size: 18px; }
   .ls-scroll   { padding: 14px 16px; }
 }
+
+/* ---- RTL support for LobbySettings panel ---- */
+[dir="rtl"] .ls-backdrop {
+  justify-content: flex-start;
+}
+[dir="rtl"] .ls-panel {
+  border-left: none;
+  border-right: 3px solid rgba(202, 168, 74, 0.5);
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.5);
+  animation-name: ls-slide-in-rtl;
+}
+@keyframes ls-slide-in-rtl {
+  from { transform: translateX(-40px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+[dir="rtl"] .ls-lang-btn {
+  text-align: right;
+}
+[dir="rtl"] .ls-section-title {
+  text-align: right;
+}

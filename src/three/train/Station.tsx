@@ -342,6 +342,17 @@ export function Station() {
           <boxGeometry args={[shed.width + 0.4, 9, 0.4]} />
         </mesh>
       ))}
+      {/* fill walls below the south gable — bridging concourse-to-shed width step
+          so no sky leaks through the east/west side gaps */}
+      {[
+        { x: (CONCOURSE.maxX + shed.eastX) / 2, w: shed.eastX - CONCOURSE.maxX },
+        { x: (shed.westX + CONCOURSE.minX) / 2, w: CONCOURSE.minX - shed.westX },
+      ].map((seg, i) => (
+        <mesh key={`gfill${i}`} position={[seg.x, (CANOPY_H - 1) / 2, PLAT_Z0 - 0.1]}
+              receiveShadow material={MAT.brickDark()}>
+          <boxGeometry args={[seg.w, CANOPY_H - 1, 0.4]} />
+        </mesh>
+      ))}
       {/* thin glazed clerestory mullions reading as roof ribs on the underside */}
       <InstancedShape items={mullionItems} color={palette.iron.getStyle()} metalness={0.5} roughness={0.6}>
         <boxGeometry args={[1, 0.18, 0.18]} />

@@ -7,7 +7,7 @@ export const joystick = { x: 0, y: 0, jump: false }
  * True when the user is currently typing into a text field, textarea, select,
  * contenteditable region, or any element that has opted out of world hotkeys via
  * `data-no-hotkeys`. While this is true the world interaction/movement hotkeys
- * (E to sit/stand, WASD, Space, F1/F2/F3, …) must be ignored so the keystroke
+ * (E to sit/stand, WASD, Space, F1/F2, …) must be ignored so the keystroke
  * reaches the input instead — the experience is a productivity app first, a game
  * second. Pointer drag-to-look is unaffected.
  */

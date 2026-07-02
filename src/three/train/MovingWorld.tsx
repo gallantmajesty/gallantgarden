@@ -326,15 +326,25 @@ function MountainRange({ theme }: { theme: Theme }) {
   )
 }
 
-export function MovingWorld({ line, paused }: { line: TrainLine; paused?: boolean }) {
+export function MovingWorld({ line, paused, decelerating }: { line: TrainLine; paused?: boolean; decelerating?: boolean }) {
   const theme = useMemo(() => themeFor(line), [line])
   const chunk = useMemo(() => buildChunk(line.platform * 977 + 13), [line.platform])
   const aRef = useRef<Group>(null)
   const bRef = useRef<Group>(null)
   const scroll = useRef(0)
+  const decelFactor = useRef(1)
 
   useFrame((_, dt) => {
-    if (!paused) scroll.current += dt * SPEED
+    if (!paused || decelerating) {
+      // During arrival deceleration, ease speed from 1 to 0 over 10 seconds
+      if (decelerating) {
+        decelFactor.current = Math.max(0, decelFactor.current - dt / 10)
+        scroll.current += dt * SPEED * decelFactor.current
+      } else {
+        decelFactor.current = 1
+        scroll.current += dt * SPEED
+      }
+    }
     const s = scroll.current
     if (aRef.current) aRef.current.position.z = -((s % CHUNK))
     if (bRef.current) bRef.current.position.z = -((s % CHUNK)) + CHUNK

@@ -4,6 +4,21 @@
   overflow: hidden;
 }
 
+/* Mobile: allow vertical scroll */
+@media (max-width: 640px) {
+  .lobby-root {
+    height: auto;
+    min-height: 100svh;
+    overflow: visible;
+  }
+  #root {
+    overflow: visible;
+  }
+  body {
+    overflow: visible;
+  }
+}
+
 /* ---- top bars ---- */
 .lobby-topleft {
   position: absolute;
@@ -92,40 +107,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Web Customization — premium glass pill in the top bar */
-.lobby-webcustom {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 16px 0 13px;
-  border-radius: 999px;
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 14px;
-  letter-spacing: 0.2px;
-  color: var(--wood-dark);
-  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
-}
-.lobby-webcustom .glyph {
-  width: 20px;
-  height: 20px;
-  color: var(--accent-dark);
-}
-.lobby-webcustom:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--glass-shadow-hover);
-  filter: brightness(1.04);
-}
-.lobby-webcustom:active {
-  transform: translateY(1px);
 }
 
 .lobby-round {
@@ -472,27 +453,205 @@
 
 /* ---- Mobile responsive ---- */
 @media (max-width: 640px) {
-  .lobby-topleft { top: 12px; left: 12px; gap: 6px; }
-  .lobby-topright { top: 12px; right: 12px; gap: 6px; }
-  .lobby-xp { padding: 4px 12px 4px 4px; }
-  .lobby-xp__medal { width: 36px; height: 36px; }
-  .lobby-xp__name { font-size: 12px; max-width: 100px; }
-  .lobby-webcustom { height: 36px; padding: 0 12px 0 10px; font-size: 12px; }
-  .lobby-webcustom .glyph { width: 16px; height: 16px; }
-  .lobby-round { width: 44px; height: 44px; border-radius: 12px; }
-  .lobby-round .glyph { width: 20px; height: 20px; }
-  .lobby-stage { padding: 70px 16px env(safe-area-inset-bottom, 16px); gap: 20px; }
-  .lobby-welcome h1 { font-size: 28px; margin: 6px 0 2px; }
-  .lobby-welcome__name { padding: 4px 18px 6px; font-size: 14px; }
-  .lobby-objects { gap: 12px; max-width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-  .lobby-object { width: 100%; max-width: 360px; padding: 16px 12px 14px; }
-  .lobby-object-orb { width: 64px; height: 64px; margin-bottom: 8px; }
-  .lobby-object-orb .glyph { width: 30px; height: 30px; }
-  .lobby-object-orb .png-icon { width: 50px; height: 50px; }
-  .lobby-object-label { font-size: 16px; }
-  .lobby-object-caption { font-size: 11.5px; }
-  /* glow effect on touch for cards */
-  .lobby-object:active::before { opacity: 1; }
+  /* --- Reset layout for scrollable single-column --- */
+  .lobby-root {
+    height: auto;
+    min-height: 100svh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* --- Top bar: compact single row --- */
+  .lobby-topleft { top: 10px; left: 10px; gap: 6px; z-index: 20; }
+  .lobby-topright { top: 10px; right: 10px; gap: 6px; z-index: 20; }
+  .lobby-xp {
+    padding: 4px 10px 4px 4px;
+    background: rgba(16, 20, 28, 0.7);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .lobby-xp__medal { width: 32px; height: 32px; }
+  .lobby-xp__name { font-size: 11px; max-width: 80px; }
+  .lobby-round {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(16, 20, 28, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .lobby-round .glyph { width: 18px; height: 18px; }
+
+  /* --- Stage: scrollable, top-aligned --- */
+  .lobby-stage {
+    position: relative;
+    padding: 72px 16px 32px;
+    gap: 24px;
+    justify-content: flex-start;
+    min-height: 100svh;
+  }
+
+  /* --- Welcome: blush softness --- */
+  .lobby-welcome h1 {
+    font-size: 24px;
+    margin: 4px 0 2px;
+    text-shadow: 0 1px 8px rgba(255, 200, 200, 0.5), 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+  .lobby-welcome__name {
+    padding: 4px 16px 6px;
+    font-size: 13px;
+    background: linear-gradient(135deg, rgba(255, 180, 180, 0.15), rgba(255, 220, 200, 0.08));
+    border: 1px solid rgba(255, 200, 200, 0.25);
+    box-shadow: 0 2px 10px rgba(255, 180, 180, 0.12);
+    animation: none;
+  }
+  .lobby-welcome__name::before { display: none; }
+  .lobby-welcome p {
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-shadow: none;
+  }
+
+  /* --- Cards: single column, staggered left/right --- */
+  .lobby-objects {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 100%;
+    padding: 0 4px;
+  }
+
+  .lobby-object {
+    width: 100%;
+    max-width: 340px;
+    padding: 16px 14px 14px;
+    border-radius: 18px;
+    /* blush glass aesthetic */
+    background: linear-gradient(
+      145deg,
+      rgba(255, 240, 235, 0.85),
+      rgba(255, 225, 220, 0.65)
+    );
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 200, 190, 0.4);
+    box-shadow:
+      0 4px 16px rgba(180, 120, 110, 0.12),
+      0 1px 3px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    text-align: left;
+    animation: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+  }
+
+  /* stagger: odd cards left, even cards right */
+  .lobby-object:nth-child(odd) {
+    align-self: flex-start;
+    margin-left: 0;
+    margin-right: auto;
+  }
+  .lobby-object:nth-child(even) {
+    align-self: flex-end;
+    margin-left: auto;
+    margin-right: 0;
+  }
+
+  /* subtle blush glow on press */
+  .lobby-object::before {
+    display: none;
+  }
+  .lobby-object:active {
+    transform: scale(0.97);
+    box-shadow:
+      0 2px 8px rgba(180, 120, 110, 0.18),
+      0 0 20px rgba(255, 180, 170, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  /* --- Orb: flat, no float animation --- */
+  .lobby-object-orb {
+    width: 56px;
+    height: 56px;
+    margin: 0 0 10px 0;
+    border-radius: 14px;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 200, 190, 0.3),
+      rgba(255, 180, 170, 0.15)
+    );
+    border: 1px solid rgba(255, 200, 190, 0.3);
+    box-shadow: none;
+    animation: none;
+  }
+  .lobby-object-orb .glyph { width: 28px; height: 28px; }
+  .lobby-object-orb .png-icon { width: 44px; height: 44px; }
+
+  .lobby-object-label {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--wood-dark);
+  }
+  .lobby-object-caption {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 1px;
+  }
+
+  /* --- Soon tag: blush pill --- */
+  .lobby-soon-tag,
+  .lobby-object .lobby-soon-tag {
+    background: rgba(180, 120, 110, 0.2);
+    color: var(--wood-dark);
+    border: 1px solid rgba(180, 120, 110, 0.2);
+  }
+
+  /* --- Disable all transition animations on mobile --- */
+  .lobby-stage--transitioning { pointer-events: auto; }
+  .lobby-stage--transitioning .lobby-welcome { animation: none; }
+  .lobby-obj--exit-left,
+  .lobby-obj--exit-right,
+  .lobby-obj--emit,
+  .lobby-obj--card-fade {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .lobby-transition-overlay { display: none !important; }
+  .rank-transition-overlay { display: none !important; }
+
+  /* --- Interact panel: full width bottom sheet on mobile --- */
+  .ls-backdrop {
+    align-items: flex-end;
+    justify-content: initial;
+  }
+  .ls-panel {
+    width: 100%;
+    max-height: 80vh;
+    border-radius: 20px 20px 0 0;
+    border-left: none;
+    border-top: 3px solid rgba(202, 168, 74, 0.5);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+    animation: ls-sheet-up 0.25s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  @keyframes ls-sheet-up {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  [dir="rtl"] .ls-panel {
+    border-left: none;
+    border-right: none;
+    border-top: 3px solid rgba(202, 168, 74, 0.5);
+  }
+
+  /* --- Mobile page entry: subtle fade-in --- */
+  .lobby-stage {
+    animation: mobile-lobby-in 0.35s ease both;
+  }
+  @keyframes mobile-lobby-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 }
 
 .glyph {
@@ -754,6 +913,14 @@
 :root[data-animations='off'] .lobby-stage--transitioning .lobby-welcome,
 :root[data-animations='off'] .lobby-transition--ultra::before {
   animation-duration: 0.001ms !important;
+}
+
+/* Mobile: kill all card/orb animations, disable glow, disable floaty */
+@media (max-width: 640px) {
+  .lobby-object { animation: none !important; }
+  .lobby-object-orb { animation: none !important; }
+  .lobby-welcome__name { animation: none !important; }
+  .lobby-welcome__name::before { display: none !important; }
 }
 
 /* ============================================================

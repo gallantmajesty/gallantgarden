@@ -1,0 +1,5 @@
+export { useWoodPanelMaterial, useWallpaperMaterial } from './WoodMaterial'
+export { useVelvetMaterial } from './VelvetMaterial'
+export { useBrassMaterial, useBrassDarkMaterial, useBrassBrightMaterial } from './BrassMaterial'
+export { useCarpetMaterial, useAisleRunnerMaterial } from './CarpetMaterial'
+export { useGlassMaterial, makeRainDroplets, makeFrostTexture } from './GlassMaterial'

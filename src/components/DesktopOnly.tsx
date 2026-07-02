@@ -99,7 +99,7 @@ export function DesktopOnly() {
         <h1>{t('desktopOnly.title')}</h1>
         <p>{t('desktopOnly.description')}</p>
         <p className="desktop-only-sub">{t('desktopOnly.subDescription')}</p>
-        <img className="desktop-only-lotus" src="/icons/lotus.png" alt="" width={40} height={40} />
+        <img className="desktop-only-lotus" src="/icons/focus-lily-logo.png" alt="" width={40} height={40} />
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 import { Component, Suspense, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette, N8AO, DepthOfField, GodRays } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Vignette, N8AO, GodRays } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
 import { useSettings } from '../../store/settings'
@@ -85,7 +85,6 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
-      onCreated={() => onReady?.()}
     >
       {/* Auto-resolution governor: when the frame rate drops below the healthy
           band we shed pixels; when it recovers we add them back. Keeps motion
@@ -97,7 +96,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       {govReady && (
         <PerformanceMonitor
           bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
-          flipflops={3}
+          flipflops={1}
           factor={1}
           onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
           onFallback={() => setDpr(dprFloor)}
@@ -112,6 +111,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         <Suspense fallback={null}>
           <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
+          <SceneReady onReady={onReady} />
         </Suspense>
       </SoftBoundary>
 
@@ -164,9 +164,8 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
             <N8AO key="ao" aoRadius={1.4} distanceFalloff={1} intensity={2.2} quality="medium" halfRes />,
             <Bloom key="bloom" luminanceThreshold={0.7} luminanceSmoothing={0.3} intensity={0.6} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
             sunReady ? (
-              <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={60} density={0.92} decay={0.92} weight={0.4} exposure={0.5} clampMax={1} blur />
+              <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={60} density={0.92} decay={0.92} weight={0.4} exposure={0.5} clampMax={1} />
             ) : null,
-            cameraMode === 'first' ? <DepthOfField key="dof" focusDistance={0.012} focalLength={0.04} bokehScale={3} /> : null,
             <Vignette key="vig" eskil={false} offset={0.14} darkness={0.85} />,
           ].filter(Boolean) as ReactElement[]}
         </EffectComposer>
@@ -250,6 +249,17 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
       }
     })
   }, [anisotropy, gl, scene])
+  return null
+}
+
+/**
+ * Fires onReady once it mounts — which only happens after Suspense resolves
+ * DayNightWeather + Exterior. This prevents the explore-veil from disappearing
+ * while the scene is still partially black.
+ */
+function SceneReady({ onReady }: { onReady?: () => void }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onReady?.() }, [])
   return null
 }
 

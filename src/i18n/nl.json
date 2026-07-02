@@ -209,7 +209,6 @@
     "camera": "Camera",
     "firstPerson": "Eerste (F1)",
     "thirdPerson": "Derde (F2)",
-    "frontPerson": "Voorkant (F3)",
     "lookSensitivity": "Kijkgevoeligheid",
     "invertMouseY": "Muis Y omkeren",
     "exitFullscreen": "Volledig scherm afsluiten"

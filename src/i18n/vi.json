@@ -209,7 +209,6 @@
     "camera": "Camera",
     "firstPerson": "Thứ nhất (F1)",
     "thirdPerson": "Thứ ba (F2)",
-    "frontPerson": "Phía trước (F3)",
     "lookSensitivity": "Độ nhạy nhìn",
     "invertMouseY": "Đảo trục Y chuột",
     "exitFullscreen": "Thoát toàn màn hình"

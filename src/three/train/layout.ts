@@ -205,7 +205,7 @@ export function platformLanterns(i: number): { pos: [number, number, number] }[]
 /** Platform seating. The platform spine is kept CLEAR for walking — seating
  *  lives only in the train and in the concourse corners — so this is empty by
  *  design (kept as a function so callers/colliders need no change). */
-export function platformBenches(_i: number): { pos: [number, number, number]; yaw: number }[] {
+export function platformBenches(): { pos: [number, number, number]; yaw: number }[] {
   return []
 }
 
@@ -324,4 +324,24 @@ export function platformRailings(): { pos: [number, number, number]; yaw: number
     }
   })
   return out
+}
+
+/** Fire hydrants — placed near the concourse entrance and platform mouths. */
+export function fireHydrants(): { pos: [number, number, number] }[] {
+  return [
+    { pos: [-14, 0, -38] },
+    { pos: [14, 0, -38] },
+    { pos: [-30, 0, -4] },
+    { pos: [30, 0, -4] },
+  ]
+}
+
+/** Newspaper stands — placed near benches in the concourse. */
+export function newspaperStands(): { pos: [number, number, number]; yaw: number }[] {
+  return [
+    { pos: [28, 0, -16], yaw: -Math.PI / 2 },
+    { pos: [-28, 0, -16], yaw: Math.PI / 2 },
+    { pos: [6, 0, -40], yaw: 0 },
+    { pos: [-6, 0, -40], yaw: 0 },
+  ]
 }

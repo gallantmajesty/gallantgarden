@@ -70,6 +70,8 @@ export interface RewardContext {
   priorLineIds: Set<string>
   /** current focus streak in days, after this journey counts */
   streakDays: number
+  /** true if the player is in a window seat (col 0 or 3) */
+  windowSeat: boolean
 }
 
 const LINE_ACHIEVEMENTS: Record<string, AchievementDef> = {
@@ -101,9 +103,18 @@ export function computeReward(line: TrainLine, ctx: RewardContext): JourneyRewar
     achievements.push({ id: 'train-streak-7', title: 'Seven Days On Rails', detail: 'A 7-day journey streak.', icon: 'fire' })
   }
 
+  let xp = xpFor(line.minutes)
+  let coins = coinsFor(line.minutes)
+
+  // Window seat bonus: +10% XP and coins for scenic seats
+  if (ctx.windowSeat) {
+    xp = Math.round(xp * 1.1)
+    coins = Math.round(coins * 1.1)
+  }
+
   return {
-    xp: xpFor(line.minutes),
-    coins: coinsFor(line.minutes),
+    xp,
+    coins,
     tickets: ticketsFor(line.minutes),
     distanceKm: distanceFor(line.minutes),
     achievements: achievements.filter(Boolean),

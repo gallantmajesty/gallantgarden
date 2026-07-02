@@ -10,6 +10,7 @@ import { setLocalState } from '../../multiplayer/net'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
 import { useAvatar } from '../../avatar/store'
+import { updateFrustum } from './optimization/CullingManager'
 
 // Standing EYE height (same as station walking).
 const STAND_EYE = 1.58
@@ -28,7 +29,9 @@ export function InteriorController() {
   const seatIndex = useTrain((s) => s.seat)
   const seated = seatIndex !== null
   const phase = useTrain((s) => s.phase)
+  const departureSec = useTrain((s) => s.departureSec)
   const prevPhase = useRef(phase)
+  const prevDepartureRef = useRef(departureSec)
 
   // Shared drag-look state for both standing and seated modes.
   const view = useRef({ yaw: VESTIBULE.yaw, pitch: 0.05, zoom: 3.0, camDist: 3.0 })
@@ -80,7 +83,7 @@ export function InteriorController() {
     }
   }, [gl, seated])
 
-  // ── keyboard: WASD + E-to-sit + camera mode hotkeys ────────────────────
+  // ── keyboard: WASD + E-to-sit + E-to-exit + camera mode hotkeys ────────
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -88,14 +91,22 @@ export function InteriorController() {
       keys.current[e.code] = true
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.code === 'Digit1') useSettings.getState().set('cameraMode', 'first')
-        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'front')
-        if (e.code === 'Digit3') useSettings.getState().set('cameraMode', 'third')
+        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'third')
       }
-      // E → sit down when standing near an empty seat
-      if (e.code === 'KeyE' && !seated) {
-        const near = findNearestSeat(stand.current.x, stand.current.z, seats, 1.5)
-        if (near && !isSeatTaken(near.seat.id)) {
-          useTrain.getState().sitDown(near.seat.id)
+      if (e.code === 'KeyE') {
+        const train = useTrain.getState()
+        const seatedLocal = train.seat != null
+        // E → exit train when near the door (during departure countdown)
+        if (!seatedLocal && train.departureSec > 0 && stand.current.z < -10) {
+          train.exitTrain()
+          return
+        }
+        // E → sit down when standing near an empty seat
+        if (!seatedLocal) {
+          const near = findNearestSeat(stand.current.x, stand.current.z, seats, 1.5)
+          if (near && !isSeatTaken(near.seat.id)) {
+            train.sitDown(near.seat.id)
+          }
         }
       }
     }
@@ -109,7 +120,7 @@ export function InteriorController() {
       window.removeEventListener('keyup', up)
       window.removeEventListener('focusin', clearHeld)
     }
-  }, [seated, seats])
+  }, [seats])
 
   // ── standing mode camera/movement update ──────────────────────────────
 
@@ -147,28 +158,29 @@ export function InteriorController() {
     const headY = STAND_EYE
     const cp = Math.cos(v.pitch)
     const mode = s.cameraMode
+    const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
 
     if (mode === 'first') {
       const bobY = Math.sin(st.bob * 9) * (moving ? 0.04 : 0)
       cam.position.set(st.x, headY + bobY, st.z)
       cam.rotation.set(v.pitch, v.yaw, 0)
     } else {
-      const dir = mode === 'front' ? 1 : -1
-      const dist = mode === 'front' ? 4.2 : MathUtils.clamp(v.zoom, 1.8, 6)
+      const dir = -1
+      const dist = MathUtils.clamp(v.zoom, 1.8, 6)
       const fx = -Math.sin(v.yaw) * cp
       const fy = Math.sin(v.pitch) + 0.32
       const fz = -Math.cos(v.yaw) * cp
       v.camDist = MathUtils.lerp(v.camDist, dist, 1 - Math.pow(0.0001, dt))
       cam.position.set(st.x + fx * dir * v.camDist, Math.max(0.5, headY + fy * dir * v.camDist), st.z + fz * dir * v.camDist)
-      if (mode === 'front') cam.rotation.set(-v.pitch, v.yaw + Math.PI, 0)
-      else cam.lookAt(st.x, headY - 0.1, st.z)
+      cam.rotation.set(v.pitch, v.yaw, 0)
     }
 
     // Avatar.
     if (av) {
-      av.visible = mode !== 'first'
+      const isDragging = drag.current.on
+      av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       av.position.set(st.x, 0, st.z)
-      av.rotation.y = v.yaw
+      av.rotation.y = v.yaw + Math.PI
       const l = loco.current
       l.seated = false
       l.speed = moving ? AISLE_WALK_SPEED : 0
@@ -202,10 +214,9 @@ export function InteriorController() {
     const seat = seats[Math.min(seatIndex ?? 0, seats.length - 1)] ?? seats[0]
     if (!seat) return
 
-    // ── Window auto-pan: trigger on traveling transition ──
-    if (phase === 'traveling' && prevPhase.current !== 'traveling') {
-      // Determine window direction from seat column
-      const lookLeft = seat.col <= 1 // cols 0,1 = left side
+    // ── Window auto-pan: trigger when the real journey starts (departure ends) ──
+    if (prevDepartureRef.current > 0 && departureSec === 0 && seated) {
+      const lookLeft = seat.col <= 1
       const windowYaw = lookLeft ? -Math.PI / 2 : Math.PI / 2
       autoPan.current = {
         active: true,
@@ -216,6 +227,7 @@ export function InteriorController() {
       }
     }
     prevPhase.current = phase
+    prevDepartureRef.current = departureSec
 
     const s = useSettings.getState()
     const v = view.current
@@ -233,13 +245,13 @@ export function InteriorController() {
     }
 
     // Train vibration.
-    const vib = trainPhase === 'traveling' ? 1 : 0.15
+    const vib = (trainPhase === 'traveling' || trainPhase === 'arriving') ? 1 : 0.15
     const shakeX = (Math.sin(t * 37) * 0.006 + Math.sin(t * 1.3) * 0.02) * vib
     const shakeY = Math.sin(t * 41) * 0.005 * vib
     const sway = Math.sin(t * 0.6) * 0.03 * vib
 
-    // Ease seatedness 0→1 on board, 1→0 when arrived (stand up).
-    const seatTarget = trainPhase === 'arrived' ? 0 : 1
+    // Ease seatedness 0→1 on board, 1→0 when arriving/arrived (stand up).
+    const seatTarget = (trainPhase === 'arrived' || trainPhase === 'arriving') ? 0 : 1
     seatedness.current = MathUtils.lerp(seatedness.current, seatTarget, 1 - Math.pow(0.02, dt))
     const eye = MathUtils.lerp(STAND_EYE, SEAT_EYE, seatedness.current)
 
@@ -249,10 +261,12 @@ export function InteriorController() {
     const headY = sy + eye
 
     // Place seated avatar.
+    const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
+    const isDragging = drag.current.on
     if (av) {
       av.position.set(sx, sy, sz)
       av.rotation.y = seat.yaw + Math.PI + sway
-      av.visible = s.cameraMode !== 'first'
+      av.visible = s.cameraMode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       const l = loco.current
       l.seated = true
       l.speed = 0
@@ -289,6 +303,10 @@ export function InteriorController() {
     const cam = camRef.current
     const av = avatarRef.current
     if (!cam) return
+
+    // Update frustum for culling (Three.js handles frustum culling per-mesh,
+    // but this exposes the frustum for any custom culling logic)
+    updateFrustum(cam)
 
     if (!seated) {
       updateStanding(cam, av, state, dt)

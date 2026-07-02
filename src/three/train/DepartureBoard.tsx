@@ -4,6 +4,7 @@ import { CanvasTexture, SRGBColorSpace } from 'three'
 import { departureBoard, statusLabel, type PlatformStatus } from '../../lib/train/schedule'
 import { DEPARTURE_BOARD } from './layout'
 import { palette } from './env'
+import { flipClick } from './audio'
 
 // The great hanging departure board over the platform mouths — a brass-framed
 // dark enamel sign whose rows are a genuine Solari split-flap display: a fixed
@@ -20,7 +21,6 @@ import { palette } from './env'
 // costs nothing.
 
 // ── tunables ────────────────────────────────────────────────────────────────
-const FLIP_SOUND = true // tiny mechanical tick as flaps land (set false to mute)
 const STEP_MS = 36 // how often each flapping tile advances one glyph
 const TARGET_MS = 1000 // how often we re-read the live schedule
 
@@ -122,43 +122,6 @@ function stepCell(cell: Cell): boolean {
 
 // ── flap tick: a faint mechanical click as tiles land ───────────────────────
 // Uses a pre-allocated short noise-buffer click (no per-tick oscillator churn).
-let flapCtx: AudioContext | null = null
-let flapBus: GainNode | null = null
-let flapClickBuf: AudioBuffer | null = null
-
-function initFlapAudio() {
-  if (flapCtx) return
-  const AC =
-    window.AudioContext ??
-    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-  if (!AC) return
-  flapCtx = new AC()
-  flapBus = flapCtx.createGain()
-  flapBus.gain.value = 0.06
-  flapBus.connect(flapCtx.destination)
-  // pre-allocate a tiny broadband click (3ms)
-  const len = Math.ceil(flapCtx.sampleRate * 0.003)
-  flapClickBuf = flapCtx.createBuffer(1, len, flapCtx.sampleRate)
-  const d = flapClickBuf.getChannelData(0)
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.2))
-}
-
-function flapTick() {
-  if (!FLIP_SOUND) return
-  try {
-    initFlapAudio()
-    if (!flapCtx || !flapBus || !flapClickBuf) return
-    if (flapCtx.state === 'suspended') void flapCtx.resume()
-    const src = flapCtx.createBufferSource()
-    src.buffer = flapClickBuf
-    src.connect(flapBus)
-    src.start(flapCtx.currentTime)
-    src.stop(flapCtx.currentTime + 0.005)
-  } catch {
-    /* autoplay blocked or WebAudio unavailable — board still flaps silently */
-  }
-}
-
 // ── canvas painter ──────────────────────────────────────────────────────────
 function makePainter(ctx: CanvasRenderingContext2D, grid: Cell[][], colorsRef: { v: string[][] }) {
   const innerW = W - MARGIN_X * 2
@@ -279,18 +242,15 @@ export function DepartureBoard() {
 
     // advance flapping tiles at a fixed cadence (independent of frame rate)
     stepAcc.current += dt
-    let ticked = false
     while (stepAcc.current >= STEP_MS) {
       stepAcc.current -= STEP_MS
       let moved = 0
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (stepCell(grid[r][c])) moved++
       if (moved > 0) {
         dirty.current = true
-        ticked = true
+        flipClick()
       }
     }
-    if (ticked) flapTick()
-
     if (dirty.current) {
       paint()
       tex.needsUpdate = true

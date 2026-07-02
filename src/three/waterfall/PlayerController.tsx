@@ -25,14 +25,13 @@ const GRAVITY = -19
 const STAND_EYE = 1.62
 const CROUCH_EYE = 1.05
 const THIRD_DIST = 5.5
-const FRONT_DIST = 4.2
 // the shallow lake + low decks mean a generous step-up feels natural (you wade
 // up onto a deck/bench platform); the elevated Stone Terrace still needs stairs.
 const STEP_UP = 1.1
 
 /**
  * Player controller for the Waterfall Realm. Behaviourally identical to the
- * Library's (first/third/front camera, gravity, jump, drag-look, wheel zoom,
+ * Library's (first/third camera, gravity, jump, drag-look, wheel zoom,
  * seated study-desk orbit, touch joystick) — copied deliberately so the Library
  * stays untouched — but it walks on the continuous terrain HEIGHTFIELD
  * (layout.terrainHeight via colliders.groundAt) plus the raised camp/deck/bridge
@@ -83,15 +82,13 @@ export function PlayerController() {
       keys.current[e.code] = true
       if (e.code === 'F1') useSettings.getState().set('cameraMode', 'first')
       if (e.code === 'F2') useSettings.getState().set('cameraMode', 'third')
-      if (e.code === 'F3') useSettings.getState().set('cameraMode', 'front')
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.code === 'Digit1') useSettings.getState().set('cameraMode', 'first')
-        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'front')
-        if (e.code === 'Digit3') useSettings.getState().set('cameraMode', 'third')
+        if (e.code === 'Digit2') useSettings.getState().set('cameraMode', 'third')
       }
       if (e.code === 'F5') {
         e.preventDefault()
-        const order = ['first', 'front', 'third'] as const
+        const order = ['first', 'third'] as const
         const cur = useSettings.getState().cameraMode
         const next = order[(order.indexOf(cur) + 1) % order.length]
         useSettings.getState().set('cameraMode', next)
@@ -214,7 +211,9 @@ export function PlayerController() {
           cam.position.set(seat.pos[0], headY, seat.pos[2])
           cam.rotation.set(st.pitch, st.yaw, 0)
         } else {
-          if (av) av.visible = true
+          const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
+          const isDragging = drag.current.on
+          if (av) av.visible = !(hideAvatarWhenMovingCamera && isDragging)
           st.yaw = MathUtils.clamp(st.yaw, seat.yaw - Math.PI, seat.yaw + Math.PI)
           st.pitch = MathUtils.clamp(st.pitch, -0.5, 0.55)
           const dist = MathUtils.clamp(st.zoom, 2.4, 6)
@@ -302,14 +301,15 @@ export function PlayerController() {
     const fy = Math.sin(st.pitch)
     const fz = -Math.cos(st.yaw) * cp
     const mode = s.cameraMode
+    const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
 
     if (mode === 'first') {
       const bobY = Math.sin(st.bob * 9) * Math.min(0.04, Math.hypot(st.vx, st.vz) * 0.012)
       cam.position.set(st.x, headY + bobY, st.z)
       cam.rotation.set(st.pitch, st.yaw, 0)
     } else {
-      const dir = mode === 'front' ? 1 : -1
-      const dist = mode === 'front' ? FRONT_DIST : st.zoom
+      const dir = -1
+      const dist = st.zoom
       let ox = fx * dir
       let oy = fy * dir + 0.32
       let oz = fz * dir
@@ -319,20 +319,19 @@ export function PlayerController() {
       oz /= ol
       const hit = rayHit(st.x, headY, st.z, ox, oy, oz, dist + 0.4, collision.blockers)
       const d = Math.min(dist, hit - 0.4)
-      const minDist = mode === 'front' ? 1.6 : 2.8
-      st.camDist = MathUtils.lerp(st.camDist, Math.max(minDist, d), 1 - Math.pow(0.00005, dt))
+      st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
       cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
-      if (mode === 'front') cam.rotation.set(-st.pitch, st.yaw + Math.PI, 0)
-      else cam.rotation.set(st.pitch, st.yaw, 0)
+      cam.rotation.set(st.pitch, st.yaw, 0)
     }
 
     // ---- avatar ----
     const av = avatarRef.current
     if (av) {
-      av.visible = mode !== 'first'
+      const isDragging = drag.current.on
+      av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       av.position.set(st.x, st.y, st.z)
       const prevYaw = av.rotation.y
-      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
+      const dYaw = Math.atan2(Math.sin(st.faceYaw + Math.PI - prevYaw), Math.cos(st.faceYaw + Math.PI - prevYaw))
       av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       const l = loco.current
       l.seated = false

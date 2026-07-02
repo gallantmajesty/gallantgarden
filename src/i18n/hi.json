@@ -209,7 +209,6 @@
     "camera": "Camera",
     "firstPerson": "First (F1)",
     "thirdPerson": "Third (F2)",
-    "frontPerson": "Front (F3)",
     "lookSensitivity": "Dekhne ki sanshveelanata",
     "invertMouseY": "Mouse Y ultaayein",
     "exitFullscreen": "Fullscreen se baahar niklein"

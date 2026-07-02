@@ -21,19 +21,6 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean 
   }
 }
 
-/**
- * The Train Station Realm composer — FocusLily's third flagship world. Like the
- * Library/Waterfall scenes it owns a single Canvas with an auto-resolution
- * governor, live quality/texture sync and a warm bloom+vignette post pass. What's
- * unique: it renders ONE of two worlds depending on the player's journey phase —
- * the walkable Station (browsing/boarding) or the moving TrainRide (traveling/
- * arrived) — swapping the whole scene (and its camera) when you board or arrive.
- *
- * A non-visual <TrainJourneyRuntime/> rides alongside the Canvas to restore an
- * in-flight journey on entry, tick the journey clock once a second, and snapshot
- * state when the tab sleeps — so a journey survives reloads and completes even if
- * the train arrived while you were away.
- */
 export function TrainStationScene({ onReady }: { onReady?: () => void }) {
   const preset = useScenePreset()
   const [dpr, setDpr] = useState(preset.dpr)
@@ -41,7 +28,7 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
   const dprFloor = 0.75
 
   const phase = useTrain((s) => s.phase)
-  const aboard = phase === 'traveling' || phase === 'arrived'
+  const aboard = phase === 'traveling' || phase === 'arriving' || phase === 'arrived'
 
   return (
     <>
@@ -51,11 +38,12 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
         dpr={dpr}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         camera={{ position: [0, 1.6, -34], fov: 72, near: 0.08, far: preset.far }}
-        onCreated={() => onReady?.()}
       >
+        <color attach="background" args={['#1a1209']} />
+        <fog attach="fog" args={['#1a1209', 40, preset.far]} />
         <PerformanceMonitor
           bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
-          flipflops={3}
+          flipflops={1}
           factor={1}
           onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
           onFallback={() => setDpr(dprFloor)}
@@ -65,8 +53,9 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
         <TextureQualitySync anisotropy={preset.anisotropy} />
 
         <SoftBoundary>
-          <Suspense fallback={null}>
+          <Suspense fallback={<TransitionBackdrop />}>
             {aboard ? <TrainRide preset={preset} /> : <StationWorld preset={preset} />}
+            <SceneReady onReady={onReady} />
           </Suspense>
         </SoftBoundary>
 
@@ -108,10 +97,15 @@ function TrainJourneyRuntime() {
     const snapshot = () => {
       if (document.visibilityState === 'hidden') useTrain.getState().markSleep(Date.now())
     }
+    const wake = () => {
+      if (document.visibilityState === 'visible') useTrain.getState().markWake(Date.now())
+    }
     document.addEventListener('visibilitychange', snapshot)
+    document.addEventListener('visibilitychange', wake)
     window.addEventListener('pagehide', snapshot)
     return () => {
       document.removeEventListener('visibilitychange', snapshot)
+      document.removeEventListener('visibilitychange', wake)
       window.removeEventListener('pagehide', snapshot)
     }
   }, [])
@@ -152,4 +146,22 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
     })
   }, [anisotropy, gl, scene])
   return null
+}
+
+function SceneReady({ onReady }: { onReady?: () => void }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onReady?.() }, [])
+  return null
+}
+
+function TransitionBackdrop() {
+  return (
+    <group>
+      <ambientLight intensity={0.15} color="#ffd699" />
+      <mesh position={[0, 1.5, 0]}>
+        <boxGeometry args={[3, 3, 8]} />
+        <meshStandardMaterial color="#3a2a1a" side={2} />
+      </mesh>
+    </group>
+  )
 }

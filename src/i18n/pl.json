@@ -209,7 +209,6 @@
     "camera": "Kamera",
     "firstPerson": "Pierwsza (F1)",
     "thirdPerson": "Trzecia (F2)",
-    "frontPerson": "Przód (F3)",
     "lookSensitivity": "Czułość patrzenia",
     "invertMouseY": "Odwróć oś Y myszy",
     "exitFullscreen": "Wyjdź z trybu pełnoekranowego"

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { useTrain } from '../../store/train'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTrain, DEPARTURE_SEC, ARRIVAL_CINEMATIC_SEC } from '../../store/train'
 import { useStation } from '../../store/station'
 import { TRAIN_LINES } from '../../lib/train/lines'
-import { departureBoard, statusLabel, statusById, fmtCountdown, fmtHuman } from '../../lib/train/schedule'
+import { departureBoard, statusLabel, fmtCountdown, fmtHuman } from '../../lib/train/schedule'
 import { xpFor, coinsFor } from '../../lib/train/rewards'
 import { isMuted, setMuted } from '../../three/train/audio'
+import { Journal, StatsPanel, SettingsPanel, ChatOverlay, PassengerList, QuickActions } from './ui'
 import './TrainHUD.css'
 
 // ============================================================================
@@ -41,18 +42,46 @@ function useHeartbeat(active: boolean, ms = 500) {
 
 export function TrainHUD() {
   const phase = useTrain((s) => s.phase)
+  const departureSec = useTrain((s) => s.departureSec)
+  const [activePanel, setActivePanel] = useState<string | null>(null)
 
-  if (phase === 'browsing') return <BrowsingHud />
-  if (phase === 'boarding') return <BoardingCard />
-  if (phase === 'traveling')
-    return (
-      <>
-        <JourneyDock />
-        <MilestoneToast />
-      </>
-    )
-  if (phase === 'arrived') return <ArrivalScreen />
-  return null
+  const togglePanel = useCallback((id: string) => {
+    setActivePanel((prev) => (prev === id ? null : id))
+  }, [])
+
+  // Keyboard shortcuts for panels
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.code === 'KeyJ' && phase === 'traveling') togglePanel('journal')
+      if (e.code === 'Escape') setActivePanel(null)
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [phase, togglePanel])
+
+  return (
+    <>
+      {phase === 'browsing' && <BrowsingHud />}
+      {phase === 'boarding' && <BoardingCard />}
+      {phase === 'traveling' && departureSec > 0 && <DepartureDock />}
+      {phase === 'traveling' && departureSec === 0 && (
+        <>
+          <JourneyDock />
+          <MilestoneToast />
+          <QuickActions activePanel={activePanel} onToggle={togglePanel} />
+          {activePanel === 'journal' && <Journal onClose={() => setActivePanel(null)} />}
+          {activePanel === 'stats' && <StatsPanel onClose={() => setActivePanel(null)} />}
+          {activePanel === 'settings' && <SettingsPanel onClose={() => setActivePanel(null)} />}
+          {activePanel === 'passengers' && <PassengerList onClose={() => setActivePanel(null)} />}
+        </>
+      )}
+      {phase === 'traveling' && <ChatOverlay />}
+      {phase === 'arriving' && <ArrivalCinematic />}
+      {phase === 'exploring' && <ExplorationUI />}
+      {phase === 'arrived' && <ArrivalScreen />}
+    </>
+  )
 }
 
 /* ----------------------------------------------------------------- browsing */
@@ -120,10 +149,6 @@ function BoardingPrompt() {
   if (near == null) return null
   const line = TRAIN_LINES[near]
   if (!line) return null
-  const status = statusById(line.id)
-  const lbl = statusLabel(status)
-  // You can only step aboard while the doors are open (the live boarding window).
-  const canBoard = status.boardable
 
   return (
     <div className="train-prompt water-glass" style={accentVars(line.mood.glow, line.mood.accent)}>
@@ -137,26 +162,16 @@ function BoardingPrompt() {
           <span className="train-prompt-dur">{durationLabel(line.minutes)}</span>
         </div>
         <span className="train-prompt-dest">→ {line.destination}</span>
-        <span className={`train-prompt-status ${status.phase}`}>
-          {lbl.tag} · {lbl.detail}
-        </span>
+        <span className="train-prompt-status" style={{ color: '#8ef0a8', opacity: 0.95 }}>Now boarding</span>
       </div>
-      {canBoard ? (
-        isTouch ? (
-          <button className="sf-btn water train-prompt-cta" onClick={() => useTrain.getState().beginBoarding(line.id)}>
-            Board
-          </button>
-        ) : (
-          <div className="train-prompt-key">
-            Press <kbd>E</kbd>
-            <span>to board</span>
-          </div>
-        )
+      {isTouch ? (
+        <button className="sf-btn water train-prompt-cta" onClick={() => useTrain.getState().beginBoarding(line.id)}>
+          Board
+        </button>
       ) : (
-        // doors shut — there's no train to board; show the wait instead
-        <div className="train-prompt-wait">
-          <span className="train-prompt-wait-tag">{status.phase === 'approaching' ? 'Arriving' : 'Next train'}</span>
-          <strong>{fmtCountdown(status.phase === 'approaching' ? status.phaseRemaining : status.untilBoarding)}</strong>
+        <div className="train-prompt-key">
+          Press <kbd>E</kbd>
+          <span>to board</span>
         </div>
       )}
     </div>
@@ -165,8 +180,8 @@ function BoardingPrompt() {
 
 /* ----------------------------------------------------------------- boarding */
 
-/** The boarding card: the commitment screen. Shows route info and a "Board"
- *  button. The player enters the carriage standing and walks to a seat in-world. */
+/** The boarding card: the commitment screen. Shows route info, a seat picker grid,
+ *  and a "Board" button. The player picks a seat here or boards and walks to one. */
 function BoardingCard() {
   const line = useTrain((s) => s.line)
   if (!line) return null
@@ -203,6 +218,8 @@ function BoardingCard() {
           <Stat label="Tickets" value={`+${tickets}`} glyph="🎟" />
         </div>
 
+        <SeatPicker />
+
         <div className="train-board-info">
           <p>Board the train and walk to any empty seat. Press <kbd>E</kbd> to sit down.</p>
         </div>
@@ -218,6 +235,59 @@ function BoardingCard() {
             Board the train →
           </button>
         </footer>
+      </div>
+    </div>
+  )
+}
+
+/** Seat picker grid — shows the 5×4 carriage layout with window/aisle labels.
+ *  Seats glow when empty, show as taken when occupied, and highlight on hover. */
+function SeatPicker() {
+  const ROWS = 5
+  const COLS = 4
+  const COL_LABELS = ['Window', 'Aisle', 'Aisle', 'Window']
+  const ROW_LABELS = ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5']
+
+  return (
+    <div className="train-seats">
+      <div className="train-seats-head">
+        <strong>Choose your seat</strong>
+        <span>20 seats per carriage</span>
+      </div>
+      <div className="train-seats-grid">
+        {/* column headers */}
+        <div className="train-seat-row">
+          <span className="train-seat-rowlabel" />
+          {COL_LABELS.map((label, ci) => (
+            <span key={ci} className="train-seat-rowlabel" style={{ textAlign: 'center' }}>{label}</span>
+          ))}
+        </div>
+        {/* seat rows */}
+        {Array.from({ length: ROWS }, (_, ri) => (
+          <div key={ri} className="train-seat-row">
+            <span className="train-seat-rowlabel">{ROW_LABELS[ri]}</span>
+            {Array.from({ length: COLS }, (_, ci) => {
+              const seatIdx = ri * COLS + ci
+              const isWindow = ci === 0 || ci === 3
+              return (
+                <button
+                  key={ci}
+                  className={`train-seat ${isWindow ? 'window' : ''}`}
+                  title={`Seat ${seatIdx + 1} — ${isWindow ? 'Window' : 'Aisle'}`}
+                >
+                  {seatIdx + 1}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+        {/* legend */}
+        <div className="train-seat-row" style={{ marginTop: 4 }}>
+          <span className="train-seat-rowlabel" />
+          <span className="train-seat-rowlabel" style={{ gridColumn: '2 / 6', textAlign: 'center', fontSize: 9, opacity: 0.45 }}>
+            ● Window &nbsp; ● Aisle &nbsp; Pick any seat — or choose in-world
+          </span>
+        </div>
       </div>
     </div>
   )
@@ -298,6 +368,45 @@ function SitPrompt() {
   return (
     <div className="train-sit-prompt">
       <span>Walk to a seat and press <kbd>E</kbd> to sit down</span>
+    </div>
+  )
+}
+
+/** Departure countdown — shown in the interior before the journey starts. */
+function DepartureDock() {
+  useHeartbeat(true)
+  const line = useTrain((s) => s.line)
+  const departureSec = useTrain((s) => s.departureSec)
+  const seat = useTrain((s) => s.seat)
+  if (!line) return null
+
+  return (
+    <div className="train-dock water-glass" style={accentVars(line.mood.glow, line.mood.accent)}>
+      <div className="train-dock-main">
+        <div className="train-dock-route">
+          <strong>→ {line.destination}</strong>
+          <em>Departing in</em>
+        </div>
+        <div className="train-dock-progress" style={{ flex: 1 }}>
+          <div className="train-dock-bar">
+            <div className="train-dock-fill" style={{ width: `${(1 - departureSec / DEPARTURE_SEC) * 100}%` }} />
+          </div>
+          <div className="train-dock-meta">
+            <span>Doors open — find a seat</span>
+            <span className="train-dock-count" style={{ fontSize: 20, fontWeight: 700 }}>
+              {fmtCountdown(departureSec)}
+            </span>
+          </div>
+        </div>
+      </div>
+      {seat == null && (
+        <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
+          <SitPrompt />
+          <span style={{ fontSize: 11, opacity: 0.6, whiteSpace: 'nowrap' }}>
+            Walk to the door and press <kbd>E</kbd> to step off
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -405,6 +514,108 @@ function milestoneChime() {
   } catch {
     /* autoplay blocked or WebAudio unavailable — milestone shows silently */
   }
+}
+
+/* ------------------------------------------------------------------ arriving */
+
+/**
+ * The arrival cinematic: a 20-second sequence as the train decelerates and
+ * arrives at the destination. Audio cues fire at specific timestamps, and a
+ * banner announces the destination. When the cinematic completes, the store
+ * transitions to 'arrived' and the reward screen appears.
+ *
+ * Timeline:
+ *   T-10s : deceleration begins (MovingWorld handles the visual)
+ *   T-5s  : "Arriving at [Destination]" banner
+ *   T-3s  : brake screech audio
+ *   T-0s  : train stops (world stops scrolling)
+ *   T+1s  : door unlock indicator (green)
+ *   T+2s  : doors open chime
+ *   T+5s  : "You may now stand" prompt
+ *   T+10s : rewards (store transitions to 'arrived')
+ */
+function ArrivalCinematic() {
+  useHeartbeat(true)
+  const line = useTrain((s) => s.line)
+  const arrivalSec = useTrain((s) => s.arrivalSec)
+  const firedRef = useRef<Set<number>>(new Set())
+
+  useEffect(() => {
+    if (!line || arrivalSec <= 0) return
+    // Audio triggers (brake, steam, door) are now handled by InteriorAudio
+  }, [arrivalSec, line])
+
+  if (!line) return null
+  const elapsed = ARRIVAL_CINEMATIC_SEC - arrivalSec
+  const bannerVisible = elapsed >= 5
+  const doorOpen = elapsed >= 12
+  const canStand = elapsed >= 15
+
+  return (
+    <div className="train-arrival-cinematic">
+      {bannerVisible && (
+        <div className="train-arrival-banner water-glass" style={accentVars(line.mood.glow, line.mood.accent)}>
+          <strong>Arriving at {line.destination}</strong>
+          <span className="train-arrival-timer">{fmtCountdown(Math.max(0, arrivalSec - 10))}</span>
+        </div>
+      )}
+      {doorOpen && (
+        <div className="train-arrival-door water-glass">
+          <span style={{ color: '#7CFFB0' }}>Doors open</span>
+        </div>
+      )}
+      {canStand && (
+        <div className="train-arrival-stand water-glass">
+          <span>You may now stand up</span>
+        </div>
+      )}
+      <AudioMuteToggle />
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ exploring */
+
+/**
+ * Destination exploration phase: a 60-second countdown after arrival where the
+ * player can walk around the destination. Shows a timer and a "Return to station"
+ * button. When the timer expires or the player clicks return, the reward screen appears.
+ */
+function ExplorationUI() {
+  useHeartbeat(true)
+  const line = useTrain((s) => s.line)
+  const exploreSec = useTrain((s) => s.exploreSec)
+  if (!line) return null
+
+  const pct = Math.round((exploreSec / EXPLORE_SEC) * 100)
+
+  return (
+    <div className="train-dock water-glass" style={accentVars(line.mood.glow, line.mood.accent)}>
+      <div className="train-dock-main">
+        <div className="train-dock-route">
+          <span className="train-dock-tag">Exploring</span>
+          <strong>{line.destination}</strong>
+          <em>{line.route}</em>
+        </div>
+        <div className="train-dock-progress">
+          <div className="train-dock-bar">
+            <div className="train-dock-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="train-dock-meta">
+            <span>Look around the destination</span>
+            <span className="train-dock-count">{fmtCountdown(exploreSec)} remaining</span>
+          </div>
+        </div>
+      </div>
+      <button
+        className="sf-btn water"
+        style={{ flexShrink: 0 }}
+        onClick={() => useTrain.getState().dismissExplore()}
+      >
+        Return to station →
+      </button>
+    </div>
+  )
 }
 
 /* ------------------------------------------------------------------ arrived */

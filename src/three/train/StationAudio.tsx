@@ -22,20 +22,24 @@ import {
 } from './audio'
 
 let _lastFootstep = 0
+let _lastClockTick = 0
 const lastHornRef = { current: 0 }
 const lastPhaseRef = new Map<number, string>()
 
 export function StationAudio() {
-  // tick: footsteps + clock
+  // tick: footsteps + clock tick
   useFrame((_, dt) => {
-    // clock tick once per second
-    if (Math.random() < dt) clockTick() // ~1Hz jittered
-
+    const now = performance.now()
     // footsteps gated by speed (written by StationPlayerController)
     const sp = stationSpeedRef.current
-    if (sp > 1.5 && performance.now() - _lastFootstep > 350 + Math.random() * 150) {
+    if (sp > 1.5 && now - _lastFootstep > 350 + Math.random() * 150) {
       footstep()
-      _lastFootstep = performance.now()
+      _lastFootstep = now
+    }
+    // clock tick once per second
+    if (now - _lastClockTick > 1000) {
+      clockTick()
+      _lastClockTick = now
     }
   })
 

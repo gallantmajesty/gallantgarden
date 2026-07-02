@@ -1,4 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { CanvasTexture, DoubleSide, SRGBColorSpace } from 'three'
 import { palette, glow } from './env'
 import { TRAIN_LINES } from '../../lib/train/lines'
 import { MAT, InstancedShape, type ShapeItem } from './assets'
@@ -19,6 +21,8 @@ import {
   vendingMachines,
   platformTrashCans,
   platformRailings,
+  fireHydrants,
+  newspaperStands,
 } from './layout'
 
 // All the hand-placed dressing that makes the terminus feel lived-in and busy
@@ -212,6 +216,12 @@ export function StationProps({ lanternLights }: { lanternLights: number }) {
         <cylinderGeometry args={[0.38, 0.38, 0.1, 12]} />
       </InstancedShape>
 
+      {/* ---------------- fire hydrants ---------------- */}
+      <FireHydrants />
+
+      {/* ---------------- newspaper stands ---------------- */}
+      <NewspaperStands />
+
       {/* ---------------- platform railings ---------------- */}
       {/* posts */}
       <InstancedShape items={railingPosts} color={palette.iron.getStyle()} metalness={0.6} roughness={0.4} castShadow>
@@ -292,9 +302,139 @@ function Kiosk({ pos, yaw, tint, board }: { pos: [number, number, number]; yaw: 
   )
 }
 
+function FireHydrants() {
+  const hydrants = useMemo(() => fireHydrants(), [])
+  const items = useMemo<ShapeItem[]>(() => hydrants.map((h) => ({ pos: h.pos })), [hydrants])
+  return (
+    <group>
+      {/* body */}
+      <InstancedShape items={items} color={'#cc2222'} roughness={0.6} metalness={0.2} castShadow>
+        <cylinderGeometry args={[0.22, 0.28, 0.7, 8]} />
+      </InstancedShape>
+      {/* top cap */}
+      <InstancedShape items={items} color={'#cc2222'} roughness={0.5} metalness={0.3}>
+        <cylinderGeometry args={[0.18, 0.22, 0.15, 8]} />
+      </InstancedShape>
+      {/* side nozzles */}
+      <InstancedShape items={hydrants.map((h) => ({ pos: [h.pos[0], h.pos[1] + 0.35, h.pos[2]] }))} color={'#aa1a1a'} roughness={0.5} metalness={0.3}>
+        <cylinderGeometry args={[0.08, 0.08, 0.2, 6]} />
+      </InstancedShape>
+    </group>
+  )
+}
+
+function NewspaperStands() {
+  const stands = useMemo(() => newspaperStands(), [])
+  const bodies = useMemo<ShapeItem[]>(() => stands.map((s) => ({ pos: [s.pos[0], 0.6, s.pos[2]], rot: [0, s.yaw, 0] })), [stands])
+  const tops = useMemo<ShapeItem[]>(() => stands.map((s) => ({ pos: [s.pos[0], 1.15, s.pos[2]], rot: [0, s.yaw, 0] })), [stands])
+  return (
+    <group>
+      {/* body — a slanted newspaper rack */}
+      <InstancedShape items={bodies} color={'#3a2a1a'} roughness={0.8} castShadow>
+        <boxGeometry args={[0.8, 1.0, 0.5]} />
+      </InstancedShape>
+      {/* top — angled display surface */}
+      <InstancedShape items={tops} color={'#f0e8d0'} roughness={0.7}>
+        <boxGeometry args={[0.75, 0.06, 0.45]} />
+      </InstancedShape>
+    </group>
+  )
+}
+
+function makeTowerClockFace(): { tex: CanvasTexture; update: () => void } {
+  const c = document.createElement('canvas')
+  c.width = c.height = 256
+  const ctx = c.getContext('2d')!
+  drawTowerClockFace(ctx)
+  drawTowerClockHands(ctx)
+  const tex = new CanvasTexture(c)
+  tex.colorSpace = SRGBColorSpace
+  return {
+    tex,
+    update: () => {
+      drawTowerClockFace(ctx)
+      drawTowerClockHands(ctx)
+      tex.needsUpdate = true
+    },
+  }
+}
+
+function drawTowerClockFace(ctx: CanvasRenderingContext2D) {
+  const w = 256
+  const cx = w / 2
+  const cy = w / 2
+  const r = 120
+  ctx.clearRect(0, 0, w, w)
+  ctx.fillStyle = '#f3ead4'
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = '#1a1a1a'
+  ctx.lineWidth = 6
+  ctx.stroke()
+  ctx.fillStyle = '#1a1a1a'
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2
+    const x = cx + Math.sin(a) * (r - 14)
+    const y = cy - Math.cos(a) * (r - 14)
+    ctx.beginPath()
+    ctx.arc(x, y, i % 3 === 0 ? 6 : 3, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+function drawTowerClockHands(ctx: CanvasRenderingContext2D) {
+  const w = 256
+  const cx = w / 2
+  const cy = w / 2
+  const r = 120
+  const now = new Date()
+  const hours = now.getHours() % 12
+  const minutes = now.getMinutes()
+  const seconds = now.getSeconds()
+  const hourAngle = ((hours + minutes / 60) / 12) * Math.PI * 2
+  ctx.strokeStyle = '#1a1a1a'
+  ctx.lineWidth = 5
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.sin(hourAngle) * r * 0.48, cy - Math.cos(hourAngle) * r * 0.48)
+  ctx.stroke()
+  const minAngle = ((minutes + seconds / 60) / 60) * Math.PI * 2
+  ctx.lineWidth = 3.5
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.sin(minAngle) * r * 0.72, cy - Math.cos(minAngle) * r * 0.72)
+  ctx.stroke()
+  const secAngle = (seconds / 60) * Math.PI * 2
+  ctx.strokeStyle = '#8a2a2a'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.sin(secAngle) * r * 0.78, cy - Math.cos(secAngle) * r * 0.78)
+  ctx.stroke()
+  ctx.fillStyle = '#1a1a1a'
+  ctx.beginPath()
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2)
+  ctx.fill()
+}
+
 function ClockTower() {
   const [x, , z] = CLOCK_TOWER.pos
   const h = CONCOURSE.wallH - 1
+  const clockRef = useRef(makeTowerClockFace())
+  const lastSec = useRef(-1)
+
+  useFrame(() => {
+    const sec = new Date().getSeconds()
+    if (sec !== lastSec.current) {
+      lastSec.current = sec
+      clockRef.current.update()
+    }
+  })
+
+  const faceTex = clockRef.current.tex
+
   return (
     <group position={[x, 0, z]}>
       {/* stone column */}
@@ -313,8 +453,8 @@ function ClockTower() {
       </mesh>
       {[0, Math.PI / 2, Math.PI, -Math.PI / 2].map((a, i) => (
         <mesh key={i} position={[Math.sin(a) * 1.22, h + 0.1, Math.cos(a) * 1.22]} rotation-y={a}>
-          <circleGeometry args={[0.8, 24]} />
-          <meshStandardMaterial color={'#f3ead4'} emissive={'#fff4d8'} emissiveIntensity={0.3} toneMapped={false} />
+          <circleGeometry args={[0.8, 28]} />
+          <meshStandardMaterial map={faceTex} emissiveMap={faceTex} emissive={'#fff4d8'} emissiveIntensity={0.35} toneMapped={false} side={DoubleSide} />
         </mesh>
       ))}
       {/* finial lamp */}

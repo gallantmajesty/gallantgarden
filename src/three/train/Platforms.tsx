@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, DoubleSide, SRGBColorSpace } from 'three'
 import { platforms, PLAT_Z0, PLAT_LEN, CANOPY_H } from './layout'
 import { TRAIN_LINES, type TrainLine } from '../../lib/train/lines'
@@ -58,46 +59,118 @@ function numberTexture(line: TrainLine): CanvasTexture {
   return tex
 }
 
-function clockTexture(): CanvasTexture {
-  const c = document.createElement('canvas')
-  c.width = c.height = 256
-  const ctx = c.getContext('2d')!
+function drawClockFace(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const cx = w / 2
+  const cy = h / 2
+  const r = Math.min(cx, cy) - 4
+  // face
   ctx.fillStyle = '#f3ead4'
   ctx.beginPath()
-  ctx.arc(128, 128, 124, 0, Math.PI * 2)
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.fill()
   ctx.strokeStyle = '#1a1a1a'
-  ctx.lineWidth = 8
+  ctx.lineWidth = 6
   ctx.stroke()
+  // hour markers
   ctx.fillStyle = '#1a1a1a'
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2
-    const x = 128 + Math.sin(a) * 100
-    const y = 128 - Math.cos(a) * 100
+    const x = cx + Math.sin(a) * (r - 12)
+    const y = cy - Math.cos(a) * (r - 12)
     ctx.beginPath()
-    ctx.arc(x, y, i % 3 === 0 ? 7 : 4, 0, Math.PI * 2)
+    ctx.arc(x, y, i % 3 === 0 ? 6 : 3, 0, Math.PI * 2)
     ctx.fill()
   }
-  // static hands (cosmetic — the live time is on the departure board)
-  ctx.lineWidth = 7
-  ctx.beginPath()
-  ctx.moveTo(128, 128)
-  ctx.lineTo(128 + 46, 128 - 30)
-  ctx.stroke()
+  // minute markers
+  ctx.strokeStyle = '#4a4a4a'
+  ctx.lineWidth = 1
+  for (let i = 0; i < 60; i++) {
+    if (i % 5 === 0) continue
+    const a = (i / 60) * Math.PI * 2
+    const x1 = cx + Math.sin(a) * (r - 6)
+    const y1 = cy - Math.cos(a) * (r - 6)
+    const x2 = cx + Math.sin(a) * (r - 2)
+    const y2 = cy - Math.cos(a) * (r - 2)
+    ctx.beginPath()
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(x2, y2)
+    ctx.stroke()
+  }
+}
+
+function drawClockHands(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const cx = w / 2
+  const cy = h / 2
+  const r = Math.min(cx, cy) - 4
+  const now = new Date()
+  const hours = now.getHours() % 12
+  const minutes = now.getMinutes()
+  const seconds = now.getSeconds()
+  // hour hand
+  const hourAngle = ((hours + minutes / 60) / 12) * Math.PI * 2
+  ctx.strokeStyle = '#1a1a1a'
   ctx.lineWidth = 5
+  ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(128, 128)
-  ctx.lineTo(128 - 18, 128 - 82)
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.sin(hourAngle) * r * 0.48, cy - Math.cos(hourAngle) * r * 0.48)
   ctx.stroke()
+  // minute hand
+  const minAngle = ((minutes + seconds / 60) / 60) * Math.PI * 2
+  ctx.lineWidth = 3.5
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.sin(minAngle) * r * 0.72, cy - Math.cos(minAngle) * r * 0.72)
+  ctx.stroke()
+  // second hand
+  const secAngle = (seconds / 60) * Math.PI * 2
+  ctx.strokeStyle = '#8a2a2a'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.sin(secAngle) * r * 0.78, cy - Math.cos(secAngle) * r * 0.78)
+  ctx.stroke()
+  // centre cap
+  ctx.fillStyle = '#1a1a1a'
+  ctx.beginPath()
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function clockTexture(): { tex: CanvasTexture; update: () => void } {
+  const c = document.createElement('canvas')
+  c.width = c.height = 256
+  const ctx = c.getContext('2d')!
+  drawClockFace(ctx, 256, 256)
+  drawClockHands(ctx, 256, 256)
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
-  return tex
+  return {
+    tex,
+    update: () => {
+      drawClockFace(ctx, 256, 256)
+      drawClockHands(ctx, 256, 256)
+      tex.needsUpdate = true
+    },
+  }
 }
 
 export function Platforms({ accentLights }: { accentLights: number }) {
   const signs = useMemo(() => TRAIN_LINES.map(signTexture), [])
   const numbers = useMemo(() => TRAIN_LINES.map(numberTexture), [])
-  const clock = useMemo(clockTexture, [])
+  const clockData = useMemo(clockTexture, [])
+  const clock = clockData.tex
+  const lastSec = useRef(-1)
+
+  // Update clock hands every second
+  useFrame(() => {
+    const sec = new Date().getSeconds()
+    if (sec !== lastSec.current) {
+      lastSec.current = sec
+      clockData.update()
+    }
+  })
+
   const geo = platforms()
 
   return (

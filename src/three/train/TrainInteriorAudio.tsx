@@ -156,7 +156,7 @@ export function TrainInteriorAudio() {
     if (!ctx || !gain) return
 
     const muted = isMuted()
-    const arrived = phase === 'arrived'
+    const arrived = phase === 'arrived' || phase === 'arriving'
 
     // Play brake screech on arrival transition
     if (arrived && prevPhase.current !== 'arrived') {

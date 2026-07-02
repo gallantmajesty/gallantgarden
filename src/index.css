@@ -1,7 +1,11 @@
 /* ============================================================
    Focus Lily theme — warm, magical, "Clash of Clans" storybook
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Arabic:wght@400;500;700;900&family=Noto+Sans+Hebrew:wght@400;500;700;900&family=Noto+Sans+Devanagari:wght@400;500;700;900&family=Noto+Sans+Thai:wght@400;500;700;900&family=Noto+Sans+Bengali:wght@400;500;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @font-face {
   font-family: 'Modern Tokyo';
@@ -63,9 +67,9 @@
     inset 0 -14px 30px rgba(120, 190, 225, 0.16);
   --on-glass: var(--wood-dark);
 
-  --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --display: 'Baloo 2', system-ui, sans-serif;
-  --display-accent: 'Modern Tokyo', sans-serif;
+  --sans: 'Inter', 'Noto Sans KR', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans Devanagari', 'Noto Sans Thai', 'Noto Sans Bengali', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --display: 'Baloo 2', 'Noto Sans KR', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans Devanagari', 'Noto Sans Thai', 'Noto Sans Bengali', system-ui, sans-serif;
+  --display-accent: 'Modern Tokyo', 'Noto Sans KR', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans Devanagari', 'Noto Sans Thai', 'Noto Sans Bengali', sans-serif;
 
   font: 16px/1.5 var(--sans);
   color: var(--ink);

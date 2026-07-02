@@ -29,7 +29,7 @@ const OBJECTS: LobbyObject[] = [
   { key: 'sticky', labelKey: 'lobby.objStickyNotes', captionKey: 'lobby.objStickyNotesCaption', png: 'notes', route: '/sticky' },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm', desktopOnly: true },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
-  { key: 'focus', labelKey: 'lobby.objFocusTimer', captionKey: 'lobby.objFocusTimerCaption', png: 'focus-timer', soon: true },
+  { key: 'focus', labelKey: 'lobby.objFocusTimer', captionKey: 'lobby.objFocusTimerCaption', png: 'focus-timer', route: '/exam-timer' },
 ]
 
 export function Lobby() {
@@ -169,12 +169,8 @@ export function Lobby() {
         </button>
       </div>
 
-      {/* ---------- top-right: customization / avatar / settings ---------- */}
+      {/* ---------- top-right: avatar / settings ---------- */}
       <div className="lobby-topright">
-        <button className="lobby-webcustom" title={t('profile.customize')} onClick={() => setPanel('settings')}>
-          <Glyph name="palette" />
-          <span>{t('profile.customize')}</span>
-        </button>
         {isDesktop && (
           <button className="lobby-round" title={t('lobby.chooseCharacter')} onClick={() => navigate('/avatar')}>
             <Glyph name="face" />
@@ -302,7 +298,7 @@ export function Lobby() {
           </button>
           {[
             { t: t('lobby.menuControls'), s: t('lobby.menuControlsSub'), g: 'gear', soon: true },
-            { t: t('lobby.menuInfo'), s: t('lobby.menuInfoSub'), g: 'star', route: '/about' },
+            { t: t('lobby.menuInfo'), s: t('lobby.menuInfoSub'), g: 'star', route: '/info' },
             { t: t('lobby.menuHelp'), s: t('lobby.menuHelpSub'), g: 'book', soon: true },
           ].map((it) => (
             <button

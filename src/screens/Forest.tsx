@@ -7,7 +7,6 @@ import { MAX_NOTES_PER_TREE, MAX_TREES, type StickyNote } from '../lib/types'
 import { ForestScene } from '../three/ForestScene'
 import { NoteEditor } from '../components/NoteEditor'
 import { NoteReader } from '../components/NoteReader'
-import { LoadingVeil } from '../components/LoadingVeil'
 import './Forest.css'
 
 type SearchHit = { id: string; tree_id: string; content_text: string }
@@ -112,7 +111,7 @@ export function Forest() {
     ? focusedNotes.find((n) => n.id === openNote.id) ?? openNote
     : null
 
-  if (loadingTrees && trees.length === 0) return <LoadingVeil label="Growing your forest…" />
+  if (loadingTrees && trees.length === 0) return null
 
   return (
     <div className="forest-root">

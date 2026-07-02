@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { WaterfallScene } from '../three/waterfall/WaterfallScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
-import { LoadingVeil } from '../components/LoadingVeil'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
 import {
@@ -107,13 +106,7 @@ export function Explore() {
       <PomodoroTicker />
       <RealmConnection />
 
-      {!ready && (
-        <div className="explore-veil">
-          <LoadingVeil
-            label={isTrain ? 'Arriving at the station…' : isWaterfall ? 'Entering the falls…' : 'Entering the library…'}
-          />
-        </div>
-      )}
+      {!ready && <div className="explore-veil" />}
 
       {/* Every widget lives behind this gate — Tab (or Performance Mode) hides the
           whole HUD so the world becomes the sole focus. */}
@@ -472,14 +465,13 @@ function RoomRoster() {
 /* ------------------------------------------------------------- camera view */
 
 /**
- * Minecraft-style camera switch (First · Front · Third), always visible — including
+ * Minecraft-style camera switch (First · Third), always visible — including
  * while seated — so the player can freely change view without hunting for hotkeys.
- * Mirrors F1/F2/F3 and the F5 cycle handled in PlayerController. Sitting stays in
+ * Mirrors F1/F2 and the F5 cycle handled in PlayerController. Sitting stays in
  * third-person by default; First gives the seat-eye view (see PlayerController).
  */
 const CAM_MODES: { id: CameraMode; label: string }[] = [
   { id: 'first', label: 'First' },
-  { id: 'front', label: 'Front' },
   { id: 'third', label: 'Third' },
 ]
 
@@ -915,12 +907,12 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               options={[
                 ['first', 'First (F1)'],
                 ['third', 'Third (F2)'],
-                ['front', 'Front (F3)'],
               ]}
               onChange={(v) => s.set('cameraMode', v)}
             />
             <Slider label="Look sensitivity" display={`${Math.round(s.sensitivity * 100)}%`} value={(s.sensitivity - 0.2) / 1.8} onChange={(v) => s.set('sensitivity', 0.2 + v * 1.8)} />
             <Toggle label="Invert mouse Y" value={s.invertY} onChange={(v) => s.set('invertY', v)} />
+            <Toggle label="Hide avatar when moving camera" value={s.hideAvatarWhenMovingCamera} onChange={(v) => s.set('hideAvatarWhenMovingCamera', v)} />
             <button className="settings-fs" onClick={toggleFullscreen}>
               {fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             </button>

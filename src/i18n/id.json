@@ -209,7 +209,6 @@
     "camera": "Kamera",
     "firstPerson": "Pertama (F1)",
     "thirdPerson": "Ketiga (F2)",
-    "frontPerson": "Depan (F3)",
     "lookSensitivity": "Sensitivitas pandangan",
     "invertMouseY": "Balikkan mouse Y",
     "exitFullscreen": "Keluar layar penuh"
