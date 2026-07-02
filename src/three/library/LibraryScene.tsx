@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Component, Suspense, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'

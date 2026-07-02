@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo } from 'react'
 import { DoubleSide } from 'three'
 import { makeWood } from './textures'

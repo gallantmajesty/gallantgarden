@@ -4,7 +4,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTrain } from '../../../store/train'
-import { useRealmNet } from '../../../multiplayer/net'
 
 interface ChatMessage {
   id: string
@@ -16,7 +15,7 @@ interface ChatMessage {
 }
 
 // Pre-seeded system messages based on journey phase
-function systemMessages(lineName: string, destination: string): ChatMessage[] {
+function systemMessages(_lineName: string, destination: string): ChatMessage[] {
   const now = Date.now()
   return [
     { id: 'sys-dep', type: 'system', text: `Departing for ${destination}`, ts: now },
@@ -27,7 +26,6 @@ export function ChatOverlay() {
   const line = useTrain((s) => s.line)
   const phase = useTrain((s) => s.phase)
   const seat = useTrain((s) => s.seat)
-  const roster = useRealmNet((s) => s.roster)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputOpen, setInputOpen] = useState(false)
   const [inputText, setInputText] = useState('')

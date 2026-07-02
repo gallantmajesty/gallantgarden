@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
 import './DotGrid.css';

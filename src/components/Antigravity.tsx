@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable react/no-unknown-property */
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';

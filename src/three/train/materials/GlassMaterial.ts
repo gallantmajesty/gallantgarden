@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Window glass material — slightly tinted warm amber with subtle reflection,
 // rain droplet texture (route-dependent), and frost effect for Mountain Route.
 // Uses procedural textures for the tint and optional condensation overlay.

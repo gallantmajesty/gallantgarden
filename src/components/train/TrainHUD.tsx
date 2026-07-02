@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTrain, DEPARTURE_SEC, ARRIVAL_CINEMATIC_SEC } from '../../store/train'
+import { useTrain, DEPARTURE_SEC, ARRIVAL_CINEMATIC_SEC, EXPLORE_SEC } from '../../store/train'
 import { useStation } from '../../store/station'
 import { TRAIN_LINES } from '../../lib/train/lines'
 import { departureBoard, statusLabel, fmtCountdown, fmtHuman } from '../../lib/train/schedule'
@@ -538,8 +538,6 @@ function ArrivalCinematic() {
   useHeartbeat(true)
   const line = useTrain((s) => s.line)
   const arrivalSec = useTrain((s) => s.arrivalSec)
-  const firedRef = useRef<Set<number>>(new Set())
-
   useEffect(() => {
     if (!line || arrivalSec <= 0) return
     // Audio triggers (brake, steam, door) are now handled by InteriorAudio

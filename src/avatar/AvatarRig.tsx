@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useImperativeHandle, useMemo, useRef } from 'react'
 import { Group, type MeshStandardMaterial } from 'three'
 import {

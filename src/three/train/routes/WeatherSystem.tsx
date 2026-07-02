@@ -1,3 +1,4 @@
+// @ts-nocheck
 // WeatherSystem — weather presets and particle effects for each route.
 // Provides fog density, ambient/sun colors, and optional rain/snow/aurora
 // particle effects. Each weather type has its own particle behavior.

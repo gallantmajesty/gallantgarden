@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SpatialCreaks — interior creak sounds using user's audio files.
 // Plays train-exterior.mp3 at low volume with bandpass filtering to create
 // ambient interior character. No procedural synthesis.

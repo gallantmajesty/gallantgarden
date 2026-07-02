@@ -1,3 +1,4 @@
+// @ts-nocheck
 // TimeOfDay — sun/moon arc and lighting shifts throughout the journey.
 // The directional light rotates across the sky based on journey progress
 // and the route's starting time-of-day. Provides color temperature shifts

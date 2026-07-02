@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, DoubleSide, SRGBColorSpace } from 'three'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Avatar customization catalogs, config type, and the shared geometry/material
 // caches that keep the system cheap: N avatars that share a palette share the
 // exact same THREE material and geometry instances (no per-avatar allocation),

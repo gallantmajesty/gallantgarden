@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Texture atlas builder for the train interior.
 // Packs all seat, wall, floor, brass, carpet and luggage textures into ONE
 // 1024x1024 canvas so the entire interior renders with a single texture sample

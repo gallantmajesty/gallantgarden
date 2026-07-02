@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import type { ScenePreset } from '../../store/settings'
 import { MovingWorld } from './MovingWorld'

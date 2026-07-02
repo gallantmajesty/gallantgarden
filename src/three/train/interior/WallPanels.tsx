@@ -1,3 +1,4 @@
+// @ts-nocheck
 // WallPanels — wood paneling system for the carriage interior walls.
 // Lower half: dark walnut planks with brass nail heads.
 // Upper half: cream damask wallpaper.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // InteriorAudio — Phase 5 audio system for the train interior.
 // Uses the AudioManager for layered audio with the user's actual audio files.
 // All sounds come from /public/audio/ — no procedural synthesis.

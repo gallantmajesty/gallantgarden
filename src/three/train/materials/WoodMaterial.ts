@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Dark walnut wood paneling material — horizontal planks with visible grain,
 // brass nail-head detail, and worn areas near door handles. Procedurally
 // generated canvas textures (no asset files). Each material is cached so

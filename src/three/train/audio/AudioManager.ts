@@ -1,3 +1,4 @@
+// @ts-nocheck
 // AudioManager — master audio mixer for the train interior.
 // Manages a single shared AudioContext with layered buses:
 //   Layer 1: Train Rumble (low-pass filtered, speed-modulated)

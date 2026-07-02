@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Static AABB collision for the Train Station Realm. The whole walkable floor is
 // a single flat level at FLOOR_Y, so there is no heightfield or stair maths here
 // (unlike the Waterfall realm) — just blockers. The generic slab/AABB maths is

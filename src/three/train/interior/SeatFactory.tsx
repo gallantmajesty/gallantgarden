@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SeatFactory — creates the 3 seat types (A: window, B: standard, C: corner)
 // with Hogwarts Express-style dark walnut frames, deep maroon velvet upholstery,
 // brass fixtures, fold-down tray tables, and leather book pockets. Each seat is

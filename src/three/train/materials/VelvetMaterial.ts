@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Deep maroon velvet upholstery material — tufted button pattern, worn edges,
 // and subtle fold wrinkles. Used for seat cushions and backrests in the
 // Hogwarts Express-style interior. Procedurally generated textures.

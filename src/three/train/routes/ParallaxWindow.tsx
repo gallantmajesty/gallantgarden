@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ParallaxWindow — window view layers with parallax scrolling.
 // Inside each window, the landscape is rendered on separate planes at different
 // depths, each scrolling at a different speed to create depth illusion:

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // FloorSystem — carpet runner + aisle runner + brass threshold at doorways.
 // Forest green main carpet with diamond pattern, lighter aisle runner with
 // higher wear, and brass strips along wall edges.

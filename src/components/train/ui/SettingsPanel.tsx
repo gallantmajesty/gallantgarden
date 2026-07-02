@@ -1,7 +1,7 @@
 // In-journey settings panel — audio, camera, display and quality controls.
 // Accessible while seated; does NOT pause the journey timer.
 
-import { useSettings, QUALITY_AXES, type QualityPresetName, type ShadowQuality, type PostQuality, type TextureQuality } from '../../../store/settings'
+import { useSettings, type QualityPresetName, type ShadowQuality, type PostQuality, type TextureQuality } from '../../../store/settings'
 import { useTrain } from '../../../store/train'
 
 export function SettingsPanel({ onClose }: { onClose: () => void }) {

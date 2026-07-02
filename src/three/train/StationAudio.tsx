@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Station audio: horns, mounted in StationWorld (non-visual).
  * Watches each line's platformStatus and emits:

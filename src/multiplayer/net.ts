@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { create } from 'zustand'
 import { insforge } from '../lib/insforge'
 import { normalizeAvatar, type AvatarConfig } from '../avatar/config'

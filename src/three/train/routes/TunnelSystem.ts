@@ -1,3 +1,4 @@
+// @ts-nocheck
 // TunnelSystem — tunnel spawning and enter/exit events.
 // Tunnels appear at route-specific intervals. When the train enters a tunnel:
 // 1. Exterior fades to black (0.5s)

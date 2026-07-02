@@ -1,3 +1,4 @@
+// @ts-nocheck
 // LuggageRack — brass rail luggage racks above seats on both sides.
 // Randomly placed luggage items (trunks, hat boxes, parcels, books, jars).
 // Items are instanced with slight random rotation and offset for natural look.

@@ -18,14 +18,14 @@ export function StatsPanel({ onClose }: { onClose: () => void }) {
   const roster = useRealmNet((s) => s.roster)
 
   const totals = journeyTotals(journal)
-  const seatedCount = Object.values(roster).filter((r) => {
+  const seatedCount = Object.values(roster).filter((_r) => {
     // Approximate: count roster members as "on the train"
     return true
   }).length + 1 // +1 for self
 
   const seatInfo = seat != null ? carriageSeats()[seat] : null
   const seatLabel = seatInfo
-    ? `Seat ${seat + 1} · ${seatInfo.col === 0 || seatInfo.col === 3 ? 'Window' : 'Aisle'}`
+    ? `Seat ${(seat ?? 0) + 1} · ${seatInfo.col === 0 || seatInfo.col === 3 ? 'Window' : 'Aisle'}`
     : 'Standing'
 
   if (!line) return null

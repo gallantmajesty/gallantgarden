@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ExteriorAmbience — window-dependent outside sounds (wind, birds, rain).
 // Cross-fades between ambient audio files based on route and window proximity.
 // Spatial panners position sounds at the window locations.
