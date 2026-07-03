@@ -156,6 +156,8 @@ export function SeatSelectionOverlay() {
                 startWalk()
                 useSeatFlow.getState().arrive()
                 useWorld.getState().sit(selected)
+                // Skip bypasses the cinematic → mark entrance so it doesn't re-trigger
+                useSeatFlow.getState().markEntrancePlayed()
               }
             }}
           >

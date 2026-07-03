@@ -153,6 +153,8 @@ export function PlayerController() {
       const k = 0.0032 * s.sensitivity
       // Rotate avatar facing direction (faceYaw) instead of camera yaw
       p.current.faceYaw -= (e.clientX - d.lx) * k
+      // Keep yaw in sync so WASD movement is always relative to the camera
+      p.current.yaw = p.current.faceYaw
       // Optional: allow slight pitch for looking up/down
       p.current.pitch += (e.clientY - d.ly) * k * (s.invertY ? 1 : -1)
       p.current.pitch = MathUtils.clamp(p.current.pitch, -1.2, 1.2)
@@ -423,15 +425,19 @@ export function PlayerController() {
     const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
 
     // ---- camera placement: locked third-person (always behind avatar) ----
-    // Camera follows avatar's faceYaw so it stays glued to the back
-    const camYaw = st.faceYaw
+    // Camera follows avatar's faceYaw so it stays glued to the back.
+    // faceYaw is the direction the avatar faces; adding π flips the camera
+    // to the opposite side (behind) so it never ends up in front.
+    const camYaw = st.faceYaw + Math.PI
     const camPitch = st.pitch // slight up/down look preserved
     const cp = Math.cos(camPitch)
-    const fx = -Math.sin(camYaw) * cp
+    // Forward direction from the avatar's facing angle (used for offset placement)
+    const fx = -Math.sin(st.faceYaw) * cp
     const fy = Math.sin(camPitch)
-    const fz = -Math.cos(camYaw) * cp
+    const fz = -Math.cos(st.faceYaw) * cp
     const dist = st.zoom
     // unit offset from head toward camera (slightly raised), pulled BEHIND avatar
+    // (negate forward → backward direction = behind the avatar)
     let ox = fx * -1
     let oy = fy * -1 + 0.32
     let oz = fz * -1
@@ -444,7 +450,8 @@ export function PlayerController() {
     const d = Math.min(dist, hit - 0.4)
     st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
     cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
-    cam.rotation.set(camPitch, camYaw, 0)
+    // Camera looks in the avatar's facing direction (toward avatar from behind)
+    cam.rotation.set(camPitch, st.faceYaw, 0)
 
     // ---- avatar ----
     const av = avatarRef.current

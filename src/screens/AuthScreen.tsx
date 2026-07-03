@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
 import './AuthScreen.css'
@@ -8,6 +8,10 @@ export function AuthScreen() {
   const { signInWithProvider } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<OAuthProvider | null>(null)
+
+  // Reset pending state on mount so stale "Redirecting…" doesn't stick around
+  // when the user navigates back after a failed/cancelled OAuth redirect.
+  useEffect(() => { setPending(null) }, [])
 
   const providers: { id: OAuthProvider; label: string }[] = [
     { id: 'google', label: t('auth.continueGoogle') },
@@ -22,6 +26,12 @@ export function AuthScreen() {
     if (err) {
       setError(err)
       setPending(null)
+    } else {
+      // If the redirect didn't happen (popup blocked, etc.), clear pending
+      // after a short delay so the user can try another sign-in method.
+      setTimeout(() => {
+        setPending(current => current === provider ? null : current)
+      }, 4000)
     }
   }
 

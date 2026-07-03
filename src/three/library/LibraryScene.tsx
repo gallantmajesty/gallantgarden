@@ -24,16 +24,27 @@ import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
 
-class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
+class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
+  state = { failed: false, msg: '' }
+  static getDerivedStateFromError(error: Error) {
+    return { failed: true, msg: error?.message ?? 'Unknown error' }
   }
   componentDidCatch(error: Error) {
     console.error('[LibraryScene] SoftBoundary caught:', error)
   }
   render() {
-    return this.state.failed ? null : this.props.children
+    if (this.state.failed) {
+      return (
+        <div style={{
+          position: 'absolute', bottom: 12, left: 12, padding: '6px 12px',
+          background: 'rgba(0,0,0,0.7)', color: '#ff8a6a', fontSize: 11,
+          borderRadius: 6, fontFamily: 'monospace', zIndex: 10, maxWidth: 320,
+        }}>
+          Scene element failed: {this.state.msg}
+        </div>
+      )
+    }
+    return this.props.children
   }
 }
 
@@ -264,10 +275,19 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
  * Fires onReady once it mounts — which only happens after Suspense resolves
  * DayNightWeather + Exterior. This prevents the explore-veil from disappearing
  * while the scene is still partially black.
+ *
+ * Also fires after a 5 s timeout as a safety net: if Suspense hangs or
+ * a component error keeps this from mounting, the veil still lifts so the
+ * user isn't stuck on a permanent dark screen. The Explore screen has its
+ * own 8 s fallback, but firing earlier here gives a faster recovery.
  */
 function SceneReady({ onReady }: { onReady?: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { onReady?.() }, [])
+  useEffect(() => {
+    const t = setTimeout(() => onReady?.(), 5000)
+    return () => clearTimeout(t)
+  }, [onReady])
   return null
 }
 

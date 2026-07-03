@@ -60,19 +60,6 @@ export function Explore() {
   useAudio()
   useExploreShortcuts()
 
-  if (!isDesktop) return <DesktopOnly />
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setHint(false), 8000)
-    return () => window.clearTimeout(t)
-  }, [])
-
-  // Enter a realm in Third-person so the player always sees their own character —
-  // never spawn body-less in First-person. (They can switch to First afterward.)
-  useEffect(() => {
-    if (useSettings.getState().cameraMode === 'first') set('cameraMode', 'third')
-  }, [set])
-
   // Auto-minimize the desk whenever the player sits down, so the seated avatar (and
   // its sitting animation) stays visible behind a small chip rather than the full
   // Study Station panel. The player taps the chip to expand the desk when studying.
@@ -85,6 +72,31 @@ export function Explore() {
 
   const isWaterfall = realm?.world === 'waterfall'
   const isTrain = realm?.world === 'train-station'
+
+  // Fallback: if the scene never signals ready (WebGL init failure, asset load
+  // error, etc.), force the veil away after 8 seconds so the user isn't stuck on
+  // a permanent dark screen. The HUD and seat overlay will still work.
+  useEffect(() => {
+    if (ready) return
+    const t = window.setTimeout(() => {
+      console.warn('[Explore] scene did not signal ready within 8 s — removing veil')
+      setReady(true)
+    }, 8000)
+    return () => window.clearTimeout(t)
+  }, [ready])
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setHint(false), 8000)
+    return () => window.clearTimeout(t)
+  }, [])
+
+  // Enter a realm in Third-person so the player always sees their own character —
+  // never spawn body-less in First-person. (They can switch to First afterward.)
+  useEffect(() => {
+    if (useSettings.getState().cameraMode === 'first') set('cameraMode', 'third')
+  }, [set])
+
+  if (!isDesktop) return <DesktopOnly />
 
   // Experimental-realm route guard. If someone reaches a flagship route while it
   // is hidden (public build, no dev access) — e.g. a stale link or a manual

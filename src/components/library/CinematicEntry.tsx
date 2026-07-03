@@ -22,9 +22,13 @@ export function CinematicEntry() {
     if (!entrancePlayed && (stage === 'spawning' || stage === 'walking')) {
       setVisible(true)
       markEntrancePlayed()
-      // Fade out after a brief hold
-      const t = setTimeout(() => setFadeOut(true), 2200)
-      return () => clearTimeout(t)
+      // Fade out after a brief hold, then unmount after the CSS animation completes
+      const fadeTimer = setTimeout(() => setFadeOut(true), 2200)
+      const unmountTimer = setTimeout(() => setVisible(false), 3400) // 2.2s hold + 1s fade + buffer
+      return () => {
+        clearTimeout(fadeTimer)
+        clearTimeout(unmountTimer)
+      }
     }
   }, [entrancePlayed, stage, markEntrancePlayed])
 

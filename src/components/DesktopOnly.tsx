@@ -94,12 +94,26 @@ export function DesktopOnly() {
   const { t } = useTranslation()
   return (
     <div className="desktop-only">
+      {/* Ambient background particles */}
+      <div className="do-particles" aria-hidden>
+        <span /><span /><span /><span /><span />
+      </div>
+
       <div className="desktop-only-card">
-        <img className="desktop-only-logo" src="/icons/focus-lily-logo.png" alt="Focus Lily" width={84} height={84} />
-        <h1>{t('desktopOnly.title')}</h1>
-        <p>{t('desktopOnly.description')}</p>
+        <div className="do-icon-ring">
+          <img className="desktop-only-logo" src="/icons/focus-lily-logo.png" alt="Focus Lily" width={64} height={64} />
+        </div>
+
+        <h1 className="do-title">{t('desktopOnly.title')}</h1>
+
+        <div className="do-divider" />
+
+        <p className="do-desc">{t('desktopOnly.description')}</p>
         <p className="desktop-only-sub">{t('desktopOnly.subDescription')}</p>
-        <img className="desktop-only-lotus" src="/icons/focus-lily-logo.png" alt="" width={40} height={40} />
+
+        <div className="do-footer">
+          <img className="desktop-only-lotus" src="/icons/focus-lily-logo.png" alt="" width={28} height={28} />
+        </div>
       </div>
     </div>
   )

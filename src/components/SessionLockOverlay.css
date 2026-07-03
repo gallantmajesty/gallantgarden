@@ -5,50 +5,228 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
+  background: radial-gradient(ellipse at 50% 30%, rgba(42, 30, 15, 0.92), rgba(18, 12, 6, 0.97));
+  backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 
+/* ── Leaf vines around all edges ── */
+.sl-leaves {
+  position: absolute;
+  pointer-events: none;
+}
+
+.sl-leaves-tl {
+  top: -20px;
+  left: -20px;
+  width: 220px;
+  height: 220px;
+}
+.sl-leaves-tr {
+  top: -20px;
+  right: -20px;
+  width: 220px;
+  height: 220px;
+}
+.sl-leaves-bl {
+  bottom: -20px;
+  left: -20px;
+  width: 220px;
+  height: 220px;
+}
+.sl-leaves-br {
+  bottom: -20px;
+  right: -20px;
+  width: 220px;
+  height: 220px;
+}
+.sl-leaves-left {
+  top: 50%;
+  left: -10px;
+  width: 80px;
+  height: 50vh;
+  transform: translateY(-50%);
+}
+.sl-leaves-right {
+  top: 50%;
+  right: -10px;
+  width: 80px;
+  height: 50vh;
+  transform: translateY(-50%);
+}
+
+/* vine sway animations */
+.sl-leaf-sway-1 {
+  animation: sl-vine-sway 8s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+.sl-leaf-sway-2 {
+  animation: sl-vine-sway 10s ease-in-out infinite -3s;
+  transform-origin: bottom center;
+}
+
+@keyframes sl-vine-sway {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  25% { transform: rotate(1.5deg) translateX(2px); }
+  75% { transform: rotate(-1.5deg) translateX(-2px); }
+}
+
+/* ── Floating particles ── */
+.sl-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sl-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.15);
+  animation: sl-particle-float linear infinite;
+}
+
+.sl-p1 {
+  width: 4px; height: 4px;
+  top: 15%; left: 10%;
+  animation-duration: 12s;
+  animation-delay: 0s;
+}
+.sl-p2 {
+  width: 3px; height: 3px;
+  top: 25%; right: 15%;
+  animation-duration: 15s;
+  animation-delay: -3s;
+}
+.sl-p3 {
+  width: 5px; height: 5px;
+  bottom: 30%; left: 8%;
+  animation-duration: 10s;
+  animation-delay: -5s;
+}
+.sl-p4 {
+  width: 3px; height: 3px;
+  bottom: 20%; right: 12%;
+  animation-duration: 14s;
+  animation-delay: -7s;
+}
+.sl-p5 {
+  width: 4px; height: 4px;
+  top: 40%; left: 5%;
+  animation-duration: 11s;
+  animation-delay: -2s;
+}
+.sl-p6 {
+  width: 3px; height: 3px;
+  top: 60%; right: 6%;
+  animation-duration: 13s;
+  animation-delay: -9s;
+}
+
+@keyframes sl-particle-float {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateY(-30vh) translateX(15px) scale(1.2);
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-60vh) translateX(-10px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* ── Card ── */
 .session-lock-card {
-  background: white;
-  border-radius: 16px;
-  padding: 48px 40px;
-  max-width: 400px;
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  width: 90%;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 48px 40px 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.session-lock-glow {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .session-lock-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 4px 24px rgba(212, 175, 55, 0.35));
+  animation: lock-float 4s ease-in-out infinite;
+}
+
+@keyframes lock-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .session-lock-card h2 {
-  font-size: 24px;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 700;
   margin: 0 0 12px;
-  color: #1a1a1a;
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .session-lock-card p {
   font-size: 15px;
-  color: #666;
+  color: var(--ink-soft);
   margin: 0 0 32px;
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+.session-lock-card p strong {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .session-lock-btn {
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 14px 32px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
+  min-width: 220px;
 }
 
-.session-lock-btn:hover {
-  background: #1d4ed8;
+/* castle inside the card */
+.session-lock-castle {
+  width: 110%;
+  max-width: 500px;
+  margin: 0 -10% -8px;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.sl-castle-sparkle-1 { animation: sl-sparkle 3s ease-in-out infinite; }
+.sl-castle-sparkle-2 { animation: sl-sparkle 4s ease-in-out infinite -1.2s; }
+.sl-castle-sparkle-3 { animation: sl-sparkle 3.5s ease-in-out infinite -2.4s; }
+
+.sl-sparkle-1 { animation: sl-sparkle 3s ease-in-out infinite; }
+.sl-sparkle-2 { animation: sl-sparkle 4s ease-in-out infinite -1s; }
+.sl-sparkle-3 { animation: sl-sparkle 3.5s ease-in-out infinite -2s; }
+
+@keyframes sl-sparkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.5); }
 }
