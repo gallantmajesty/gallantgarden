@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, memo, KeyboardEvent, MouseEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, memo, type KeyboardEvent, type MouseEvent } from 'react'
 import { PngIcon, type PngIconName } from '../PngIcon'
 
 interface LobbyCardProps {
@@ -19,7 +19,6 @@ export const LobbyCard = memo(function LobbyCard({
   title,
   caption,
   onClick,
-  href,
   delay = 0,
   soon = false,
   desktopOnly = false,

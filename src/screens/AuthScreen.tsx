@@ -15,18 +15,6 @@ export function AuthScreen() {
     { id: 'github', label: t('auth.continueGithub') },
   ]
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setBusy(true)
-    const err =
-      mode === 'in'
-        ? await signIn(email.trim(), password)
-        : await signUp(email.trim(), password, name.trim() || t('auth.defaultName'))
-    setBusy(false)
-    if (err) setError(err)
-  }
-
   async function oauth(provider: OAuthProvider) {
     setError(null)
     setPending(provider)

@@ -13,7 +13,7 @@ interface Particle {
 
 export const MagicalParticles = memo(function MagicalParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
   const particlesRef = useRef<Particle[]>([])
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [reducedMotion, setReducedMotion] = useState(false)
@@ -68,8 +68,8 @@ export const MagicalParticles = memo(function MagicalParticles() {
       const dt = Math.min(32, time - lastTime)
       lastTime = time
 
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
+      const ctx = canvas?.getContext('2d')
+      if (!ctx || !canvas) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       const dpr = window.devicePixelRatio || 1
 
