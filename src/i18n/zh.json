@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "自习室",
     "objStudyRoomsCaption": "开摄像头一起学习",
-    "objStickyNotes": "便签",
-    "objStickyNotesCaption": "你的可视化思维空间",
+    "objBlueprint": "便签",
+    "objBlueprintCaption": "你的可视化思维空间",
     "objRealm": "世界",
     "objRealmCaption": "踏入共享的学习世界",
     "objMagnet": "任务磁铁",

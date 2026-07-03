@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { Group, MathUtils, type PerspectiveCamera as TPerspectiveCamera } from 'three'
@@ -14,6 +14,8 @@ import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
 import { useAvatar } from '../../avatar/store'
 import { setLocalState } from '../../multiplayer/net'
+import { useSeatFlow } from '../../store/seatFlow'
+import { EmoteLabel } from './EmoteLabel'
 
 const SEAT_RANGE = 2.0
 const SEAT_EYE = 1.16
@@ -24,6 +26,9 @@ const GRAVITY = -19
 const STAND_EYE = 1.62
 const CROUCH_EYE = 1.05
 const THIRD_DIST = 5.5
+
+/** Entrance of the library — the avatar spawns here and walks to the seat. */
+const ENTRANCE: [number, number, number] = [0, 0, HALL.halfL - 3]
 
 /**
  * Minecraft-style first/third-person controller with AABB collision,
@@ -45,9 +50,9 @@ export function PlayerController() {
   const seats = useMemo(() => seatAnchors(), [])
 
   const p = useRef({
-    x: 0,
-    y: 0, // feet height
-    z: HALL.halfL - 3,
+    x: ENTRANCE[0],
+    y: ENTRANCE[1], // feet height
+    z: ENTRANCE[2],
     vx: 0, // smoothed horizontal velocity
     vz: 0,
     vy: 0,
@@ -61,8 +66,11 @@ export function PlayerController() {
     eye: STAND_EYE,
     nearSeat: null as number | null,
     seatedInit: false, // one-time framing init when we first sit down
+    autoWalkInit: false,
   })
   const drag = useRef({ on: false, lx: 0, ly: 0 })
+  const [emote, setEmote] = useState<string | null>(null)
+  const emoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Recompute the projection when the far plane (View Distance) changes — setting
   // camera.far alone doesn't refresh the matrix.
@@ -81,17 +89,36 @@ export function PlayerController() {
       // Camera hotkeys disabled — locked to third-person
       if (e.code === 'KeyE' || e.code === 'Escape') {
         const w = useWorld.getState()
-        if (w.seat != null) w.stand()
+        if (w.seat != null) {
+          w.stand()
+          // Reset seat flow so the user can pick a new seat if they want after standing
+          useSeatFlow.getState().clearSeat()
+        }
         else if (e.code === 'KeyE' && p.current.nearSeat != null) {
           const seat = seats[p.current.nearSeat]
           if (seat) {
-            p.current.yaw = seat.yaw
-            p.current.pitch = -0.12
-            w.sit(seat.id)
+            const flow = useSeatFlow.getState()
+            if (flow.seatLockUntil && Date.now() < flow.seatLockUntil) {
+              // Locked — ignore the press silently
+            } else {
+              p.current.yaw = seat.yaw
+              p.current.pitch = -0.12
+              w.sit(seat.id)
+            }
           }
         }
       }
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault()
+
+      // Emote hotkeys: 1=wave, 2=happy, 3=celebrate, 4=sit
+      const emoteMap: Record<string, string> = {
+        Digit1: 'wave', Digit2: 'happy', Digit3: 'celebrate', Digit4: 'sit',
+      }
+      if (emoteMap[e.code]) {
+        if (emoteTimer.current) clearTimeout(emoteTimer.current)
+        setEmote(emoteMap[e.code])
+        emoteTimer.current = setTimeout(() => setEmote(null), 2000)
+      }
     }
     const up = (e: KeyboardEvent) => {
       keys.current[e.code] = false
@@ -206,7 +233,7 @@ export function PlayerController() {
         // Locked third-person: camera behind seated avatar (which faces the desk)
         const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
         const isDragging = drag.current.on
-        if (av) av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
+        if (av) av.visible = s.cameraMode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
         const camYaw = seat.yaw + Math.PI // avatar faces desk, camera behind it
         const camPitch = MathUtils.clamp(st.pitch, -0.5, 0.55)
         const cp = Math.cos(camPitch)
@@ -237,6 +264,93 @@ export function PlayerController() {
     }
     // not seated → re-arm the one-time seated framing for next time
     st.seatedInit = false
+
+    // ---- auto-walk to seat (cinematic path, user controls locked) ----
+    const flow = useSeatFlow.getState()
+    if (flow.stage === 'walking' && flow.selectedSeatId != null) {
+      const targetSeat = seats[flow.selectedSeatId]
+      if (targetSeat) {
+        // Initialise once: snap to entrance and face the seat
+        if (!st.autoWalkInit) {
+          st.autoWalkInit = true
+          st.x = ENTRANCE[0]
+          st.y = ENTRANCE[1]
+          st.z = ENTRANCE[2]
+          st.vx = 0
+          st.vz = 0
+          st.vy = 0
+        }
+
+        const dx = targetSeat.pos[0] - st.x
+        const dz = targetSeat.pos[2] - st.z
+        const dist = Math.hypot(dx, dz)
+        const WALK_SPEED = 3.0
+
+        if (dist < 0.5) {
+          // Arrived — trigger sit automatically
+          st.autoWalkInit = false
+          useSeatFlow.getState().arrive()
+          useWorld.getState().sit(targetSeat.id)
+        } else {
+          // Face the target and move toward it
+          st.faceYaw = Math.atan2(dx, dz)
+          const moveDist = Math.min(dist, WALK_SPEED * dt)
+          st.x += Math.sin(st.faceYaw) * moveDist
+          st.z += Math.cos(st.faceYaw) * moveDist
+          st.vx = Math.sin(st.faceYaw) * WALK_SPEED
+          st.vz = Math.cos(st.faceYaw) * WALK_SPEED
+        }
+
+        // Smooth bob while walking
+        st.bob += Math.hypot(st.vx, st.vz) * dt
+        st.y = ENTRANCE[1] // flat ground for the library entrance
+        st.grounded = true
+
+        // Cinematic third-person camera: strictly behind the avatar
+        // faceYaw points forward (where the avatar walks), so the camera looks
+        // from behind in the opposite direction.
+        const headY = st.y + st.eye
+        const camYaw = st.faceYaw + Math.PI   // look from behind, not at face
+        const camPitch = 0.25
+        const cp = Math.cos(camPitch)
+        const fx = -Math.sin(camYaw) * cp
+        const fy = Math.sin(camPitch)
+        const fz = -Math.cos(camYaw) * cp
+        const camDist = 5.0
+        let ox = fx * -1
+        let oy = fy * -1 + 0.32
+        let oz = fz * -1
+        const ol = Math.hypot(ox, oy, oz) || 1
+        ox /= ol
+        oy /= ol
+        oz /= ol
+        const hit = rayHit(st.x, headY, st.z, ox, oy, oz, camDist + 0.4, collision.blockers)
+        const d = Math.min(camDist, hit - 0.4)
+        st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
+        cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
+        cam.lookAt(st.x, headY, st.z)
+
+        // Avatar update during auto-walk
+        const av = avatarRef.current
+        if (av) {
+          av.visible = true
+          av.position.set(st.x, st.y, st.z)
+          const prevYaw = av.rotation.y
+          const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
+          av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
+          const l = loco.current
+          l.seated = false
+          l.speed = Math.hypot(st.vx, st.vz)
+          l.grounded = true
+          l.vy = 0
+          l.turnRate = dt > 0 ? (av.rotation.y - prevYaw) / dt : 0
+          setLocalState({ x: st.x, y: st.y, z: st.z, yaw: av.rotation.y, speed: l.speed, grounded: true, seated: false })
+        }
+        return
+      }
+    }
+    // Once free or seated, reset autoWalk flag
+    st.autoWalkInit = false
 
     // ---- intent ----
     const crouch = !!(k['ControlLeft'] || k['ControlRight'])
@@ -385,8 +499,9 @@ export function PlayerController() {
           flashing in after the first frame. Falls back to a procedural rig until
           the character's .glb is baked in. */}
       <group ref={avatarRef} visible={useSettings.getState().cameraMode !== 'first'}>
-        <CharacterAvatar config={avatarConfig} locomotion={loco} />
+        <CharacterAvatar config={avatarConfig} locomotion={loco} preview={emote ?? undefined} />
       </group>
+      {emote && <EmoteLabel text={emote} />}
     </>
   )
 }

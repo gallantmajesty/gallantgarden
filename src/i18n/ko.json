@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "스터디룸",
     "objStudyRoomsCaption": "카메라를 켜고 함께 공부하기",
-    "objStickyNotes": "메모지",
-    "objStickyNotesCaption": "시각적 사고 공간",
+    "objBlueprint": "메모지",
+    "objBlueprintCaption": "시각적 사고 공간",
     "objRealm": "영역",
     "objRealmCaption": "공유 학습 세계로 들어가기",
     "objMagnet": "태스크 자석",

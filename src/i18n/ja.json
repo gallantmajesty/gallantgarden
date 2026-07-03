@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "勉強ルーム",
     "objStudyRoomsCaption": "カメラで一緒に勉強",
-    "objStickyNotes": "付箋ノート",
-    "objStickyNotesCaption": "あなたのビジュアル思考スペース",
+    "objBlueprint": "付箋ノート",
+    "objBlueprintCaption": "あなたのビジュアル思考スペース",
     "objRealm": "世界",
     "objRealmCaption": "共有の勉強の世界へ",
     "objMagnet": "タスクマグネット",

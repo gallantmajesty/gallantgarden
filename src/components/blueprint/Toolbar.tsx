@@ -62,7 +62,7 @@ export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) 
 
   return (
     <header className="bp-toolbar bp-surface">
-      <button className="sf-btn secondary tiny" onClick={() => navigate('/sticky')}>← Sticky Notes</button>
+      <button className="sf-btn secondary tiny" onClick={() => navigate('/')}>← Lobby</button>
 
       <div className="bp-toolbar-board">
         <input className="bp-title-input" value={title} onChange={(e) => setTitle(e.target.value)} />

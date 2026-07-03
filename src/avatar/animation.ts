@@ -22,6 +22,9 @@ export interface Locomotion {
   /** true while the player occupies a chair — drives the seated sit pose in-world
    *  (the editor preview uses the `preview === 'sit'` override instead) */
   seated: boolean
+  /** Optional active emote (hotkey 1=wave, 2=happy, 3=celebrate, 4=sit).
+   *  When set, the animator forces the matching pose and ignores normal locomotion. */
+  emote?: 'wave' | 'happy' | 'celebrate' | 'sit'
 }
 
 // Reference walk speed matching PlayerController (WALK 4.6). gaitSpeed is a

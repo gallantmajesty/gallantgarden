@@ -58,18 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Once-per-device first-launch config (independent of who signs in).
     void runGlobalInit()
     void (async () => {
-      // getCurrentUser() also finalizes any pending OAuth PKCE callback in the URL.
-      const { data, error } = await insforge.auth.getCurrentUser()
-      if (cancelled) return
-      const u = error ? null : ((data?.user as AuthUser) ?? null)
-      setUser(u)
-      if (u) {
-        await runUserInit(u)
-        // Claim the single-session lock for this tab (steals it from any other
-        // tab/browser/device — newest-open-wins, like WhatsApp/Netflix).
-        await claimSession()
+      try {
+        const { data, error } = await insforge.auth.getCurrentUser()
+        if (cancelled) return
+        const u = error ? null : ((data?.user as AuthUser) ?? null)
+        setUser(u)
+        if (u) {
+          await runUserInit(u)
+          await claimSession()
+        }
+      } catch (e) {
+        console.error('[Auth] getCurrentUser failed:', e)
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      if (!cancelled) setLoading(false)
     })()
     return () => {
       cancelled = true

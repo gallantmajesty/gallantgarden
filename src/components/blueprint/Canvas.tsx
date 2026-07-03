@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { screenToWorld, autoPorts, type Pt } from '../../lib/blueprint/geom'
 import type { BlueprintNode, Port } from '../../lib/blueprint/types'
+import { makeNode } from '../../lib/blueprint/types'
 import { NoteNode } from './NoteNode'
 import { EdgesLayer } from './EdgesLayer'
 
@@ -203,6 +204,23 @@ export function Canvas() {
     window.addEventListener('pointerup', up)
   }
 
+  // ---- plus button: create a new note connected to the source ----
+  function addConnected(sourceId: string) {
+    const src = useBlueprint.getState().doc.nodes.find((n) => n.id === sourceId)
+    if (!src) return
+    const GAP = 60
+    const node = makeNode(src.x + src.w + GAP, src.y)
+    useBlueprint.getState().pushHistory()
+    // add the node
+    useBlueprint.getState().addNode({ x: node.x, y: node.y })
+    // get the newly added node (addNode selects it and returns it)
+    const added = useBlueprint.getState().doc.nodes[useBlueprint.getState().doc.nodes.length - 1]
+    if (added) {
+      const { fromPort, toPort } = autoPorts(src, added)
+      useBlueprint.getState().addEdge(src.id, fromPort, added.id, toPort, useBlueprint.getState().activeTypeId)
+    }
+  }
+
   const gridStyle = {
     backgroundSize: `${vp.zoom * 24}px ${vp.zoom * 24}px`,
     backgroundPosition: `${vp.x}px ${vp.y}px`,
@@ -232,6 +250,7 @@ export function Canvas() {
             connecting={!!connecting}
             connectTarget={connectTarget === n.id}
             onPortDown={startConnect}
+            onAddConnected={addConnected}
           />
         ))}
       </div>

@@ -167,7 +167,7 @@ function ProfileBody({
     followers: 0,
     following: 0,
   })
-  const [studyCounts, setStudyCounts] = useState<StudyCounts>({ trees: 0, notes: 0 })
+  const [studyCounts, setStudyCounts] = useState<StudyCounts>({ blueprints: 0 })
   const [listModal, setListModal] = useState<null | 'followers' | 'following' | 'mutual'>(null)
 
   // Own counts come live from the social store (optimistic follows); a public

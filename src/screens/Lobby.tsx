@@ -25,11 +25,9 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'room', labelKey: 'lobby.objStudyRooms', captionKey: 'lobby.objStudyRoomsCaption', png: 'study-rooms', route: '/rooms' },
-  { key: 'sticky', labelKey: 'lobby.objStickyNotes', captionKey: 'lobby.objStickyNotesCaption', png: 'notes', route: '/sticky' },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint' },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm', desktopOnly: true },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
-  { key: 'focus', labelKey: 'lobby.objFocusTimer', captionKey: 'lobby.objFocusTimerCaption', png: 'focus-timer', route: '/exam-timer' },
 ]
 
 export function Lobby() {

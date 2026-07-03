@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
-import { anchorToward, smoothPath, smoothPoint, type Pt } from '../../lib/blueprint/geom'
+import { anchorToward, autoPorts, smoothPath, smoothPoint, type Pt } from '../../lib/blueprint/geom'
 import { resolveEdgeStyle, type BlueprintNode } from '../../lib/blueprint/types'
 
 interface ConnectingPreview {
@@ -13,14 +13,6 @@ interface EdgesLayerProps {
   preview: ConnectingPreview | null
 }
 
-// The connection layer — the hero of the canvas. Every link is a smooth
-// "blueprint" cubic anchored to the nearest point on each card's border (no
-// fixed ports). Each thread renders in three stacked passes so it reads from a
-// distance and feels alive:
-//   1. a wide, soft colour halo (always faintly lit, brighter on hover/select)
-//   2. a crisp coloured core stroke
-//   3. an animated energy-flow overlay that switches on when selected/lit
-// Hovering a card traces its whole cluster; everything else fades back.
 export function EdgesLayer({ preview }: EdgesLayerProps) {
   const nodes = useBlueprint((s) => s.doc.nodes)
   const edges = useBlueprint((s) => s.doc.edges)
@@ -29,10 +21,16 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
   const focusTypeId = useBlueprint((s) => s.focus.typeId)
   const hoverNodeId = useBlueprint((s) => s.hoverNodeId)
   const selectEdge = useBlueprint((s) => s.selectEdge)
+  const deleteEdge = useBlueprint((s) => s.deleteEdge)
+  const pushHistory = useBlueprint((s) => s.pushHistory)
+  const addNode = useBlueprint((s) => s.addNode)
+  const addEdge = useBlueprint((s) => s.addEdge)
+
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
 
-  // nodes one hop from the hovered card (the active cluster)
   const traced = useMemo(() => {
     if (!hoverNodeId) return null
     const ids = new Set<string>([hoverNodeId])
@@ -51,11 +49,55 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
     return set
   }, [types])
 
+  const onEdgeEnter = useCallback((edgeId: string) => {
+    if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null }
+    setHoveredEdgeId(edgeId)
+  }, [])
+
+  const onEdgeLeave = useCallback(() => {
+    hoverTimer.current = setTimeout(() => setHoveredEdgeId(null), 200)
+  }, [])
+
+  const onToolbarEnter = useCallback(() => {
+    if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null }
+  }, [])
+
+  const onToolbarLeave = useCallback(() => {
+    hoverTimer.current = setTimeout(() => setHoveredEdgeId(null), 200)
+  }, [])
+
+  // Delete edge from toolbar
+  const handleDelete = useCallback((edgeId: string) => {
+    deleteEdge(edgeId)
+    setHoveredEdgeId(null)
+  }, [deleteEdge])
+
+  // Add a node between two connected nodes, rewiring the edge through it
+  const handleAddBetween = useCallback((edgeId: string) => {
+    const edge = edges.find((e) => e.id === edgeId)
+    if (!edge) return
+    const src = byId.get(edge.from)
+    const dst = byId.get(edge.to)
+    if (!src || !dst) return
+    // Place the new node at the midpoint
+    const mx = (src.x + src.w / 2 + dst.x + dst.w / 2) / 2 - 110
+    const my = (src.y + src.h / 2 + dst.y + dst.h / 2) / 2 - 65
+    pushHistory()
+    const newNode = addNode({ x: mx, y: my })
+    // Remove old edge, create two new edges through the new node
+    deleteEdge(edgeId)
+    const p1 = autoPorts(src, newNode)
+    addEdge(src.id, p1.fromPort, newNode.id, p1.toPort, edge.typeId)
+    const p2 = autoPorts(newNode, dst)
+    addEdge(newNode.id, p2.fromPort, dst.id, p2.toPort, edge.typeId)
+    setHoveredEdgeId(null)
+  }, [edges, byId, pushHistory, addNode, deleteEdge, addEdge])
+
   return (
     <svg className="bp-edges" width="0" height="0">
       <defs>
-        <marker id="bp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" />
+        <marker id="bp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,1 L8,5 L0,9 z" fill="context-stroke" />
         </marker>
       </defs>
 
@@ -67,7 +109,6 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
         const type = types.find((t) => t.id === edge.typeId)
         const st = resolveEdgeStyle(edge, type)
 
-        // free anchors: each end attaches to the border point facing the other card
         const ca = { x: a.x + a.w / 2, y: a.y + a.h / 2 }
         const cb = { x: b.x + b.w / 2, y: b.y + b.h / 2 }
         const p1 = anchorToward(a, cb)
@@ -77,12 +118,12 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
         const onCluster = !traced || (traced.has(edge.from) && traced.has(edge.to))
         const focusOk = !focusTypeId || edge.typeId === focusTypeId
         const isSel = edge.id === selectedEdgeId
+        const isHovered = edge.id === hoveredEdgeId
         const lit = onCluster && focusOk && (!!traced || !!focusTypeId)
         const dimmed = (traced && !onCluster) || (focusTypeId && !focusOk)
-        const energetic = isSel || lit // when to run the energy-flow animation
+        const energetic = isSel || lit
 
         const dash = st.lineStyle === 'dashed' ? '8 7' : undefined
-        // halo intensity: a faint base so threads read at rest, lifting on hover/select
         const baseGlow = 0.22 + st.glow * 0.5
         const haloOpacity = dimmed ? 0.04 : isSel ? 0.85 : lit ? 0.6 : baseGlow * 0.6
         const haloWidth = (st.thickness + 9) + (isSel ? 6 : lit ? 3 : 0)
@@ -92,8 +133,10 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
         return (
           <g
             key={edge.id}
-            className={`bp-edge ${st.lineStyle} ${dimmed ? 'dimmed' : ''} ${isSel ? 'sel' : ''} ${lit ? 'lit' : ''} ${energetic ? 'flow' : ''}`}
+            className={`bp-edge ${st.lineStyle} ${dimmed ? 'dimmed' : ''} ${isSel ? 'sel' : ''} ${lit ? 'lit' : ''} ${energetic ? 'flow' : ''} ${isHovered ? 'hovered' : ''}`}
             style={{ color: st.color }}
+            onPointerEnter={() => onEdgeEnter(edge.id)}
+            onPointerLeave={onEdgeLeave}
           >
             {/* fat invisible hit-thread for easy selection */}
             <path
@@ -104,7 +147,7 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
               style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
               onPointerDown={(e) => { e.stopPropagation(); selectEdge(edge.id) }}
             />
-            {/* 1 — soft colour halo (the glow that makes strings the hero) */}
+            {/* 1 — soft colour halo */}
             <path
               className="bp-edge-halo"
               d={d}
@@ -114,7 +157,7 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
               strokeLinecap="round"
               style={{ opacity: haloOpacity }}
             />
-            {/* 2 — crisp coloured core */}
+            {/* 2 — crisp coloured core with arrow */}
             <path
               className="bp-edge-core"
               d={d}
@@ -123,9 +166,10 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
               fill="none"
               strokeLinecap="round"
               strokeDasharray={dash}
+              markerEnd="url(#bp-arrow)"
               style={{ opacity: dimmed ? 0.18 : 1 }}
             />
-            {/* 3 — animated energy flow, only when selected / cluster-lit */}
+            {/* 3 — animated energy flow */}
             {energetic && (
               <path
                 className="bp-edge-flow"
@@ -153,6 +197,30 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
                 <text className="bp-edge-label" fill={st.color} textAnchor="middle" dominantBaseline="central">
                   {edge.label}
                 </text>
+              </g>
+            )}
+
+            {/* hover toolbar at midpoint */}
+            {isHovered && (
+              <g
+                className="bp-edge-toolbar"
+                transform={`translate(${mid.x}, ${mid.y})`}
+                onPointerEnter={onToolbarEnter}
+                onPointerLeave={onToolbarLeave}
+              >
+                <rect className="bp-edge-toolbar-bg" x={-36} y={-16} width={72} height={32} rx={8} />
+                {/* add node between */}
+                <g className="bp-edge-toolbar-btn" transform="translate(-18, 0)"
+                  onPointerDown={(e) => { e.stopPropagation(); handleAddBetween(edge.id) }}>
+                  <circle r={11} />
+                  <text textAnchor="middle" dominantBaseline="central" className="bp-edge-toolbar-icon">+</text>
+                </g>
+                {/* delete edge */}
+                <g className="bp-edge-toolbar-btn bp-edge-toolbar-danger" transform="translate(18, 0)"
+                  onPointerDown={(e) => { e.stopPropagation(); handleDelete(edge.id) }}>
+                  <circle r={11} />
+                  <text textAnchor="middle" dominantBaseline="central" className="bp-edge-toolbar-icon">✕</text>
+                </g>
               </g>
             )}
           </g>

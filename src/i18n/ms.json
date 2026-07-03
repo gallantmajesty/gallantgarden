@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "Bilik Belajar",
     "objStudyRoomsCaption": "Belajar di kamera, bersama-sama",
-    "objStickyNotes": "Nota Tampal",
-    "objStickyNotesCaption": "Ruang pemikiran visual anda",
+    "objBlueprint": "Nota Tampal",
+    "objBlueprintCaption": "Ruang pemikiran visual anda",
     "objRealm": "Realm",
     "objRealmCaption": "Langkah ke dunia belajar dikongsi",
     "objMagnet": "Task Magnet",

@@ -9,6 +9,8 @@
 /* ══════════════════════════════════════════
    0. GOOGLE FONTS + DESIGN TOKENS
 ══════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap');
+
 :root {
   /* Palette */
   --gold:        #D9A441;
@@ -179,7 +181,6 @@ body:has(.fl-root) { overflow-y: auto !important; }
   z-index: 1000;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 40px;
   height: 66px;
   border-bottom: 1px solid transparent;
@@ -268,8 +269,6 @@ body:has(.fl-root) { overflow-y: auto !important; }
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  margin-left: auto;
-  padding-right: 8px;
 }
 
 /* ══════════════════════════════════════════
@@ -335,46 +334,6 @@ body:has(.fl-root) { overflow-y: auto !important; }
 }
 .fl-btn--forged:active { transform: translateY(-1px) scale(1.005); }
 
-/* Wooden coffee button — warm brown glassmorphism */
-.fl-btn--wood {
-  background: rgba(92,61,46,0.35);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  color: #F5E6D3;
-  font-weight: 600;
-  border: 1px solid rgba(139,90,43,0.45);
-  box-shadow:
-    0 4px 24px rgba(0,0,0,0.3),
-    0 0 0 1px rgba(139,90,43,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.08);
-  transition: all 0.4s var(--ease-spring);
-}
-.fl-btn--wood:hover {
-  background: rgba(92,61,46,0.5);
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 32px rgba(0,0,0,0.4),
-    0 0 0 1px rgba(139,90,43,0.3),
-    0 0 40px rgba(92,61,46,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.1);
-}
-.fl-btn--wood:active { transform: translateY(-1px) scale(1.005); }
-
-/* Hero CTA pulse ring — draws eye to primary action */
-.fl-btn--forged.fl-btn--lg::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: calc(var(--r-md) + 4px);
-  border: 1.5px solid rgba(217,164,65,0.25);
-  animation: fl-btn-pulse-ring 3s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes fl-btn-pulse-ring {
-  0%, 100% { opacity: 0; transform: scale(1); }
-  50%      { opacity: 1; transform: scale(1.04); }
-}
-
 @keyframes fl-btn-gold-shift {
   0%, 100% { background-position: 0% 50%; }
   50%       { background-position: 100% 50%; }
@@ -417,15 +376,10 @@ body:has(.fl-root) { overflow-y: auto !important; }
   letter-spacing: 0.16em;
   color: var(--gold);
   padding: 5px 14px;
-  background: rgba(217,164,65,0.05);
-  border: 1px solid rgba(217,164,65,0.12);
+  background: rgba(217,164,65,0.07);
+  border: 1px solid rgba(217,164,65,0.15);
   border-radius: var(--r-pill);
   margin-bottom: var(--space-md);
-  transition: border-color 0.3s, background 0.3s;
-}
-.fl-tag:hover {
-  border-color: rgba(217,164,65,0.25);
-  background: rgba(217,164,65,0.08);
 }
 
 .fl-orb {
@@ -471,14 +425,13 @@ body:has(.fl-root) { overflow-y: auto !important; }
   letter-spacing: -0.01em;
   color: var(--text);
   margin-bottom: 16px;
-  text-shadow: 0 0 60px rgba(217,164,65,0.08);
 }
 
 .fl-section__sub {
   font-family: var(--font-body);
   font-size: 1rem;
   color: var(--text-2);
-  max-width: 520px;
+  max-width: 480px;
   margin: 0 auto;
   line-height: 1.72;
   font-weight: 300;
@@ -519,91 +472,23 @@ body:has(.fl-root) { overflow-y: auto !important; }
   70%       { transform: translateX(-12px) scaleX(0.97); opacity: 0.85; }
 }
 
-/* — Trees growing from edges — High-End Cinematic Dark Fantasy Redesign */
+/* — Trees growing from edges — */
 .fl-edge-tree {
   position: absolute;
-  height: 85%;
-  width: 22vw;
-  pointer-events: none;
-  z-index: 2;
+  height: 80%;
+  width: auto;
 }
-
-/* Left edge: Massive ancient twisted root structure & detailed dark fantasy branches */
 .fl-edge-tree--left {
-  left: -2%;
-  top: 2%;
+  left: -6%;
+  top: 5%;
   transform-origin: left bottom;
-  animation: fl-tree-sway-l 16s ease-in-out infinite;
-  background: none;
+  animation: fl-tree-sway-l 12s ease-in-out infinite;
 }
-/* Main massive twisted root trunk */
-.fl-edge-tree--left::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; width: 100%; height: 100%;
-  background: linear-gradient(150deg,
-    #050804 0%,
-    #0a1107 35%,
-    #121d0d 65%,
-    #080e05 90%,
-    #030503 100%
-  );
-  clip-path: polygon(
-    0% 0%, 14% 18%, 24% 42%, 32% 65%, 48% 85%, 68% 100%,
-    52% 100%, 25% 80%, 14% 55%, 8% 30%, 3% 12%, 0% 100%
-  );
-  filter: drop-shadow(5px 5px 15px rgba(0,0,0,0.85));
-}
-/* High-detail fantasy foliage clusters with depth highlights */
-.fl-edge-tree--left::after {
-  content: '';
-  position: absolute;
-  left: 10%; top: -5%; width: 120%; height: 80%;
-  background:
-    radial-gradient(ellipse 65% 55% at 30% 25%, rgba(14,28,15,0.92) 0%, rgba(8,15,9,0.96) 60%, transparent 100%),
-    radial-gradient(ellipse 55% 45% at 65% 45%, rgba(18,34,20,0.85) 0%, rgba(10,18,11,0.95) 55%, transparent 100%),
-    radial-gradient(ellipse 70% 50% at 20% 68%, rgba(12,24,14,0.90) 0%, rgba(6,12,7,0.98) 65%, transparent 100%);
-  filter: blur(2px) drop-shadow(4px 4px 12px rgba(0,0,0,0.7));
-  opacity: 0.95;
-}
-
-/* Right edge: Ancient stone ruins silhouette framing with hanging detailed mossy vines */
 .fl-edge-tree--right {
-  right: -2%;
-  top: 4%;
+  right: -6%;
+  top: 8%;
   transform-origin: right bottom;
-  animation: fl-tree-sway-r 18s ease-in-out infinite;
-  background: none;
-}
-/* Ancient twisted branch & rock structure */
-.fl-edge-tree--right::before {
-  content: '';
-  position: absolute;
-  right: 0; top: 0; width: 100%; height: 100%;
-  background: linear-gradient(210deg,
-    #040703 0%,
-    #091006 30%,
-    #101c0c 60%,
-    #060c04 85%,
-    #020402 100%
-  );
-  clip-path: polygon(
-    100% 0%, 86% 15%, 74% 38%, 66% 62%, 52% 82%, 32% 100%,
-    48% 100%, 75% 82%, 86% 58%, 92% 32%, 97% 15%, 100% 100%
-  );
-  filter: drop-shadow(-5px 5px 15px rgba(0,0,0,0.85));
-}
-/* Layered realistic canopy shadows */
-.fl-edge-tree--right::after {
-  content: '';
-  position: absolute;
-  right: 10%; top: -5%; width: 120%; height: 80%;
-  background:
-    radial-gradient(ellipse 65% 55% at 70% 25%, rgba(14,28,15,0.92) 0%, rgba(8,15,9,0.96) 60%, transparent 100%),
-    radial-gradient(ellipse 55% 45% at 35% 45%, rgba(18,34,20,0.85) 0%, rgba(10,18,11,0.95) 55%, transparent 100%),
-    radial-gradient(ellipse 70% 50% at 80% 68%, rgba(12,24,14,0.90) 0%, rgba(6,12,7,0.98) 65%, transparent 100%);
-  filter: blur(2px) drop-shadow(-4px 4px 12px rgba(0,0,0,0.7));
-  opacity: 0.95;
+  animation: fl-tree-sway-r 14s ease-in-out infinite;
 }
 
 @keyframes fl-tree-sway-l {
@@ -639,7 +524,20 @@ body:has(.fl-root) { overflow-y: auto !important; }
   pointer-events: none;
 }
 
-/* Lantern posts — merged into DECORATIVE LANTERNS section below */
+/* — Lantern posts — */
+.fl-lantern {
+  position: absolute;
+  width: 48px;
+  height: auto;
+  animation: fl-lantern-sway 7s ease-in-out infinite;
+}
+.fl-lantern--l1 { left: 15%; bottom: 15%; animation-delay: 0s; }
+.fl-lantern--l2 { right: 18%; bottom: 18%; animation-delay: 1.8s; }
+
+@keyframes fl-lantern-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50%       { transform: rotate(3deg); }
+}
 
 /* — Ground vines — */
 .fl-vine {
@@ -720,22 +618,6 @@ body:has(.fl-root) { overflow-y: auto !important; }
   padding: 100px 24px 80px;
 }
 
-/* Radial glow behind hero headline */
-.fl-scene--hero::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -55%);
-  width: 700px;
-  height: 500px;
-  background: radial-gradient(ellipse, rgba(217,164,65,0.06) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-html { scroll-behavior: smooth; }
-
 .fl-hero__inner {
   position: relative;
   z-index: 10;
@@ -743,7 +625,7 @@ html { scroll-behavior: smooth; }
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 24px;
+  gap: 28px;
   max-width: 800px;
 }
 
@@ -753,10 +635,9 @@ html { scroll-behavior: smooth; }
   gap: 10px;
   padding: 8px 20px;
   border-radius: var(--r-pill);
-  background: rgba(217,164,65,0.06);
-  border: 1px solid rgba(217,164,65,0.12);
+  background: rgba(217,164,65,0.07);
+  border: 1px solid rgba(217,164,65,0.16);
   backdrop-filter: blur(8px);
-  margin-bottom: 4px;
   animation: fl-fade-up 0.8s var(--ease-out) both;
 }
 
@@ -766,10 +647,6 @@ html { scroll-behavior: smooth; }
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.02em;
-  text-shadow:
-    0 0 80px rgba(217,164,65,0.12),
-    0 0 160px rgba(217,164,65,0.06),
-    0 2px 4px rgba(0,0,0,0.3);
   animation: fl-fade-up 1s 0.1s var(--ease-out) both;
 }
 
@@ -779,7 +656,6 @@ html { scroll-behavior: smooth; }
   color: var(--text-2);
   line-height: 1.75;
   font-weight: 300;
-  max-width: 560px;
   animation: fl-fade-up 1.1s 0.2s var(--ease-out) both;
 }
 
@@ -800,427 +676,39 @@ html { scroll-behavior: smooth; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 10px;
   color: var(--text-3);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   animation: fl-fade-in 2s 1s both;
-  opacity: 0.6;
-  transition: opacity 0.5s;
 }
-.fl-hero__scroll-guide:hover { opacity: 1; }
 
 .fl-scroll-indicator {
-  width: 22px;
-  height: 36px;
-  border-radius: 11px;
-  border: 1.5px solid rgba(217,164,65,0.2);
+  width: 24px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(217,164,65,0.22);
   position: relative;
   overflow: hidden;
-  background: rgba(217,164,65,0.02);
-}
-.fl-scroll-indicator::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 8px;
-  border: 1px solid rgba(217,164,65,0.06);
 }
 .fl-scroll-indicator::after {
   content: '';
   position: absolute;
-  top: 7px;
+  top: 6px;
   left: 50%;
   transform: translateX(-50%);
-  width: 3px;
-  height: 6px;
+  width: 4px;
+  height: 7px;
   border-radius: 2px;
-  background: rgba(217,164,65,0.5);
-  animation: fl-scroll-bob 2s ease-in-out infinite;
+  background: rgba(217,164,65,0.6);
+  animation: fl-scroll-bob 1.9s ease-in-out infinite;
 }
 @keyframes fl-scroll-bob {
-  0%    { top: 7px; opacity: 1; }
-  55%   { top: 20px; opacity: 0; }
-  56%   { top: 7px; opacity: 0; }
-  100%  { top: 7px; opacity: 1; }
-}
-
-/* ══════════════════════════════════════════
-   DEEP BACKGROUND CASTLE — Far right, atmospheric depth
-══════════════════════════════════════════ */
-.fl-castle {
-  position: absolute;
-  bottom: 18%;
-  right: -2%;
-  width: 420px;
-  height: 380px;
-  z-index: 2;
-  pointer-events: none;
-  filter: blur(0.3px);
-  opacity: 0.55;
-  animation: fl-castle-depth 1.2s 0.6s var(--ease-out) both;
-}
-@keyframes fl-castle-depth {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 0.55; transform: translateY(0); }
-}
-
-/* Castle mist — atmospheric fog at base */
-.fl-castle__mist {
-  position: absolute;
-  bottom: -30px;
-  left: -40px;
-  right: -40px;
-  height: 100px;
-  background: linear-gradient(to top,
-    rgba(4,3,10,0.95) 0%,
-    rgba(4,3,10,0.6) 30%,
-    rgba(15,12,25,0.3) 60%,
-    transparent 100%
-  );
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* Castle base / ground platform */
-.fl-castle__base {
-  position: absolute;
-  bottom: 0;
-  left: 20px;
-  right: 10px;
-  height: 35px;
-  background: linear-gradient(to top,
-    rgba(12,10,20,1) 0%,
-    rgba(16,13,28,0.95) 40%,
-    rgba(20,16,32,0.8) 100%
-  );
-  border-radius: 4px 4px 0 0;
-  clip-path: polygon(0% 100%, 5% 30%, 15% 50%, 30% 20%, 50% 40%, 70% 15%, 85% 45%, 95% 25%, 100% 100%);
-}
-
-/* ── Main keep ── */
-.fl-castle__keep {
-  position: absolute;
-  bottom: 30px;
-  left: 80px;
-  width: 100px;
-  height: 160px;
-  background: linear-gradient(135deg,
-    rgba(18,14,30,1) 0%,
-    rgba(22,17,36,0.95) 40%,
-    rgba(15,12,24,1) 100%
-  );
-  border-radius: 3px 3px 0 0;
-  box-shadow:
-    inset 0 0 30px rgba(0,0,0,0.4),
-    4px 0 20px rgba(0,0,0,0.5);
-}
-
-/* Battlements on keep */
-.fl-castle__battlement {
-  position: absolute;
-  top: -14px;
-  left: -4px;
-  right: -4px;
-  height: 14px;
-  background: repeating-linear-gradient(90deg,
-    rgba(18,14,30,1) 0px,
-    rgba(18,14,30,1) 10px,
-    transparent 10px,
-    transparent 16px
-  );
-}
-
-/* Keep windows */
-.fl-castle__window {
-  position: absolute;
-  border-radius: 2px 2px 0 0;
-  background: rgba(217,164,65,0.5);
-  box-shadow:
-    0 0 8px rgba(217,164,65,0.4),
-    0 0 20px rgba(217,164,65,0.15);
-  animation: fl-window-flicker 4s ease-in-out infinite;
-}
-.fl-castle__window--1 {
-  width: 8px; height: 14px;
-  top: 30px; left: 25px;
-  animation-delay: 0s;
-}
-.fl-castle__window--2 {
-  width: 8px; height: 14px;
-  top: 30px; right: 25px;
-  animation-delay: 1.2s;
-}
-.fl-castle__window--3 {
-  width: 10px; height: 18px;
-  top: 70px; left: 50%;
-  transform: translateX(-50%);
-  border-radius: 5px 5px 0 0;
-  animation-delay: 0.6s;
-}
-
-/* ── Towers ── */
-.fl-castle__tower {
-  position: absolute;
-  bottom: 30px;
-  background: linear-gradient(135deg,
-    rgba(16,12,26,1) 0%,
-    rgba(20,15,32,0.95) 50%,
-    rgba(14,11,22,1) 100%
-  );
-  border-radius: 2px 2px 0 0;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-}
-
-/* Tall left tower */
-.fl-castle__tower--l {
-  left: 30px;
-  width: 44px;
-  height: 220px;
-}
-/* Tall right tower */
-.fl-castle__tower--r {
-  right: 30px;
-  width: 40px;
-  height: 200px;
-}
-/* Small outpost */
-.fl-castle__tower--sm {
-  left: 0;
-  width: 28px;
-  height: 100px;
-}
-/* Far distant tower */
-.fl-castle__tower--far {
-  right: -15px;
-  width: 22px;
-  height: 80px;
-  opacity: 0.5;
-}
-
-/* Tower cone roofs */
-.fl-castle__cone {
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 28px solid transparent;
-  border-right: 28px solid transparent;
-  border-bottom: 34px solid rgba(14,11,22,1);
-  filter: drop-shadow(0 -2px 4px rgba(0,0,0,0.3));
-}
-.fl-castle__tower--sm .fl-castle__cone {
-  border-left-width: 20px;
-  border-right-width: 20px;
-  border-bottom-width: 26px;
-  top: -24px;
-}
-.fl-castle__tower--far .fl-castle__cone {
-  border-left-width: 16px;
-  border-right-width: 16px;
-  border-bottom-width: 22px;
-  top: -20px;
-  border-bottom-color: rgba(12,10,20,0.7);
-}
-
-/* Tower windows */
-.fl-castle__window--sm {
-  width: 6px;
-  height: 10px;
-  top: 40%;
-  left: 50%;
-  transform: translateX(-50%);
-  animation-delay: 2s;
-}
-
-/* ── Flags ── */
-.fl-castle__flag {
-  position: absolute;
-  top: -52px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: 24px;
-  background: rgba(100,80,60,0.6);
-}
-.fl-castle__flag-cloth {
-  position: absolute;
-  top: 0;
-  left: 2px;
-  width: 18px;
-  height: 10px;
-  background: linear-gradient(180deg,
-    rgba(217,164,65,0.5) 0%,
-    rgba(200,149,108,0.4) 100%
-  );
-  clip-path: polygon(0% 0%, 100% 20%, 85% 50%, 100% 80%, 0% 100%);
-  animation: fl-flag-wave 3s ease-in-out infinite;
-  transform-origin: left center;
-}
-.fl-castle__flag-cloth--2 {
-  animation-delay: 1s;
-  width: 15px;
-  height: 8px;
-}
-
-/* ── Walls connecting structures ── */
-.fl-castle__wall {
-  position: absolute;
-  bottom: 30px;
-  height: 60px;
-  background: rgba(16,12,26,0.9);
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
-}
-.fl-castle__wall--1 {
-  left: 55px;
-  width: 30px;
-  clip-path: polygon(0% 100%, 0% 30%, 20% 0%, 40% 20%, 60% 0%, 80% 15%, 100% 10%, 100% 100%);
-}
-.fl-castle__wall--2 {
-  right: 50px;
-  width: 35px;
-  clip-path: polygon(0% 10%, 15% 0%, 35% 15%, 55% 0%, 75% 20%, 100% 30%, 100% 100%, 0% 100%);
-}
-
-/* ── Torch glows ── */
-.fl-castle__torch {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(217,164,65,0.6);
-  box-shadow:
-    0 0 6px rgba(217,164,65,0.5),
-    0 0 16px rgba(217,164,65,0.2),
-    0 0 30px rgba(217,164,65,0.08);
-  animation: fl-torch-flicker 2s ease-in-out infinite;
-}
-.fl-castle__torch--1 {
-  bottom: 100px;
-  left: 100px;
-  animation-delay: 0s;
-}
-.fl-castle__torch--2 {
-  bottom: 80px;
-  right: 75px;
-  animation-delay: 0.8s;
-}
-.fl-castle__torch--3 {
-  bottom: 120px;
-  left: 55px;
-  animation-delay: 1.5s;
-}
-
-/* ── Animations ── */
-@keyframes fl-window-flicker {
-  0%, 100% { opacity: 0.5; background: rgba(217,164,65,0.45); }
-  25%      { opacity: 0.7; background: rgba(217,164,65,0.55); }
-  50%      { opacity: 0.4; background: rgba(217,164,65,0.35); }
-  75%      { opacity: 0.65; background: rgba(217,164,65,0.5); }
-}
-
-@keyframes fl-torch-flicker {
-  0%, 100% {
-    opacity: 0.6;
-    transform: scale(1);
-    box-shadow: 0 0 6px rgba(217,164,65,0.5), 0 0 16px rgba(217,164,65,0.2), 0 0 30px rgba(217,164,65,0.08);
-  }
-  33% {
-    opacity: 0.85;
-    transform: scale(1.15);
-    box-shadow: 0 0 10px rgba(217,164,65,0.6), 0 0 24px rgba(217,164,65,0.3), 0 0 40px rgba(217,164,65,0.12);
-  }
-  66% {
-    opacity: 0.5;
-    transform: scale(0.9);
-    box-shadow: 0 0 4px rgba(217,164,65,0.4), 0 0 12px rgba(217,164,65,0.15), 0 0 24px rgba(217,164,65,0.06);
-  }
-}
-
-@keyframes fl-flag-wave {
-  0%, 100% { transform: skewY(0deg) scaleX(1); }
-  25%      { transform: skewY(-3deg) scaleX(1.05); }
-  50%      { transform: skewY(2deg) scaleX(0.95); }
-  75%      { transform: skewY(-1deg) scaleX(1.02); }
-}
-
-/* Castle responsive */
-@media (max-width: 1200px) {
-  .fl-castle { width: 300px; height: 280px; right: -4%; opacity: 0.4; }
-}
-@media (max-width: 900px) {
-  .fl-castle { width: 220px; height: 210px; right: -6%; opacity: 0.3; bottom: 22%; }
-}
-@media (max-width: 560px) {
-  .fl-castle { display: none; }
-}
-
-/* ══════════════════════════════════════════
-   BIG SECTION LANTERNS — wall bracket, scroll-swing
-══════════════════════════════════════════ */
-.fl-big-lantern {
-  position: absolute;
-  top: 2%;
-  width: 160px;
-  z-index: 20;
-  pointer-events: none;
-  filter: drop-shadow(0 10px 40px rgba(255,200,60,0.35)) drop-shadow(0 2px 10px rgba(255,160,30,0.2));
-  transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.fl-big-lantern svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.fl-big-lantern--left {
-  left: 0;
-  transform: translateX(-220px);
-}
-
-.fl-big-lantern--right {
-  right: 0;
-  transform: translateX(220px);
-}
-
-.fl-big-lantern--left.fl-big-lantern--visible {
-  transform: translateX(0);
-}
-
-.fl-big-lantern--right.fl-big-lantern--visible {
-  transform: translateX(0);
-}
-
-/* Auto-pendulum swing on chain + lantern only */
-.fl-lantern__swing {
-  animation: fl-pendulum 5s ease-in-out infinite;
-  transform-origin: 80px 64px;
-}
-
-@keyframes fl-pendulum {
-  0%   { transform: rotate(0deg); }
-  15%  { transform: rotate(5deg); }
-  30%  { transform: rotate(-4deg); }
-  45%  { transform: rotate(3deg); }
-  60%  { transform: rotate(-2deg); }
-  75%  { transform: rotate(1.2deg); }
-  90%  { transform: rotate(-0.6deg); }
-  100% { transform: rotate(0deg); }
-}
-
-/* Responsive */
-@media (max-width: 1200px) {
-  .fl-big-lantern { width: 130px; }
-}
-@media (max-width: 900px) {
-  .fl-big-lantern { width: 100px; top: 5%; }
-}
-@media (max-width: 560px) {
-  .fl-big-lantern { display: none; }
+  0%    { top: 6px; opacity: 1; }
+  60%   { top: 22px; opacity: 0; }
+  61%   { top: 6px; opacity: 0; }
+  100%  { top: 6px; opacity: 1; }
 }
 
 /* World fog */
@@ -1246,22 +734,6 @@ html { scroll-behavior: smooth; }
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.fl-philosophy__particles {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0;
-  transition: opacity 1.8s cubic-bezier(0.22, 1, 0.36, 1), filter 1.8s cubic-bezier(0.22, 1, 0.36, 1);
-  filter: blur(1.2px) saturate(0.7) brightness(0.85);
-}
-
-.fl-philosophy__particles canvas {
-  width: 100% !important;
-  height: 100% !important;
 }
 
 .fl-philosophy__inner {
@@ -1309,7 +781,6 @@ html { scroll-behavior: smooth; }
   letter-spacing: -0.01em;
   margin-bottom: var(--space-xl);
   font-style: normal;
-  text-shadow: 0 0 80px rgba(217,164,65,0.08);
 }
 
 .fl-philosophy__text {
@@ -1332,26 +803,18 @@ html { scroll-behavior: smooth; }
   font-size: 1.05rem !important;
   color: rgba(246,241,229,0.72) !important;
   font-weight: 400 !important;
-  padding: 24px 30px;
-  background: rgba(217,164,65,0.03);
-  border: 1px solid rgba(217,164,65,0.08);
+  padding: 22px 28px;
+  background: rgba(217,164,65,0.04);
+  border: 1px solid rgba(217,164,65,0.10);
   border-radius: var(--r-lg);
   position: relative;
-  backdrop-filter: blur(4px);
 }
 .fl-philosophy__highlight::before {
   content: '';
   position: absolute;
   top: -1px; left: 20%; right: 20%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(217,164,65,0.25), transparent);
-}
-.fl-philosophy__highlight::after {
-  content: '';
-  position: absolute;
-  bottom: -1px; left: 30%; right: 30%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(217,164,65,0.12), transparent);
+  background: linear-gradient(90deg, transparent, rgba(217,164,65,0.3), transparent);
 }
 
 .fl-philosophy__cta {
@@ -1393,25 +856,48 @@ html { scroll-behavior: smooth; }
   position: relative;
   max-width: 960px;
   margin: 0 auto;
-  height: 420px;
+  height: 500px;
   border-radius: var(--r-xl);
   overflow: hidden;
-  border: 1px solid rgba(120,90,50,0.25);
-  box-shadow:
-    0 20px 60px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(217,164,65,0.08);
-  background:
-    radial-gradient(ellipse 60% 50% at 30% 60%, rgba(80,55,25,0.2), transparent 70%),
-    radial-gradient(ellipse 50% 45% at 70% 40%, rgba(60,40,18,0.15), transparent 70%),
-    linear-gradient(170deg, rgba(30,20,10,0.95) 0%, rgba(15,10,5,0.98) 100%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-deep), var(--shadow-gold);
 }
 
-.fl-track-svg {
+.fl-map__bg {
   position: absolute;
   inset: 0;
+}
+.fl-map__terrain {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 40% at 22% 52%, rgba(58,109,91,0.18), transparent 70%),
+    radial-gradient(ellipse 40% 38% at 66% 42%, rgba(110,168,201,0.10), transparent 70%),
+    radial-gradient(ellipse 50% 55% at 44% 28%, rgba(200,149,108,0.09), transparent 70%),
+    linear-gradient(165deg,
+      rgba(78,61,117,0.18) 0%,
+      rgba(8,6,14,0.85) 38%,
+      rgba(14,10,22,0.92) 100%);
+}
+.fl-map__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(217,164,65,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217,164,65,0.035) 1px, transparent 1px);
+  background-size: 55px 55px;
+}
+.fl-map__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(4,3,10,0.7) 100%);
+}
+.fl-map__bridge {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
   width: 100%;
-  height: 100%;
-  z-index: 1;
+  height: auto;
+  opacity: 0.55;
 }
 
 /* Realm pins */
@@ -1428,19 +914,8 @@ html { scroll-behavior: smooth; }
   z-index: 20;
   transition: transform 0.4s var(--ease-spring);
 }
-
-.fl-realm-pin--locked {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.fl-realm-pin:hover:not(.fl-realm-pin--locked) {
-  transform: translate(-50%, -50%) scale(1.18);
-}
-.fl-realm-pin--active {
-  transform: translate(-50%, -50%) scale(1.25);
-  z-index: 30;
-}
+.fl-realm-pin:hover   { transform: translate(-50%, -50%) scale(1.18); }
+.fl-realm-pin--active { transform: translate(-50%, -50%) scale(1.22); z-index: 30; }
 
 .fl-realm-pin__pulse {
   position: absolute;
@@ -1470,7 +945,7 @@ html { scroll-behavior: smooth; }
     0 4px 12px rgba(0,0,0,0.5);
   position: relative;
   z-index: 1;
-  transition: box-shadow 0.3s, border-color 0.3s;
+  transition: box-shadow 0.3s;
 }
 /* Pin dot inner glow */
 .fl-realm-pin__dot::after {
@@ -1489,7 +964,6 @@ html { scroll-behavior: smooth; }
 .fl-realm-pin--active .fl-realm-pin__dot {
   box-shadow:
     0 0 28px color-mix(in srgb, var(--pin-color, #D9A441) 60%, transparent),
-    0 0 60px color-mix(in srgb, var(--pin-color, #D9A441) 15%, transparent),
     0 4px 12px rgba(0,0,0,0.5);
 }
 
@@ -1504,13 +978,12 @@ html { scroll-behavior: smooth; }
   border-radius: var(--r-sm);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
-  transition: color 0.3s, border-color 0.3s, transform 0.3s;
+  transition: color 0.3s, border-color 0.3s;
 }
 .fl-realm-pin:hover .fl-realm-pin__label,
 .fl-realm-pin--active .fl-realm-pin__label {
   color: var(--text);
   border-color: var(--border2);
-  transform: translateY(-2px);
 }
 
 @keyframes fl-pin-pulse {
@@ -1625,14 +1098,7 @@ html { scroll-behavior: smooth; }
   transition: opacity 0.5s;
   pointer-events: none;
 }
-.fl-tablet:hover {
-  transform: translateY(-8px);
-  border-color: rgba(217,164,65,0.18);
-  box-shadow:
-    0 12px 40px rgba(0,0,0,0.4),
-    0 0 0 1px rgba(217,164,65,0.08),
-    0 0 40px rgba(217,164,65,0.05);
-}
+.fl-tablet:hover { transform: translateY(-9px); border-color: var(--border2); box-shadow: var(--shadow-deep), 0 0 24px rgba(217,164,65,0.07); }
 .fl-tablet:hover .fl-tablet__glow-border { opacity: 1; }
 
 /* Roman rune number */
@@ -1646,12 +1112,10 @@ html { scroll-behavior: smooth; }
   text-transform: uppercase;
   margin-bottom: 14px;
   opacity: 0.7;
-  transition: opacity 0.3s;
 }
-.fl-tablet:hover .fl-tablet__rune { opacity: 1; }
 .fl-tablet__title {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.12rem;
   font-weight: 600;
   color: var(--text);
   margin-bottom: 10px;
@@ -1670,7 +1134,7 @@ html { scroll-behavior: smooth; }
   position: absolute;
   bottom: 0; left: 15%; right: 15%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(217,164,65,0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(217,164,65,0.15), transparent);
   transform: scaleX(0);
   transition: transform 0.5s var(--ease-out);
 }
@@ -1782,429 +1246,237 @@ html { scroll-behavior: smooth; }
 /* Floating islands visual */
 .fl-islands {
   position: relative;
-  height: 400px;
+  height: 360px;
 }
 
 .fl-island {
   position: absolute;
   animation: fl-isle-float 8s ease-in-out infinite;
-  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5));
 }
-.fl-island--main     { left: 15%; top: 10%; width: 55%; animation-delay: 0s; }
-.fl-island--secondary{ left: 58%; top: 40%; width: 32%; animation-delay: 2s; }
-.fl-island--tertiary { left: 2%;  top: 55%; width: 28%; animation-delay: 4s; }
+.fl-island--main     { left: 20%; top: 15%; width: 50%; animation-delay: 0s; }
+.fl-island--secondary{ left: 62%; top: 45%; width: 30%; animation-delay: 2s; }
+.fl-island--tertiary { left: 4%;  top: 50%; width: 26%; animation-delay: 4s; }
 
 @keyframes fl-isle-float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  33%      { transform: translateY(-10px) rotate(0.5deg); }
-  66%      { transform: translateY(-6px) rotate(-0.3deg); }
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-12px); }
 }
 
 .fl-island__ground {
   width: 100%;
-  padding-bottom: 32%;
-  border-radius: 45% 55% 35% 40% / 50% 50% 40% 45%;
-  background: 
-    radial-gradient(ellipse at 30% 20%, rgba(88,149,121,0.4) 0%, transparent 40%),
-    radial-gradient(ellipse at 70% 30%, rgba(68,129,101,0.3) 0%, transparent 35%),
-    linear-gradient(180deg,
-      rgba(58,109,91,0.45) 0%,
-      rgba(42,80,64,0.65) 35%,
-      rgba(32,60,48,0.8) 60%,
-      rgba(20,15,30,0.95) 100%);
-  border: 1px solid rgba(88,149,121,0.25);
+  padding-bottom: 35%;
+  border-radius: 50% 50% 30% 30%;
+  background: linear-gradient(180deg,
+    rgba(58,109,91,0.35) 0%,
+    rgba(42,80,64,0.55) 40%,
+    rgba(26,52,40,0.7) 70%,
+    rgba(14,10,22,0.8) 100%);
+  border: 1px solid rgba(58,109,91,0.22);
   box-shadow:
-    0 25px 60px rgba(0,0,0,0.5),
-    0 0 40px rgba(58,109,91,0.08),
-    inset 0 -10px 30px rgba(20,15,30,0.4),
-    inset 0 5px 15px rgba(88,149,121,0.1);
-  position: relative;
-  overflow: hidden;
+    0 20px 50px rgba(0,0,0,0.45),
+    0 0 30px rgba(58,109,91,0.07);
 }
-.fl-island__ground::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 40%;
-  background: 
-    radial-gradient(ellipse at 25% 50%, rgba(110,180,140,0.2) 0%, transparent 30%),
-    radial-gradient(ellipse at 65% 40%, rgba(90,160,120,0.15) 0%, transparent 25%);
-  border-radius: inherit;
-}
-.fl-island__ground::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 5%; right: 5%;
-  height: 60%;
-  background: linear-gradient(180deg, transparent 0%, rgba(20,15,30,0.6) 100%);
-  border-radius: 0 0 40% 40%;
-}
-
 .fl-island__cloud {
   position: absolute;
-  top: -18%;
-  left: 5%; right: 5%;
-  height: 45%;
+  top: -15%;
+  left: 10%; right: 10%;
+  height: 40%;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(130,190,220,0.08), transparent 70%);
-  animation: fl-mist-drift 16s ease-in-out infinite;
-  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(110,168,201,0.06), transparent 70%);
+  animation: fl-mist-drift 14s ease-in-out infinite;
 }
 
 .fl-island__building {
   position: absolute;
-  top: -45%;
-  left: 28%;
-  width: 44%;
+  top: -40%;
+  left: 30%;
+  width: 40%;
 }
 .fl-island__tower {
   width: 100%;
-  padding-bottom: 150%;
-  background: 
-    linear-gradient(90deg, rgba(35,25,15,0.95) 0%, rgba(55,40,25,0.95) 40%, rgba(45,32,18,0.95) 100%);
-  border-radius: 6px 6px 3px 3px;
-  border: 1px solid rgba(217,164,65,0.2);
+  padding-bottom: 140%;
+  background: linear-gradient(180deg, rgba(58,42,20,0.9), rgba(42,26,10,0.8));
+  border-radius: 4px 4px 2px 2px;
+  border: 1px solid rgba(217,164,65,0.15);
   position: relative;
-  box-shadow: 
-    4px 0 15px rgba(0,0,0,0.3),
-    inset -2px 0 8px rgba(217,164,65,0.05);
 }
 .fl-island__tower::before {
   content: '';
   position: absolute;
-  top: -18%; left: 8%; right: 8%;
-  height: 18%;
-  background: linear-gradient(180deg, rgba(55,40,25,0.95), rgba(40,28,15,0.95));
+  top: -15%; left: 10%; right: 10%;
+  height: 15%;
+  background: linear-gradient(180deg, rgba(58,42,20,0.9), rgba(42,26,10,0.8));
   clip-path: polygon(0 100%, 50% 0, 100% 100%);
-  border: 1px solid rgba(217,164,65,0.15);
-  border-bottom: none;
 }
-.fl-island__tower::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 100%;
-  background: linear-gradient(90deg, 
-    rgba(217,164,65,0.03) 0%, 
-    transparent 30%, 
-    rgba(217,164,65,0.02) 70%,
-    rgba(0,0,0,0.1) 100%);
-  pointer-events: none;
-}
-
 .fl-island__window {
   position: absolute;
-  top: 28%; left: 28%;
-  width: 44%; height: 18%;
-  border-radius: 50% 50% 3px 3px;
-  border: 1.5px solid rgba(217,164,65,0.25);
-  background: rgba(8,6,12,0.95);
-  box-shadow: inset 0 0 6px rgba(0,0,0,0.5);
+  top: 30%; left: 30%;
+  width: 40%; height: 20%;
+  border-radius: 50% 50% 2px 2px;
+  border: 1px solid rgba(217,164,65,0.2);
+  background: rgba(4,3,8,0.9);
 }
 .fl-island__window--lit {
-  background: 
-    radial-gradient(ellipse at 50% 60%, rgba(247,195,85,0.25) 0%, rgba(217,164,65,0.12) 50%, rgba(180,120,40,0.08) 100%);
-  border-color: rgba(247,195,85,0.35);
-  box-shadow: 
-    0 0 20px rgba(217,164,65,0.4),
-    0 0 40px rgba(217,164,65,0.15),
-    inset 0 0 12px rgba(247,195,85,0.25),
-    inset 0 -3px 8px rgba(217,164,65,0.15);
-  animation: fl-window-glow 5s ease-in-out infinite;
+  background: rgba(217,164,65,0.15);
+  box-shadow: 0 0 12px rgba(217,164,65,0.3), inset 0 0 8px rgba(217,164,65,0.2);
+  animation: fl-window-flicker 4s ease-in-out infinite;
 }
-.fl-island__building--small .fl-island__window--lit { top: 38%; left: 18%; width: 64%; }
-
-@keyframes fl-window-glow {
-  0%, 100% { 
-    opacity: 1; 
-    box-shadow: 
-      0 0 20px rgba(217,164,65,0.4),
-      0 0 40px rgba(217,164,65,0.15),
-      inset 0 0 12px rgba(247,195,85,0.25);
-  }
-  50%       { 
-    opacity: 0.85; 
-    box-shadow: 
-      0 0 15px rgba(217,164,65,0.3),
-      0 0 30px rgba(217,164,65,0.1),
-      inset 0 0 8px rgba(247,195,85,0.2);
-  }
+.fl-island__building--small .fl-island__window--lit { top: 40%; left: 20%; width: 60%; }
+@keyframes fl-window-flicker {
+  0%, 100% { opacity: 1; }
+  45%       { opacity: 0.75; }
+  80%       { opacity: 0.9; }
 }
 
 .fl-island__lantern {
   position: absolute;
-  top: -65%;
-  left: 3%;
-  width: 28px;
+  top: -60%;
+  left: 5%;
+  width: 30px;
   height: auto;
-  filter: drop-shadow(0 0 8px rgba(217,164,65,0.4));
 }
 .fl-island__tree {
   position: absolute;
-  top: -90%;
-  left: 8%;
-  width: 55%;
+  top: -80%;
+  left: 10%;
+  width: 60%;
   height: auto;
-  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));
 }
 
 /* Crystal bridges */
 .fl-island-bridge {
   position: absolute;
   height: 2px;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(217,164,65,0.15) 20%,
-    rgba(217,164,65,0.35) 50%,
-    rgba(217,164,65,0.15) 80%,
-    transparent 100%);
+  background: linear-gradient(90deg, transparent, rgba(217,164,65,0.25), transparent);
   border-radius: 1px;
-  box-shadow: 0 0 12px rgba(217,164,65,0.2);
 }
-.fl-island-bridge::before {
-  content: '';
-  position: absolute;
-  top: -3px; left: 0; right: 0;
-  height: 8px;
-  background: linear-gradient(90deg, 
-    transparent, 
-    rgba(217,164,65,0.06) 30%,
-    rgba(217,164,65,0.1) 50%,
-    rgba(217,164,65,0.06) 70%,
-    transparent);
-  filter: blur(3px);
-}
-.fl-island-bridge   { top: 56%; left: 42%; right: 3%; transform: rotate(-16deg); }
-.fl-island-bridge--2{ top: 60%; left: 12%; width: 26%; transform: rotate(10deg); }
+.fl-island-bridge   { top: 58%; left: 44%; right: 5%; transform: rotate(-18deg); }
+.fl-island-bridge--2{ top: 62%; left: 15%; width: 24%; transform: rotate(12deg); }
 
 /* ══════════════════════════════════════════
-   15. SCENE 6 — FOREST WISDOM (ISLAND MAP)
+   15. SCENE 6 — ROADMAP (STONE PATH)
 ══════════════════════════════════════════ */
-.fl-scene--wisdom {
-  padding: var(--space-3xl) 0 var(--space-xl);
-  overflow: hidden;
+.fl-scene--roadmap {
+  padding: var(--space-3xl) 0 var(--space-2xl);
 }
 
-.fl-wisdom-track {
+.fl-road-tree--left  { position: absolute; left: -5%;  bottom: 0; height: 80%; width: auto; transform-origin: left bottom; animation: fl-tree-sway-l 14s ease-in-out infinite; }
+.fl-road-tree--right { position: absolute; right: -5%; bottom: 0; height: 80%; width: auto; transform-origin: right bottom; animation: fl-tree-sway-r 16s ease-in-out infinite; }
+
+.fl-road-lantern { animation-duration: 9s; }
+.fl-road-lantern--1 { left: 8%;  bottom: 38%; width: 42px; }
+.fl-road-lantern--2 { left: 32%; bottom: 22%; width: 38px; animation-delay: 1.5s; }
+.fl-road-lantern--3 { right: 32%; bottom: 22%; width: 38px; animation-delay: 3s; }
+.fl-road-lantern--4 { right: 8%; bottom: 38%; width: 42px; animation-delay: 4.5s; }
+
+/* Stone path visual */
+.fl-stone-path {
+  position: relative;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.fl-path__road {
+  position: absolute;
+  left: 50%;
+  top: 0; bottom: 0;
+  width: 3px;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom,
+    transparent,
+    rgba(217,164,65,0.2) 8%,
+    rgba(217,164,65,0.12) 85%,
+    transparent);
+}
+/* Stone cobble dots on path */
+.fl-path__road::before {
+  content: '';
+  position: absolute;
+  left: -8px; top: 8%;
+  width: 18px; bottom: 8%;
+  background-image: radial-gradient(circle at 50% 0, rgba(107,80,42,0.3) 4px, transparent 5px);
+  background-size: 18px 36px;
+}
+
+.fl-milestone {
   position: relative;
   display: flex;
+  align-items: center;
+  margin-bottom: 44px;
   gap: 0;
-  padding: 60px 80px 40px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(217,164,65,0.25) transparent;
-  -webkit-overflow-scrolling: touch;
 }
+.fl-milestone--left  { flex-direction: row; }
+.fl-milestone--right { flex-direction: row-reverse; }
 
-.fl-wisdom-track::-webkit-scrollbar {
-  height: 6px;
-}
-.fl-wisdom-track::-webkit-scrollbar-track {
-  background: transparent;
-}
-.fl-wisdom-track::-webkit-scrollbar-thumb {
-  background: rgba(217,164,65,0.25);
-  border-radius: 3px;
-}
-
-/* Connecting path / vine line */
-.fl-wisdom-path {
-  position: absolute;
-  top: 50%;
-  left: 40px;
-  right: 40px;
-  height: 3px;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(120,90,40,0.3) 5%,
-    rgba(160,120,50,0.2) 50%,
-    rgba(120,90,40,0.3) 95%,
-    transparent);
-  transform: translateY(-50%);
-  z-index: 0;
-}
-.fl-wisdom-path::before {
-  content: '';
-  position: absolute;
-  inset: -4px 0;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(217,164,65,0.06) 5%,
-    rgba(217,164,65,0.03) 50%,
-    rgba(217,164,65,0.06) 95%,
-    transparent);
-  filter: blur(4px);
-}
-
-/* Each island */
-.fl-wisdom-island {
+.fl-milestone__marker {
   position: relative;
-  flex: 0 0 240px;
-  scroll-snap-align: center;
-  z-index: 1;
-  animation: fl-island-appear 0.8s var(--ease-out) both;
+  width: 56px; height: 56px;
+  flex-shrink: 0;
+  z-index: 5;
+  margin: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-.fl-wisdom-island__float {
-  position: relative;
-  transition: transform 0.5s var(--ease-spring);
-}
-
-.fl-wisdom-island:hover .fl-wisdom-island__float {
-  transform: translateY(-8px);
-}
-
-/* Stagger up/down positioning */
-.fl-wisdom-island--up .fl-wisdom-island__float {
-  transform: translateY(-18px);
-}
-.fl-wisdom-island--down .fl-wisdom-island__float {
-  transform: translateY(18px);
-}
-.fl-wisdom-island--up:hover .fl-wisdom-island__float {
-  transform: translateY(-26px);
-}
-.fl-wisdom-island--down:hover .fl-wisdom-island__float {
-  transform: translateY(10px);
-}
-
-/* Rock base under each island */
-.fl-wisdom-island__rock {
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80%;
-  height: 16px;
-  background: radial-gradient(ellipse at 50% 0%,
-    rgba(80,60,30,0.5) 0%,
-    rgba(60,45,22,0.3) 50%,
-    transparent 80%);
+.fl-milestone__stone {
+  width: 44px; height: 44px;
   border-radius: 50%;
-  filter: blur(3px);
-  z-index: -1;
+  background: rgba(10,8,18,0.92);
+  border: 2px solid rgba(217,164,65,0.28);
+  transition: border-color 0.4s, box-shadow 0.4s;
 }
-
-/* Stem connecting island to the path */
-.fl-wisdom-island__stem {
+.fl-milestone--done .fl-milestone__stone {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(217,164,65,0.28), 0 0 40px rgba(217,164,65,0.08);
+}
+.fl-milestone__bloom {
   position: absolute;
-  bottom: -20px;
-  left: 50%;
-  width: 2px;
-  background: linear-gradient(to bottom, rgba(120,90,40,0.3), rgba(120,90,40,0.08));
-  transform: translateX(-50%);
-  z-index: 0;
-}
-.fl-wisdom-island--up .fl-wisdom-island__stem {
-  height: 40px;
-}
-.fl-wisdom-island--down .fl-wisdom-island__stem {
-  height: 58px;
-  bottom: -38px;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217,164,65,0.2), transparent 65%);
+  animation: fl-orb-pulse 2.8s ease-in-out infinite;
 }
 
-/* Card on the island */
-.fl-wisdom-island__card {
-  position: relative;
-  width: 220px;
-  padding: 24px 20px 20px;
-  background: rgba(18,12,6,0.75);
-  border: 1px solid rgba(120,90,50,0.2);
-  border-radius: var(--r-lg);
-  backdrop-filter: blur(14px);
-  transition: border-color 0.4s, box-shadow 0.5s;
-  z-index: 2;
+.fl-milestone__card {
+  flex: 1;
+  max-width: 280px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color 0.4s, transform 0.4s var(--ease-spring), box-shadow 0.4s;
 }
-
-.fl-wisdom-island__card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(ellipse 90% 50% at 50% 0%, rgba(217,164,65,0.05), transparent 70%);
-  pointer-events: none;
+.fl-milestone:hover .fl-milestone__card {
+  border-color: var(--border2);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-panel);
 }
-
-.fl-wisdom-island:hover .fl-wisdom-island__card {
-  border-color: rgba(217,164,65,0.3);
-  box-shadow:
-    0 16px 50px rgba(0,0,0,0.5),
-    0 0 24px rgba(217,164,65,0.06);
+.fl-milestone--seed .fl-milestone__card {
+  opacity: 0.55;
+  border-style: dashed;
 }
-
-.fl-wisdom-island__icon {
-  font-size: 1.6rem;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+.fl-milestone__date {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+  opacity: 0.75;
 }
-
-.fl-wisdom-island__title {
+.fl-milestone--seed .fl-milestone__date { color: var(--text-3); }
+.fl-milestone__title {
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 1.02rem;
   font-weight: 600;
-  color: var(--gold);
-  margin-bottom: 8px;
-  letter-spacing: 0.01em;
+  color: var(--text);
+  margin-bottom: 6px;
 }
-
-.fl-wisdom-island__desc {
-  font-size: 0.78rem;
+.fl-milestone__desc {
+  font-size: 0.83rem;
   color: var(--text-2);
-  line-height: 1.6;
+  line-height: 1.62;
   font-weight: 300;
-  margin-bottom: 12px;
-}
-
-.fl-wisdom-island__tip {
-  font-size: 0.7rem;
-  color: rgba(217,164,65,0.55);
-  line-height: 1.45;
-  padding-top: 8px;
-  border-top: 1px solid rgba(120,90,50,0.1);
-  font-style: italic;
-}
-
-.fl-wisdom-island__tip-label {
-  color: var(--gold);
-  font-weight: 600;
-  font-style: normal;
-}
-
-@keyframes fl-island-appear {
-  from { opacity: 0; transform: translateY(30px) scale(0.92); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .fl-wisdom-track {
-    padding: 50px 40px 30px;
-    gap: 0;
-  }
-  .fl-wisdom-island {
-    flex: 0 0 210px;
-  }
-  .fl-wisdom-island__card {
-    width: 195px;
-    padding: 20px 16px 18px;
-  }
-}
-@media (max-width: 560px) {
-  .fl-wisdom-track {
-    padding: 40px 24px 24px;
-  }
-  .fl-wisdom-island {
-    flex: 0 0 190px;
-  }
-  .fl-wisdom-island__card {
-    width: 175px;
-    padding: 18px 14px 16px;
-  }
-  .fl-wisdom-island__desc {
-    font-size: 0.73rem;
-  }
 }
 
 /* ══════════════════════════════════════════
@@ -2245,39 +1517,26 @@ html { scroll-behavior: smooth; }
   border-radius: var(--r-md);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.35s, background 0.35s, box-shadow 0.35s, transform 0.3s;
+  transition: border-color 0.35s, background 0.35s, box-shadow 0.35s;
   backdrop-filter: blur(8px);
 }
-.fl-scroll:hover {
-  border-color: rgba(217,164,65,0.15);
-  background: rgba(14,12,22,0.85);
-  transform: translateY(-1px);
-}
+.fl-scroll:hover { border-color: var(--border2); background: rgba(14,12,22,0.85); }
 .fl-scroll--open  {
-  border-color: rgba(217,164,65,0.2);
-  box-shadow:
-    0 8px 32px rgba(0,0,0,0.3),
-    0 0 0 1px rgba(217,164,65,0.08),
-    0 0 40px rgba(217,164,65,0.04);
-  transform: translateY(-1px);
+  border-color: var(--border2);
+  box-shadow: var(--shadow-panel), var(--shadow-gold);
 }
 
 .fl-scroll__header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 18px 22px;
 }
 .fl-scroll__rune {
   color: var(--gold);
   font-size: 10px;
   flex-shrink: 0;
   opacity: 0.6;
-  transition: opacity 0.3s, transform 0.3s;
-}
-.fl-scroll--open .fl-scroll__rune {
-  opacity: 1;
-  transform: rotate(45deg);
 }
 .fl-scroll__question {
   flex: 1;
@@ -2285,25 +1544,20 @@ html { scroll-behavior: smooth; }
   font-weight: 500;
   color: var(--text);
   font-family: var(--font-body);
-  transition: color 0.3s;
-}
-.fl-scroll:hover .fl-scroll__question {
-  color: rgba(246,241,229,0.95);
 }
 .fl-scroll__toggle {
   font-size: 18px;
   color: var(--gold);
   flex-shrink: 0;
   line-height: 1;
-  transition: transform 0.35s var(--ease-spring), opacity 0.3s;
-  opacity: 0.6;
+  transition: transform 0.35s var(--ease-spring);
+  opacity: 0.7;
 }
-.fl-scroll:hover .fl-scroll__toggle { opacity: 0.9; }
 .fl-scroll--open .fl-scroll__toggle { transform: rotate(45deg); opacity: 1; }
 
 .fl-scroll__answer {
-  padding: 0 24px 20px 46px;
-  animation: fl-fade-up 0.35s var(--ease-out);
+  padding: 0 22px 18px 44px;
+  animation: fl-fade-up 0.3s var(--ease-out);
 }
 .fl-scroll__answer p {
   font-size: 0.88rem;
@@ -2415,45 +1669,8 @@ html { scroll-behavior: smooth; }
 }
 
 /* ══════════════════════════════════════════
-   FAREWELL CASTLE — Hogwarts style, left side
-══════════════════════════════════════════ */
-.fl-farewell-castle {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 420px;
-  height: 380px;
-  z-index: 2;
-  pointer-events: none;
-  opacity: 0.7;
-  filter: brightness(0.6) drop-shadow(0 0 30px rgba(217, 164, 65, 0.2));
-  animation: fl-fc-rise 1.4s 0.3s var(--ease-out) both;
-}
-.fl-farewell-castle__img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-@keyframes fl-fc-rise {
-  from { opacity: 0; transform: translateY(40px); }
-  to   { opacity: 0.7; transform: translateY(0); }
-}
-
-/* Castle responsive */
-@media (max-width: 1200px) {
-  .fl-farewell-castle { width: 320px; height: 300px; opacity: 0.55; filter: brightness(0.6); }
-}
-@media (max-width: 900px) {
-  .fl-farewell-castle { width: 240px; height: 220px; opacity: 0.4; bottom: 5%; filter: brightness(0.5); }
-}
-@media (max-width: 560px) {
-  .fl-farewell-castle { display: none; }
-}
-
-/* ══════════════════════════════════════════
    18. FOOTER
- ══════════════════════════════════════════ */
+══════════════════════════════════════════ */
 .fl-footer {
   position: relative;
   z-index: 10;
@@ -2547,6 +1764,7 @@ html { scroll-behavior: smooth; }
    20. RESPONSIVE
 ══════════════════════════════════════════ */
 @media (max-width: 900px) {
+  .fl-nav__links { display: none; }
   .fl-nav { padding: 0 20px; }
   .fl-hero__headline { font-size: clamp(2.6rem, 10vw, 4rem); }
   .fl-world-map { height: 340px; }
@@ -2661,232 +1879,4 @@ html { scroll-behavior: smooth; }
 .fl-island--main { animation: fl-isle-float 7s ease-in-out infinite, fl-reveal-slide-left 0.8s 0.25s var(--ease-out) both; }
 .fl-island--secondary { animation: fl-isle-float 9s 2s ease-in-out infinite, fl-reveal-fade 0.8s 0.4s var(--ease-out) both; }
 .fl-island--tertiary { animation: fl-isle-float 11s 4s ease-in-out infinite, fl-reveal-fade 0.8s 0.5s var(--ease-out) both; }
-
-/* ══════════════════════════════════════════
-   23. MOBILE HAMBURGER MENU
-══════════════════════════════════════════ */
-.fl-nav__hamburger {
-  display: none;
-  width: 30px;
-  height: 24px;
-  position: relative;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  z-index: 1001;
-}
-.fl-nav__hamburger span {
-  display: block;
-  width: 100%;
-  height: 2px;
-  background: var(--text);
-  margin-bottom: 6px;
-  transition: transform 0.3s, opacity 0.3s;
-  border-radius: 1px;
-}
-.fl-nav__hamburger span:last-child { margin-bottom: 0; }
-.fl-nav__hamburger--open span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
-.fl-nav__hamburger--open span:nth-child(2) { opacity: 0; }
-.fl-nav__hamburger--open span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
-
-.fl-nav__links-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Active nav link */
-.fl-nav__link--active {
-  color: var(--gold) !important;
-}
-.fl-nav__link--active::after {
-  left: 14px !important;
-  right: 14px !important;
-}
-
-/* ══════════════════════════════════════════
-   24. HERO SECONDARY LINK & TRUST BADGE
-══════════════════════════════════════════ */
-.fl-hero__secondary-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-2);
-  font-size: 0.95rem;
-  font-weight: 400;
-  text-decoration: none;
-  transition: color 0.3s, gap 0.3s;
-  padding: 8px 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-.fl-hero__secondary-link:hover {
-  color: var(--gold);
-  gap: 12px;
-}
-.fl-hero__secondary-arrow {
-  transition: transform 0.3s;
-}
-.fl-hero__secondary-link:hover .fl-hero__secondary-arrow {
-  transform: translateX(4px);
-}
-
-.fl-hero__trust {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
-  animation: fl-fade-up 1.2s 0.45s var(--ease-out) both;
-}
-.fl-hero__trust-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--gold);
-  padding: 5px 12px;
-  background: rgba(217,164,65,0.06);
-  border: 1px solid rgba(217,164,65,0.15);
-  border-radius: var(--r-pill);
-}
-.fl-hero__trust-badge::before {
-  content: '✓';
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--gold);
-  opacity: 0.7;
-}
-.fl-hero__trust-sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--text-3);
-}
-.fl-hero__trust-note {
-  font-size: 0.82rem;
-  color: var(--text-3);
-  font-weight: 300;
-}
-
-.fl-hero__guest {
-  animation: fl-fade-up 1.2s 0.55s var(--ease-out) both;
-  margin-top: 4px;
-}
-
-.fl-btn--text {
-  background: none;
-  border: none;
-  color: var(--text-3);
-  font-size: 0.82rem;
-  font-weight: 400;
-  padding: 6px 0;
-  text-decoration: none;
-  transition: color 0.3s;
-  cursor: pointer;
-  font-family: var(--font-body);
-  position: relative;
-}
-.fl-btn--text::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(246,241,229,0.15);
-  border-radius: 1px;
-  transition: background 0.3s;
-}
-.fl-btn--text:hover {
-  color: var(--text-2);
-}
-.fl-btn--text:hover::after {
-  background: rgba(246,241,229,0.3);
-}
-
-/* ══════════════════════════════════════════
-   25. EARLY NAV BACKDROP
-══════════════════════════════════════════ */
-.fl-nav {
-  background: rgba(4, 3, 10, 0.75);
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
-  border-bottom: 1px solid rgba(217,164,65,0.06);
-}
-
-/* ══════════════════════════════════════════
-   26. MOBILE RESPONSIVE ADDITIONS
-══════════════════════════════════════════ */
-@media (max-width: 900px) {
-  .fl-nav__hamburger { display: block; }
-  .fl-nav__links-wrapper {
-    position: fixed;
-    top: 66px;
-    left: 0;
-    right: 0;
-    background: rgba(4, 3, 10, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 20px;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    transform: translateY(-150%);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.4s var(--ease-out), opacity 0.4s;
-    z-index: 999;
-  }
-  .fl-nav__links-wrapper--open {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: all;
-  }
-  .fl-nav__links-wrapper .fl-nav__links {
-    flex-direction: column;
-    gap: 8px;
-    margin: 0;
-  }
-  .fl-nav__links-wrapper .fl-nav__cta {
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-  }
-  .fl-nav__links-wrapper .fl-btn { width: 100%; }
-}
-
-@media (max-width: 560px) {
-  .fl-hero__actions { flex-direction: column; align-items: center; }
-  .fl-hero__trust { flex-direction: column; gap: 6px; }
-  .fl-world-map { height: 340px; min-height: 300px; }
-  .fl-realm-pin__dot { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
-  .fl-realm-pin__pulse { width: 40px; height: 40px; }
-  .fl-realm-pin__pulse--2 { width: 54px; height: 54px; }
-  .fl-footer__inner { grid-template-columns: 1fr; gap: 40px; }
-  .fl-footer__cols { grid-template-columns: 1fr 1fr; }
-  .fl-footer__inner { padding: 0 20px var(--space-lg); }
-}
-
-/* ══════════════════════════════════════════
-   27. PREFERS-REDUCED-MOTION
-══════════════════════════════════════════ */
-@media (prefers-reduced-motion: reduce) {
-  .fl-shooting-star { animation: none; display: none; }
-  .fl-scene { transition: none; }
-  .fl-scene.fl-revealed { opacity: 1; transform: none; }
-  .fl-scene.fl-revealed * { animation: none !important; }
-  .fl-tablet:hover { transform: none; }
-  .fl-milestone:hover .fl-milestone__card { transform: none; }
-  .fl-mist--far { animation: none; }
-  .fl-edge-tree--left, .fl-edge-tree--right { animation: none; }
-  .fl-fg-branch--left, .fl-fg-branch--right { animation: none; }
-  .fl-island { animation: none; }
-  .fl-realm-pin__pulse { animation: none; }
-  .fl-dawn-bird { animation: none; display: none; }
-}
 

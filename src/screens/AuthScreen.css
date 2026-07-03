@@ -1,11 +1,12 @@
 .auth-root {
   position: relative;
-  height: 100svh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
   padding: 20px;
   background: #0e0a06;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ---------- floating dust particles ---------- */

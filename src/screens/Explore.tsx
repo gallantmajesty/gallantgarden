@@ -35,7 +35,10 @@ import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
+import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
+import { CinematicEntry } from '../components/library/CinematicEntry'
 import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
+import { useSeatFlow } from '../store/seatFlow'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -53,6 +56,7 @@ export function Explore() {
   const set = useSettings((s) => s.set)
   const hidden = useHud((s) => s.widgetsHidden)
   const perfMode = useHud((s) => s.perfMode)
+  const seatFlowStage = useSeatFlow((s) => s.stage)
   useAudio()
   useExploreShortcuts()
 
@@ -107,6 +111,13 @@ export function Explore() {
       <RealmConnection />
 
       {!ready && <div className="explore-veil" />}
+
+      {/* Library seat-selection overlay — shown before the player commits to a seat.
+          Once a seat is chosen we fall through to the normal in-world HUD. */}
+      {!isWaterfall && !isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
+
+      {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
+      {!isWaterfall && !isTrain && <CinematicEntry />}
 
       {/* Every widget lives behind this gate — Tab (or Performance Mode) hides the
           whole HUD so the world becomes the sole focus. */}
@@ -229,7 +240,7 @@ export function Explore() {
 
 /**
  * Shown when a flagship route (Waterfall, Train Station, …) is reached while that
- * realm is hidden (launch build with no dev access). Keeps the realm's code/assets
+ * realm is hidden (public build, no dev access). Keeps the realm's code/assets
  * fully intact — this is purely the public-facing "not yet available" wall. Leaving
  * clears the active realm so the player returns cleanly to the lobby.
  */

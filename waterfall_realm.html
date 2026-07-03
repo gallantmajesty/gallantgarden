@@ -26,7 +26,7 @@ body{background:#0a1628;overflow:hidden;font-family:'Segoe UI',sans-serif;}
 <div id="title">🌿 FOCUSLILY – WATERFALL REALM</div>
 <div id="subtitle">A peaceful world to focus, connect &amp; grow together &nbsp;·&nbsp; 5 Camps · 40 Users</div>
 <div id="fps">FPS: --</div>
-<div id="hint">Mouse drag: Look &nbsp;|&nbsp; Scroll: Zoom &nbsp;|&nbsp; WASD: Move &nbsp;|&nbsp; Click green marker: Camp info</div>
+<div id="hint">Click to lock mouse &nbsp;|&nbsp; WASD: Move &nbsp;|&nbsp; Mouse: Look around &nbsp;|&nbsp; Space: Jump &nbsp;|&nbsp; Shift: Run &nbsp;|&nbsp; ESC: Unlock</div>
 <div id="campinfo"></div>
 
 <script type="importmap">
@@ -34,7 +34,6 @@ body{background:#0a1628;overflow:hidden;font-family:'Segoe UI',sans-serif;}
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 
 // ── PROGRESS BAR ──────────────────────────────────────────────────────────────
@@ -57,17 +56,152 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xa8c8e0, 0.011);
 
 const camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.1, 900);
-camera.position.set(0, 18, 58);
-camera.lookAt(0, 6, 0);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 5, 0);
-controls.enableDamping = true;
-controls.dampingFactor = 0.055;
-controls.minDistance = 4;
-controls.maxDistance = 220;
-controls.maxPolarAngle = Math.PI * 0.80;
-controls.screenSpacePanning = false;
+// ── THIRD-PERSON CHARACTER ─────────────────────────────────────────────────────
+// Player state: position, rotation, movement
+const player = {
+  x: 0, y: 2.0, z: 30,
+  yaw: 0,           // camera yaw (rotation around player)
+  pitch: 0.25,      // camera pitch (looking slightly down)
+  vx: 0, vz: 0,
+  speed: 0,
+  grounded: true,
+  vy: 0,
+  bobPhase: 0,
+  walkCycle: 0,
+};
+
+// Camera orbit distance behind the player
+const CAM_DIST = 7;
+const CAM_HEIGHT = 3.2;
+const CAM_MIN_PITCH = -0.3;
+const CAM_MAX_PITCH = 1.1;
+const WALK_SPEED = 5.5;
+const RUN_SPEED = 10;
+const MOUSE_SENSITIVITY = 0.003;
+const GRAVITY = -18;
+const JUMP_V = 7;
+
+// ── CHARACTER MODEL (robed figure seen from behind) ────────────────────────────
+const playerGroup = new THREE.Group();
+scene.add(playerGroup);
+
+// Body - a dark robed figure (capsule-like, only back is visible)
+const bodyGeo = new THREE.CylinderGeometry(0.35, 0.45, 1.6, 8);
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9, metalness: 0.05 });
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.position.y = 0.8;
+body.castShadow = true;
+playerGroup.add(body);
+
+// Head - dark sphere (hood/hat shape)
+const headGeo = new THREE.SphereGeometry(0.25, 10, 8);
+const headMat = new THREE.MeshStandardMaterial({ color: 0x16162a, roughness: 0.85, metalness: 0.05 });
+const head = new THREE.Mesh(headGeo, headMat);
+head.position.y = 1.85;
+head.castShadow = true;
+playerGroup.add(head);
+
+// Cloak - a wider cylinder behind the body
+const cloakGeo = new THREE.CylinderGeometry(0.15, 0.6, 1.8, 8);
+const cloakMat = new THREE.MeshStandardMaterial({ color: 0x2d1f3d, roughness: 0.92, metalness: 0.03, side: THREE.DoubleSide });
+const cloak = new THREE.Mesh(cloakGeo, cloakMat);
+cloak.position.set(0, 0.9, -0.08);
+cloak.rotation.x = 0.08;
+cloak.castShadow = true;
+playerGroup.add(cloak);
+
+// Cloak bottom hem - a darker ring
+const hemGeo = new THREE.CylinderGeometry(0.55, 0.65, 0.15, 12);
+const hemMat = new THREE.MeshStandardMaterial({ color: 0x1a0f2e, roughness: 0.95, metalness: 0.02 });
+const hem = new THREE.Mesh(hemGeo, hemMat);
+hem.position.y = 0.15;
+hem.castShadow = true;
+playerGroup.add(hem);
+
+// Shoulders - wider shape
+const shoulderGeo = new THREE.SphereGeometry(0.42, 8, 6);
+const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x1e1633, roughness: 0.9, metalness: 0.04 });
+const shoulderL = new THREE.Mesh(shoulderGeo, shoulderMat);
+shoulderL.position.set(-0.35, 1.55, 0);
+shoulderL.scale.set(1, 0.6, 0.8);
+shoulderL.castShadow = true;
+playerGroup.add(shoulderL);
+const shoulderR = new THREE.Mesh(shoulderGeo, shoulderMat);
+shoulderR.position.set(0.35, 1.55, 0);
+shoulderR.scale.set(1, 0.6, 0.8);
+shoulderR.castShadow = true;
+playerGroup.add(shoulderR);
+
+// Staff / walking stick (held in right hand)
+const staffGeo = new THREE.CylinderGeometry(0.03, 0.035, 2.2, 5);
+const staffMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1a, roughness: 0.9, metalness: 0.08 });
+const staff = new THREE.Mesh(staffGeo, staffMat);
+staff.position.set(0.5, 1.1, 0.15);
+staff.rotation.z = 0.15;
+staff.castShadow = true;
+playerGroup.add(staff);
+
+// Small glowing lantern on the staff
+const lanternGeo = new THREE.SphereGeometry(0.1, 8, 6);
+const lanternMat = new THREE.MeshStandardMaterial({ color: 0xffe066, emissive: 0xffcc33, emissiveIntensity: 1.8, roughness: 0.3 });
+const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+lantern.position.set(0.58, 2.2, 0.15);
+playerGroup.add(lantern);
+const lanternLight = new THREE.PointLight(0xffdd88, 0.9, 12);
+lanternLight.position.set(0.58, 2.2, 0.15);
+playerGroup.add(lanternLight);
+
+// Player shadow disc on ground
+const shadowGeo = new THREE.CircleGeometry(0.5, 16);
+const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false });
+const shadowDisc = new THREE.Mesh(shadowGeo, shadowMat);
+shadowDisc.rotation.x = -Math.PI / 2;
+shadowDisc.position.y = 0.02;
+playerGroup.add(shadowDisc);
+
+// Set initial player position
+playerGroup.position.set(player.x, player.y, player.z);
+
+// ── INPUT STATE ────────────────────────────────────────────────────────────────
+const keys = {};
+let pointerLocked = false;
+let dragOn = false;
+let dragLX = 0, dragLY = 0;
+
+document.addEventListener('keydown', e => { keys[e.code] = true; });
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// Pointer lock for mouse look (click canvas to lock)
+renderer.domElement.addEventListener('click', () => {
+  if (!pointerLocked) renderer.domElement.requestPointerLock();
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = document.pointerLockElement === renderer.domElement;
+});
+document.addEventListener('mousemove', e => {
+  if (pointerLocked) {
+    player.yaw -= e.movementX * MOUSE_SENSITIVITY;
+    player.pitch += e.movementY * MOUSE_SENSITIVITY * 0.6;
+    player.pitch = Math.max(CAM_MIN_PITCH, Math.min(CAM_MAX_PITCH, player.pitch));
+  } else if (dragOn) {
+    const s = MOUSE_SENSITIVITY * 0.7;
+    player.yaw -= (e.clientX - dragLX) * s;
+    player.pitch += (e.clientY - dragLY) * s * 0.6;
+    player.pitch = Math.max(CAM_MIN_PITCH, Math.min(CAM_MAX_PITCH, player.pitch));
+    dragLX = e.clientX;
+    dragLY = e.clientY;
+  }
+});
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!pointerLocked) { dragOn = true; dragLX = e.clientX; dragLY = e.clientY; }
+});
+window.addEventListener('pointerup', () => { dragOn = false; });
+
+// Scroll to zoom
+renderer.domElement.addEventListener('wheel', e => {
+  // reserved for future zoom range if needed
+}, { passive: true });
 
 setProgress(20);
 
@@ -706,7 +840,8 @@ scene.add(ffPts);
 // ── RAYCASTER (camp click) ──────────────────────────────────────────────────────
 const rc=new THREE.Raycaster();
 const mouse=new THREE.Vector2();
-renderer.domElement.addEventListener('click',e=>{
+renderer.domElement.addEventListener('dblclick',e=>{
+  // Double-click to show camp info (single click is for pointer lock)
   mouse.set((e.clientX/innerWidth)*2-1,-(e.clientY/innerHeight)*2+1);
   rc.setFromCamera(mouse,camera);
   const hits=rc.intersectObjects(campMarkers);
@@ -727,6 +862,120 @@ window.addEventListener('resize',()=>{
   renderer.setSize(innerWidth,innerHeight);
 });
 
+// ── PLAYER MOVEMENT (on terrain heightfield) ──────────────────────────────────
+function getTerrainY(x, z) {
+  // Approximate terrain height using the same fbm noise
+  const h = fbm(x * 0.022 + 3, z * 0.022 + 3, 5) * 24;
+  const lakeR = Math.sqrt(x * x + (z - 10) * (z - 10));
+  let hh = h;
+  if (lakeR < 30) hh = Math.min(hh, lakeR * 0.04 - 1.5);
+  if (Math.abs(x) < 7 && z > -22 && z < 8) hh = Math.min(hh, -0.4);
+  return Math.max(hh, -0.3); // never go below water level much
+}
+
+function updatePlayer(dt) {
+  const run = !!(keys['ShiftLeft'] || keys['ShiftRight']);
+  const mz = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+  const mx = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
+  const moving = mx !== 0 || mz !== 0;
+
+  // Movement direction relative to camera yaw (W = forward into scene)
+  const sinY = Math.sin(player.yaw);
+  const cosY = Math.cos(player.yaw);
+  // mz=1 (W) means forward = away from camera = into scene
+  let moveX = 0, moveZ = 0;
+  if (moving) {
+    // Forward is -sinYaw, -cosYaw (into the screen, away from camera)
+    moveX = -sinY * mz + cosY * mx;
+    moveZ = -cosY * mz - sinY * mx;
+    const len = Math.hypot(moveX, moveZ) || 1;
+    moveX /= len;
+    moveZ /= len;
+  }
+
+  const speed = run ? RUN_SPEED : WALK_SPEED;
+  const targetVX = moveX * speed;
+  const targetVZ = moveZ * speed;
+  const blend = 1 - Math.pow(0.001, dt);
+  player.vx = THREE.MathUtils.lerp(player.vx || 0, targetVX, blend);
+  player.vz = THREE.MathUtils.lerp(player.vz || 0, targetVZ, blend);
+  if (!moving && Math.hypot(player.vx, player.vz) < 0.04) { player.vx = 0; player.vz = 0; }
+
+  // Apply velocity
+  player.x += (player.vx || 0) * dt;
+  player.z += (player.vz || 0) * dt;
+
+  // Clamp to world bounds
+  player.x = THREE.MathUtils.clamp(player.x, -105, 105);
+  player.z = THREE.MathUtils.clamp(player.z, -105, 105);
+
+  // Terrain height
+  const groundY = getTerrainY(player.x, player.z);
+
+  // Jump
+  if (player.grounded && keys['Space']) {
+    player.vy = JUMP_V;
+    player.grounded = false;
+  }
+  player.vy += GRAVITY * dt;
+  player.y += player.vy * dt;
+  if (player.y <= groundY + 0.05) {
+    player.y = groundY + 0.05;
+    if (player.vy < 0) player.vy = 0;
+    player.grounded = true;
+  } else {
+    player.grounded = false;
+  }
+
+  // Walk cycle animation
+  if (moving) {
+    player.walkCycle += dt * (run ? 12 : 8);
+    player.bobPhase += dt * 10;
+  } else {
+    player.walkCycle *= 0.9;
+  }
+
+  // Update player group position
+  playerGroup.position.set(player.x, player.y, player.z);
+
+  // Player faces movement direction (so back is toward camera when walking forward)
+  if (moving) {
+    const targetFace = Math.atan2(moveX, moveZ);
+    let dYaw = targetFace - (playerGroup.rotation.y || 0);
+    // Normalize to -PI..PI
+    while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    playerGroup.rotation.y += dYaw * Math.min(1, dt * 10);
+  } else {
+    const targetFace = player.yaw + Math.PI;
+    let dYaw = targetFace - (playerGroup.rotation.y || 0);
+    while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    playerGroup.rotation.y += dYaw * Math.min(1, dt * 10);
+  }
+
+  // Walk bobbing
+  const bobAmt = Math.sin(player.walkCycle) * 0.06 * Math.min(1, Math.hypot(player.vx || 0, player.vz || 0) * 0.3);
+  body.position.y = 0.8 + bobAmt;
+  head.position.y = 1.85 + bobAmt;
+  shoulderL.position.y = 1.55 + bobAmt;
+  shoulderR.position.y = 1.55 + bobAmt;
+  cloak.position.y = 0.9 + bobAmt * 0.7;
+  hem.position.y = 0.15 + bobAmt * 0.5;
+  staff.position.y = 1.1 + bobAmt;
+
+  // Cloak sway when walking
+  const sway = Math.sin(player.walkCycle * 0.5) * 0.05 * Math.min(1, Math.hypot(player.vx || 0, player.vz || 0) * 0.3);
+  cloak.rotation.x = 0.08 + sway;
+
+  // Shadow disc on ground
+  shadowDisc.position.y = 0.02;
+  const terrainBelow = getTerrainY(player.x, player.z);
+  shadowDisc.position.y = Math.max(0.02, player.y - terrainBelow - 0.02);
+  shadowDisc.scale.setScalar(1 + Math.max(0, (player.y - terrainBelow - 0.05)) * 0.1);
+  shadowDisc.material.opacity = THREE.MathUtils.clamp(0.35 - (player.y - terrainBelow) * 0.02, 0.05, 0.35);
+}
+
 setProgress(97);
 
 // ── ANIMATE ───────────────────────────────────────────────────────────────────
@@ -744,8 +993,32 @@ function tick(t){
 
   if(!loaderHidden&&t>800){loader.style.opacity='0';setTimeout(()=>loader.style.display='none',1000);loaderHidden=true;setProgress(100);}
 
-  controls.update();
   const T=t*0.001;
+
+  // Update player movement
+  updatePlayer(dt);
+
+  // ── THIRD-PERSON CAMERA ──────────────────────────────────────────────────
+  const cp = Math.cos(player.pitch);
+  const sp = Math.sin(player.pitch);
+  // Camera offset: behind the player (-yaw direction), elevated, looking slightly down
+  const camOx = Math.sin(player.yaw) * cp;   // behind = opposite of forward
+  const camOy = sp + 0.4;                      // pitch + slight elevation
+  const camOz = Math.cos(player.yaw) * cp;
+  const camLen = Math.hypot(camOx, camOy, camOz) || 1;
+  const nx = player.x + (camOx / camLen) * CAM_DIST;
+  const ny = player.y + CAM_HEIGHT + (camOy / camLen) * CAM_DIST * 0.5;
+  const nz = player.z + (camOz / camLen) * CAM_DIST;
+
+  // Smooth camera follow
+  const camLerp = 1 - Math.pow(0.0001, dt);
+  camera.position.x = THREE.MathUtils.lerp(camera.position.x, nx, camLerp);
+  camera.position.y = THREE.MathUtils.lerp(camera.position.y, ny, camLerp);
+  camera.position.z = THREE.MathUtils.lerp(camera.position.z, nz, camLerp);
+
+  // Camera looks at a point slightly above the player's head (never at the face)
+  const lookAtY = player.y + 1.4;
+  camera.lookAt(player.x, lookAtY, player.z);
 
   // Waterfall shader time — alternate frame update
   if(fSkip===0){

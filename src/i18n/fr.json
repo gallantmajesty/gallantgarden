@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "Salles d'étude",
     "objStudyRoomsCaption": "Étudiez en caméra, ensemble",
-    "objStickyNotes": "Notes adhésives",
-    "objStickyNotesCaption": "Votre espace de réflexion visuelle",
+    "objBlueprint": "Notes adhésives",
+    "objBlueprintCaption": "Votre espace de réflexion visuelle",
     "objRealm": "Royaume",
     "objRealmCaption": "Entrez dans un monde d'étude partagé",
     "objMagnet": "Aimant de tâches",

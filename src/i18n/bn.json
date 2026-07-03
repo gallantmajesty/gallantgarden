@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "পড়াশোনার রুম",
     "objStudyRoomsCaption": "ক্যামেরায় একসাথে পড়ুন",
-    "objStickyNotes": "স্টিকি নোট",
-    "objStickyNotesCaption": "আপনার ভিজ্যুয়াল থিঙ্কিং স্পেস",
+    "objBlueprint": "স্টিকি নোট",
+    "objBlueprintCaption": "আপনার ভিজ্যুয়াল থিঙ্কিং স্পেস",
     "objRealm": "রাজ্য",
     "objRealmCaption": "একটি শেয়ার্ড পড়াশোনার জগতে প্রবেশ করুন",
     "objMagnet": "টাস্ক ম্যাগনেট",

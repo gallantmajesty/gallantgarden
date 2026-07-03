@@ -20,25 +20,19 @@ export interface StatCard {
 }
 
 export interface StudyCounts {
-  trees: number
-  notes: number
+  blueprints: number
 }
 
-/** Count the user's planted trees + grown notes (owner-scoped via RLS). */
+/** Count the user's blueprints (owner-scoped via RLS). */
 export async function loadStudyCounts(userId: string): Promise<StudyCounts> {
-  const [trees, notes] = await Promise.all([
+  const [notes] = await Promise.all([
     insforge.database
-      .from('trees')
-      .select('*', { count: 'exact', head: true })
-      .eq('owner_id', userId),
-    insforge.database
-      .from('sticky_notes')
+      .from('blueprints')
       .select('*', { count: 'exact', head: true })
       .eq('owner_id', userId),
   ])
   return {
-    trees: trees.count ?? 0,
-    notes: notes.count ?? 0,
+    blueprints: notes.count ?? 0,
   }
 }
 
@@ -83,22 +77,13 @@ export function buildProfileStats(i: StatsInput): StatCard[] {
       accent: '#ff6a1a',
     },
     {
-      id: 'notes',
-      label: 'Notes Grown',
+      id: 'blueprints',
+      label: 'Blueprints',
       icon: 'note',
-      value: String(i.counts.notes),
-      sub: 'sticky notes',
+      value: String(i.counts.blueprints),
+      sub: 'boards',
       state: 'ready',
       accent: '#ffce54',
-    },
-    {
-      id: 'trees',
-      label: 'Trees Planted',
-      icon: 'leaf',
-      value: String(i.counts.trees),
-      sub: 'in your forest',
-      state: 'ready',
-      accent: '#6bbf4f',
     },
     {
       id: 'rank',

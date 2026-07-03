@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import './i18n'
@@ -15,7 +15,6 @@ import { Landing } from './screens/public/Landing'
 import { useLobbyReady } from './hooks/useLobbyReady'
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
 const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
-const StickyEntry = lazy(() => import('./screens/StickyEntry').then(m => ({ default: m.StickyEntry })))
 const Explore = lazy(() => import('./screens/Explore').then(m => ({ default: m.Explore })))
 const StudyRoom = lazy(() => import('./screens/StudyRoom').then(m => ({ default: m.StudyRoom })))
 const RoomsList = lazy(() => import('./screens/RoomsList').then(m => ({ default: m.RoomsList })))
@@ -30,6 +29,84 @@ const PerfHarness = lazy(() => import('./screens/PerfHarness').then(m => ({ defa
 const CalcHub = lazy(() => import('./calc/ui/CalcHub').then(m => ({ default: m.CalcHub })))
 
 export default function App() {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('sf_pass') === '5908')
+  const [passInput, setPassInput] = useState('')
+  const [passError, setPassError] = useState(false)
+
+  if (!unlocked) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, display: 'grid', placeItems: 'center',
+        background: 'linear-gradient(160deg, #1a150f 0%, #221b14 50%, #1a150f 100%)',
+        fontFamily: 'var(--sans, system-ui, sans-serif)',
+      }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+          padding: '40px 48px', borderRadius: 20,
+          background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ fontSize: 36 }}>🔒</div>
+          <h2 style={{ margin: 0, color: '#e8ddd0', fontWeight: 800, fontSize: 20, letterSpacing: 0.3 }}>
+            Enter Password
+          </h2>
+          <p style={{ margin: 0, color: 'rgba(232,221,208,0.5)', fontSize: 13 }}>
+            This site is password-protected
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (passInput === '5908') {
+                sessionStorage.setItem('sf_pass', '5908')
+                setUnlocked(true)
+              } else {
+                setPassError(true)
+                setPassInput('')
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}
+          >
+            <input
+              type="password"
+              autoFocus
+              value={passInput}
+              onChange={(e) => { setPassInput(e.target.value); setPassError(false) }}
+              placeholder="Password"
+              style={{
+                font: '600 15px var(--sans, system-ui)', padding: '12px 16px', borderRadius: 12,
+                border: `1.5px solid ${passError ? '#e25b4b' : 'rgba(255,255,255,0.15)'}`,
+                background: 'rgba(255,255,255,0.08)', color: '#e8ddd0', outline: 'none',
+                width: '100%', boxSizing: 'border-box', textAlign: 'center',
+                letterSpacing: 4, fontSize: 18,
+              }}
+            />
+            {passError && (
+              <span style={{ color: '#e25b4b', fontSize: 12, textAlign: 'center' }}>
+                Incorrect password
+              </span>
+            )}
+            <button
+              type="submit"
+              style={{
+                font: '700 14px var(--sans, system-ui)', padding: '12px 24px', borderRadius: 12,
+                border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg, var(--mg-accent, #5b7cfa), color-mix(in srgb, var(--mg-accent, #5b7cfa) 70%, #000))',
+                color: '#fff', letterSpacing: 0.3,
+                transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+            >
+              Enter
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   const { user, loading } = useAuth()
   const onboarded = useProfile((s) => s.onboarded)
   const profileReady = useProfile((s) => s.ready)
@@ -89,8 +166,8 @@ export default function App() {
   const veilReady = appReady && (!waitForLobby || lobbyReady)
 
   // Public marketing pages render without WebBackground/IntroVeil
-  // Only for unauthenticated users; signed-in users always see the app
-  if (isPublic && !loading && !user) {
+  // Show landing immediately — don't wait for auth to resolve
+  if (isPublic && !user) {
     return (
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
@@ -118,7 +195,6 @@ export default function App() {
           <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Lobby />} />
-              <Route path="/sticky" element={<StickyEntry />} />
               <Route path="/blueprint" element={<Blueprint />} />
               <Route path="/realm" element={<Realm />} />
               <Route path="/realm/:code" element={<RealmInvite />} />

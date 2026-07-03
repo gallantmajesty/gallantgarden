@@ -6,6 +6,7 @@ import { EffectComposer, Bloom, Vignette, N8AO, GodRays } from '@react-three/pos
 import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
 import { useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -21,12 +22,15 @@ import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
-import { useScenePreset } from '../../store/quality'
+import { SeasonalOverlay } from './SeasonalOverlay'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
   static getDerivedStateFromError() {
     return { failed: true }
+  }
+  componentDidCatch(error: Error) {
+    console.error('[LibraryScene] SoftBoundary caught:', error)
   }
   render() {
     return this.state.failed ? null : this.props.children
@@ -81,6 +85,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   }, [])
 
   return (
+    <>
     <Canvas
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
@@ -112,7 +117,6 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         <Suspense fallback={null}>
           <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
-          <SceneReady onReady={onReady} />
         </Suspense>
       </SoftBoundary>
 
@@ -141,6 +145,7 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.8} speed={0.14} color="#ffe6b0" opacity={0.4} />
       )}
 
+      {preset.particles && <SeasonalOverlay enabled={preset.particles} particleMultiplier={preset.lodBias < 1 ? 0.8 : 1} />}
       <PlayerController />
       <RemotePlayers />
       <PerfLogger />
@@ -172,6 +177,8 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         </EffectComposer>
       )}
     </Canvas>
+    <SceneReady onReady={onReady} />
+    </>
   )
 }
 

@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "Lernräume",
     "objStudyRoomsCaption": "Gemeinsam per Kamera lernen",
-    "objStickyNotes": "Haftnotizen",
-    "objStickyNotesCaption": "Dein visueller Denkraum",
+    "objBlueprint": "Haftnotizen",
+    "objBlueprintCaption": "Dein visueller Denkraum",
     "objRealm": "Welt",
     "objRealmCaption": "Tritt in eine gemeinsame Lernwelt ein",
     "objMagnet": "Aufgabenmagnet",

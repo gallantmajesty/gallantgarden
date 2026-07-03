@@ -14,9 +14,10 @@ interface NoteNodeProps {
   /** true when THIS node is the card the dragged string would drop onto */
   connectTarget?: boolean
   onPortDown: (nodeId: string, port: Port, e: React.PointerEvent) => void
+  onAddConnected: (nodeId: string) => void
 }
 
-export function NoteNode({ node, selected, dimmed, connecting, connectTarget, onPortDown }: NoteNodeProps) {
+export function NoteNode({ node, selected, dimmed, connecting, connectTarget, onPortDown, onAddConnected }: NoteNodeProps) {
   const zoom = useBlueprint((s) => s.doc.viewport.zoom)
   const snap = useBlueprint((s) => s.doc.snap)
   const grid = useBlueprint((s) => s.doc.grid)
@@ -121,21 +122,20 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
         setEditing(true)
       }}
     >
-      {/* pin head — holds the card to the wall AND is the single string anchor:
-          drag it onto another card to thread them together. Shown on every shape
-          so linking is one consistent gesture everywhere. */}
-      {!node.locked && (
+      {/* 4-port connection handles — always visible on every side */}
+      {!node.locked && (['top', 'right', 'bottom', 'left'] as Port[]).map((port) => (
         <span
-          className="bp-node-pin"
-          title="Drag onto another note to thread them"
+          key={port}
+          className={`bp-port bp-port-${port}`}
+          title={`Drag from ${port} to connect`}
           onPointerDown={(e) => {
             e.stopPropagation()
-            onPortDown(node.id, 'top', e)
+            onPortDown(node.id, port, e)
           }}
         >
-          <span className="bp-node-pin-ring" />
+          <span className="bp-port-dot" />
         </span>
-      )}
+      ))}
       <div className="bp-node-surface" style={surface}>
         {node.style.shape === 'folder' && <span className="bp-folder-tab" />}
         {bgMedia && <span className="bp-node-media-bg" style={mediaBackgroundStyle(media!)} aria-hidden />}
@@ -171,18 +171,17 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
         />
       )}
 
-      {/* single "pull a thread" handle — appears on hover, drops anywhere on a
-          target card. No fixed port dots. */}
+      {/* plus button — appears on hover, creates a new note connected to this one */}
       {!node.locked && (
         <span
-          className="bp-connect-handle"
-          title="Drag to link this to another note"
+          className="bp-add-btn"
+          title="Add connected note"
           onPointerDown={(e) => {
             e.stopPropagation()
-            onPortDown(node.id, 'right', e)
+            onAddConnected(node.id)
           }}
         >
-          <span className="bp-connect-dot" />
+          <span className="bp-add-icon">+</span>
         </span>
       )}
     </div>

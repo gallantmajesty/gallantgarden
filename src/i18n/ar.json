@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "غرف الدراسة",
     "objStudyRoomsCaption": "ادرس عبر الكاميرا معاً",
-    "objStickyNotes": "ملاحظات لاصقة",
-    "objStickyNotesCaption": "مساحة تفكيرك البصرية",
+    "objBlueprint": "ملاحظات لاصقة",
+    "objBlueprintCaption": "مساحة تفكيرك البصرية",
     "objRealm": "عالم",
     "objRealmCaption": "ادخل عالم دراسة مشترك",
     "objMagnet": "مغناطيس المهام",

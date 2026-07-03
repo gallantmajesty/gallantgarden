@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "Study Rooms",
     "objStudyRoomsCaption": "Study on camera, together",
-    "objStickyNotes": "Sticky Notes",
-    "objStickyNotesCaption": "Your visual thinking space",
+    "objBlueprint": "Sticky Notes",
+    "objBlueprintCaption": "Your visual thinking space",
     "objRealm": "Realm",
     "objRealmCaption": "Step into a shared study world",
     "objMagnet": "Task Magnet",

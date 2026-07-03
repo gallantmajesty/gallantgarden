@@ -1,26 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
 import './AuthScreen.css'
 
-type Mode = 'in' | 'up'
-
 export function AuthScreen() {
   const { t } = useTranslation()
-  const { signIn, signUp, signInWithProvider } = useAuth()
-  const [mode, setMode] = useState<Mode>('in')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const { signInWithProvider } = useAuth()
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<OAuthProvider | null>(null)
-  const [showEmail, setShowEmail] = useState(false)
 
   const providers: { id: OAuthProvider; label: string }[] = [
     { id: 'google', label: t('auth.continueGoogle') },
-    { id: 'github', label: t('auth.continueGithub') },
     { id: 'microsoft', label: t('auth.continueMicrosoft') },
+    { id: 'github', label: t('auth.continueGithub') },
   ]
 
   async function submit(e: FormEvent) {
@@ -140,80 +132,6 @@ export function AuthScreen() {
         </div>
 
         {error && <div className="auth-error">{error}</div>}
-
-        <button
-          type="button"
-          className="auth-email-toggle"
-          onClick={() => setShowEmail((v) => !v)}
-          aria-expanded={showEmail}
-        >
-          {showEmail ? t('auth.hideEmail') : t('auth.orContinueEmail')}
-        </button>
-
-        {showEmail && (
-          <>
-            <div className="auth-tabs">
-              <button
-                className={`auth-tab ${mode === "in" ? "active" : ""}`}
-                onClick={() => setMode('in')}
-                type="button"
-              >
-                {t('auth.signIn')}
-              </button>
-              <button
-                className={`auth-tab ${mode === "up" ? "active" : ""}`}
-                onClick={() => setMode('up')}
-                type="button"
-              >
-                {t('auth.createAccount')}
-              </button>
-            </div>
-
-            <form onSubmit={submit} className="auth-form">
-              {mode === 'up' && (
-                <div>
-                  <label className="sf-label">{t('auth.explorerName')}</label>
-                  <input
-                    className="sf-input"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t('auth.namePlaceholder')}
-                    autoComplete="name"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="sf-label">{t('auth.email')}</label>
-                <input
-                  className="sf-input"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('auth.emailPlaceholder')}
-                  autoComplete="email"
-                />
-              </div>
-              <div>
-                <label className="sf-label">{t('auth.password')}</label>
-                <input
-                  className="sf-input"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('auth.passwordPlaceholder')}
-                  autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-                />
-              </div>
-
-              <button className="sf-btn auth-submit" disabled={busy} type="submit">
-                {busy ? t('auth.openingGate') : mode === 'in' ? t('auth.enterForest') : t('auth.beginAdventure')}
-              </button>
-            </form>
-          </>
-        )}
       </div>
     </div>
   )

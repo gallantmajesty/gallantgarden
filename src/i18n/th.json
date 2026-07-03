@@ -90,8 +90,8 @@
   "lobby": {
     "objStudyRooms": "ห้องเรียน",
     "objStudyRoomsCaption": "เรียนผ่านกล้อง พร้อมกัน",
-    "objStickyNotes": "บันทึกแบบติด",
-    "objStickyNotesCaption": "พื้นที่คิดสร้างสรรค์ของคุณ",
+    "objBlueprint": "บันทึกแบบติด",
+    "objBlueprintCaption": "พื้นที่คิดสร้างสรรค์ของคุณ",
     "objRealm": "Realm",
     "objRealmCaption": "ก้าวเข้าสู่โลกเรียนรู้ร่วมกัน",
     "objMagnet": "Task Magnet",

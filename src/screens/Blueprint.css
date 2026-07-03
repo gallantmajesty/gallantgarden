@@ -131,6 +131,35 @@
 @keyframes bp-dash { to { stroke-dashoffset: -18; } }
 @keyframes bp-flow { to { stroke-dashoffset: -34; } }
 
+/* ---- edge hover toolbar (n8n-style midpoint actions) ---- */
+.bp-edge.hovered .bp-edge-halo { filter: blur(7px); }
+.bp-edge-toolbar { pointer-events: auto; cursor: default; }
+.bp-edge-toolbar-bg {
+  fill: rgba(18, 15, 11, 0.92);
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55));
+  transition: opacity 0.15s ease;
+}
+.bp-edge-toolbar-btn {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.bp-edge-toolbar-btn:hover { transform: scale(1.15); }
+.bp-edge-toolbar-btn circle {
+  fill: rgba(255, 255, 255, 0.12);
+  transition: fill 0.12s ease;
+}
+.bp-edge-toolbar-btn:hover circle { fill: rgba(255, 255, 255, 0.25); }
+.bp-edge-toolbar-danger:hover circle { fill: rgba(226, 75, 75, 0.5); }
+.bp-edge-toolbar-icon {
+  font: 700 13px var(--sans);
+  fill: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+.bp-edge-toolbar-btn:hover .bp-edge-toolbar-icon { fill: #fff; }
+.bp-edge-toolbar-danger:hover .bp-edge-toolbar-icon { fill: #ff6b6b; }
+
 .bp-marquee {
   position: absolute;
   border: 1.5px solid var(--bp-accent);
@@ -174,32 +203,44 @@
 .bp-node.shape-polaroid .bp-node-surface::after,
 .bp-node.shape-document .bp-node-surface::after { display: none; }
 
-/* the pin that holds each card to the wall — subtle UI anchor, not chrome metal */
-.bp-node-pin {
+/* ---- 4-side connection ports — always visible n8n-style dots ---- */
+.bp-port {
   position: absolute;
-  top: -7px;
-  left: 50%;
-  width: 13px;
-  height: 13px;
-  margin-left: -6.5px;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  z-index: 13;
-  background:
-    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 45%),
-    radial-gradient(circle at 50% 50%, var(--bp-accent), color-mix(in srgb, var(--bp-accent) 62%, #000) 100%);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+  z-index: 14;
   pointer-events: auto;
   cursor: crosshair;
   transition: transform 0.12s ease;
 }
-/* a generous invisible hit-ring so the small pin is easy to grab and drag */
-.bp-node-pin::after {
+.bp-port::after {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -6px;
   border-radius: 50%;
 }
-.bp-node-pin:hover { transform: scale(1.25); }
+.bp-port:hover { transform: scale(1.35); }
+.bp-port-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 45%),
+    radial-gradient(circle at 50% 50%, var(--bp-accent), color-mix(in srgb, var(--bp-accent) 62%, #000) 100%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45), 0 0 6px color-mix(in srgb, var(--bp-accent) 40%, transparent);
+  transition: box-shadow 0.12s ease;
+}
+.bp-port:hover .bp-port-dot {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45), 0 0 12px color-mix(in srgb, var(--bp-accent) 70%, transparent);
+}
+/* side positioning */
+.bp-port-top    { top: -7px;    left: 50%;  margin-left: -7px; }
+.bp-port-right  { right: -7px;  top: 50%;   margin-top: -7px; }
+.bp-port-bottom { bottom: -7px; left: 50%;  margin-left: -7px; }
+.bp-port-left   { left: -7px;   top: 50%;   margin-top: -7px; }
 /* card the dragged string will drop onto */
 .bp-node.drop-target .bp-node-surface {
   outline: 2px dashed var(--bp-accent);
@@ -264,9 +305,8 @@
   z-index: 11;
 }
 
-/* single "pull a thread" connect handle — appears on hover at the card's
-   bottom-right; drag it onto any other card to link them. No port grid. */
-.bp-connect-handle {
+/* plus button — creates a new connected note on click */
+.bp-add-btn {
   position: absolute;
   right: -10px;
   bottom: -10px;
@@ -276,25 +316,23 @@
   place-items: center;
   border-radius: 50%;
   background: var(--bp-panel);
-  border: 1px solid var(--bp-border);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  border: 1.5px solid var(--bp-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   opacity: 0;
-  transform: scale(0.7);
+  transform: scale(0.6);
   transition: opacity 0.15s ease, transform 0.15s ease;
-  cursor: crosshair;
+  cursor: pointer;
   z-index: 12;
 }
-.bp-node:hover .bp-connect-handle,
-.bp-node.selected .bp-connect-handle { opacity: 1; transform: scale(1); }
-.bp-connect-handle:hover { transform: scale(1.18); }
-.bp-connect-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.8), transparent 45%),
-    radial-gradient(circle at 50% 50%, var(--bp-accent), color-mix(in srgb, var(--bp-accent) 60%, #000));
-  box-shadow: 0 0 6px color-mix(in srgb, var(--bp-accent) 60%, transparent);
+.bp-node:hover .bp-add-btn,
+.bp-node.selected .bp-add-btn { opacity: 1; transform: scale(1); }
+.bp-add-btn:hover { transform: scale(1.18); background: var(--bp-accent); }
+.bp-add-btn:hover .bp-add-icon { color: #fff; }
+.bp-add-icon {
+  font: 800 16px var(--sans);
+  color: var(--bp-accent);
+  line-height: 1;
+  transition: color 0.12s ease;
 }
 
 /* rich-text editor mounted on the editing note */
