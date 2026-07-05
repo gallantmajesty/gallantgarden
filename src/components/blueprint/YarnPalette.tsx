@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, type CSSProperties } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { YARN_COLORS, YARN_STYLE_META } from '../../lib/blueprint/types'
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ErrorBoundary } from './ErrorBoundary'
+import ErrorBoundary from './ErrorBoundary'
 
 // Simple character data for testing
 const ALL_CHARACTERS = [
