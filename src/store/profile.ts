@@ -63,6 +63,8 @@ interface ProfileState {
   setAvatarUrl: (url: string | null) => Promise<boolean>
   /** Refresh XP from DB (called after magnet sync). */
   refreshXp: () => Promise<void>
+  /** Update study goals (editable after onboarding). */
+  setStudyGoals: (goals: string[]) => Promise<boolean>
   /** Reset to empty on sign-out. */
   reset: () => void
 }
@@ -200,6 +202,21 @@ export const useProfile = create<ProfileState>((set, get) => ({
         set({ xp: (r.xp as number) ?? 0, premiumXp: (r.premium_xp as number) ?? 0 })
       }
     } catch { /* offline */ }
+  },
+
+  // Update study goals after onboarding (editable in profile). Damps into the
+  // same `profiles.settings.onboarding` blob so the onboarding data model stays
+  // the single source of truth.
+  setStudyGoals: async (goals: string[]) => {
+    const userId = get().userId
+    if (!userId) return false
+    // Load current settings (cached or fresh) to merge.
+    const current = await loadProfileSettings(userId)
+    const onboarding = (current.onboarding as Partial<OnboardingData>) || {}
+    const newOnboarding = { ...onboarding, studyGoals: goals }
+    const ok = await patchProfileSettings(userId, { onboarding: newOnboarding })
+    if (ok) set((state) => ({ data: { ...state.data, studyGoals: goals } }))
+    return ok
   },
 
   reset: () =>

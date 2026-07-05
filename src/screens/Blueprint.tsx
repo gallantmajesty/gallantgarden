@@ -11,8 +11,9 @@ import { Inspector } from '../components/blueprint/Inspector'
 import { ConnectionBar } from '../components/blueprint/ConnectionBar'
 import { SearchPanel } from '../components/blueprint/SearchPanel'
 import { AIPanel } from '../components/blueprint/AIPanel'
-import '../screens/TaskMagnet.css' // reuse the theme backdrop + particle styles
+import '../screens/TaskMagnet.css'
 import './Blueprint.css'
+import './N8nOverlay.css'
 
 function hexToRgb(hex: string): string {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim())
@@ -22,7 +23,6 @@ function hexToRgb(hex: string): string {
 
 export function Blueprint() {
   const { user } = useAuth()
-  // inherit the active Task Magnet world (theme + accent + particle density)
   const magnetReady = useMagnet((s) => s.ready)
   const hydrateMagnet = useMagnet((s) => s.hydrate)
   const mdata = useMagnet((s) => s.data)
@@ -59,7 +59,6 @@ export function Blueprint() {
     } as React.CSSProperties
   }, [theme, accent, mdata.accent])
 
-  // keyboard shortcuts (ignore while typing in a field / note editor)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const el = document.activeElement as HTMLElement | null
@@ -68,10 +67,10 @@ export function Blueprint() {
       if ((e.key === 'Delete' || e.key === 'Backspace') && !typing) {
         if (s.selection.length) { e.preventDefault(); s.deleteNodes(s.selection) }
         else if (s.selectedEdgeId) { e.preventDefault(); s.deleteEdge(s.selectedEdgeId) }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault()
-        e.shiftKey ? s.redo() : s.undo()
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault()
+    if (e.shiftKey) { s.redo() } else { s.undo() }
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault(); s.redo()
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && !typing) {
         if (s.selection.length) { e.preventDefault(); s.duplicateNodes(s.selection) }
@@ -106,8 +105,6 @@ export function Blueprint() {
         onExport={onExport}
       />
 
-      <Canvas />
-
       <button
         className={`bp-inspector-toggle ${inspectorOpen ? 'open' : 'closed'}`}
         onClick={() => setInspectorOpen((o) => !o)}
@@ -118,6 +115,8 @@ export function Blueprint() {
       <aside className={`bp-inspector bp-surface ${inspectorOpen ? '' : 'collapsed'}`}>
         <Inspector />
       </aside>
+
+      <Canvas />
 
       <ConnectionBar />
 

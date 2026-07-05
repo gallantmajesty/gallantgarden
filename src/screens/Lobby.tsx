@@ -28,6 +28,7 @@ const OBJECTS: LobbyObject[] = [
   { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint' },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm', desktopOnly: true },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games' },
 ]
 
 export function Lobby() {
@@ -148,6 +149,14 @@ export function Lobby() {
 
   return (
     <div className="lobby-root">
+      {/* ---------- guest mode banner ---------- */}
+      {user?.isGuest && (
+        <div className="lobby-guest-banner">
+          <span>You're browsing as a guest — your progress saves on this device only.</span>
+          <button className="sf-btn water" onClick={() => navigate('/')}>Sign Up to Save</button>
+        </div>
+      )}
+
       {/* ---------- top-left: profile + Interact ---------- */}
       <div className="lobby-topleft">
         <button
@@ -164,6 +173,13 @@ export function Lobby() {
         <button className="sf-btn ghost lobby-iconbtn" onClick={() => setPanel('interact')}>
           <Glyph name="people" />{t('lobby.interact')}
           {incomingCount > 0 && <span className="lobby-dot" />}
+        </button>
+      </div>
+
+      {/* ---------- bottom-left: Exit button ---------- */}
+      <div className="lobby-bottomleft">
+        <button className="lobby-exit sf-btn ghost" onClick={() => navigate('/')}>
+          Exit
         </button>
       </div>
 

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
-import { WaterfallScene } from '../three/waterfall/WaterfallScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
@@ -26,7 +25,7 @@ import { useRealm, type ActiveRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
-import { waterfallEnabled, trainStationEnabled } from '../lib/realm'
+import { trainStationEnabled } from '../lib/realm'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
@@ -38,13 +37,24 @@ import { TrainHUD } from '../components/train/TrainHUD'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
+import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { useSeatFlow } from '../store/seatFlow'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
-export function Explore() {
+export interface ExploreProps {
+  defaultWorld?: 'library' | 'train-station'
+}
+
+export function Explore({ defaultWorld }: ExploreProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+  
+  // Read world from URL query parameter, or fall back to defaultWorld prop
+  const searchParams = new URLSearchParams(location.search)
+  const worldFromUrl = (searchParams.get('world') as 'library' | 'train-station') || defaultWorld
+
   const isDesktop = useIsDesktop()
   const realm = useRealm((s) => s.active)
   const [ready, setReady] = useState(false)
@@ -60,6 +70,9 @@ export function Explore() {
   useAudio()
   useExploreShortcuts()
 
+  // Determine which world to render: use worldFromUrl if available, otherwise use defaultWorld prop, otherwise use realm.world
+  const isTrain = worldFromUrl === 'train-station' || defaultWorld === 'train-station' || realm?.world === 'train-station'
+
   // Auto-minimize the desk whenever the player sits down, so the seated avatar (and
   // its sitting animation) stays visible behind a small chip rather than the full
   // Study Station panel. The player taps the chip to expand the desk when studying.
@@ -69,9 +82,6 @@ export function Explore() {
     if (seat != null && !wasSeated.current) useDesk.getState().setView('min')
     wasSeated.current = seat != null
   }, [seat])
-
-  const isWaterfall = realm?.world === 'waterfall'
-  const isTrain = realm?.world === 'train-station'
 
   // Fallback: if the scene never signals ready (WebGL init failure, asset load
   // error, etc.), force the veil away after 8 seconds so the user isn't stuck on
@@ -103,9 +113,6 @@ export function Explore() {
   // navigation — show an under-development screen instead of the scene. The scene
   // and all its code stay intact; it simply isn't rendered until re-enabled.
   // Placed after every hook above so the rules of hooks are never broken.
-  if (isWaterfall && !waterfallEnabled()) {
-    return <FlagshipUnavailable name="Waterfall Realm" />
-  }
   if (isTrain && !trainStationEnabled()) {
     return <FlagshipUnavailable name="Train Station Realm" />
   }
@@ -114,8 +121,6 @@ export function Explore() {
     <div className="explore-root">
       {isTrain ? (
         <TrainStationScene onReady={() => setReady(true)} />
-      ) : isWaterfall ? (
-        <WaterfallScene onReady={() => setReady(true)} />
       ) : (
         <LibraryScene onReady={() => setReady(true)} />
       )}
@@ -126,10 +131,10 @@ export function Explore() {
 
       {/* Library seat-selection overlay — shown before the player commits to a seat.
           Once a seat is chosen we fall through to the normal in-world HUD. */}
-      {!isWaterfall && !isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
+      {!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
 
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
-      {!isWaterfall && !isTrain && <CinematicEntry />}
+      {!isTrain && <CinematicEntry />}
 
       {/* Every widget lives behind this gate — Tab (or Performance Mode) hides the
           whole HUD so the world becomes the sole focus. */}
@@ -242,36 +247,8 @@ export function Explore() {
       {/* Library-realm focus-music mini-player. Mounted outside the hide gate so
           its singleton engine keeps playing when the HUD is hidden; the widget
           itself hides on Tab/Performance Mode. Library realm only — never in the
-          waterfall/train realms, and (by design) never in study rooms. */}
-      {!isWaterfall && !isTrain && <MusicPlayer />}
-    </div>
-  )
-}
-
-/* ------------------------------------------------- experimental realm gate */
-
-/**
- * Shown when a flagship route (Waterfall, Train Station, …) is reached while that
- * realm is hidden (public build, no dev access). Keeps the realm's code/assets
- * fully intact — this is purely the public-facing "not yet available" wall. Leaving
- * clears the active realm so the player returns cleanly to the lobby.
- */
-function FlagshipUnavailable({ name }: { name: string }) {
-  const navigate = useNavigate()
-  function toLobby() {
-    useRealm.getState().leave()
-    navigate('/')
-  }
-  return (
-    <div className="explore-root waterfall-wip">
-      <div className="wip-card water-glass">
-        <div className="wip-emoji" aria-hidden>🚧</div>
-        <h1>{name}</h1>
-        <p>This realm is currently under development and is not yet available.</p>
-        <button className="sf-btn water wip-back" onClick={toLobby}>
-          Return to Lobby
-        </button>
-      </div>
+          train realm, and (by design) never in study rooms. */}
+      {!isTrain && <MusicPlayer />}
     </div>
   )
 }
@@ -617,6 +594,44 @@ function SeatedPanel() {
   const note = useDesk((s) => s.note)
   const view = useDesk((s) => s.view)
   const desk = useDesk.getState
+
+  // Change-seat cooldown: 10 minutes from when the user sat down
+  const seatLockUntil = useSeatFlow((s) => s.seatLockUntil)
+  const [seatCooldown, setSeatCooldown] = useState(0)
+  useEffect(() => {
+    if (seatLockUntil == null) { setSeatCooldown(0); return }
+    const tick = () => {
+      const sec = Math.max(0, Math.ceil((seatLockUntil - Date.now()) / 1000))
+      setSeatCooldown(sec)
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [seatLockUntil])
+  const canChangeSeat = seatCooldown === 0
+  const seatMm = String(Math.floor(seatCooldown / 60)).padStart(2, '0')
+  const seatSs = String(seatCooldown % 60).padStart(2, '0')
+  const [seatInput, setSeatInput] = useState('')
+
+  const handleChangeSeatToNumber = () => {
+    const num = parseInt(seatInput, 10)
+    const seats = useSeatFlow.getState().seats
+    const occupied = useSeatFlow.getState().occupied
+    if (isNaN(num) || num < 0 || num >= seats.length) return
+    if (!canChangeSeat) return
+    if (occupied[num]) return
+    useWorld.getState().stand()
+    useSeatFlow.getState().pickSeat(num)
+    useSeatFlow.getState().startWalk()
+    useSeatFlow.getState().arrive()
+    useWorld.getState().sit(num)
+    useSeatFlow.getState().markEntrancePlayed()
+    setSeatInput('')
+  }
+
+  const [goalsOpen, setGoalsOpen] = useState(true)
+  const [notesOpen, setNotesOpen] = useState(true)
+
   if (seat == null) return null
 
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
@@ -631,7 +646,27 @@ function SeatedPanel() {
         <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
           <span className="station-chip-dot" /> {mode === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
         </button>
-        <button className="station-min-stand" onClick={() => useWorld.getState().stand()} title="Stand up (leave chair)">
+        <span className="station-seat-input-wrap">
+          <input
+            className="station-seat-input"
+            type="number"
+            min="0"
+            placeholder={canChangeSeat ? 'Seat #' : `${seatMm}:${seatSs}`}
+            value={seatInput}
+            onChange={(e) => setSeatInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
+            disabled={!canChangeSeat}
+            title={canChangeSeat ? 'Enter seat number to change' : `Change seat in ${seatMm}:${seatSs}`}
+          />
+          <button
+            className={`station-change-seat ${canChangeSeat && seatInput ? 'ready' : ''}`}
+            onClick={handleChangeSeatToNumber}
+            disabled={!canChangeSeat || !seatInput}
+          >
+            ↕
+          </button>
+        </span>
+        <button className="station-min-stand" onClick={() => { useSeatFlow.getState().unlock(); useSeatFlow.getState().clearSeat(); useWorld.getState().stand(); }} title="Stand up (leave chair)">
           ⤴ Stand up
         </button>
       </div>
@@ -641,106 +676,118 @@ function SeatedPanel() {
   return (
     <div className={`station ${view === 'collapsed' ? 'collapsed' : ''}`} data-no-hotkeys>
       <div className="station-head">
-        <div className="station-title">
-          <span className="sf-pill">Study Station</span>
+        <div className="station-head-left">
           <h2>Your desk</h2>
         </div>
-        <div className="station-controls">
-          <button
-            className="station-ctrl"
-            title={view === 'collapsed' ? 'Expand' : 'Collapse'}
-            onClick={() => desk().setView(view === 'collapsed' ? 'open' : 'collapsed')}
-          >
+        <div className="station-head-actions">
+          <button className="station-head-btn" title={view === 'collapsed' ? 'Expand' : 'Collapse'} onClick={() => desk().setView(view === 'collapsed' ? 'open' : 'collapsed')}>
             {view === 'collapsed' ? '▴' : '▾'}
           </button>
-          <button className="station-ctrl" title="Minimize" onClick={() => desk().setView('min')}>
+          <button className="station-head-btn" title="Minimize" onClick={() => desk().setView('min')}>
             –
-          </button>
-          <button className="station-stand" onClick={() => useWorld.getState().stand()}>
-            ⤴ Stand up
-          </button>
-          <button className="station-x" title="Stand up (leave chair)" aria-label="Stand up" onClick={() => useWorld.getState().stand()}>
-            ✕
           </button>
         </div>
       </div>
 
-      <div className="station-grid">
-        <div className="station-card">
-          <h3><Icon name="clock" size={16} /> Focus timer</h3>
-          <div className={`station-timer ${mode}`}>
-            <span className="station-mode">{label}</span>
+      <div className="station-body">
+        {/* Focus Timer */}
+        <div className="station-sect">
+          <div className="station-timer">
+            <span className="station-time-label">{label}</span>
             <span className="station-time">{mode === 'idle' ? '25:00' : `${mm}:${ss}`}</span>
+            <div className="station-timer-actions">
+              <button className="station-timer-btn primary" onClick={toggle}>
+                {running ? 'Pause' : 'Start'}
+              </button>
+              <button className="station-timer-btn" onClick={skip}>
+                Skip
+              </button>
+              <button className="station-timer-btn" onClick={reset}>
+                Reset
+              </button>
+            </div>
           </div>
-          <div className="station-row">
-            <button className="sf-btn" onClick={toggle}>
-              {running ? 'Pause' : 'Start'}
-            </button>
-            <button className="sf-btn secondary" onClick={skip}>
-              Skip
-            </button>
-            <button className="sf-btn secondary" onClick={reset}>
-              Reset
-            </button>
-          </div>
-          <label className="station-subject">
-            <span>Studying</span>
-            <input
-              className="sf-input"
-              list="station-subjects"
-              placeholder="Subject (optional)"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
-            <datalist id="station-subjects">
-              {subjects.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </label>
-        </div>
-
-        <div className="station-card">
-          <h3><Icon name="target" size={16} /> Daily goals</h3>
-          <div className="station-goals">
-            {goals.length === 0 && <p className="station-empty">Add what you want to get done today.</p>}
-            {goals.map((g, i) => (
-              <label key={i} className={`station-goal ${g.done ? 'done' : ''}`}>
-                <input type="checkbox" checked={g.done} onChange={() => desk().toggleGoal(i)} />
-                <span>{g.t}</span>
-                <button
-                  type="button"
-                  className="station-goal-x"
-                  title="Remove"
-                  aria-label="Remove goal"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    desk().removeGoal(i)
-                  }}
-                >
-                  ×
-                </button>
-              </label>
+          <input
+            className="station-subject-input"
+            list="station-subjects"
+            placeholder="What are you studying?"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+          />
+          <datalist id="station-subjects">
+            {subjects.map((s) => (
+              <option key={s} value={s} />
             ))}
-          </div>
-          <form
-            className="station-row"
-            onSubmit={(e) => {
-              e.preventDefault()
-              desk().addGoal(draft)
-            }}
-          >
-            <input className="sf-input" placeholder="New goal…" value={draft} onChange={(e) => desk().setDraft(e.target.value)} />
-            <button className="sf-btn" type="submit">
-              Add
-            </button>
-          </form>
+          </datalist>
         </div>
 
-        <div className="station-card wide">
-          <h3><Icon name="note" size={16} /> Scratch notes</h3>
-          <textarea className="station-notes" placeholder="Jot anything down…" value={note} onChange={(e) => desk().setNote(e.target.value)} />
+        {/* Daily Goals */}
+        <div className="station-sect">
+          <div className="station-sect-header">
+            <h3>Daily Goals</h3>
+            <button className="station-sect-toggle" onClick={() => setGoalsOpen((v) => !v)}>
+              {goalsOpen ? '▾' : '▸'}
+            </button>
+          </div>
+          {goalsOpen && (
+            <>
+              <div className="station-goals">
+                {goals.length === 0 && <p className="station-empty">Nothing yet</p>}
+                {goals.map((g, i) => (
+                  <label key={i} className={`station-goal ${g.done ? 'done' : ''}`}>
+                    <input type="checkbox" checked={g.done} onChange={() => desk().toggleGoal(i)} />
+                    <span>{g.t}</span>
+                    <button type="button" className="station-goal-x" title="Remove" onClick={(e) => { e.preventDefault(); desk().removeGoal(i) }}>×</button>
+                  </label>
+                ))}
+              </div>
+              <form className="station-goal-form" onSubmit={(e) => { e.preventDefault(); desk().addGoal(draft) }}>
+                <input className="station-goal-input" placeholder="Add a goal…" value={draft} onChange={(e) => desk().setDraft(e.target.value)} />
+                <button className="station-goal-add" type="submit">Add</button>
+              </form>
+            </>
+          )}
         </div>
+
+        {/* Scratch Notes */}
+        <div className="station-sect">
+          <div className="station-sect-header">
+            <h3>Scratch Notes</h3>
+            <button className="station-sect-toggle" onClick={() => setNotesOpen((v) => !v)}>
+              {notesOpen ? '▾' : '▸'}
+            </button>
+          </div>
+          {notesOpen && (
+            <textarea className="station-notes" placeholder="Jot anything down…" value={note} onChange={(e) => desk().setNote(e.target.value)} />
+          )}
+        </div>
+      </div>
+
+      {/* Footer — change seat + stand up */}
+      <div className="station-footer">
+        <button className="station-footer-btn danger" onClick={() => useWorld.getState().stand()}>
+          Stand up
+        </button>
+        <span className="station-seat-input-wrap">
+          <input
+            className="station-seat-input"
+            type="number"
+            min="0"
+            placeholder="Seat #"
+            value={seatInput}
+            onChange={(e) => setSeatInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
+            disabled={!canChangeSeat}
+            title={canChangeSeat ? 'Enter seat number to change' : `Change seat in ${seatMm}:${seatSs}`}
+          />
+          <button
+            className={`station-footer-btn ${canChangeSeat && seatInput ? 'ready' : ''}`}
+            onClick={handleChangeSeatToNumber}
+            disabled={!canChangeSeat || !seatInput}
+          >
+            Go
+          </button>
+        </span>
       </div>
     </div>
   )

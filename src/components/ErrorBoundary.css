@@ -5,41 +5,97 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  /* Sits above the persistent background; a soft scrim keeps the card legible
-     over whatever themed photo is behind it. */
-  background: rgba(20, 25, 15, 0.42);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: linear-gradient(160deg, rgba(42, 28, 16, 0.85), rgba(26, 18, 10, 0.9));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* border frame with leaf decorations */
+.eb-root::before,
+.eb-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.eb-root::before {
+  border: 2px solid rgba(138, 90, 48, 0.25);
+  margin: 10px;
+  border-radius: 18px;
+}
+.eb-root::after {
+  margin: 10px;
+  border-radius: 18px;
+  background:
+    /* top edge leaves */
+    radial-gradient(8px 8px at 12% 0%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    radial-gradient(8px 8px at 25% 0%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 38% 0%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 50% 0%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    radial-gradient(8px 8px at 62% 0%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 75% 0%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 88% 0%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    /* bottom edge leaves */
+    radial-gradient(8px 8px at 12% 100%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    radial-gradient(8px 8px at 25% 100%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 38% 100%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 50% 100%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    radial-gradient(8px 8px at 62% 100%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 75% 100%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 88% 100%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    /* left edge leaves */
+    radial-gradient(8px 8px at 0% 15%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 0% 30%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 0% 45%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    radial-gradient(8px 8px at 0% 60%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 0% 75%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 0% 90%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    /* right edge leaves */
+    radial-gradient(8px 8px at 100% 15%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 100% 30%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 100% 45%, rgba(127, 185, 138, 0.3) 40%, transparent 42%),
+    radial-gradient(8px 8px at 100% 60%, rgba(127, 185, 138, 0.25) 40%, transparent 42%),
+    radial-gradient(8px 8px at 100% 75%, rgba(232, 138, 170, 0.2) 40%, transparent 42%),
+    radial-gradient(8px 8px at 100% 90%, rgba(127, 185, 138, 0.3) 40%, transparent 42%);
+  background-repeat: no-repeat;
 }
 
 .eb-card {
   width: min(440px, 92vw);
-  padding: 28px 26px 24px;
+  padding: 36px 30px 28px;
   border-radius: 22px;
   text-align: center;
-  background: var(--glass-fill-strong, rgba(255, 255, 255, 0.5));
-  -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
-  backdrop-filter: var(--glass-blur, blur(16px) saturate(160%));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.5));
-  box-shadow: var(--glass-shadow, 0 10px 34px rgba(8, 46, 74, 0.28));
+  background: linear-gradient(180deg, #3a2414, #2e1c0e);
+  border: 1px solid rgba(138, 90, 48, 0.3);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(201, 168, 124, 0.08);
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
 }
 
 .eb-logo {
-  filter: drop-shadow(0 2px 6px rgba(58, 42, 23, 0.25));
+  display: block;
+  margin: 0 auto 8px;
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 2px 8px rgba(201, 168, 124, 0.25));
 }
 
 .eb-card h1 {
   font-family: var(--display, system-ui);
-  font-size: 24px;
-  margin: 10px 0 6px;
-  color: var(--wood-dark, #5c3518);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 8px 0 6px;
+  color: #f0dfc0;
+  letter-spacing: 0.2px;
 }
 
 .eb-card p {
-  color: var(--ink-soft, #6b5740);
-  font-size: 14px;
+  color: rgba(201, 168, 124, 0.7);
+  font-size: 13px;
   line-height: 1.55;
-  margin: 0 auto 14px;
+  margin: 0 auto 16px;
   max-width: 360px;
 }
 
@@ -47,18 +103,21 @@
   text-align: left;
   margin: 0 auto 16px;
   font-size: 12px;
-  color: var(--ink-soft, #6b5740);
+  color: rgba(201, 168, 124, 0.6);
 }
 .eb-details summary {
   cursor: pointer;
   font-weight: 600;
   user-select: none;
+  color: rgba(201, 168, 124, 0.7);
 }
 .eb-details pre {
   margin: 8px 0 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(36, 22, 12, 0.5);
+  border: 1px solid rgba(92, 58, 30, 0.2);
+  color: rgba(240, 223, 192, 0.7);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 120px;
@@ -69,29 +128,36 @@
   display: flex;
   gap: 10px;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .eb-btn {
   font-family: var(--display, system-ui);
   font-weight: 700;
-  font-size: 15px;
-  padding: 10px 20px;
-  border-radius: 14px;
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.5));
-  background: var(--glass-fill, rgba(255, 255, 255, 0.34));
-  color: var(--wood-dark, #5c3518);
+  font-size: 14px;
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(138, 90, 48, 0.4);
+  background: rgba(92, 58, 30, 0.3);
+  color: #c9a87c;
   cursor: pointer;
-  transition: transform 0.1s ease, filter 0.12s ease;
+  transition: all .15s ease;
 }
 .eb-btn:hover {
-  filter: brightness(1.06);
+  background: rgba(92, 58, 30, 0.5);
+  border-color: rgba(138, 90, 48, 0.6);
+  color: #f0dfc0;
   transform: translateY(-1px);
 }
 .eb-btn:active {
   transform: translateY(1px);
 }
 .eb-btn.primary {
-  background: linear-gradient(180deg, var(--grass, #6bbf4f), var(--grass-dark, #4f9e3c));
-  color: #fff;
-  border-color: transparent;
+  background: linear-gradient(135deg, rgba(138, 90, 48, 0.5), rgba(107, 68, 35, 0.5));
+  border-color: rgba(138, 90, 48, 0.6);
+  color: #f0dfc0;
+}
+.eb-btn.primary:hover {
+  background: linear-gradient(135deg, rgba(138, 90, 48, 0.7), rgba(107, 68, 35, 0.7));
 }

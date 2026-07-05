@@ -5,9 +5,9 @@ import './AuthScreen.css'
 
 export function AuthScreen() {
   const { t } = useTranslation()
-  const { signInWithProvider } = useAuth()
+  const { signInWithProvider, signInAsGuest } = useAuth()
   const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<OAuthProvider | null>(null)
+  const [pending, setPending] = useState<OAuthProvider | 'guest' | null>(null)
 
   // Reset pending state on mount so stale "Redirecting…" doesn't stick around
   // when the user navigates back after a failed/cancelled OAuth redirect.
@@ -128,6 +128,26 @@ export function AuthScreen() {
             </button>
           ))}
         </div>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <button
+          type="button"
+          className="auth-guest-btn"
+          disabled={!!pending}
+          onClick={async () => {
+            setError(null)
+            setPending('guest')
+            await signInAsGuest()
+          }}
+        >
+          {pending === 'guest' ? t('auth.enterGuest') : t('auth.continueGuest')}
+        </button>
+        <p className="auth-guest-hint">
+          {t('auth.guestHint')}
+        </p>
 
         {error && <div className="auth-error">{error}</div>}
       </div>

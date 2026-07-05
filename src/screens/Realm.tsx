@@ -230,10 +230,9 @@ function LibraryRealm() {
   }, [])
 
   function join(roomId: string, name: string) {
-    enterGlobal(roomId, name)
-    navigate('/explore')
+      enterGlobal(roomId, name)
+      navigate('/realm/explore?world=library')
   }
-
   return (
     <>
       <header className="realm-head">
@@ -300,7 +299,7 @@ function TrainRealm() {
 
   function join(roomId: string, name: string) {
     enterGlobal(roomId, name)
-    navigate('/explore')
+    navigate('/realm/explore?world=train-station')
   }
 
   if (!unlocked) {
@@ -445,19 +444,13 @@ function CustomRealm() {
       return
     }
     const c = dbToCustom(realm)
-    rememberCustom(c)
     enterCustom(c)
-    navigate('/explore')
+    navigate('/realm/explore?world=library')
   }
 
-  function open(realm: CustomRealm) {
-    enterCustom(realm)
-    navigate('/explore')
-  }
-
-  if (created) {
-    return <InviteCard realm={created} onEnter={() => open(dbToCustom(created))} onBack={() => setCreated(null)} />
-  }
+if (created) {
+  return <InviteCard realm={created} onEnter={() => { enterCustom(dbToCustom(created)); navigate('/realm/explore?world=library') }} onBack={() => setCreated(null)} />
+}
 
   return (
     <>
@@ -512,8 +505,8 @@ function CustomRealm() {
         <div className="realm-mine">
           <h3>Your realms</h3>
           <div className="realm-mine-list">
-            {custom.map((r) => (
-              <button key={r.id} className="realm-mine-item" onClick={() => open(r)}>
+{custom.map((r) => (
+  <button key={r.id} className="realm-mine-item" onClick={() => { enterCustom(r); navigate('/realm/explore?world=library') }}>
                 <PngIcon name="realm" size={34} alt="" />
                 <span>{r.name}</span>
                 {r.code && <span className="realm-mine-code">{r.code}</span>}
@@ -528,8 +521,8 @@ function CustomRealm() {
         <div className="realm-mine">
           <h3>Public realms</h3>
           <div className="realm-mine-list">
-            {publicRealms.map((r) => (
-              <button key={r.id} className="realm-mine-item" onClick={() => open(dbToCustom(r))}>
+{publicRealms.map((r) => (
+  <button key={r.id} className="realm-mine-item" onClick={() => { enterCustom(dbToCustom(r)); navigate('/realm/explore?world=library') }}>
                 <PngIcon name="realm" size={34} alt="" />
                 <span>{r.name}</span>
                 <span className="realm-mine-go">Enter ›</span>

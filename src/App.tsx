@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import './i18n'
@@ -24,89 +24,15 @@ const RealmInvite = lazy(() => import('./screens/RealmInvite').then(m => ({ defa
 const TaskMagnet = lazy(() => import('./screens/TaskMagnet').then(m => ({ default: m.TaskMagnet })))
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })))
 const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ default: m.AvatarCreator })))
+const CharacterSelection = lazy(() => import('./screens/CharacterSelection').then(m => ({ default: m.CharacterSelection })))
+const SimpleTestAvatar = lazy(() => import('./screens/SimpleTestAvatar').then(m => ({ default: m.SimpleTestAvatar })))
 const ShotHarness = lazy(() => import('./screens/ShotHarness').then(m => ({ default: m.ShotHarness })))
 const PerfHarness = lazy(() => import('./screens/PerfHarness').then(m => ({ default: m.PerfHarness })))
 const CalcHub = lazy(() => import('./calc/ui/CalcHub').then(m => ({ default: m.CalcHub })))
+const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
+const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('sf_pass') === '5908')
-  const [passInput, setPassInput] = useState('')
-  const [passError, setPassError] = useState(false)
-
-  if (!unlocked) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, display: 'grid', placeItems: 'center',
-        background: 'linear-gradient(160deg, #1a150f 0%, #221b14 50%, #1a150f 100%)',
-        fontFamily: 'var(--sans, system-ui, sans-serif)',
-      }}>
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
-          padding: '40px 48px', borderRadius: 20,
-          background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-        }}>
-          <div style={{ fontSize: 36 }}>🔒</div>
-          <h2 style={{ margin: 0, color: '#e8ddd0', fontWeight: 800, fontSize: 20, letterSpacing: 0.3 }}>
-            Enter Password
-          </h2>
-          <p style={{ margin: 0, color: 'rgba(232,221,208,0.5)', fontSize: 13 }}>
-            This site is password-protected
-          </p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (passInput === '5908') {
-                sessionStorage.setItem('sf_pass', '5908')
-                setUnlocked(true)
-              } else {
-                setPassError(true)
-                setPassInput('')
-              }
-            }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}
-          >
-            <input
-              type="password"
-              autoFocus
-              value={passInput}
-              onChange={(e) => { setPassInput(e.target.value); setPassError(false) }}
-              placeholder="Password"
-              style={{
-                font: '600 15px var(--sans, system-ui)', padding: '12px 16px', borderRadius: 12,
-                border: `1.5px solid ${passError ? '#e25b4b' : 'rgba(255,255,255,0.15)'}`,
-                background: 'rgba(255,255,255,0.08)', color: '#e8ddd0', outline: 'none',
-                width: '100%', boxSizing: 'border-box', textAlign: 'center',
-                letterSpacing: 4, fontSize: 18,
-              }}
-            />
-            {passError && (
-              <span style={{ color: '#e25b4b', fontSize: 12, textAlign: 'center' }}>
-                Incorrect password
-              </span>
-            )}
-            <button
-              type="submit"
-              style={{
-                font: '700 14px var(--sans, system-ui)', padding: '12px 24px', borderRadius: 12,
-                border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg, var(--mg-accent, #5b7cfa), color-mix(in srgb, var(--mg-accent, #5b7cfa) 70%, #000))',
-                color: '#fff', letterSpacing: 0.3,
-                transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-            >
-              Enter
-            </button>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
   const { user, loading } = useAuth()
   const onboarded = useProfile((s) => s.onboarded)
   const profileReady = useProfile((s) => s.ready)
@@ -125,7 +51,7 @@ export default function App() {
     const apply = () => {
       applyVisualSettings(useSettings.getState())
       const w = useWebTheme.getState()
-      applyWebTheme(w.themeId, w.accent, w.fontColor)
+      applyWebTheme(w.themeId, w.accent, w.fontColor, w.bgId)
     }
     apply()
     const offSettings = useSettings.subscribe(apply)
@@ -166,8 +92,10 @@ export default function App() {
   const veilReady = appReady && (!waitForLobby || lobbyReady)
 
   // Public marketing pages render without WebBackground/IntroVeil
-  // Show landing immediately — don't wait for auth to resolve
-  if (isPublic && !user) {
+  // Show landing immediately — don't wait for auth to resolve.
+  // But if auth is still loading, hold off — a logged-in user should land
+  // straight in the Lobby without a flash of the Landing page.
+  if (isPublic && !user && !loading) {
     return (
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
@@ -197,16 +125,20 @@ export default function App() {
               <Route path="/" element={<Lobby />} />
               <Route path="/blueprint" element={<Blueprint />} />
               <Route path="/realm" element={<Realm />} />
+              <Route path="/realm/explore" element={<Explore />} />
               <Route path="/realm/:code" element={<RealmInvite />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/rooms" element={<RoomsList />} />
               <Route path="/info" element={<About />} />
-              <Route path="/room" element={<Navigate to="/rooms" replace />} />
-              <Route path="/room/:id" element={<StudyRoom />} />
+<Route path="/room" element={<Navigate to="/rooms" replace />} />
+<Route path="/rooms" element={<RoomsList />} />
+<Route path="/room/:id" element={<StudyRoom />} />
               <Route path="/magnet" element={<TaskMagnet />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/u/:username" element={<Profile />} />
               <Route path="/avatar" element={<AvatarCreator />} />
+              <Route path="/character-select" element={<CharacterSelection />} />
+              <Route path="/test-avatar" element={<SimpleTestAvatar />} />
+              <Route path="/games" element={<Games />} />
+              <Route path="/games/lava-pad" element={<LavaPad />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

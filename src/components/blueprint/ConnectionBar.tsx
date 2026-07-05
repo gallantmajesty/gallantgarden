@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { CONNECTION_PACKS, type LineStyle } from '../../lib/blueprint/types'
 import { ColorRow, Segmented } from './controls'
+import { YarnPalette } from './YarnPalette'
 
 // The "case file" — the user's own relationship vocabulary. Clicking a thread
 // type makes it active for new strings AND traces it on the wall (its threads
@@ -28,7 +29,7 @@ export function ConnectionBar() {
 
   return (
     <div className="bp-connbar bp-surface">
-      <span className="bp-connbar-label">{focusTypeId ? 'Tracing' : 'Threads'}</span>
+      <span className="bp-connbar-label">{focusTypeId ? '🔎 Tracing' : '🧵 Case file'}</span>
       <div className="bp-connchips">
         {visible.map((t) => (
           <button
@@ -44,8 +45,9 @@ export function ConnectionBar() {
           </button>
         ))}
         {visible.length === 0 && <span className="bp-connbar-empty">No thread types yet — add one →</span>}
-      </div>
-      <button className="sf-btn secondary tiny" onClick={() => setManage((m) => !m)}>Manage</button>
+</div>
+<YarnPalette compact />
+<button className="sf-btn tiny" onClick={() => setManage((m) => !m)}>Manage</button>
 
       {manage && (
         <div className="bp-connmanage bp-surface">

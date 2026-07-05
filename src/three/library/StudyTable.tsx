@@ -29,12 +29,12 @@ const CHAIR_CZ = [-TABLE.l / 2 + 1.4, -TABLE.l / 6, TABLE.l / 6, TABLE.l / 2 - 1
 
 // One chair's parts in chair-local space (before the chair's own Y-rotation).
 const CHAIR_PARTS: { pos: [number, number, number]; size: [number, number, number]; color: string }[] = [
-  { pos: [0, 0.48, 0], size: [0.52, 0.08, 0.52], color: WOOD }, // seat
-  { pos: [0, 0.82, -0.22], size: [0.52, 0.64, 0.08], color: WOOD }, // back
-  { pos: [-0.2, 0.24, -0.2], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-  { pos: [0.2, 0.24, -0.2], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-  { pos: [-0.2, 0.24, 0.2], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-  { pos: [0.2, 0.24, 0.2], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
+  { pos: [0, 0.48, 0], size: [0.7, 0.08, 0.65], color: WOOD }, // seat — wider + deeper
+  { pos: [0, 0.82, -0.28], size: [0.7, 0.64, 0.08], color: WOOD }, // back — wider
+  { pos: [-0.28, 0.24, -0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
+  { pos: [0.28, 0.24, -0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
+  { pos: [-0.28, 0.24, 0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
+  { pos: [0.28, 0.24, 0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
 ]
 
 /**

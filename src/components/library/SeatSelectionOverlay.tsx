@@ -8,8 +8,6 @@ import type { Seat } from '../../three/library/furniture'
 // aspect ratios for map positioning
 const ASPECT_W = HALL.halfW * 2
 const ASPECT_L = HALL.halfL * 2
-const SIDE_MARGIN = 60
-const TOP_MARGIN = 180
 
 /** Seat metadata for the hover card */
 interface SeatMeta {
@@ -73,10 +71,31 @@ export function SeatSelectionOverlay() {
 
   // Map seat positions to normalised 0..1 within the hall
   const seatPositions = useMemo(() => {
+    const pad = 0.06
+    // Group seats by table — round x aggressively so both sides of a table group together
+    const tableGroups = new Map<string, Seat[]>()
+    for (const s of seats) {
+      const key = `${Math.round(s.pos[0])},${Math.round(s.pos[2])}`
+      if (!tableGroups.has(key)) tableGroups.set(key, [])
+      tableGroups.get(key)!.push(s)
+    }
     return seats.map((s) => {
-      const nx = (s.pos[0] + HALL.halfW) / ASPECT_W
-      const ny = (s.pos[2] + HALL.halfL) / ASPECT_L
-      return { ...s, nx, ny, meta: getSeatMeta(s) }
+      const key = `${Math.round(s.pos[0])},${Math.round(s.pos[2])}`
+      const group = tableGroups.get(key) || []
+      // Sort by z then x to get a consistent order within each table
+      const sorted = [...group].sort((a, b) => a.pos[2] - b.pos[2] || a.pos[0] - b.pos[0])
+      const idx = sorted.findIndex((g) => g.id === s.id)
+      const count = sorted.length
+      // Spread chairs: offset along z (ny) for chairs at same x, offset along x (nx) for opposite sides
+      const seatGapZ = 0.04
+      const seatGapX = 0.025
+      const offsetZ = (idx - (count - 1) / 2) * seatGapZ
+      // Determine if this seat is on the left or right side of the table
+      const midX = group.reduce((sum, g) => sum + g.pos[0], 0) / group.length
+      const sideX = s.pos[0] < midX ? -seatGapX : seatGapX
+      const nx = ((s.pos[0] + HALL.halfW) / ASPECT_W) + sideX
+      const ny = ((s.pos[2] + HALL.halfL) / ASPECT_L) + offsetZ
+      return { ...s, nx: pad + nx * (1 - pad * 2), ny: pad + ny * (1 - pad * 2), meta: getSeatMeta(s) }
     })
   }, [seats])
 
@@ -99,7 +118,7 @@ export function SeatSelectionOverlay() {
   return (
     <div className="sso-root" style={{ opacity: 1, transition: 'opacity 0.5s ease' }}>
       <div className="sso-panel">
-        {/* Header */}
+        {/* Header — fixed at top */}
         <div className="sso-header">
           <h2 className="sso-title">Choose your seat</h2>
           <p className="sso-subtitle">Pick a place in the great hall to begin your study session</p>
@@ -118,34 +137,37 @@ export function SeatSelectionOverlay() {
           </span>
         </div>
 
-        {/* Floor Tabs */}
-        <div className="sso-tabs">
-          <button
-            className={`sso-tab ${activeTab === 'ground' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ground')}
-          >
-            Ground floor
-          </button>
-          <button
-            className={`sso-tab ${activeTab === 'upper' ? 'active' : ''}`}
-            onClick={() => setActiveTab('upper')}
-          >
-            Upper gallery
-          </button>
+        {/* Scrollable body */}
+        <div className="sso-body">
+          {/* Floor Tabs */}
+          <div className="sso-tabs">
+            <button
+              className={`sso-tab ${activeTab === 'ground' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ground')}
+            >
+              Ground floor
+            </button>
+            <button
+              className={`sso-tab ${activeTab === 'upper' ? 'active' : ''}`}
+              onClick={() => setActiveTab('upper')}
+            >
+              Upper gallery
+            </button>
+          </div>
+
+          {/* Seat Map */}
+          <MapLayer
+            seats={displayedSeats}
+            scale={scale}
+            occupied={occupied}
+            selected={selected}
+            hovered={hovered}
+            onHover={handleHover}
+            onSelect={handleSelect}
+          />
         </div>
 
-        {/* Seat Map */}
-        <MapLayer
-          seats={displayedSeats}
-          scale={scale}
-          occupied={occupied}
-          selected={selected}
-          hovered={hovered}
-          onHover={handleHover}
-          onSelect={handleSelect}
-        />
-
-        {/* Actions */}
+        {/* Actions — always visible at bottom */}
         <div className="sso-actions">
           <button
             className="sf-btn water sso-skip"
@@ -156,7 +178,6 @@ export function SeatSelectionOverlay() {
                 startWalk()
                 useSeatFlow.getState().arrive()
                 useWorld.getState().sit(selected)
-                // Skip bypasses the cinematic → mark entrance so it doesn't re-trigger
                 useSeatFlow.getState().markEntrancePlayed()
               }
             }}
@@ -170,6 +191,9 @@ export function SeatSelectionOverlay() {
               if (selected == null) return
               pickSeat(selected)
               startWalk()
+              useSeatFlow.getState().arrive()
+              useWorld.getState().sit(selected)
+              useSeatFlow.getState().markEntrancePlayed()
             }}
           >
             Join Study Session
@@ -200,38 +224,78 @@ interface MapLayerProps {
 
 function MapLayer({ seats, scale, occupied, selected, hovered, onHover, onSelect }: MapLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const dragging = useRef(false)
+  const lastPos = useRef({ x: 0, y: 0 })
+
+  // Pan with pointer drag
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('.sso-seat')) return
+    dragging.current = true
+    lastPos.current = { x: e.clientX, y: e.clientY }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }, [])
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return
+    const dx = e.clientX - lastPos.current.x
+    const dy = e.clientY - lastPos.current.y
+    lastPos.current = { x: e.clientX, y: e.clientY }
+    setPan((p) => ({ x: p.x + dx, y: p.y + dy }))
+  }, [])
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false
+  }, [])
 
   return (
-    <div className="sso-map-wrapper" style={{ marginTop: TOP_MARGIN, marginLeft: SIDE_MARGIN, marginRight: SIDE_MARGIN, marginBottom: 40 }}>
-      <div className="sso-map" ref={containerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
-        {/* Hall walls (decorative) */}
-        <div className="sso-wall sso-wall-top" />
-        <div className="sso-wall sso-wall-left" />
-        <div className="sso-wall sso-wall-right" />
-        <div className="sso-wall sso-wall-bottom" />
+    <div className="sso-map-outer">
+      <div
+        className="sso-map-wrapper"
+        ref={containerRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+      >
+        <div
+          className="sso-map"
+          style={{
+            transform: `scale(${scale}) translate(${pan.x / scale}px, ${pan.y / scale}px)`,
+            transformOrigin: 'top center',
+          }}
+        >
+          {/* Hall walls (decorative) */}
+          <div className="sso-wall sso-wall-top" />
+          <div className="sso-wall sso-wall-left" />
+          <div className="sso-wall sso-wall-right" />
+          <div className="sso-wall sso-wall-bottom" />
 
-        {/* Inner hall border */}
-        <div className="sso-hall" />
+          {/* Inner hall border */}
+          <div className="sso-hall" />
 
-        {/* Entrance indicator */}
-        <div className="sso-entrance" title="Entrance">
-          <span>Entrance</span>
+          {/* Entrance indicator */}
+          <div className="sso-entrance" title="Entrance">
+            <span>Entrance</span>
+          </div>
+
+          {/* Seats */}
+          {seats.map((s) => (
+            <SeatDot
+              key={s.id}
+              seat={s}
+              isOccupied={!!occupied[s.id]}
+              isSelected={selected === s.id}
+              isHovered={hovered === s.id}
+              onHover={() => onHover(s.id)}
+              onLeave={() => onHover(null)}
+              onClick={() => onSelect(s.id)}
+            />
+          ))}
         </div>
-
-        {/* Seats */}
-        {seats.map((s) => (
-          <SeatDot
-            key={s.id}
-            seat={s}
-            isOccupied={!!occupied[s.id]}
-            isSelected={selected === s.id}
-            isHovered={hovered === s.id}
-            onHover={() => onHover(s.id)}
-            onLeave={() => onHover(null)}
-            onClick={() => onSelect(s.id)}
-          />
-        ))}
       </div>
+
+      <p className="sso-zoom-hint">Drag to pan</p>
     </div>
   )
 }

@@ -58,5 +58,4 @@ export function parseOnboarding(raw: unknown): OnboardingData {
   }
 }
 
-export const MIN_AGE = 5
-export const MAX_AGE = 100
+

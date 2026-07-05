@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChat } from '../../store/chat'
 import { useFriends } from '../../store/friends'
@@ -32,7 +32,6 @@ export function ChatWindow() {
   const { t } = useTranslation()
   const meId = useChat((s) => s.meId)
   const friendId = useChat((s) => s.activeFriendId)
-  const conversationId = useChat((s) => s.activeConversationId)
   const messages = useChat((s) => s.messages)
   const hasMore = useChat((s) => s.hasMore)
   const opening = useChat((s) => s.opening)
@@ -57,12 +56,8 @@ export function ChatWindow() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevLen = useRef(0)
 
-  // 3s poll for the active conversation
-  useEffect(() => {
-    if (!conversationId) return
-    const id = window.setInterval(() => void useChat.getState().pollActive(), 3000)
-    return () => window.clearInterval(id)
-  }, [conversationId])
+  // Realtime handles message delivery; fallback polling is managed by the store.
+  // No interval needed here.
 
   // autoscroll to bottom when new messages append (not when prepending history)
   useLayoutEffect(() => {

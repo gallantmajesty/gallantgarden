@@ -1376,14 +1376,6 @@ html { scroll-behavior: smooth; }
   transform-origin: left bottom;
   animation: fl-tree-sway-l 16s ease-in-out infinite;
 }
-.fl-world-waterfall--right {
-  position: absolute;
-  right: 4%;
-  top: 8%;
-  height: 60%;
-  width: auto;
-  opacity: 0.65;
-}
 .fl-lantern--w1 { left: 20%; bottom: 12%; animation-delay: 0s; }
 .fl-lantern--w2 { left: 40%; bottom: 10%; animation-delay: 1.2s; }
 .fl-lantern--w3 { right: 22%; bottom: 14%; animation-delay: 2.4s; }

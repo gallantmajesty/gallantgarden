@@ -5,6 +5,7 @@ import { useProfile } from '../store/profile'
 import { useSocial } from '../store/social'
 import { usePomodoro } from '../store/pomodoro'
 import { useMagnet } from '../store/magnet'
+import { useTranslation } from 'react-i18next'
 import { insforge } from '../lib/insforge'
 import {
   getProfilesByIds,
@@ -32,6 +33,9 @@ import { FollowButton } from '../components/FollowButton'
 import { AddFriendButton } from '../components/AddFriendButton'
 import { StatCard } from '../components/StatCard'
 import { UserListModal } from '../components/UserListModal'
+import { Modal } from '../components/Modal'
+import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
+import { studyGoalLabel } from '../lib/studyGoals'
 import './Profile.css'
 
 // The customizable "study base" profile. One component serves both the editable
@@ -632,6 +636,8 @@ function Widget({
       return <AboutWidget view={view} editing={editing} />
     case 'favorite-subject':
       return <SubjectWidget view={view} editing={editing} />
+    case 'study-goals':
+      return isOwn ? <StudyGoalsWidget editing={editing} /> : null
     case 'interests':
       return <InterestsWidget view={view} editing={editing} />
     case 'schedule':
@@ -817,7 +823,73 @@ function StatsWidget({
           <StatCard key={s.id} stat={s} />
         ))}
       </div>
-      {!isOwn && <p className="pf-muted pf-stats-note">Detailed study stats are private to each explorer.</p>}
+    </>
+  )
+}
+
+function StudyGoalsWidget({ editing }: { editing: boolean }) {
+  const { t } = useTranslation()
+  const setStudyGoals = useProfile((s) => s.setStudyGoals)
+  const goals = useProfile((s) => s.data.studyGoals)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [draftGoals, setDraftGoals] = useState<string[]>(goals)
+
+  useEffect(() => {
+    if (modalOpen) {
+      setDraftGoals(goals)
+    }
+  }, [modalOpen, goals])
+
+  function save() {
+    setStudyGoals(draftGoals)
+    setModalOpen(false)
+  }
+
+  return (
+    <>
+      <WidgetTitle icon="book-open">{t('profile.studyGoalsTitle')}</WidgetTitle>
+      {editing ? (
+        <>
+          {goals.length > 0 ? (
+            <div className="pf-chips" style={{ marginBottom: '8px' }}>
+              {goals.map((g) => (
+                <span key={g} className="pf-chip">
+                  {studyGoalLabel(g)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="pf-muted">{t('profile.studyGoalsEmpty')}</p>
+          )}
+          <button className="sf-btn secondary" onClick={() => setModalOpen(true)}>
+            {goals.length > 0 ? t('profile.studyGoalsEdit') : t('profile.studyGoalsAdd')}
+          </button>
+        </>
+      ) : goals.length > 0 ? (
+        <div className="pf-chips">
+          {goals.map((g) => (
+            <span key={g} className="pf-chip">
+              {studyGoalLabel(g)}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="pf-muted">{t('profile.studyGoalsEmpty')}</p>
+      )}
+      {modalOpen && (
+        <Modal
+          open={modalOpen}
+          title={t('profile.studyGoalsModalTitle', 'Select your study goals')}
+          onClose={() => setModalOpen(false)}
+          width={600}
+        >
+          <StudyGoalsSelector value={draftGoals} onChange={setDraftGoals} />
+          <div style={{ marginTop: '12px', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button className="sf-btn secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</button>
+            <button className="sf-btn" onClick={save}>{t('common.save')}</button>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

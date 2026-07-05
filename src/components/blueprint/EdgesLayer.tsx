@@ -25,9 +25,11 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
   const pushHistory = useBlueprint((s) => s.pushHistory)
   const addNode = useBlueprint((s) => s.addNode)
   const addEdge = useBlueprint((s) => s.addEdge)
+  const activeYarnColor = useBlueprint((s) => s.activeYarnColor)
+  const activeTypeId = useBlueprint((s) => s.activeTypeId)
 
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
 
@@ -123,7 +125,7 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
         const dimmed = (traced && !onCluster) || (focusTypeId && !focusOk)
         const energetic = isSel || lit
 
-        const dash = st.lineStyle === 'dashed' ? '8 7' : undefined
+        const dash = (st.lineStyle === 'dashed' || st.lineStyle === 'dotted') ? '8 7' : undefined
         const baseGlow = 0.22 + st.glow * 0.5
         const haloOpacity = dimmed ? 0.04 : isSel ? 0.85 : lit ? 0.6 : baseGlow * 0.6
         const haloWidth = (st.thickness + 9) + (isSel ? 6 : lit ? 3 : 0)
@@ -157,18 +159,18 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
               strokeLinecap="round"
               style={{ opacity: haloOpacity }}
             />
-            {/* 2 — crisp coloured core with arrow */}
-            <path
-              className="bp-edge-core"
-              d={d}
-              stroke={st.color}
-              strokeWidth={coreWidth}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={dash}
-              markerEnd="url(#bp-arrow)"
-              style={{ opacity: dimmed ? 0.18 : 1 }}
-            />
+{/* 2 — crisp coloured core — arrow marker only when yarn style is arrow */}
+<path
+  className="bp-edge-core"
+  d={d}
+  stroke={st.color}
+  strokeWidth={coreWidth}
+  fill="none"
+  strokeLinecap="round"
+  strokeDasharray={dash}
+  markerEnd={(edge.yarnStyle ?? (type?.yarnStyle ?? st.lineStyle)) === 'arrow' ? 'url(#bp-arrow)' : undefined}
+  style={{ opacity: dimmed ? 0.18 : 1 }}
+/>
             {/* 3 — animated energy flow */}
             {energetic && (
               <path
@@ -228,17 +230,23 @@ export function EdgesLayer({ preview }: EdgesLayerProps) {
       })}
 
       {/* live drag-to-connect preview thread */}
-      {preview && (() => {
-        const from = preview.from
-        const p1 = anchorToward(from, preview.to)
-        const d = smoothPath(p1, preview.to)
-        return (
-          <g className="bp-edge-preview-g">
-            <path d={d} className="bp-edge-preview" stroke="var(--mg-accent, #c0392b)" strokeWidth={2.5} fill="none" strokeLinecap="round" />
-            <circle cx={p1.x} cy={p1.y} r={4} className="bp-pin" style={{ fill: 'var(--mg-accent, #c0392b)' }} />
-          </g>
-        )
-      })()}
+{preview && (() => {
+  const from = preview.from
+  const p1 = anchorToward(from, preview.to)
+  const d = smoothPath(p1, preview.to)
+  const previewType = types.find(t => t.id === activeTypeId)
+  const previewStyle = resolveEdgeStyle(
+    { yarnColor: activeYarnColor ?? undefined, typeId: activeTypeId } as any,
+    previewType,
+  )
+  const previewColor = previewStyle.color
+  return (
+    <g className="bp-edge-preview-g">
+      <path d={d} className="bp-edge-preview" stroke={previewColor} strokeWidth={2.5} fill="none" strokeLinecap="round" />
+      <circle cx={p1.x} cy={p1.y} r={4} className="bp-pin" style={{ fill: previewColor }} />
+    </g>
+  )
+})()}
     </svg>
   )
 }

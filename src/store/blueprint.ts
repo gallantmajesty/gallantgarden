@@ -13,6 +13,7 @@ import {
   type ConnectionType,
   type NoteStyle,
   type Port,
+  type YarnStyle,
 } from '../lib/blueprint/types'
 import {
   deleteBoardCloud,
@@ -45,6 +46,8 @@ interface BlueprintState {
   focus: FocusState
   hoverNodeId: string | null // node under the cursor — traces its investigation path
   activeTypeId: string // connection type applied to newly-drawn strings
+  activeYarnColor: string | null // yarn palette colour override (null = no override)
+  activeYarnStyle: YarnStyle // yarn visual style applied to newly-drawn strings
 
   // undo/redo
   past: BoardDoc[]
@@ -56,6 +59,10 @@ interface BlueprintState {
   loadBoard: (id: string) => void
   deleteBoard: (id: string) => void
   setTitle: (title: string) => void
+
+  // ---- yarn palette ----
+  setActiveYarnColor: (hex: string | null) => void
+  setActiveYarnStyle: (s: YarnStyle) => void
 
   // ---- nodes ----
   addNode: (partial?: Partial<BlueprintNode>) => BlueprintNode
@@ -146,17 +153,19 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
   }
 
   return {
-    userId: null,
-    ready: false,
-    boards: [],
-    doc: makeBoard(),
-    selection: [],
-    selectedEdgeId: null,
-    focus: { typeId: null },
-    hoverNodeId: null,
-    activeTypeId: 'link',
-    past: [],
-    future: [],
+  userId: null,
+  ready: false,
+  boards: [],
+  doc: makeBoard(),
+  selection: [],
+  selectedEdgeId: null,
+  focus: { typeId: null },
+  hoverNodeId: null,
+  activeTypeId: 'link',
+  activeYarnColor: null,
+  activeYarnStyle: 'solid',
+  past: [],
+  future: [],
 
     hydrate: async (userId) => {
       if (get().userId === userId && get().ready) return
@@ -185,39 +194,43 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
       }
     },
 
-    newBoard: (title) => {
-      const uidv = get().userId
-      const doc = makeBoard(title || 'Untitled Board')
-      if (uidv) {
-        writeBoardLocal(uidv, doc)
-        queueCloudPush(uidv, doc)
-      }
-      set({
-        doc,
-        boards: uidv ? listBoardsLocal(uidv) : get().boards,
-        selection: [],
-        selectedEdgeId: null,
-        focus: { typeId: null },
-        past: [],
-        future: [],
-      })
-    },
+newBoard: (title) => {
+  const uidv = get().userId
+  const doc = makeBoard(title || 'Untitled Board')
+  if (uidv) {
+    writeBoardLocal(uidv, doc)
+    queueCloudPush(uidv, doc)
+  }
+  set({
+    doc,
+    boards: uidv ? listBoardsLocal(uidv) : get().boards,
+    selection: [],
+    selectedEdgeId: null,
+    focus: { typeId: null },
+    activeYarnColor: null,
+    activeYarnStyle: 'solid',
+    past: [],
+    future: [],
+  })
+},
 
-    loadBoard: (id) => {
-      const uidv = get().userId
-      if (!uidv) return
-      const doc = readBoardLocal(uidv, id)
-      if (!doc) return
-      set({
-        doc,
-        boards: listBoardsLocal(uidv),
-        selection: [],
-        selectedEdgeId: null,
-        focus: { typeId: null },
-        past: [],
-        future: [],
-      })
-    },
+  loadBoard: (id) => {
+    const uidv = get().userId
+    if (!uidv) return
+    const doc = readBoardLocal(uidv, id)
+    if (!doc) return
+    set({
+      doc,
+      boards: listBoardsLocal(uidv),
+      selection: [],
+      selectedEdgeId: null,
+      focus: { typeId: null },
+      activeYarnColor: null,
+      activeYarnStyle: 'solid',
+      past: [],
+      future: [],
+    })
+  },
 
     deleteBoard: (id) => {
       const uidv = get().userId
@@ -233,8 +246,8 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
           writeBoardLocal(uidv, doc)
           queueCloudPush(uidv, doc)
         }
-        set({ doc, boards: listBoardsLocal(uidv), selection: [], selectedEdgeId: null })
-      } else {
+  set({ doc, boards: listBoardsLocal(uidv), selection: [], selectedEdgeId: null, focus: { typeId: null }, activeYarnColor: null, activeYarnStyle: 'solid' })
+  } else {
         set({ boards })
       }
     },
@@ -347,8 +360,18 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
       apply((d) => {
         // avoid duplicate identical edges
         if (d.edges.some((e) => e.from === from && e.to === to && e.typeId === typeId)) return d
-        const edge: BlueprintEdge = { id: uid('edge'), from, to, fromPort, toPort, typeId }
-        return { ...d, edges: [...d.edges, edge] }
+  const st = get()
+  const edge: BlueprintEdge = {
+    id: uid('edge'),
+    from,
+    to,
+    fromPort,
+    toPort,
+    typeId,
+    ...(st.activeYarnColor ? { yarnColor: st.activeYarnColor } : {}),
+    ...(st.activeYarnStyle !== 'solid' ? { yarnStyle: st.activeYarnStyle } : {}),
+  }
+  return { ...d, edges: [...d.edges, edge] }
       })
     },
 
@@ -432,10 +455,14 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
     setFocus: (typeId) => set((s) => ({ focus: { typeId: s.focus.typeId === typeId ? null : typeId } })),
     setHoverNode: (id) => set((s) => (s.hoverNodeId === id ? s : { hoverNodeId: id })),
 
-    setViewport: (v) => applyLight((d) => ({ ...d, viewport: v })),
-    toggleSnap: () => apply((d) => ({ ...d, snap: !d.snap })),
+  setViewport: (v) => applyLight((d) => ({ ...d, viewport: v })),
+  toggleSnap: () => apply((d) => ({ ...d, snap: !d.snap })),
 
-    // ---------- arrange ----------
+  // ---- yarn palette ----
+  setActiveYarnColor: (hex) => set({ activeYarnColor: hex }),
+  setActiveYarnStyle: (s) => set({ activeYarnStyle: s }),
+
+  // ---------- arrange ----------
     autoArrange: () => {
       pushHistory()
       apply((d) => {

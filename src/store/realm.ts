@@ -2,9 +2,9 @@ import { create } from 'zustand'
 import { GLOBAL_ROOMS, type RealmKind } from '../lib/realm'
 import type { RealmVisibility } from '../lib/realms'
 
-/** Which 3D world a realm renders. Defaults to the great Library; the Waterfall
- *  Realm is the second flagship world; the Train Station is the third. */
-export type RealmWorld = 'library' | 'waterfall' | 'train-station'
+/** Which 3D world a realm renders. Defaults to the great Library; the Train
+ *  Station is the second flagship world. */
+export type RealmWorld = 'library' | 'train-station'
 
 /** Which world a global room renders, looked up from its definition. Train-station
  *  rooms (concourse + platforms) render the Train Station; everything else the
@@ -42,8 +42,7 @@ interface RealmState {
   active: ActiveRealm | null
   custom: CustomRealm[]
   enterGlobal: (roomId: string, name: string) => void
-  /** Drop into a flagship world (the Library hub default is 'library'; the
-   *  Waterfall Realm is 'waterfall'). */
+  /** Drop into a flagship world (the Library hub default is 'library'). */
   enterFlagship: (world: RealmWorld, name: string) => void
   /** Upsert a realm into the local cache (after create or join). */
   rememberCustom: (realm: CustomRealm) => void

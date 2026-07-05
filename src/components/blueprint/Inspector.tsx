@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { uploadMedia } from '../../lib/blueprint/sync'
-import { FONT_OPTIONS, NOTE_PRESETS, type BgKind, type Curve, type LineStyle, type MediaFit, type MediaPlace, type Shape, type TextAlign } from '../../lib/blueprint/types'
+import { FONT_OPTIONS, NOTE_PRESETS, YARN_STYLE_META, type BgKind, type Curve, type MediaFit, type MediaPlace, type Shape, type TextAlign, type YarnStyle } from '../../lib/blueprint/types'
 import { ColorRow, Field, Segmented, Select, Slider } from './controls'
 
 // Real shape library — each thumbnail mimics the actual card silhouette so the
@@ -12,14 +12,9 @@ const SHAPES: { value: Shape; label: string }[] = [
   { value: 'rect', label: 'Plain' },
   { value: 'circle', label: 'Bubble' },
   { value: 'hexagon', label: 'Hex' },
-  { value: 'folder', label: 'Folder' },
-  { value: 'document', label: 'Document' },
-  { value: 'polaroid', label: 'Polaroid' },
-  { value: 'bookmark', label: 'Bookmark' },
-  { value: 'card', label: 'Tag' },
 ]
-const ICONS = ['📌', '⭐', '🔥', '💡', '✅', '❗', '🎯', '📚', '🧠', '⚡', '❤️', '🔑', '🧪', '📐']
-const STICKERS = ['🦊', '🌸', '🌟', '🚀', '🌈', '🍀', '💎', '🎨', '🦉', '🐱', '🌙', '☀️', '🍎', '🧩']
+const ICONS = ['📌', '📋', '🔍', '⚠', '📍', '📎', '📄', '🧲', '🔦']
+const STICKERS = ['📌', '🔍', '⚠', '📄', '📍', '🧩', '📋']
 const GRADIENTS = [
   'linear-gradient(135deg, #ffe27a, #ffb24d)',
   'linear-gradient(135deg, #a18cd1, #fbc2eb)',
@@ -258,24 +253,25 @@ function EdgeInspector({ edgeId }: { edgeId: string }) {
           <Select value={edge.typeId} options={types.map((t) => ({ label: t.name, value: t.id }))} onChange={(v) => updateEdge(edgeId, { typeId: v })} />
         </Field>
         <Field label="Label">
-          <input className="bp-text" value={edge.label ?? ''} onChange={(e) => updateEdge(edgeId, { label: e.target.value })} />
-        </Field>
-        <Field label="Colour"><ColorRow value={edge.color ?? type?.color ?? '#8a93a6'} onChange={(v) => updateEdge(edgeId, { color: v })} /></Field>
-        <Field label="Thickness"><Slider value={edge.thickness ?? type?.thickness ?? 2.5} min={1} max={8} step={0.5} onChange={(v) => updateEdge(edgeId, { thickness: v })} suffix="px" /></Field>
-        <Field label="Style">
-          <Segmented<LineStyle> value={edge.lineStyle ?? type?.lineStyle ?? 'solid'}
-            options={[{ label: 'Solid', value: 'solid' }, { label: 'Dashed', value: 'dashed' }, { label: 'Animated', value: 'animated' }]}
-            onChange={(v) => updateEdge(edgeId, { lineStyle: v })} />
-        </Field>
-        <Field label="Hang">
-          <Segmented<Curve> value={edge.curve ?? type?.curve ?? 'curved'}
-            options={[{ label: 'Sag', value: 'curved' }, { label: 'Taut', value: 'straight' }]}
-            onChange={(v) => updateEdge(edgeId, { curve: v })} />
-        </Field>
-        <Field label="Glow"><Slider value={edge.glow ?? type?.glow ?? 0.3} min={0} max={1} step={0.05} onChange={(v) => updateEdge(edgeId, { glow: v })} /></Field>
-      </Section>
-      <button className="sf-btn secondary danger" onClick={() => deleteEdge(edgeId)}>Cut thread</button>
-    </div>
+ <input className="bp-text" value={edge.label ?? ''} onChange={(e) => updateEdge(edgeId, { label: e.target.value })} />
+ </Field>
+ </Section>
+ <Section title="Yarn">
+  <Field label="Yarn colour"><ColorRow value={edge.yarnColor ?? edge.color ?? type?.color ?? '#8a93a6'} onChange={(v) => updateEdge(edgeId, { yarnColor: v })} /></Field>
+  <Field label="Thickness"><Slider value={edge.thickness ?? type?.thickness ?? 2.5} min={1} max={8} step={0.5} onChange={(v) => updateEdge(edgeId, { thickness: v })} suffix="px" /></Field>
+  <Field label="Yarn style">
+    <Segmented<YarnStyle>
+      value={edge.yarnStyle ?? 'solid'}
+      options={YARN_STYLE_META.map((s) => ({ label: s.label.split(' ').slice(1).join(' ') || s.value, value: s.value }))}
+      onChange={(v) => updateEdge(edgeId, { yarnStyle: v })}
+    />
+  </Field>
+  <Field label="Hang"><Segmented<Curve> value={edge.curve ?? type?.curve ?? 'curved'} options={[{ label: 'Sag', value: 'curved' }, { label: 'Taut', value: 'straight' }]} onChange={(v) => updateEdge(edgeId, { curve: v })} /></Field>
+  <Field label="Glow"><Slider value={edge.glow ?? type?.glow ?? 0.3} min={0} max={1} step={0.05} onChange={(v) => updateEdge(edgeId, { glow: v })} /></Field>
+ </Section>
+ <button className="sf-btn secondary danger" onClick={() => deleteEdge(edgeId)}>Cut thread</button>
+</div>
+
   )
 }
 

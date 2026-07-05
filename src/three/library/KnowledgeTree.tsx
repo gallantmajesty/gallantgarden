@@ -127,7 +127,7 @@ export function KnowledgeTree() {
       {/* a soft warm wash over the dais — gentle, not a floodlight. Gated by
           quality (a real light is costly); on low the canopy's emissive glow
           and the hall lanterns carry the look. */}
-      {preset.treeLight && <pointLight ref={treeLight} position={[0, 6, 0]} intensity={3.4} distance={16} decay={2.2} color="#ffcf9a" />}
+      {preset.treeLight && <pointLight ref={treeLight} position={[0, 6, 0]} intensity={2.8} distance={14} decay={2.5} color="#ffcf9a" />}
 
       {/* glowing rune motes drifting up out of the canopy — GPU Points, additive,
           picked up by bloom. Replaces the old round Sparkles with the magical

@@ -9,13 +9,14 @@ import {
 } from 'react'
 import { insforge } from '../lib/insforge'
 import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
-import { initSession, claimSession, releaseSession } from '../lib/session'
-import { SessionLockOverlay } from '../components/SessionLockOverlay'
+import { initSession } from '../lib/session'
+import { networkId } from '../multiplayer/net'
 
 export interface AuthUser {
   id: string
   email: string
   profile?: { name?: string; avatar_url?: string | null }
+  isGuest?: boolean
 }
 
 /** OAuth identity providers wired in the UI. These must match the providers
@@ -30,6 +31,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<string | null>
   signUp: (email: string, password: string, name: string) => Promise<string | null>
   signInWithProvider: (provider: OAuthProvider) => Promise<string | null>
+  signInAsGuest: () => Promise<void>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -39,8 +41,6 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const [sessionLocked, setSessionLocked] = useState(false)
-  const [lockedWhere, setLockedWhere] = useState<string | undefined>(undefined)
 
   const refresh = useCallback(async () => {
     const { data, error } = await insforge.auth.getCurrentUser()
@@ -49,12 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    // Single-session guard: each tab gets a session_id + lock-change callback.
-    // `where` is the device label of the holder we lost the lock to (PC/mobile).
-    initSession((locked, where) => {
-      setSessionLocked(locked)
-      setLockedWhere(where)
-    })
+    // Initialize session for multi-device support
+    initSession()
     // Once-per-device first-launch config (independent of who signs in).
     void runGlobalInit()
     void (async () => {
@@ -65,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(u)
         if (u) {
           await runUserInit(u)
-          await claimSession()
         }
       } catch (e) {
         console.error('[Auth] getCurrentUser failed:', e)
@@ -85,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u)
     if (u) {
       await runUserInit(u)
-      await claimSession()
     }
     return null
   }, [])
@@ -99,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u)
       if (u) {
         await runUserInit(u)
-        await claimSession()
       }
       return null
     },
@@ -120,26 +113,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   }, [])
 
+  const signInAsGuest = useCallback(async () => {
+    // Create a lightweight guest user object — no InsForge auth session.
+    // XP/progress lives in localStorage keyed by the guest network ID.
+    // When the guest later signs up, their localStorage data is migrated.
+    const guestNetId = networkId()
+    const guestUser: AuthUser = {
+      id: guestNetId,
+      email: '',
+      profile: { name: 'Guest' },
+      isGuest: true,
+    }
+    setUser(guestUser)
+    await runUserInit(guestUser)
+  }, [])
+
   const signOut = useCallback(async () => {
-    // Release the single-session lock first so a re-sign-in doesn't briefly
-    // see a stale holder, then tear down per-user state.
-    await releaseSession()
     await insforge.auth.signOut()
     runUserTeardown()
-    setSessionLocked(false)
-    setLockedWhere(undefined)
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signInWithProvider, signOut, refresh }),
-    [user, loading, signIn, signUp, signInWithProvider, signOut, refresh],
+    () => ({ user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signOut, refresh }),
+    [user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signOut, refresh],
   )
 
   return (
     <AuthContext.Provider value={value}>
       {children}
-      <SessionLockOverlay visible={sessionLocked && !!user} where={lockedWhere} />
     </AuthContext.Provider>
   )
 }

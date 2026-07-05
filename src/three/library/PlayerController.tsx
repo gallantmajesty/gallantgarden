@@ -2,11 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
-import { Group, MathUtils, type PerspectiveCamera as TPerspectiveCamera } from 'three'
-import { HALL, PLAYER_BOUNDS } from './layout'
-import { buildCollision, isBlocked, PLAYER_RADIUS, rayHit, topSupport } from './colliders'
+import { Group, MathUtils, type PerspectiveCamera as TPerspectiveCamera, Vector3 } from 'three'
+import { HALL } from './layout'
+import { buildCollision, rayHit } from './colliders'
 import { seatAnchors } from './furniture'
-import { isTypingFocused, joystick } from './input'
 import { useSettings } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
 import { useWorld } from '../../store/world'
@@ -17,43 +16,76 @@ import { setLocalState } from '../../multiplayer/net'
 import { useSeatFlow } from '../../store/seatFlow'
 import { EmoteLabel } from './EmoteLabel'
 
-const SEAT_RANGE = 2.0
-const SEAT_EYE = 1.16
-const WALK = 4.6
-const RUN = 8.2
-const JUMP_V = 6.6
-const GRAVITY = -19
-const STAND_EYE = 1.62
-const CROUCH_EYE = 1.05
+const SEAT_EYE = 1.74
+const CHAIR_SEAT_Y = 0.45
 const THIRD_DIST = 5.5
+const PRESET_DIST = 3.5 // fixed camera distance for presets
 
-/** Entrance of the library — the avatar spawns here and walks to the seat. */
-const ENTRANCE: [number, number, number] = [0, 0, HALL.halfL - 3]
+// 4 fixed camera angles relative to seat yaw (in radians):
+//   1 = left-behind    2 = front-left    3 = front-center    4 = right
+const PRESET_ANGLES: [number, number][] = [
+  [0.6, -0.15],   // 1: left-behind
+  [-2.5, -0.1],   // 2: front-left
+  [-3.14159, -0.12], // 3: front-center (directly in front)
+  [0.9, -0.05],   // 4: right side
+]
 
-/**
- * Minecraft-style first/third-person controller with AABB collision,
- * gravity, jumping and auto-stepping. Drag to look (sensitivity + invert-Y from
- * settings), WASD to walk, Shift to run, Space to jump, Ctrl to crouch.
- * F1/F2 (or the in-game keys) switch camera modes with a smooth blend.
- */
+const CAMERA_STIFFNESS = 45
+const CAMERA_DAMPING = 12
+const ORBIT_SMOOTHNESS = 8
+const COLLISION_SOFTNESS = 0.15
+
+function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, number] {
+  const savedId = useSeatFlow.getState().selectedSeatId
+  if (savedId != null && savedId >= 0 && savedId < seats.length) {
+    return seats[savedId].pos
+  }
+  if (seats.length > 0) return seats[0].pos
+  return [0, 0, HALL.halfL - 3]
+}
+
+function springDamper(current: number, target: number, stiffness: number, damping: number, dt: number): number {
+  const diff = target - current
+  const springForce = diff * stiffness
+  const damperForce = -damping * 0
+  const acceleration = springForce + damperForce
+  return current + acceleration * dt * dt + diff * (1 - Math.exp(-damping * dt))
+}
+
+function smoothClamp(value: number, min: number, max: number, smoothness: number): number {
+  if (value <= min) return min + (value - min) * Math.exp(-smoothness * Math.abs(value - min))
+  if (value >= max) return max + (value - max) * Math.exp(-smoothness * Math.abs(value - max))
+  return value
+}
+
 export function PlayerController() {
   const gl = useThree((s) => s.gl)
   const camRef = useRef<TPerspectiveCamera>(null)
   const avatarRef = useRef<Group>(null)
-  // Camera far plane follows the View Distance axis (closer = less to draw).
   const far = useScenePreset().far
-  // Live locomotion fed to the avatar animator each frame (no React re-renders).
-  const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
+  const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
   const avatarConfig = useAvatar((s) => s.config)
-  const keys = useRef<Record<string, boolean>>({})
   const collision = useMemo(() => buildCollision(), [])
   const seats = useMemo(() => seatAnchors(), [])
 
+  useEffect(() => {
+    const savedId = useSeatFlow.getState().selectedSeatId
+    if (savedId != null && seats[savedId] && useWorld.getState().seat == null) {
+      useWorld.getState().sit(savedId)
+    }
+  }, [seats])
+
+  const camPos = useRef(new Vector3())
+  const camTarget = useRef(new Vector3())
+  const camVel = useRef(new Vector3())
+  const targetYaw = useRef(0)
+  const targetPitch = useRef(0)
+
   const p = useRef({
-    x: ENTRANCE[0],
-    y: ENTRANCE[1], // feet height
-    z: ENTRANCE[2],
-    vx: 0, // smoothed horizontal velocity
+    x: getInitialPos(seats)[0],
+    y: getInitialPos(seats)[1],
+    z: getInitialPos(seats)[2],
+    vx: 0,
     vz: 0,
     vy: 0,
     yaw: 0,
@@ -62,18 +94,16 @@ export function PlayerController() {
     faceYaw: Math.PI,
     bob: 0,
     camDist: THIRD_DIST,
-    zoom: THIRD_DIST, // player-controlled third-person distance (mouse wheel)
-    eye: STAND_EYE,
+    zoom: THIRD_DIST,
+    eye: 1.62,
     nearSeat: null as number | null,
-    seatedInit: false, // one-time framing init when we first sit down
-    autoWalkInit: false,
+    seatedInit: false,
   })
   const drag = useRef({ on: false, lx: 0, ly: 0 })
+  const wasSeated = useRef(false)
   const [emote, setEmote] = useState<string | null>(null)
   const emoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Recompute the projection when the far plane (View Distance) changes — setting
-  // camera.far alone doesn't refresh the matrix.
   useEffect(() => {
     const cam = camRef.current
     if (!cam) return
@@ -81,64 +111,6 @@ export function PlayerController() {
     cam.updateProjectionMatrix()
   }, [far])
 
-  // keyboard (movement + camera-mode hotkeys)
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (isTypingFocused()) return
-      keys.current[e.code] = true
-      // Camera hotkeys disabled — locked to third-person
-      if (e.code === 'KeyE' || e.code === 'Escape') {
-        const w = useWorld.getState()
-        if (w.seat != null) {
-          w.stand()
-          // Reset seat flow so the user can pick a new seat if they want after standing
-          useSeatFlow.getState().clearSeat()
-        }
-        else if (e.code === 'KeyE' && p.current.nearSeat != null) {
-          const seat = seats[p.current.nearSeat]
-          if (seat) {
-            const flow = useSeatFlow.getState()
-            if (flow.seatLockUntil && Date.now() < flow.seatLockUntil) {
-              // Locked — ignore the press silently
-            } else {
-              p.current.yaw = seat.yaw
-              p.current.pitch = -0.12
-              w.sit(seat.id)
-            }
-          }
-        }
-      }
-      if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault()
-
-      // Emote hotkeys: 1=wave, 2=happy, 3=celebrate, 4=sit
-      const emoteMap: Record<string, string> = {
-        Digit1: 'wave', Digit2: 'happy', Digit3: 'celebrate', Digit4: 'sit',
-      }
-      if (emoteMap[e.code]) {
-        if (emoteTimer.current) clearTimeout(emoteTimer.current)
-        setEmote(emoteMap[e.code])
-        emoteTimer.current = setTimeout(() => setEmote(null), 2000)
-      }
-    }
-    const up = (e: KeyboardEvent) => {
-      keys.current[e.code] = false
-    }
-    // If focus moves into a text field while a movement key is held, drop all
-    // held keys so the player doesn't keep walking while the user types.
-    const clearHeld = () => {
-      keys.current = {}
-    }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
-    window.addEventListener('focusin', clearHeld)
-    return () => {
-      window.removeEventListener('keydown', down)
-      window.removeEventListener('keyup', up)
-      window.removeEventListener('focusin', clearHeld)
-    }
-  }, [seats])
-
-  // drag-to-look → rotates avatar (faceYaw), camera follows
   useEffect(() => {
     const el = gl.domElement
     const down = (e: PointerEvent) => {
@@ -149,13 +121,14 @@ export function PlayerController() {
     const move = (e: PointerEvent) => {
       const d = drag.current
       if (!d.on) return
+      // Female avatars: camera is locked to presets 1-4, no mouse orbit
+      const isFemale = useAvatar.getState().config.bodyType === 'female'
+      const seated = useWorld.getState().seat != null
+      if (isFemale && seated) return
       const s = useSettings.getState()
       const k = 0.0032 * s.sensitivity
-      // Rotate avatar facing direction (faceYaw) instead of camera yaw
       p.current.faceYaw -= (e.clientX - d.lx) * k
-      // Keep yaw in sync so WASD movement is always relative to the camera
       p.current.yaw = p.current.faceYaw
-      // Optional: allow slight pitch for looking up/down
       p.current.pitch += (e.clientY - d.ly) * k * (s.invertY ? 1 : -1)
       p.current.pitch = MathUtils.clamp(p.current.pitch, -1.2, 1.2)
       d.lx = e.clientX
@@ -164,22 +137,57 @@ export function PlayerController() {
     const up = () => {
       drag.current.on = false
     }
-    // mouse-wheel zoom (third-person distance)
     const wheel = (e: WheelEvent) => {
       e.preventDefault()
       p.current.zoom = MathUtils.clamp(p.current.zoom + Math.sign(e.deltaY) * 0.6, 2.6, 10)
+    }
+    const keyDown = (e: KeyboardEvent) => {
+      // Only handle 1-4 when seated
+      if (useWorld.getState().seat == null) return
+      const key = e.key
+      if (key >= '1' && key <= '4') {
+        const preset = parseInt(key)
+        const current = useSettings.getState().cameraPreset
+        // Female avatars: camera locked to presets 1-4, no free orbit.
+        // Pressing the same key cycles to next preset instead of toggling off.
+        const isFemale = useAvatar.getState().config.bodyType === 'female'
+        let next: number
+        if (isFemale) {
+          next = current === preset ? (preset % 4) + 1 : preset
+        } else {
+          // Toggle: pressing the same key again goes back to free orbit (0)
+          next = current === preset ? 0 : preset
+        }
+        useSettings.getState().set('cameraPreset', next)
+        // Reset yaw/pitch when switching to a preset
+        if (current !== preset) {
+          const seatId = useWorld.getState().seat
+          if (seatId != null) {
+            const seat = seats[seatId]
+            if (seat) {
+              targetYaw.current = seat.yaw + PRESET_ANGLES[preset - 1][0]
+              targetPitch.current = PRESET_ANGLES[preset - 1][1]
+              p.current.yaw = targetYaw.current
+              p.current.pitch = targetPitch.current
+              p.current.zoom = PRESET_DIST
+            }
+          }
+        }
+      }
     }
     el.addEventListener('pointerdown', down)
     el.addEventListener('wheel', wheel, { passive: false })
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+    window.addEventListener('keydown', keyDown)
     return () => {
       el.removeEventListener('pointerdown', down)
       el.removeEventListener('wheel', wheel)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      window.removeEventListener('keydown', keyDown)
     }
-  }, [gl])
+  }, [gl, seats])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
@@ -187,26 +195,37 @@ export function PlayerController() {
     if (!cam) return
     const s = useSettings.getState()
     const st = p.current
-    const k = keys.current
 
-    // ---- seated: lock to the chair, allow a little look-around. Stay in
-    //      THIRD-person by default so the player watches their own sitting
-    //      animation; only an explicit First-person choice drops to a seat-eye
-    //      view (and hides the body, since you'd be looking out of its head). ----
     const seatId = useWorld.getState().seat
+
+    // Reset cameraPreset when transitioning from seated to standing
+    if (wasSeated.current && seatId == null) {
+      useSettings.getState().set('cameraPreset', 0)
+    }
+    wasSeated.current = seatId != null
+
     if (seatId != null) {
       const seat = seats[seatId]
       const av = avatarRef.current
       if (seat) {
-        // One-time framing when we first sit: start the orbit at a 3/4 side view of
-        // the FACE (camera off to the front-side of the desk-facing avatar) and a
-        // comfortable distance. Done once so the player can then freely drag around.
+        const avYaw = seat.yaw + Math.PI
+
         if (!st.seatedInit) {
           st.seatedInit = true
-          st.yaw = seat.yaw - Math.PI * 0.65
-          st.pitch = 0.12
-          st.zoom = 3.6
-          st.camDist = 3.6
+          st.yaw = seat.yaw
+          st.pitch = -0.2
+          st.zoom = 3.0
+          st.camDist = 3.0
+          targetYaw.current = seat.yaw
+          targetPitch.current = -0.2
+
+          // Female avatars: auto-select preset 1 on sit (no free orbit)
+          if (useAvatar.getState().config.bodyType === 'female') {
+            const cur = useSettings.getState().cameraPreset
+            if (cur < 1 || cur > 4) {
+              useSettings.getState().set('cameraPreset', 1)
+            }
+          }
         }
 
         st.x = seat.pos[0]
@@ -217,294 +236,142 @@ export function PlayerController() {
         st.vy = 0
         st.grounded = true
 
-        // the seated body: parked at the chair, FACING the desk (seat.yaw + π — the
-        // avatar's forward is the opposite of the seat heading) so its forward-reaching
-        // hands rest on the desktop; loco.seated drives the desk-sit pose + root drop.
         const l = loco.current
         l.seated = true
         l.speed = 0
         l.grounded = true
         l.vy = 0
         l.turnRate = 0
+
         if (av) {
-          av.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
-          av.rotation.y = seat.yaw + Math.PI
+          av.position.set(seat.pos[0], seat.pos[1] + CHAIR_SEAT_Y, seat.pos[2])
+          av.rotation.y = avYaw
         }
 
-        const headY = seat.pos[1] + SEAT_EYE
-        // Locked third-person: camera behind seated avatar (which faces the desk)
+        const eyeY = seat.pos[1] + CHAIR_SEAT_Y + SEAT_EYE
+
+        if (s.cameraMode === 'first') {
+          if (av) av.visible = false
+          cam.position.set(seat.pos[0], eyeY, seat.pos[2])
+          cam.rotation.set(0, avYaw, 0)
+          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: avYaw, speed: 0, grounded: true, seated: true })
+          return
+        }
+
         const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
         const isDragging = drag.current.on
-        if (av) av.visible = s.cameraMode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
-        const camYaw = seat.yaw + Math.PI // avatar faces desk, camera behind it
-        const camPitch = MathUtils.clamp(st.pitch, -0.5, 0.55)
-        const cp = Math.cos(camPitch)
-        const fx = -Math.sin(camYaw) * cp
-        const fy = Math.sin(camPitch)
-        const fz = -Math.cos(camYaw) * cp
-        const dist = MathUtils.clamp(st.zoom, 2.4, 6)
-        let ox = fx * -1
-        let oy = fy * -1 + 0.32
-        let oz = fz * -1
-        const ol = Math.hypot(ox, oy, oz) || 1
-        ox /= ol
-        oy /= ol
-        oz /= ol
-        const hit = rayHit(seat.pos[0], headY, seat.pos[2], ox, oy, oz, dist + 0.4, collision.blockers)
-        const d = Math.min(dist, hit - 0.4)
-        st.camDist = MathUtils.lerp(st.camDist, Math.max(1.8, d), 1 - Math.pow(0.00005, dt))
-        cam.position.set(
-          seat.pos[0] + ox * st.camDist,
-          Math.max(0.5, headY + oy * st.camDist),
-          seat.pos[2] + oz * st.camDist,
-        )
-        cam.rotation.set(camPitch, camYaw, 0)
-        // broadcast the seated pose to the realm (parked at the chair, facing it)
-        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
+        if (av) av.visible = !(hideAvatarWhenMovingCamera && isDragging)
+
+        const behindAngle = seat.yaw
+
+        // When a camera preset is active (1-4), skip free orbit and use fixed angle
+        const preset = s.cameraPreset
+        if (preset >= 1 && preset <= 4) {
+          const [angleOff, pitchOff] = PRESET_ANGLES[preset - 1]
+          targetYaw.current = seat.yaw + angleOff
+          targetPitch.current = pitchOff
+          const dist = PRESET_DIST
+
+          const cp = Math.cos(targetPitch.current)
+          const idealX = seat.pos[0] + Math.sin(targetYaw.current) * cp * dist
+          const idealY = eyeY + Math.sin(targetPitch.current) * dist
+          const idealZ = seat.pos[2] + Math.cos(targetYaw.current) * cp * dist
+
+          camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+          camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+          camPos.current.z = springDamper(camPos.current.z, idealZ, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+
+          cam.position.copy(camPos.current)
+          camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.25, seat.pos[2]), 1 - Math.exp(-15 * dt))
+          cam.lookAt(camTarget.current)
+
+          st.yaw = targetYaw.current
+          st.pitch = targetPitch.current
+
+          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: avYaw, speed: 0, grounded: true, seated: true })
+          return
+        }
+
+        // Free orbit mode (preset === 0)
+
+        let yawDiff = st.yaw - behindAngle
+        yawDiff = Math.atan2(Math.sin(yawDiff), Math.cos(yawDiff))
+        const minYaw = -(70 / 180) * Math.PI
+        const maxYaw = (70 / 180) * Math.PI
+        yawDiff = smoothClamp(yawDiff, minYaw, maxYaw, ORBIT_SMOOTHNESS * dt * 60)
+        const clampedYaw = behindAngle + yawDiff
+
+        const clampedPitch = smoothClamp(st.pitch, -0.35, 0.35, ORBIT_SMOOTHNESS * dt * 60)
+
+        targetYaw.current = MathUtils.lerp(targetYaw.current, clampedYaw, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
+        targetPitch.current = MathUtils.lerp(targetPitch.current, clampedPitch, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
+
+        const dist = MathUtils.clamp(st.zoom, 2.0, 8)
+
+        const cp = Math.cos(targetPitch.current)
+        const idealX = seat.pos[0] + Math.sin(targetYaw.current) * cp * dist
+        const idealY = eyeY + Math.sin(targetPitch.current) * dist
+        const idealZ = seat.pos[2] + Math.cos(targetYaw.current) * cp * dist
+
+        const dx = idealX - seat.pos[0]
+        const dy = idealY - eyeY
+        const dz = idealZ - seat.pos[2]
+        const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dx, dy, dz, dist + 0.4, collision.blockers)
+        const collisionDist = Math.min(dist, hit - 0.4)
+        const softDist = collisionDist + COLLISION_SOFTNESS * (dist - collisionDist)
+
+        camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+        camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+        camPos.current.z = springDamper(camPos.current.z, idealZ, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+
+        const actualDist = camPos.current.distanceTo(new Vector3(seat.pos[0], eyeY, seat.pos[2]))
+        if (actualDist > softDist + 0.1) {
+          const dir = camPos.current.clone().sub(new Vector3(seat.pos[0], eyeY, seat.pos[2])).normalize()
+          camPos.current.set(
+            seat.pos[0] + dir.x * softDist,
+            eyeY + dir.y * softDist,
+            seat.pos[2] + dir.z * softDist
+          )
+        }
+
+        cam.position.copy(camPos.current)
+
+        camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.25, seat.pos[2]), 1 - Math.exp(-15 * dt))
+        cam.lookAt(camTarget.current)
+
+        st.yaw = targetYaw.current
+        st.pitch = targetPitch.current
+
+        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: avYaw, speed: 0, grounded: true, seated: true })
       }
       return
     }
-    // not seated → re-arm the one-time seated framing for next time
-    st.seatedInit = false
 
-    // ---- auto-walk to seat (cinematic path, user controls locked) ----
     const flow = useSeatFlow.getState()
     if (flow.stage === 'walking' && flow.selectedSeatId != null) {
       const targetSeat = seats[flow.selectedSeatId]
       if (targetSeat) {
-        // Initialise once: snap to entrance and face the seat
-        if (!st.autoWalkInit) {
-          st.autoWalkInit = true
-          st.x = ENTRANCE[0]
-          st.y = ENTRANCE[1]
-          st.z = ENTRANCE[2]
-          st.vx = 0
-          st.vz = 0
-          st.vy = 0
-        }
-
-        const dx = targetSeat.pos[0] - st.x
-        const dz = targetSeat.pos[2] - st.z
-        const dist = Math.hypot(dx, dz)
-        const WALK_SPEED = 3.0
-
-        if (dist < 0.5) {
-          // Arrived — trigger sit automatically
-          st.autoWalkInit = false
-          useSeatFlow.getState().arrive()
-          useWorld.getState().sit(targetSeat.id)
-        } else {
-          // Face the target and move toward it
-          st.faceYaw = Math.atan2(dx, dz)
-          const moveDist = Math.min(dist, WALK_SPEED * dt)
-          st.x += Math.sin(st.faceYaw) * moveDist
-          st.z += Math.cos(st.faceYaw) * moveDist
-          st.vx = Math.sin(st.faceYaw) * WALK_SPEED
-          st.vz = Math.cos(st.faceYaw) * WALK_SPEED
-        }
-
-        // Smooth bob while walking
-        st.bob += Math.hypot(st.vx, st.vz) * dt
-        st.y = ENTRANCE[1] // flat ground for the library entrance
+        st.x = targetSeat.pos[0]
+        st.y = targetSeat.pos[1]
+        st.z = targetSeat.pos[2]
+        st.vx = 0
+        st.vz = 0
+        st.vy = 0
         st.grounded = true
-
-        // Cinematic third-person camera: strictly behind the avatar
-        // faceYaw points forward (where the avatar walks), so the camera looks
-        // from behind in the opposite direction.
-        const headY = st.y + st.eye
-        const camYaw = st.faceYaw + Math.PI   // look from behind, not at face
-        const camPitch = 0.25
-        const cp = Math.cos(camPitch)
-        const fx = -Math.sin(camYaw) * cp
-        const fy = Math.sin(camPitch)
-        const fz = -Math.cos(camYaw) * cp
-        const camDist = 5.0
-        let ox = fx * -1
-        let oy = fy * -1 + 0.32
-        let oz = fz * -1
-        const ol = Math.hypot(ox, oy, oz) || 1
-        ox /= ol
-        oy /= ol
-        oz /= ol
-        const hit = rayHit(st.x, headY, st.z, ox, oy, oz, camDist + 0.4, collision.blockers)
-        const d = Math.min(camDist, hit - 0.4)
-        st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
-        cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
-        cam.lookAt(st.x, headY, st.z)
-
-        // Avatar update during auto-walk
-        const av = avatarRef.current
-        if (av) {
-          av.visible = true
-          av.position.set(st.x, st.y, st.z)
-          const prevYaw = av.rotation.y
-          const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
-          av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
-          const l = loco.current
-          l.seated = false
-          l.speed = Math.hypot(st.vx, st.vz)
-          l.grounded = true
-          l.vy = 0
-          l.turnRate = dt > 0 ? (av.rotation.y - prevYaw) / dt : 0
-          setLocalState({ x: st.x, y: st.y, z: st.z, yaw: av.rotation.y, speed: l.speed, grounded: true, seated: false })
-        }
+        st.faceYaw = targetSeat.yaw + Math.PI
+        targetYaw.current = targetSeat.yaw
+        targetPitch.current = -0.2
+        flow.arrive()
+        useWorld.getState().sit(targetSeat.id)
         return
       }
     }
-    // Once free or seated, reset autoWalk flag
     st.autoWalkInit = false
-
-    // ---- intent ----
-    const crouch = !!(k['ControlLeft'] || k['ControlRight'])
-    const run = !!(k['ShiftLeft'] || k['ShiftRight'])
-    const mz = (k['KeyW'] || k['ArrowUp'] ? 1 : 0) - (k['KeyS'] || k['ArrowDown'] ? 1 : 0) + joystick.y
-    const mx = (k['KeyD'] || k['ArrowRight'] ? 1 : 0) - (k['KeyA'] || k['ArrowLeft'] ? 1 : 0) + joystick.x
-    const moving = mx !== 0 || mz !== 0
-
-    // target eye height (smooth crouch)
-    st.eye = MathUtils.lerp(st.eye, crouch ? CROUCH_EYE : STAND_EYE, 1 - Math.pow(0.001, dt))
-
-    // ---- horizontal movement: smooth accelerate/decelerate toward intent so
-    //      walking feels natural with no jitter or snapping ----
-    let dirX = 0
-    let dirZ = 0
-    if (moving) {
-      const sinY = Math.sin(st.yaw)
-      const cosY = Math.cos(st.yaw)
-      dirX = cosY * mx - sinY * mz
-      dirZ = -sinY * mx - cosY * mz
-      const len = Math.hypot(dirX, dirZ) || 1
-      dirX /= len
-      dirZ /= len
-      st.faceYaw = Math.atan2(dirX, dirZ)
-    }
-    const speed = (run ? RUN : WALK) * (crouch ? 0.45 : 1)
-    const targetVX = dirX * speed
-    const targetVZ = dirZ * speed
-    // snappy accel, smooth stop
-    const blend = 1 - Math.pow(0.0005, dt)
-    st.vx = MathUtils.lerp(st.vx, targetVX, blend)
-    st.vz = MathUtils.lerp(st.vz, targetVZ, blend)
-    if (!moving && Math.hypot(st.vx, st.vz) < 0.04) {
-      st.vx = 0
-      st.vz = 0
-    }
-
-    const lo = st.y + 0.62 // auto-step: ignore knee-high obstacles
-    const hi = st.y + st.eye
-    // move axis-by-axis so we slide cleanly along walls instead of sticking
-    const nx = st.x + st.vx * dt
-    if (!isBlocked(nx, st.z, PLAYER_RADIUS, lo, hi, collision.blockers)) st.x = nx
-    else st.vx = 0
-    const nz = st.z + st.vz * dt
-    if (!isBlocked(st.x, nz, PLAYER_RADIUS, lo, hi, collision.blockers)) st.z = nz
-    else st.vz = 0
-    if (moving) st.bob += Math.hypot(st.vx, st.vz) * dt
-    st.x = MathUtils.clamp(st.x, PLAYER_BOUNDS.minX, PLAYER_BOUNDS.maxX)
-    st.z = MathUtils.clamp(st.z, PLAYER_BOUNDS.minZ, PLAYER_BOUNDS.maxZ)
-
-    // ---- gravity, ground support, auto-step, jump ----
-    const support = topSupport(st.x, st.z, st.y, collision.surfaces)
-    if (st.grounded && (k['Space'] || joystick.jump)) {
-      st.vy = JUMP_V
-      st.grounded = false
-    }
-    st.vy += GRAVITY * dt
-    st.y += st.vy * dt
-    if (st.y <= support) {
-      st.y = support
-      if (st.vy < 0) st.vy = 0
-      st.grounded = true
-    } else {
-      st.grounded = false
-    }
-
-    // ---- camera placement per mode ----
-    const headY = st.y + st.eye
-    const mode = s.cameraMode
-    const hideAvatarWhenMovingCamera = s.hideAvatarWhenMovingCamera
-
-    // ---- camera placement: locked third-person (always behind avatar) ----
-    // Camera follows avatar's faceYaw so it stays glued to the back.
-    // faceYaw is the direction the avatar faces; adding π flips the camera
-    // to the opposite side (behind) so it never ends up in front.
-    const camYaw = st.faceYaw + Math.PI
-    const camPitch = st.pitch // slight up/down look preserved
-    const cp = Math.cos(camPitch)
-    // Forward direction from the avatar's facing angle (used for offset placement)
-    const fx = -Math.sin(st.faceYaw) * cp
-    const fy = Math.sin(camPitch)
-    const fz = -Math.cos(st.faceYaw) * cp
-    const dist = st.zoom
-    // unit offset from head toward camera (slightly raised), pulled BEHIND avatar
-    // (negate forward → backward direction = behind the avatar)
-    let ox = fx * -1
-    let oy = fy * -1 + 0.32
-    let oz = fz * -1
-    const ol = Math.hypot(ox, oy, oz) || 1
-    ox /= ol
-    oy /= ol
-    oz /= ol
-    // collision pull-in
-    const hit = rayHit(st.x, headY, st.z, ox, oy, oz, dist + 0.4, collision.blockers)
-    const d = Math.min(dist, hit - 0.4)
-    st.camDist = MathUtils.lerp(st.camDist, Math.max(2.8, d), 1 - Math.pow(0.00005, dt))
-    cam.position.set(st.x + ox * st.camDist, Math.max(0.5, headY + oy * st.camDist), st.z + oz * st.camDist)
-    // Camera looks in the avatar's facing direction (toward avatar from behind)
-    cam.rotation.set(camPitch, st.faceYaw, 0)
-
-    // ---- avatar ----
-    const av = avatarRef.current
-    if (av) {
-      const isDragging = drag.current.on
-      av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
-      av.position.set(st.x, st.y, st.z)
-      const prevYaw = av.rotation.y
-      // Smooth body turn along the SHORTEST arc: ease over the wrapped delta so a
-      // heading change across ±π (e.g. spinning around) rotates the short way
-      // instead of unwinding a near-full turn (the old "sudden 180° flip").
-      const dYaw = Math.atan2(Math.sin(st.faceYaw - prevYaw), Math.cos(st.faceYaw - prevYaw))
-      av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
-      // feed the procedural animator: horizontal speed drives the gait, grounded
-      // / vy drive jump+land, and the smoothed facing delta drives turn-lean.
-      const l = loco.current
-      l.seated = false
-      l.speed = Math.hypot(st.vx, st.vz)
-      l.grounded = st.grounded
-      l.vy = st.vy
-      l.turnRate = dt > 0 ? (av.rotation.y - prevYaw) / dt : 0
-      // broadcast our transform + motion to the realm (the net layer throttles to
-      // ~10Hz and only sends when something changed — see multiplayer/net.ts)
-      setLocalState({ x: st.x, y: st.y, z: st.z, yaw: av.rotation.y, speed: l.speed, grounded: st.grounded, seated: false })
-    }
-
-    // ---- nearest sittable seat (for the "Press E to sit" prompt) ----
-    let best: number | null = null
-    let bestD = SEAT_RANGE * SEAT_RANGE
-    for (const se of seats) {
-      if (Math.abs(se.pos[1] - st.y) > 1.6) continue
-      const dx = se.pos[0] - st.x
-      const dz = se.pos[2] - st.z
-      const d = dx * dx + dz * dz
-      if (d < bestD) {
-        bestD = d
-        best = se.id
-      }
-    }
-    st.nearSeat = best
-    if (useWorld.getState().near !== best) useWorld.getState().setNear(best)
   })
 
   return (
     <>
       <PerspectiveCamera ref={camRef} makeDefault fov={72} near={0.08} far={far} rotation-order="YXZ" />
-      {/* The player's body: the chosen pre-built character, animated in-world by
-          its own baked locomotion clips (CharacterAvatar reads `loco` every
-          frame). Visibility is re-asserted every frame (hidden only in
-          first-person / while seated); we start it visible so the character is
-          on-screen immediately in the default third-person view rather than
-          flashing in after the first frame. Falls back to a procedural rig until
-          the character's .glb is baked in. */}
       <group ref={avatarRef} visible={useSettings.getState().cameraMode !== 'first'}>
         <CharacterAvatar config={avatarConfig} locomotion={loco} preview={emote ?? undefined} />
       </group>

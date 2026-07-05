@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { COUNTRIES } from '../lib/countries'
-import { STUDY_GOAL_GROUPS } from '../lib/studyGoals'
-import { REFERRAL_OPTIONS, MIN_AGE, MAX_AGE, type ReferralOption } from '../lib/onboarding'
+import { REFERRAL_OPTIONS, type ReferralOption } from '../lib/onboarding'
 import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
-import { checkUsername, suggestUsername, type UsernameCheck } from '../lib/usernames'
+import { generateRandomUsername } from '../lib/usernames'
 import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
+import { CountryGlobe } from '../components/CountryGlobe'
+import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
+import { SparklesText } from '../components/SparklesText'
 import './Onboarding.css'
 
 type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6
@@ -22,13 +24,14 @@ export function Onboarding() {
   const setUsername = useProfile((s) => s.setUsername)
 
   const [step, setStep] = useState<StepId>(0)
-  const [username, setUsernameDraft] = useState('')
-  const [usernameOk, setUsernameOk] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [fullNameOk, setFullNameOk] = useState(false)
   const [country, setCountry] = useState<string | null>(null)
   const [age, setAge] = useState<number | null>(null)
   const [goals, setGoals] = useState<string[]>([])
   const [referral, setReferral] = useState<ReferralOption | null>(null)
   const [referralOther, setReferralOther] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,11 +40,11 @@ export function Onboarding() {
   // Per-step gating for the Continue button.
   const canAdvance =
     step === 0 ? true
-    : step === 1 ? usernameOk
+    : step === 1 ? fullNameOk
     : step === 2 ? !!country
-    : step === 3 ? age != null
+    : step === 3 ? !!age
     : step === 4 ? goals.length > 0
-    : step === 5 ? !!referral && (referral !== 'Other' || referralOther.trim().length > 0)
+    : step === 5 ? termsAccepted
     : true
 
   function next() {
@@ -56,18 +59,24 @@ export function Onboarding() {
   async function finish() {
     setSaving(true)
     setError(null)
-    // Claim the unique username first; on a race (taken) bounce back to step 1.
-    const claimed = await setUsername(username)
+    // Auto-generate a random unique username (hidden from user).
+    const autoUsername = await generateRandomUsername()
+    const claimed = await setUsername(autoUsername)
     if (!claimed) {
-      setSaving(false)
-      setUsernameOk(false)
-      setStep(1)
-      setError(t('onboarding.usernameTaken'))
-      return
+      // Extremely unlikely — retry with a new random name.
+      const retry = await generateRandomUsername()
+      const claimed2 = await setUsername(retry)
+      if (!claimed2) {
+        setSaving(false)
+        setError(t('onboarding.saveError'))
+        return
+      }
     }
+    // Save the full name as the display name.
+    await useProfile.getState().setDisplayName(fullName.trim())
     const ok = await complete({
       country,
-      age,
+      age: age,
       studyGoals: goals,
       referral,
       referralOther: referral === 'Other' ? referralOther.trim() : null,
@@ -80,45 +89,74 @@ export function Onboarding() {
 
   return (
     <div className="ob-root">
+      {/* Decorative vines on fullscreen bg */}
+      <div className="ob-vines">
+        {/* Top-left vine */}
+        <svg className="ob-vine ob-vine-tl" viewBox="0 0 200 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 0 C10 80, 60 100, 40 180 S-10 300, 30 400 S70 460, 50 500" stroke="var(--accent-dark, #6b7c3a)" strokeWidth="2" fill="none" opacity="0.35"/>
+          <ellipse cx="38" cy="60" rx="12" ry="8" transform="rotate(-30 38 60)" fill="var(--accent-dark, #6b7c3a)" opacity="0.25"/>
+          <ellipse cx="22" cy="110" rx="10" ry="6" transform="rotate(20 22 110)" fill="var(--accent-dark, #6b7c3a)" opacity="0.22"/>
+          <ellipse cx="50" cy="170" rx="11" ry="7" transform="rotate(-25 50 170)" fill="var(--accent-dark, #6b7c3a)" opacity="0.20"/>
+          <ellipse cx="18" cy="230" rx="9" ry="5.5" transform="rotate(15 18 230)" fill="var(--accent-dark, #6b7c3a)" opacity="0.18"/>
+          <ellipse cx="42" cy="290" rx="10" ry="6" transform="rotate(-20 42 290)" fill="var(--accent-dark, #6b7c3a)" opacity="0.16"/>
+          <ellipse cx="25" cy="350" rx="8" ry="5" transform="rotate(25 25 350)" fill="var(--accent-dark, #6b7c3a)" opacity="0.14"/>
+          <ellipse cx="48" cy="410" rx="9" ry="5.5" transform="rotate(-18 48 410)" fill="var(--accent-dark, #6b7c3a)" opacity="0.12"/>
+        </svg>
+        {/* Top-right vine */}
+        <svg className="ob-vine ob-vine-tr" viewBox="0 0 200 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M190 0 C190 80, 140 100, 160 180 S210 300, 170 400 S130 460, 150 500" stroke="var(--accent-dark, #6b7c3a)" strokeWidth="2" fill="none" opacity="0.35"/>
+          <ellipse cx="162" cy="60" rx="12" ry="8" transform="rotate(30 162 60)" fill="var(--accent-dark, #6b7c3a)" opacity="0.25"/>
+          <ellipse cx="178" cy="110" rx="10" ry="6" transform="rotate(-20 178 110)" fill="var(--accent-dark, #6b7c3a)" opacity="0.22"/>
+          <ellipse cx="150" cy="170" rx="11" ry="7" transform="rotate(25 150 170)" fill="var(--accent-dark, #6b7c3a)" opacity="0.20"/>
+          <ellipse cx="182" cy="230" rx="9" ry="5.5" transform="rotate(-15 182 230)" fill="var(--accent-dark, #6b7c3a)" opacity="0.18"/>
+          <ellipse cx="158" cy="290" rx="10" ry="6" transform="rotate(20 158 290)" fill="var(--accent-dark, #6b7c3a)" opacity="0.16"/>
+          <ellipse cx="175" cy="350" rx="8" ry="5" transform="rotate(-25 175 350)" fill="var(--accent-dark, #6b7c3a)" opacity="0.14"/>
+          <ellipse cx="152" cy="410" rx="9" ry="5.5" transform="rotate(18 152 410)" fill="var(--accent-dark, #6b7c3a)" opacity="0.12"/>
+        </svg>
+      </div>
+
       <div className="ob-card sf-panel">
         <ProgressDots step={step} />
 
-        <div className="ob-body" key={step}>
-          {step === 0 && <WelcomeStep />}
-          {step === 1 && (
-            <UsernameStep
-              value={username}
-              seed={displayName}
-              onChange={setUsernameDraft}
-              onValidity={setUsernameOk}
-            />
-          )}
-          {step === 2 && <CountryStep value={country} onChange={setCountry} />}
-          {step === 3 && <AgeStep value={age} onChange={setAge} />}
-          {step === 4 && <GoalsStep value={goals} onChange={setGoals} />}
-          {step === 5 && (
-            <ReferralStep
-              value={referral}
-              other={referralOther}
-              onChange={setReferral}
-              onOther={setReferralOther}
-            />
-          )}
-          {step === 6 && (
-            <FinishStep
-              name={displayName}
-              username={username}
-              country={country}
-              goals={goals}
-            />
-          )}
-        </div>
+         <div className="ob-body" key={step}>
+           {step === 0 && <WelcomeStep />}
+           {step === 1 && (
+             <FullNameStep
+               value={fullName}
+               onChange={setFullName}
+               onValidity={setFullNameOk}
+             />
+           )}
+           {step === 2 && <CountryStep value={country} onChange={setCountry} />}
+           {step === 3 && <AgeStep value={age} onChange={setAge} />}
+            {step === 4 && <StudyGoalsSelector value={goals} onChange={setGoals} />}
+            {step === 5 && (
+              <TermsStep
+                accepted={termsAccepted}
+                onChange={setTermsAccepted}
+                referral={referral}
+                referralOther={referralOther}
+                onReferral={setReferral}
+                onReferralOther={setReferralOther}
+              />
+            )}
+            {step === 6 && (
+             <FinishStep
+               name={fullName || displayName}
+               country={country}
+               goals={goals}
+             />
+           )}
+         </div>
 
         {error && <p className="ob-error">{error}</p>}
 
         <div className="ob-actions">
           {step > 0 && (
-            <button className="sf-btn secondary" onClick={back} disabled={saving} type="button">
+            <button className="ob-back-btn" onClick={back} disabled={saving} type="button">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
               Back
             </button>
           )}
@@ -142,7 +180,18 @@ function ProgressDots({ step }: { step: StepId }) {
     <div className="ob-progress" aria-hidden>
       {Array.from({ length: STEP_COUNT }, (_, i) => (
         <span key={i} className={`ob-dot ${i === step ? 'on' : ''} ${i < step ? 'done' : ''}`} />
-      ))}
+      )).reduce((acc: React.ReactNode[], dot, i) => {
+        if (i > 0) {
+          acc.push(
+            <span
+              key={`c${i}`}
+              className={`ob-dot-connector ${i <= step ? 'done' : ''}`}
+            />
+          );
+        }
+        acc.push(dot);
+        return acc;
+      }, [])}
     </div>
   )
 }
@@ -153,7 +202,9 @@ function WelcomeStep() {
   const { t } = useTranslation()
   return (
     <div className="ob-welcome">
-      <div className="ob-seedling">🌱</div>
+      <div className="ob-logo">
+        <img src="/icons/focus-lily-logo.png" alt="FocusLily" />
+      </div>
       <h1 className="ob-title">{t('onboarding.welcomeTitle')}</h1>
       <p className="ob-lead">
         {t('onboarding.welcomeBody')}
@@ -162,86 +213,70 @@ function WelcomeStep() {
   )
 }
 
-/* ------------------------------------------------------------- step 2: username */
+/* ------------------------------------------------------------- step 2: full name */
 
-function UsernameStep({
+function FullNameStep({
   value,
-  seed,
   onChange,
   onValidity,
 }: {
   value: string
-  seed: string
   onChange: (s: string) => void
   onValidity: (ok: boolean) => void
 }) {
   const { t } = useTranslation()
-  const [status, setStatus] = useState<UsernameCheck & { checking?: boolean }>({ ok: false })
 
-  // Suggest an available handle from the display name on first mount (once).
-  useEffect(() => {
-    if (value) return
-    let cancelled = false
-    void suggestUsername(seed).then((s) => {
-      if (!cancelled && s) onChange(s)
-    })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Validate inline and report via callback — no setState in effect needed.
+  const trimmed = value.trim()
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  let valid = false
 
-  // Debounced live availability check whenever the draft changes. All state
-  // updates run inside the timer callback (no synchronous setState in effect).
+  if (!trimmed) {
+    valid = false
+  } else if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+    valid = false
+  } else if (words.length < 2) {
+    valid = false
+  } else if (trimmed.length > 50) {
+    valid = false
+  } else {
+    valid = true
+  }
+
+  const errorMsg = !trimmed
+    ? ''
+    : !/^[a-zA-Z0-9 ]+$/.test(trimmed)
+      ? 'Only letters, numbers and spaces allowed'
+      : words.length < 2
+        ? 'Please enter your full name (at least 2 words)'
+        : trimmed.length > 50
+          ? 'Name must be 50 characters or less'
+          : ''
+
+  // Report validity on every render (safe — no cascading setState).
   useEffect(() => {
-    let active = true
-    const t = window.setTimeout(async () => {
-      if (!value) {
-        if (active) {
-          setStatus({ ok: false })
-          onValidity(false)
-        }
-        return
-      }
-      if (active) setStatus({ ok: false, checking: true })
-      const res = await checkUsername(value)
-      if (active) {
-        setStatus({ ...res, checking: false })
-        onValidity(res.ok)
-      }
-    }, value ? 400 : 0)
-    return () => {
-      active = false
-      window.clearTimeout(t)
-    }
-  }, [value, onValidity])
+    onValidity(valid)
+  }, [valid, onValidity])
 
   return (
     <div className="ob-step">
-      <h2 className="ob-q">{t('onboarding.chooseUsername')}</h2>
-      <p className="ob-hint">
-        {t('onboarding.usernameHint')}
-      </p>
-      <div className="ob-username">
-        <span className="ob-username-at">@</span>
-        <input
-          className="sf-input ob-username-input"
-          value={value}
-          maxLength={20}
-          placeholder={t('onboarding.usernamePlaceholder')}
-          autoFocus
-          onChange={(e) => onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-        />
-      </div>
-      <p className={`ob-username-status ${status.checking ? '' : status.ok ? 'ok' : value ? 'bad' : ''}`}>
-        {status.checking
-          ? t('onboarding.checkingAvailability')
-          : status.ok
-            ? `@${value} is available`
-            : value
-              ? status.error
-              : ''}
-      </p>
+      <h2 className="ob-q">{t('onboarding.fullNameTitle')}</h2>
+      <p className="ob-hint">{t('onboarding.fullNameHint')}</p>
+      <input
+        className="sf-input ob-username-input"
+        value={value}
+        maxLength={50}
+        placeholder={t('onboarding.fullNamePlaceholder')}
+        autoFocus
+        onChange={(e) => {
+          const v = e.target.value
+          if (/^[a-zA-Z0-9 ]*$/.test(v)) onChange(v)
+        }}
+      />
+      {errorMsg && <p className="ob-username-status bad">{errorMsg}</p>}
+      {!errorMsg && valid && (
+        <p className="ob-username-status ok">{trimmed}</p>
+      )}
     </div>
   )
 }
@@ -261,6 +296,10 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
     <div className="ob-step">
       <h2 className="ob-q">{t('onboarding.countryTitle')}</h2>
       <p className="ob-hint">{t('onboarding.countryHint')}</p>
+      {/* Globe visualization */}
+      <div className="ob-globe-wrapper">
+        <CountryGlobe countryCode={value} />
+      </div>
       <input
         className="sf-input ob-search"
         placeholder={t('common.searchCountries')}
@@ -289,164 +328,209 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
   )
 }
 
-/* ------------------------------------------------------------------ step 3: age */
+/* -------------------------------------------------------------- step 3: birthdate */
 
-function AgeStep({ value, onChange }: { value: number | null; onChange: (n: number) => void }) {
+function AgeStep({ value, onChange }: { value: number | null; onChange: (age: number) => void }) {
   const { t } = useTranslation()
-  return (
-    <div className="ob-step">
-      <h2 className="ob-q">{t('onboarding.ageTitle')}</h2>
-      <div className="ob-private-notice">
-        <span className="ob-lock">🔒</span>
-        <span>
-          {t('onboarding.agePrivacy')}
-        </span>
-      </div>
-      <div className="ob-age">
-        <button
-          className="ob-stepper"
-          type="button"
-          onClick={() => onChange(Math.max(MIN_AGE, (value ?? MIN_AGE) - 1))}
-          aria-label={t('onboarding.decreaseAge')}
-        >
-          −
-        </button>
-        <div className="ob-age-value">
-          <input
-            type="number"
-            className="ob-age-input"
-            min={MIN_AGE}
-            max={MAX_AGE}
-            value={value ?? ''}
-            placeholder="—"
-            onChange={(e) => {
-              const n = Number(e.target.value)
-              if (!Number.isNaN(n)) onChange(Math.min(MAX_AGE, Math.max(MIN_AGE, Math.round(n))))
-            }}
-          />
-          <span className="ob-age-label">{t('onboarding.years')}</span>
-        </div>
-        <button
-          className="ob-stepper"
-          type="button"
-          onClick={() => onChange(Math.min(MAX_AGE, (value ?? MIN_AGE) + 1))}
-          aria-label={t('onboarding.increaseAge')}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  )
-}
+  const [input, setInput] = useState(value?.toString() ?? '')
 
-/* ----------------------------------------------------------- step 4: study goals */
+  const handleInput = (v: string) => {
+    // Only allow digits
+    const digits = v.replace(/\D/g, '').slice(0, 3)
+    setInput(digits)
+    const num = parseInt(digits, 10)
+    if (digits && num >= 7 && num <= 100) {
+      onChange(num)
+    }
+  }
 
-function GoalsStep({ value, onChange }: { value: string[]; onChange: (g: string[]) => void }) {
-  const { t } = useTranslation()
-  const [q, setQ] = useState('')
-  const sel = new Set(value)
-  const toggle = (id: string) =>
-    onChange(sel.has(id) ? value.filter((g) => g !== id) : [...value, id])
-
-  const groups = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    if (!needle) return STUDY_GOAL_GROUPS
-    return STUDY_GOAL_GROUPS.map((g) => ({
-      ...g,
-      goals: g.goals.filter((x) => x.label.toLowerCase().includes(needle)),
-    })).filter((g) => g.goals.length > 0)
-  }, [q])
-
-  return (
-    <div className="ob-step">
-      <h2 className="ob-q">{t('onboarding.goalsTitle')}</h2>
-      <p className="ob-hint">{t('onboarding.goalsHint')}</p>
-      <input
-        className="sf-input ob-search"
-        placeholder={t('onboarding.goalsSearch')}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-      <div className="ob-goals">
-        {groups.map((g) => (
-          <div key={g.id} className="ob-goal-group">
-            <h3 className="ob-goal-title">{g.title}</h3>
-            <div className="ob-goal-chips">
-              {g.goals.map((goal) => (
-                <button
-                  key={goal.id}
-                  className={`ob-chip ${sel.has(goal.id) ? 'on' : ''}`}
-                  onClick={() => toggle(goal.id)}
-                  type="button"
-                  aria-pressed={sel.has(goal.id)}
-                >
-                  {goal.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-        {groups.length === 0 && <p className="ob-empty">No goals match “{q}”.</p>}
-      </div>
-      {value.length > 0 && <p className="ob-selected-count">{t('onboarding.selected', { count: value.length })}</p>}
-    </div>
-  )
-}
-
-/* -------------------------------------------------------------- step 5: referral */
-
-function ReferralStep({
-  value,
-  other,
-  onChange,
-  onOther,
-}: {
-  value: ReferralOption | null
-  other: string
-  onChange: (r: ReferralOption) => void
-  onOther: (s: string) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="ob-step">
-      <h2 className="ob-q">{t('onboarding.referralTitle')}</h2>
-      <div className="ob-referrals">
-        {REFERRAL_OPTIONS.map((opt) => (
-          <button
-            key={opt}
-            className={`ob-chip wide ${value === opt ? 'on' : ''}`}
-            onClick={() => onChange(opt)}
-            type="button"
-            aria-pressed={value === opt}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-      {value === 'Other' && (
-        <input
-          className="sf-input ob-search"
-          placeholder={t('onboarding.referralPlaceholder')}
-          value={other}
-          onChange={(e) => onOther(e.target.value)}
-          autoFocus
-          maxLength={80}
-        />
+return (
+     <div className="ob-step">
+       <h2 className="ob-q">{t('onboarding.ageTitle')}</h2>
+       <div className="ob-age-row">
+         <button
+           className="ob-stepper"
+           onClick={() => {
+             const next = Math.max(7, (value ?? 18) - 1)
+             setInput(next.toString())
+             onChange(next)
+           }}
+           type="button"
+           aria-label="Decrease age"
+         >
+           −
+         </button>
+         <input
+           type="text"
+           className="sf-input ob-age-input"
+           value={input}
+           onChange={(e) => handleInput(e.target.value)}
+           placeholder="—"
+           autoFocus
+           inputMode="numeric"
+           maxLength={3}
+         />
+         <button
+           className="ob-stepper"
+           onClick={() => {
+             const next = Math.min(100, (value ?? 18) + 1)
+             setInput(next.toString())
+             onChange(next)
+           }}
+           type="button"
+           aria-label="Increase age"
+         >
+           +
+         </button>
+       </div>
+      {value && (value < 7 || value > 100) && (
+        <p className="ob-username-status bad">Age must be between 7 and 100</p>
       )}
     </div>
   )
 }
 
-/* ---------------------------------------------------------------- step 6: finish */
+/* ---------------------------------------------------------------- step 5: terms + referral */
+
+function TermsStep({
+  accepted,
+  onChange,
+  referral,
+  referralOther,
+  onReferral,
+  onReferralOther,
+}: {
+  accepted: boolean
+  onChange: (v: boolean) => void
+  referral: ReferralOption | null
+  referralOther: string
+  onReferral: (r: ReferralOption) => void
+  onReferralOther: (s: string) => void
+}) {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="ob-step ob-terms">
+      <h2 className="ob-q">{t('onboarding.termsTitle')}</h2>
+
+      {/* Referral question */}
+      <div className="ob-referrals">
+        {REFERRAL_OPTIONS.map((opt) => (
+          <button
+            key={opt}
+            className={`ob-chip wide ${referral === opt ? 'on' : ''}`}
+            onClick={() => onReferral(opt)}
+            type="button"
+            aria-pressed={referral === opt}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+      {referral === 'Other' && (
+        <input
+          className="sf-input ob-search"
+          placeholder={t('onboarding.referralPlaceholder')}
+          value={referralOther}
+          onChange={(e) => onReferralOther(e.target.value)}
+          autoFocus
+          maxLength={80}
+        />
+      )}
+
+      {/* Collapsible terms */}
+      <button
+        className="ob-terms-toggle"
+        onClick={() => setExpanded(!expanded)}
+        type="button"
+      >
+        <svg className={`ob-terms-arrow ${expanded ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+        {t('onboarding.termsRead')}
+      </button>
+
+      {expanded && (
+        <div className="ob-terms-scroll">
+          <div className="ob-terms-content">
+            <h3>Terms &amp; Conditions</h3>
+            <p>By using FocusLily, you agree to these Terms. If you do not agree, you must stop using the service.</p>
+            <p><strong>Eligibility:</strong> FocusLily is intended for users aged 7 years and above.</p>
+            <p>Accounts are created using Google, Microsoft, or GitHub authentication. Users are responsible for maintaining the security of their accounts.</p>
+            <p>Users may create a username, provide an email address, and optionally upload a profile picture. No additional personal data is required.</p>
+            <p>FocusLily provides access to public competitions and private rooms. Certain rooms or features may require viewing an advertisement to unlock access, limited to once every 24 hours per room.</p>
+            <p>FocusLily includes gamification features such as XP, rankings, and competition systems. Scores, rankings, and results are system-generated and may be adjusted in cases of abuse, cheating, or technical errors.</p>
+            <p>AI-based features may be introduced in the future and will be governed by updated terms at that time.</p>
+            <p>Users must not abuse, exploit, hack, or interfere with FocusLily systems, including competitions, XP systems, or room access mechanisms.</p>
+            <p>FocusLily may suspend or terminate access to users who violate these Terms.</p>
+
+            <h3>Privacy Policy</h3>
+            <p>FocusLily collects only the following information: username, email address, and optional profile picture.</p>
+            <p>FocusLily does not intentionally collect IP addresses, cookies, or device tracking data.</p>
+            <p>User data is used only for authentication, account management, and enabling core platform features such as competitions and rooms.</p>
+            <p>FocusLily does not sell user data.</p>
+            <p>Third-party services such as Vercel, GitHub, and authentication providers may process limited data necessary for login and service operation.</p>
+
+            <h3>Cookie Policy</h3>
+            <p>FocusLily does not use cookies for tracking or advertising purposes.</p>
+
+            <h3>Community Guidelines</h3>
+            <p>Users must behave respectfully within all areas of FocusLily.</p>
+            <p>Cheating, exploiting bugs, automation, or disrupting platform systems is not allowed.</p>
+            <p>Abusive, offensive, or inappropriate usernames and behavior may result in restrictions or removal of access.</p>
+
+            <h3>Competition Rules</h3>
+            <p>All competitions must be played fairly.</p>
+            <p>Any attempt to exploit bugs, manipulate results, or gain unfair advantage will result in disqualification.</p>
+            <p>XP, rankings, and rewards are assigned based on system logic and may be corrected in case of errors.</p>
+            <p>All moderation and final decisions are made by FocusLily administrators.</p>
+
+            <h3>Acceptable Use Policy</h3>
+            <p>Users must not reverse engineer, attack, overload, spam, or misuse FocusLily systems.</p>
+            <p>Users must not attempt to manipulate ads, XP systems, competition results, or room access rules.</p>
+
+            <h3>Copyright Policy</h3>
+            <p>If you believe any content on FocusLily violates your copyright, you may report it by contacting: <strong>support@focuslily.com</strong></p>
+            <p>Valid reports will be reviewed and appropriate action may be taken.</p>
+
+            <h3>Disclaimer</h3>
+            <p>FocusLily is provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis.</p>
+            <p>No guarantees are made regarding uptime, availability, accuracy, or error-free performance of the platform.</p>
+
+            <h3>Governing Law</h3>
+            <p>These Terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of Indian courts.</p>
+
+            <h3>Sign-in Notice</h3>
+            <p>By signing in using Google, Microsoft, or GitHub, you agree to these Terms and the Privacy Policy.</p>
+
+            <p className="ob-terms-footer">&copy; FocusLily. All rights reserved.<br/>Use of this platform is subject to Terms and Privacy Policy.</p>
+          </div>
+        </div>
+      )}
+
+      <label className="ob-terms-check" htmlFor="ob-terms">
+        <input
+          id="ob-terms"
+          type="checkbox"
+          checked={accepted}
+          onChange={(e) => onChange(e.target.checked)}
+          className="ob-terms-checkbox"
+        />
+        <span className="ob-terms-checkmark" />
+        <span className="ob-terms-label">{t('onboarding.termsAccept')}</span>
+      </label>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- step 7: finish */
 
 function FinishStep({
   name,
-  username,
   country,
   goals,
 }: {
   name: string
-  username: string
   country: string | null
   goals: string[]
 }) {
@@ -455,7 +539,9 @@ function FinishStep({
   const countryObj = COUNTRIES.find((c) => c.code === country)
   return (
     <div className="ob-step ob-finish">
-      <h1 className="ob-title">{t('onboarding.profileReady')}</h1>
+      <h1 className="ob-title">
+        <SparklesText>{t('onboarding.profileReady')}</SparklesText>
+      </h1>
       <div className="ob-finish-badge">
         <RankBadge rankId={rank.id} size={120} />
         <p className="ob-finish-rank">
@@ -465,14 +551,10 @@ function FinishStep({
 
       <div className="ob-summary">
         <div className="ob-summary-row">
-          <span className="ob-summary-k">Explorer</span>
+          <span className="ob-summary-k">Name</span>
           <span className="ob-summary-v">
             {country && <Flag code={country} />} {name}
           </span>
-        </div>
-        <div className="ob-summary-row">
-          <span className="ob-summary-k">Username</span>
-          <span className="ob-summary-v">@{username}</span>
         </div>
         <div className="ob-summary-row">
           <span className="ob-summary-k">Country</span>
@@ -483,6 +565,9 @@ function FinishStep({
           <span className="ob-summary-v">{goals.length ? `${goals.length} chosen` : '—'}</span>
         </div>
       </div>
+      <p className="ob-hint" style={{ marginTop: 12, textAlign: 'center' }}>
+        Your unique username will be shown on your profile. You can share it with friends!
+      </p>
     </div>
   )
 }

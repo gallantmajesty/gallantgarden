@@ -1,7 +1,7 @@
 /* ============================================================
    Focus Lily theme — warm, magical, "Clash of Clans" storybook
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Arabic:wght@400;500;700;900&family=Noto+Sans+Hebrew:wght@400;500;700;900&family=Noto+Sans+Devanagari:wght@400;500;700;900&family=Noto+Sans+Thai:wght@400;500;700;900&family=Noto+Sans+Bengali:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -56,20 +56,26 @@
   --panel-shadow: 0 10px 0 rgba(0, 0, 0, 0.18), 0 18px 30px rgba(0, 0, 0, 0.28);
   --btn-shadow: 0 5px 0 var(--gold-dark), 0 9px 14px rgba(0, 0, 0, 0.25);
 
-  /* ---- water-morphism (frosted aqua glass over the ambient video) ---- */
-  --glass-fill: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(186, 226, 245, 0.16));
-  --glass-fill-strong: linear-gradient(135deg, rgba(255, 255, 255, 0.46), rgba(190, 228, 246, 0.24));
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-blur: blur(16px) saturate(160%);
-  --glass-shadow: 0 10px 34px rgba(8, 46, 74, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -14px 30px rgba(120, 190, 225, 0.12);
-  --glass-shadow-hover: 0 18px 44px rgba(8, 46, 74, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -14px 30px rgba(120, 190, 225, 0.16);
-  --on-glass: var(--wood-dark);
+/* ---- coffee-brown surface tokens ---- */
+  --glass-fill: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  --glass-fill-strong: linear-gradient(135deg, rgba(140,95,50,0.40), rgba(110,75,35,0.50));
+  --glass-border: rgba(180,130,60,0.18);
+  --glass-blur: none;
+  --glass-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  --glass-shadow-hover: 0 4px 12px rgba(0,0,0,0.24);
+  --on-glass: #f0dfc0;
 
-  --sans: 'Inter', 'Noto Sans KR', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans Devanagari', 'Noto Sans Thai', 'Noto Sans Bengali', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --display: 'Baloo 2', 'Noto Sans KR', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans Devanagari', 'Noto Sans Thai', 'Noto Sans Bengali', system-ui, sans-serif;
-  --display-accent: 'Modern Tokyo', 'Noto Sans KR', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans Devanagari', 'Noto Sans Thai', 'Noto Sans Bengali', sans-serif;
+  /* ---- magical flower accents ---- */
+  --petal-pink: #e88aaa;
+  --petal-blush: #f4c2d0;
+  --petal-rose: #d4728a;
+  --leaf-accent: #7fb98a;
+  --magic-glow: rgba(232, 138, 170, 0.35);
+  --flower-shadow: 0 0 8px rgba(232, 138, 170, 0.4);
+
+  --sans: 'Baloo 2', 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --display: 'Baloo 2', system-ui, sans-serif;
+  --display-accent: 'Modern Tokyo', sans-serif;
 
   font: 16px/1.5 var(--sans);
   color: var(--ink);
@@ -121,13 +127,21 @@ body {
   --surface: #352b20;
   --surface-2: #3d3225;
   --surface-hover: #453829;
-  --surface-border: rgba(233, 211, 160, 0.18);
+  --surface-border: rgba(233,211,160,0.18);
   --surface-ink: #f3e7cf;
   --surface-ink-soft: #c9b48c;
-  --chip-bg: rgba(233, 211, 160, 0.14);
-  --scrim: rgba(0, 0, 0, 0.58);
+  --chip-bg: rgba(233,211,160,0.14);
+  --scrim: rgba(0,0,0,0.58);
   --field-bg: #241d15;
   --field-ink: #f3e7cf;
+   /* Dark mode glass - increased opacity */
+   --glass-fill: linear-gradient(135deg, rgba(100,70,35,0.32), rgba(75,50,25,0.42));
+   --glass-fill-strong: linear-gradient(135deg, rgba(120,85,45,0.40), rgba(95,65,30,0.50));
+   --glass-border: rgba(160,110,50,0.18);
+   --glass-blur: none;
+   --glass-shadow: 0 2px 8px rgba(0,0,0,0.20);
+   --glass-shadow-hover: 0 4px 12px rgba(0,0,0,0.26);
+   --on-glass: #f0dfc0;
   color-scheme: dark;
 }
 
@@ -269,19 +283,17 @@ button {
     0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* ghost — frosted outline for use directly over the photo background */
+/* ghost — warm brown coffee glassmorphism */
 .sf-btn.ghost {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  -webkit-backdrop-filter: blur(8px) saturate(140%);
-  backdrop-filter: blur(8px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  color: var(--on-glass);
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 .sf-btn.ghost:hover {
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.25);
+  filter: brightness(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.24);
 }
 
 .sf-btn:disabled {
@@ -369,52 +381,18 @@ button {
   image-rendering: auto;
 }
 
-/* ---------- water-morphism utilities ---------- */
+/* ---------- coffee-brown surface utilities ---------- */
 
-/* Frosted aqua-glass surface. Anything with this class reads as liquid glass
-   floating over the ambient video: translucent fill, backdrop blur, a bright
-   rim light, and a slow drifting sheen across the top. */
+/* Solid brown surface. Anything with this class reads as a warm coffee-brown
+   panel — opaque, no blur, no sheen. */
 .water-glass {
   background: var(--glass-fill);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   position: relative;
   overflow: hidden;
 }
-/* moving liquid sheen */
-.water-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.28) 46%,
-    rgba(255, 255, 255, 0.05) 58%,
-    transparent 72%
-  );
-  background-size: 250% 250%;
-  animation: glass-sheen 9s ease-in-out infinite;
-  mix-blend-mode: screen;
-}
-/* soft caustic glow blob, top-left rim */
-.water-glass::after {
-  content: '';
-  position: absolute;
-  top: -45%;
-  left: -22%;
-  width: 60%;
-  height: 80%;
-  pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 62%);
-  filter: blur(8px);
-  opacity: 0.5;
-  mix-blend-mode: screen;
-}
-/* keep real content crisply above the sheen + glow */
+/* keep real content above */
 .water-glass > * {
   position: relative;
   z-index: 1;
@@ -491,4 +469,29 @@ button {
   .lobby-object, .lobby-webcustom, .station-chip {
     transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease !important;
   }
+}
+
+/* ── Magical flower accent animations ── */
+@keyframes float-petal {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.7; }
+  25% { transform: translateY(-6px) rotate(8deg); opacity: 1; }
+  50% { transform: translateY(-2px) rotate(-4deg); opacity: 0.85; }
+  75% { transform: translateY(-8px) rotate(5deg); opacity: 0.95; }
+}
+
+@keyframes petal-sway {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  33% { transform: translateX(3px) rotate(6deg); }
+  66% { transform: translateX(-2px) rotate(-4deg); }
+}
+
+@keyframes petal-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(232, 138, 170, 0); }
+  50% { box-shadow: 0 0 12px rgba(232, 138, 170, 0.3); }
+}
+
+@keyframes flower-bloom {
+  0% { transform: scale(0.6) rotate(-30deg); opacity: 0; }
+  60% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }

@@ -645,8 +645,55 @@
   .ac-tab-ico { width: 32px; height: 32px; border-radius: 10px; }
   .ac-tab-label { font-size: 9px; }
   .ac-dock-scroll { padding: 14px 12px; gap: 16px; }
-  .ac-field-label { font-size: 13px; }
-  .ac-tile-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ac-field-label { font-size: 13px; }
+.ac-tile-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+/* Character Display Styles */
+.character-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+
+.character-info {
+  flex: 1;
+}
+
+.character-info h3 {
+  margin: 0 0 8px 0;
+  color: #fbbf24;
+  font-size: 1.2rem;
+}
+
+.character-special-badge {
+  background: linear-gradient(45deg, #f59e0b, #dc2626);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+.change-character-btn {
+  padding: 8px 16px;
+  background: rgba(59, 130, 246, 0.8);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.change-character-btn:hover {
+  background: rgba(59, 130, 246, 1);
+  transform: translateY(-1px);
+}
   .ac-tile { padding: 6px 3px 5px; }
   .ac-tile-chip { border-radius: 7px; }
   .ac-tile-name { font-size: 10px; }

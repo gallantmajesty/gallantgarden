@@ -662,7 +662,11 @@
   background: linear-gradient(135deg, var(--mg-accent), var(--mg-accent2));
   box-shadow: 0 6px 16px var(--mg-shadow);
 }
-.mg-btn.ghost { background: transparent; }
+.mg-btn.ghost { 
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
 .mg-btn.small { padding: 6px 11px; font-size: 13px; }
 
 .mg-iconbtn {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { useBlueprint } from '../../store/blueprint'
 import { mediaBackgroundStyle, mediaImageStyle, noteSurfaceStyle } from '../../lib/blueprint/style'
@@ -33,11 +33,6 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
   const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number } | null>(null)
   const resize = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
-
-  // leave edit mode when this note is no longer the selection
-  useEffect(() => {
-    if (!selected && editing) setEditing(false)
-  }, [selected, editing])
 
   function onBodyPointerDown(e: React.PointerEvent) {
     if (editing || node.locked) return
@@ -110,17 +105,17 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
       ref={rootRef}
       className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${editing ? 'editing' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connecting ? 'connecting' : ''} ${connectTarget ? 'drop-target' : ''}`}
       style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
-      onPointerDown={onBodyPointerDown}
-      onPointerMove={onBodyPointerMove}
-      onPointerUp={onBodyPointerUp}
-      onPointerEnter={() => setHoverNode(node.id)}
-      onPointerLeave={() => setHoverNode(null)}
-      onDoubleClick={(e) => {
-        if (node.locked) return
-        e.stopPropagation()
-        select(node.id)
-        setEditing(true)
-      }}
+  onPointerDown={onBodyPointerDown}
+  onPointerMove={onBodyPointerMove}
+  onPointerUp={onBodyPointerUp}
+  onPointerEnter={() => setHoverNode(node.id)}
+  onPointerLeave={() => setHoverNode(null)}
+  onDoubleClick={(e) => {
+    if (node.locked) return
+    e.stopPropagation()
+    if (!selected) select(node.id)
+    setEditing(true)
+  }}
     >
       {/* 4-port connection handles — always visible on every side */}
       {!node.locked && (['top', 'right', 'bottom', 'left'] as Port[]).map((port) => (

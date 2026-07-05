@@ -3,23 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { useBlueprint } from '../../store/blueprint'
 import { defaultNoteStyle, type Shape } from '../../lib/blueprint/types'
 
+const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
+  { shape: 'sticky', label: '📒 Sticky', bg: '#262019' },
+  { shape: 'rounded', label: '🗂 Card', bg: 'var(--mg-panel,#ffffff)' },
+  { shape: 'circle', label: '◯ Bubble', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.1)' },
+  { shape: 'hexagon', label: '⬢ Hex', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.12)' },
+]
+
 interface ToolbarProps {
   onToggleSearch: () => void
   onToggleAI: () => void
   onExport: () => void
 }
-
-const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
-  { shape: 'sticky', label: '🗒 Sticky', bg: '#262019' },
-  { shape: 'rounded', label: '▢ Card', bg: 'var(--mg-panel,#ffffff)' },
-  { shape: 'circle', label: '◯ Bubble', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.1)' },
-  { shape: 'hexagon', label: '⬡ Hex', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.12)' },
-  { shape: 'folder', label: '🗂 Folder', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.16)' },
-  { shape: 'document', label: '📄 Document', bg: '#ffffff' },
-  { shape: 'polaroid', label: '🖼 Polaroid', bg: '#ffffff' },
-  { shape: 'bookmark', label: '🔖 Bookmark', bg: '#fff1ef' },
-  { shape: 'card', label: '🪧 Tag', bg: '#fffdf8' },
-]
 
 export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) {
   const navigate = useNavigate()
@@ -29,7 +24,6 @@ export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) 
   const boards = useBlueprint((s) => s.boards)
   const docId = useBlueprint((s) => s.doc.id)
   const versions = useBlueprint((s) => s.doc.versions)
-
   const setTitle = useBlueprint((s) => s.setTitle)
   const addNode = useBlueprint((s) => s.addNode)
   const undo = useBlueprint((s) => s.undo)
@@ -71,9 +65,7 @@ export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) 
           <Menu onClose={() => setMenu(null)}>
             <div className="bp-menu-title">Your boards</div>
             {boards.map((b) => (
-              <button key={b.id} className={`bp-menu-item ${b.id === docId ? 'on' : ''}`} onClick={() => { useBlueprint.getState().loadBoard(b.id); setMenu(null) }}>
-                {b.title}
-              </button>
+              <button key={b.id} className={`bp-menu-item ${b.id === docId ? 'on' : ''}`} onClick={() => { useBlueprint.getState().loadBoard(b.id); setMenu(null) }}>{b.title}</button>
             ))}
             <div className="bp-menu-sep" />
             <button className="bp-menu-item" onClick={() => { useBlueprint.getState().newBoard(); setMenu(null) }}>+ New board</button>
@@ -118,12 +110,10 @@ export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) 
 
       <button className="sf-btn secondary tiny" onClick={onToggleSearch}>Search</button>
       <button className="sf-btn secondary tiny" onClick={onToggleAI}>✦ AI</button>
-
       <div className="bp-rel">
         <button className="sf-btn secondary tiny" onClick={() => toggle('templates')}>Templates ▾</button>
         {menu === 'templates' && <TemplatesMenu onClose={() => setMenu(null)} />}
       </div>
-
       <div className="bp-rel">
         <button className="sf-btn secondary tiny" onClick={() => toggle('versions')}>History ▾</button>
         {menu === 'versions' && (

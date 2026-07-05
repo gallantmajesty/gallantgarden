@@ -61,16 +61,6 @@ export const REALM_PRESENCE_LIVE = true
 
 /* ----------------------------------------------------- experimental realms */
 
-/** Master launch switch for the still-experimental Waterfall Realm.
- *
- *  While `false` the realm is hidden from the public: no card in the chooser and
- *  the route shows an "under development" screen instead of the scene. NONE of
- *  its code, assets, routes or scenes are removed — the world stays fully
- *  functional and reachable by developers (see `isDevAccess`). Flip this single
- *  flag to `true` to expose it to everyone again, where it returns as the normal
- *  flagship card. This is the one switch to re-enable Waterfall at launch-time. */
-export const ENABLE_WATERFALL_REALM = false
-
 /** Developer access. Lets the team reach hidden experimental realms without
  *  exposing them to normal users: load the app once with `?dev=1` and it sticks
  *  (persisted to localStorage); `?dev=0` clears it. Public users never enable
@@ -85,14 +75,6 @@ export function isDevAccess(): boolean {
   } catch {
     return false
   }
-}
-
-/** Whether the Waterfall Realm may be shown and entered right now: publicly when
- *  the master flag is on, otherwise only for developers (`?dev=1`). Every place
- *  that exposes the card or guards the route reads this one helper, so the realm
- *  can never leak past it. */
-export function waterfallEnabled(): boolean {
-  return ENABLE_WATERFALL_REALM || isDevAccess()
 }
 
 /** Master launch switch for the Train Station Realm — FocusLily's third flagship

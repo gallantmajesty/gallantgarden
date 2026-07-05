@@ -43,11 +43,6 @@ export function seatAnchors(): Seat[] {
       }
     }
   }
-  // reading-corner armchairs — sit back and face out into the hall. The chair is
-  // drawn at the corner origin facing local +z, so the camera yaw is rotY − π.
-  for (const c of readingCorners()) {
-    out.push({ id: id++, pos: [c.pos[0], c.pos[1], c.pos[2]], yaw: c.rotY - Math.PI })
-  }
   return out
 }
 

@@ -7,6 +7,7 @@ import App from './App.tsx'
 import { AuthProvider } from './store/auth'
 import { insforgeConfigured } from './lib/insforge'
 import { MobileBlocker } from './components/MobileBlocker'
+import './i18n'
 
 const rootEl = document.getElementById('root')!
 

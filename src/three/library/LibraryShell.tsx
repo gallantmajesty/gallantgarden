@@ -163,7 +163,7 @@ function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Tex
   // make the stained glass read as a lit lantern wall after dark: subtle wash by
   // day, a strong warm glow at night so the hall is bathed in jewelled light.
   useFrame(() => {
-    if (glassMat.current) glassMat.current.emissiveIntensity = 0.45 + (1 - env.dayFactor) * 2.1
+    if (glassMat.current) glassMat.current.emissiveIntensity = 0.45 + (1 - env.dayFactor) * 2.8
   })
   const zs = useMemo(() => windowZs(), [])
   const step = windowStep()

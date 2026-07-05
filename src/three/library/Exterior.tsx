@@ -1,12 +1,15 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D } from 'three'
+import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D, type PointLight } from 'three'
 import { HALL } from './layout'
 import { env } from './env'
 import { InstancedShape, type ShapeItem } from './Instanced'
 
 // glowing castle-window material (module-level so it can be animated each frame)
 const CASTLE_WIN_MAT = new MeshStandardMaterial({ color: '#ffcf8a', emissive: '#ffaa44', emissiveIntensity: 1.5 })
+
+// outdoor lantern glow material
+const LANTERN_MAT = new MeshStandardMaterial({ color: '#fff0c8', emissive: '#ffb24a', emissiveIntensity: 2.8, toneMapped: false })
 
 
 function rng(seed: number) {
@@ -27,21 +30,23 @@ interface Tree {
 
 /**
  * The world outside the windows: rolling ground, a dense pine forest that sways
- * in the wind, distant mountains, a winding river, and a mysterious castle on a
- * far mountain whose windows glow at night. `count` scales with graphics quality.
+ * in the wind, distant mountains, a winding river, a mysterious castle on a
+ * far mountain whose windows glow at night, and magical lanterns scattered
+ * through the dark woods. `count` scales with graphics quality.
  */
 export function Exterior({ count, mountains = 40, clouds = 9 }: { count: number; mountains?: number; clouds?: number }) {
+  // dense forest — 2.5x the quality preset count for a thick night woods feel
   const trees = useMemo<Tree[]>(() => {
     const rand = rng(20260609)
     const out: Tree[] = []
-    for (let i = 0; i < count; i++) {
-      // ring around the building, denser along the long (x) sides
+    const total = Math.round(count * 2.5)
+    for (let i = 0; i < total; i++) {
       const ang = rand() * Math.PI * 2
-      const rad = HALL.halfW + 12 + rand() * 170
+      const rad = HALL.halfW + 8 + rand() * 180
       const x = Math.cos(ang) * rad
       const z = Math.sin(ang) * rad * 0.8
       if (Math.abs(x) < HALL.halfW + 6 && Math.abs(z) < HALL.halfL + 6) continue
-      out.push({ x, z, y: -0.3 - rand() * 1.5, h: 6 + rand() * 12, r: 1.4 + rand() * 1.8 })
+      out.push({ x, z, y: -0.3 - rand() * 1.5, h: 6 + rand() * 14, r: 1.4 + rand() * 1.8 })
     }
     return out
   }, [count])
@@ -52,6 +57,7 @@ export function Exterior({ count, mountains = 40, clouds = 9 }: { count: number;
       <Mountains count={mountains} />
       <River />
       <PineForest trees={trees} />
+      <ForestLanterns trees={trees} />
       <DistantCastle />
       <Clouds count={clouds} />
     </group>
@@ -91,7 +97,7 @@ function Clouds({ count = 9 }: { count?: number }) {
 
   return (
     <group ref={ref}>
-      <InstancedShape items={puffs} color="#c8cdd6" roughness={1} transparent opacity={0.5} depthWrite={false}>
+      <InstancedShape items={puffs} color="#1a1e2a" roughness={1} transparent opacity={0.5} depthWrite={false}>
         <sphereGeometry args={[1, 10, 8]} />
       </InstancedShape>
     </group>
@@ -102,7 +108,7 @@ function Ground() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]}>
       <circleGeometry args={[420, 64]} />
-      <meshStandardMaterial color="#2f4a2a" roughness={1} />
+      <meshStandardMaterial color="#0f1f0e" roughness={1} />
     </mesh>
   )
 }
@@ -147,18 +153,88 @@ function PineForest({ trees }: { trees: Tree[] }) {
     <group>
       <instancedMesh ref={trunkRef} args={[undefined, undefined, n]}>
         <cylinderGeometry args={[1, 1, 1, 6]} />
-        <meshStandardMaterial color="#3a2616" roughness={1} />
+        <meshStandardMaterial color="#1a1008" roughness={1} />
       </instancedMesh>
       <group ref={sway}>
         <instancedMesh ref={lowRef} args={[undefined, undefined, n]} castShadow>
           <coneGeometry args={[1, 1, 7]} />
-          <meshStandardMaterial color="#1f3a22" roughness={1} flatShading />
+          <meshStandardMaterial color="#0e1e0f" roughness={1} flatShading />
         </instancedMesh>
         <instancedMesh ref={topRef} args={[undefined, undefined, n]} castShadow>
           <coneGeometry args={[1, 1, 7]} />
-          <meshStandardMaterial color="#274a2b" roughness={1} flatShading />
+          <meshStandardMaterial color="#132616" roughness={1} flatShading />
         </instancedMesh>
       </group>
+    </group>
+  )
+}
+
+/** Magical lanterns scattered through the dark pine forest — warm glowing
+ *  orbs hanging from invisible posts, pulsing softly. They create pools of
+ *  golden light among the trees, making the woods feel enchanted at night. */
+function ForestLanterns({ trees }: { trees: Tree[] }) {
+  const ref = useRef<InstancedMesh>(null)
+  const lightRefs = useRef<(PointLight | null)[]>([])
+  const dummy = useMemo(() => new Object3D(), [])
+
+  // pick a subset of trees to host lanterns (roughly 1 in 8, capped)
+  const lanterns = useMemo(() => {
+    const rand = rng(42424)
+    const out: { x: number; y: number; z: number; phase: number }[] = []
+    const step = Math.max(1, Math.floor(trees.length / 60))
+    for (let i = 0; i < trees.length; i += step) {
+      const t = trees[i]
+      // place lantern slightly off to the side of the trunk, at mid-height
+      const ox = (rand() - 0.5) * 3
+      const oz = (rand() - 0.5) * 3
+      out.push({
+        x: t.x + ox,
+        y: t.y + t.h * 0.45 + rand() * 2,
+        z: t.z + oz,
+        phase: rand() * Math.PI * 2,
+      })
+    }
+    return out
+  }, [trees])
+
+  useFrame((state) => {
+    const mesh = ref.current
+    if (!mesh) return
+    const t = state.clock.elapsedTime
+    for (let i = 0; i < lanterns.length; i++) {
+      const l = lanterns[i]
+      const pulse = 0.85 + Math.sin(t * 1.5 + l.phase) * 0.15
+      dummy.position.set(l.x, l.y, l.z)
+      dummy.scale.setScalar(pulse)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+      // animate point lights
+      const pl = lightRefs.current[i]
+      if (pl) pl.intensity = (2.5 + Math.sin(t * 2 + l.phase) * 0.8)
+    }
+    mesh.instanceMatrix.needsUpdate = true
+  })
+
+  if (lanterns.length === 0) return null
+
+  return (
+    <group>
+      <instancedMesh ref={ref} args={[undefined, undefined, lanterns.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.35, 10, 10]} />
+        <primitive object={LANTERN_MAT} attach="material" />
+      </instancedMesh>
+      {/* point lights for a subset (max 12) to avoid GPU cost */}
+      {lanterns.slice(0, 12).map((l, i) => (
+        <pointLight
+          key={i}
+          ref={(el) => { lightRefs.current[i] = el }}
+          position={[l.x, l.y, l.z]}
+          intensity={2.5}
+          distance={18}
+          decay={2}
+          color="#ffb870"
+        />
+      ))}
     </group>
   )
 }
@@ -213,7 +289,7 @@ function River() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[120, -0.25, 60]}>
       <planeGeometry args={[26, 320]} />
-      <meshStandardMaterial color="#2a4a6a" roughness={0.15} metalness={0.5} />
+      <meshStandardMaterial color="#0a1a2e" roughness={0.15} metalness={0.5} />
     </mesh>
   )
 }
@@ -235,7 +311,7 @@ function DistantCastle() {
   }, [])
 
   return (
-    <group position={[-230, 40, -60]} scale={1.4}>
+    <group position={[0, 0, -100]} scale={1.8}>
       {/* the mountain it sits on */}
       <mesh position={[0, -34, 0]}>
         <coneGeometry args={[70, 80, 6]} />

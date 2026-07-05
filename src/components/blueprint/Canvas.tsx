@@ -1,35 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
-import { screenToWorld, autoPorts, type Pt } from '../../lib/blueprint/geom'
+import { screenToWorld, autoPorts } from '../../lib/blueprint/geom'
+import type { Pt } from '../../lib/blueprint/geom'
 import type { BlueprintNode, Port } from '../../lib/blueprint/types'
-import { makeNode } from '../../lib/blueprint/types'
-import { NoteNode } from './NoteNode'
-import { EdgesLayer } from './EdgesLayer'
+
+import { N8nNoteNode } from './N8nNoteNode'
+import { N8nEdgesLayer } from './N8nEdgesLayer'
 
 interface Connecting {
   from: BlueprintNode
   fromPort: Port
-  to: Pt // world
+  to: Pt
 }
 
-interface Marquee {
-  x0: number
-  y0: number
-  x1: number
-  y1: number
-}
-
-const MIN_ZOOM = 0.2
-const MAX_ZOOM = 2.6
+const MIN_ZOOM = 0.15
+const MAX_ZOOM = 3.0
+const ZOOM_SENSITIVITY = 0.0012
+const GRID_SIZE = 28
 
 export function Canvas() {
   const ref = useRef<HTMLDivElement>(null)
   const vp = useBlueprint((s) => s.doc.viewport)
   const nodes = useBlueprint((s) => s.doc.nodes)
-  const edges = useBlueprint((s) => s.doc.edges)
+  
   const selection = useBlueprint((s) => s.selection)
   const focusTypeId = useBlueprint((s) => s.focus.typeId)
-  const hoverNodeId = useBlueprint((s) => s.hoverNodeId)
+  
   const setViewport = useBlueprint((s) => s.setViewport)
   const selectMany = useBlueprint((s) => s.selectMany)
   const clearSelection = useBlueprint((s) => s.clearSelection)
@@ -37,72 +33,102 @@ export function Canvas() {
   const addEdge = useBlueprint((s) => s.addEdge)
 
   const [connecting, setConnecting] = useState<Connecting | null>(null)
-  const [connectTarget, setConnectTarget] = useState<string | null>(null)
-  const [marquee, setMarquee] = useState<Marquee | null>(null)
-  const pan = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null)
-  const marqueeRef = useRef<Marquee | null>(null)
+  
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
+  const [spacePressed, setSpacePressed] = useState(false)
 
-  // which nodes are highlighted in focus mode (touched by an edge of the type)
-  const focusNodes = useMemo(() => {
-    if (!focusTypeId) return null
-    const ids = new Set<string>()
-    edges.forEach((e) => {
-      if (e.typeId === focusTypeId) {
-        ids.add(e.from)
-        ids.add(e.to)
+  const pan = useRef<{ x: number; y: number; vx: number; vy: number; lastX: number; lastY: number } | null>(null)
+  const marqueeRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
+  const wheelTimeout = useRef<number>(0)
+
+  
+
+  const isEmpty = nodes.length === 0
+
+  // Keyboard: Space for pan mode
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code === 'Space' && !e.repeat && document.activeElement === document.body) {
+        e.preventDefault()
+        setSpacePressed(true)
       }
-    })
-    return ids
-  }, [focusTypeId, edges])
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.code === 'Space') {
+        setSpacePressed(false)
+        pan.current = null
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
 
-  // the "case" being traced: the hovered card + everything one thread away.
-  const tracedNodes = useMemo(() => {
-    if (!hoverNodeId) return null
-    const ids = new Set<string>([hoverNodeId])
-    edges.forEach((e) => {
-      if (e.from === hoverNodeId) ids.add(e.to)
-      if (e.to === hoverNodeId) ids.add(e.from)
-    })
-    return ids
-  }, [hoverNodeId, edges])
-
-  // ---- zoom (wheel, toward cursor) ----
+  // Smooth zoom toward cursor with throttling
   useEffect(() => {
     const el = ref.current
     if (!el) return
+
     function onWheel(e: WheelEvent) {
       e.preventDefault()
+      const now = performance.now()
+      if (now - wheelTimeout.current < 16) return
+      wheelTimeout.current = now
+
       const rect = el!.getBoundingClientRect()
       const cur = useBlueprint.getState().doc.viewport
       const mx = e.clientX - rect.left
       const my = e.clientY - rect.top
-      if (e.ctrlKey || Math.abs(e.deltaY) > 0) {
-        const factor = Math.exp(-e.deltaY * 0.0016)
-        const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cur.zoom * factor))
-        // keep the world point under the cursor fixed
-        const wx = (mx - cur.x) / cur.zoom
-        const wy = (my - cur.y) / cur.zoom
-        setViewport({ zoom, x: mx - wx * zoom, y: my - wy * zoom })
-      }
+
+      const delta = -e.deltaY * ZOOM_SENSITIVITY
+      const factor = Math.exp(delta)
+      const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cur.zoom * factor))
+
+      const wx = (mx - cur.x) / cur.zoom
+      const wy = (my - cur.y) / cur.zoom
+      setViewport({
+        zoom,
+        x: mx - wx * zoom,
+        y: my - wy * zoom,
+      })
     }
+
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [setViewport])
 
-  // ---- background pointer: pan (right/middle/space) or marquee (left) ----
   function onBgPointerDown(e: React.PointerEvent) {
-    if (e.target !== e.currentTarget) return // only when hitting empty canvas
-    const spacePan = (e as unknown as { getModifierState?: (k: string) => boolean }).getModifierState?.('Space')
-    if (e.button === 1 || e.button === 2 || spacePan) {
-      pan.current = { x: e.clientX, y: e.clientY, vx: vp.x, vy: vp.y }
+    if (e.target !== e.currentTarget) return
+
+    const spacePan = spacePressed || e.button === 1 || e.button === 2 || (e as unknown as { getModifierState?: (k: string) => boolean }).getModifierState?.('Space')
+
+    if (spacePan || e.button === 1) {
+      e.preventDefault()
+      pan.current = {
+        x: e.clientX,
+        y: e.clientY,
+        vx: vp.x,
+        vy: vp.y,
+        lastX: e.clientX,
+        lastY: e.clientY,
+      }
       ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
       return
     }
+
     if (e.button === 0) {
       clearSelection()
       if (focusTypeId) setFocus(null)
       const rect = ref.current!.getBoundingClientRect()
-      const m = { x0: e.clientX - rect.left, y0: e.clientY - rect.top, x1: e.clientX - rect.left, y1: e.clientY - rect.top }
+      const m = {
+        x0: e.clientX - rect.left,
+        y0: e.clientY - rect.top,
+        x1: e.clientX - rect.left,
+        y1: e.clientY - rect.top,
+      }
       setMarquee(m)
       marqueeRef.current = m
       ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
@@ -112,6 +138,8 @@ export function Canvas() {
   function onBgPointerMove(e: React.PointerEvent) {
     if (pan.current) {
       const p = pan.current
+      p.lastX = e.clientX
+      p.lastY = e.clientY
       setViewport({ ...useBlueprint.getState().doc.viewport, x: p.vx + (e.clientX - p.x), y: p.vy + (e.clientY - p.y) })
       return
     }
@@ -138,27 +166,18 @@ export function Canvas() {
       marqueeRef.current = null
       setMarquee(null)
     }
-    try {
-      ;(e.currentTarget as Element).releasePointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
+    try { (e.currentTarget as Element).releasePointerCapture(e.pointerId) } catch { /* ignore */ }
   }
 
-  // ---- drag-to-connect from a node port ----
-  // Find the note under (or nearest to, within tolerance) a world point — so a
-  // string snaps to a card even on a slightly-loose drop. Returns null on empty.
   function nodeAt(w: Pt, excludeId: string): BlueprintNode | null {
     const list = useBlueprint.getState().doc.nodes
-    // direct hit first (top-most wins)
     for (let i = list.length - 1; i >= 0; i--) {
       const n = list[i]
       if (n.id !== excludeId && w.x >= n.x && w.x <= n.x + n.w && w.y >= n.y && w.y <= n.y + n.h) return n
     }
-    // else snap to the nearest card whose centre is within a forgiving radius
     let best: BlueprintNode | null = null
     let bestD = Infinity
-    const tol = 90 // world units of slack around a card
+    const tol = 100
     for (const n of list) {
       if (n.id === excludeId) continue
       const cx = Math.max(n.x, Math.min(w.x, n.x + n.w))
@@ -170,91 +189,108 @@ export function Canvas() {
   }
 
   function startConnect(nodeId: string, port: Port, e: React.PointerEvent) {
+    console.log('startConnect called:', { nodeId, port })
     const from = useBlueprint.getState().doc.nodes.find((n) => n.id === nodeId)
-    if (!from) return
+    if (!from) {
+      console.log('Node not found:', nodeId)
+      return
+    }
+    const activeTypeId = useBlueprint.getState().activeTypeId
+    console.log('Active connection type:', activeTypeId)
     const rect = ref.current!.getBoundingClientRect()
     const cur = useBlueprint.getState().doc.viewport
     const to = screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cur)
+    console.log('Setting connecting state:', { from: from.id, fromPort: port, to })
     setConnecting({ from, fromPort: port, to })
-    setConnectTarget(null)
-    // Drive the whole gesture off window listeners (no pointer capture on the
-    // canvas — capturing there fought with the canvas's own pointer handlers and
-    // could swallow the drop). Window-level move/up never miss the gesture.
-    function move(ev: PointerEvent) {
+
+    const handleMove = (ev: PointerEvent) => {
       const c = useBlueprint.getState().doc.viewport
       const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
       setConnecting((p) => (p ? { ...p, to: w } : p))
-      const t = nodeAt(w, nodeId)
-      setConnectTarget(t ? t.id : null)
     }
-    function up(ev: PointerEvent) {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
+
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
       const c = useBlueprint.getState().doc.viewport
       const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
       const target = nodeAt(w, nodeId)
-      if (target) {
-        const { fromPort, toPort } = autoPorts(from!, target)
-        addEdge(from!.id, fromPort, target.id, toPort, useBlueprint.getState().activeTypeId)
+      const activeTypeId = useBlueprint.getState().activeTypeId
+      
+      console.log('Connection attempt:', {
+        from: from.id,
+        to: target?.id,
+        activeTypeId,
+        targetFound: !!target,
+        differentNode: target && target.id !== nodeId
+      })
+      
+      if (target && target.id !== nodeId && activeTypeId) {
+        const { fromPort, toPort } = autoPorts(from, target)
+        console.log('Adding edge:', { from: from.id, fromPort, to: target.id, toPort, typeId: activeTypeId })
+        addEdge(from.id, fromPort, target.id, toPort, activeTypeId)
+      } else {
+        console.log('Connection failed:', {
+          target: target?.id,
+          sameNode: target && target.id === nodeId,
+          noActiveType: !activeTypeId
+        })
       }
       setConnecting(null)
-      setConnectTarget(null)
     }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
   }
 
-  // ---- plus button: create a new note connected to the source ----
-  function addConnected(sourceId: string) {
-    const src = useBlueprint.getState().doc.nodes.find((n) => n.id === sourceId)
-    if (!src) return
-    const GAP = 60
-    const node = makeNode(src.x + src.w + GAP, src.y)
-    useBlueprint.getState().pushHistory()
-    // add the node
-    useBlueprint.getState().addNode({ x: node.x, y: node.y })
-    // get the newly added node (addNode selects it and returns it)
-    const added = useBlueprint.getState().doc.nodes[useBlueprint.getState().doc.nodes.length - 1]
-    if (added) {
-      const { fromPort, toPort } = autoPorts(src, added)
-      useBlueprint.getState().addEdge(src.id, fromPort, added.id, toPort, useBlueprint.getState().activeTypeId)
-    }
-  }
+  
 
-  const gridStyle = {
-    backgroundSize: `${vp.zoom * 24}px ${vp.zoom * 24}px`,
+  const gridStyle = useMemo(() => ({
+    backgroundSize: `${vp.zoom * GRID_SIZE}px ${vp.zoom * GRID_SIZE}px`,
     backgroundPosition: `${vp.x}px ${vp.y}px`,
-  }
+    opacity: Math.min(1, vp.zoom * 0.8),
+  }), [vp.zoom, vp.x, vp.y])
 
   return (
     <div
       ref={ref}
-      className="bp-canvas"
+      className={`bp-canvas ${spacePressed ? 'space-pan' : ''}`}
       onPointerDown={onBgPointerDown}
       onPointerMove={onBgPointerMove}
       onPointerUp={onBgPointerUp}
       onContextMenu={(e) => e.preventDefault()}
+      role="application"
+      aria-label="Sticky notes canvas"
     >
-      <div className="bp-grid" style={gridStyle} />
+{/* Dark investigation grid */}
+<div className="bp-grid" style={{
+  ...gridStyle,
+  backgroundColor: 'transparent',
+  backgroundImage:
+    'radial-gradient(circle, rgba(255,245,225,0.06) 1px, transparent 1px)',
+}} />
+
+{/* World container */}
       <div
         className="bp-world"
         style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }}
       >
-        <EdgesLayer preview={connecting} />
-        {nodes.map((n) => (
-          <NoteNode
-            key={n.id}
-            node={n}
-            selected={selection.includes(n.id)}
-            dimmed={(!!focusNodes && !focusNodes.has(n.id)) || (!!tracedNodes && !tracedNodes.has(n.id))}
-            connecting={!!connecting}
-            connectTarget={connectTarget === n.id}
-            onPortDown={startConnect}
-            onAddConnected={addConnected}
-          />
-        ))}
+<N8nEdgesLayer preview={connecting ? { from: connecting.from, fromPort: connecting.fromPort, to: connecting.to } : null} />
+{nodes.map((n) => (
+<N8nNoteNode
+  key={n.id}
+  node={n}
+  selected={selection.includes(n.id)}
+  validInputs={new Set(nodes.filter((x) => x.id !== n.id).map((x) => x.id))}
+  dragSourceId={connecting?.from.id ?? null}
+  previewTo={connecting?.to}
+  onPortDown={startConnect}
+  onAddConnected={() => {}}
+/>
+))}
       </div>
 
+      {/* Marquee selection */}
       {marquee && Math.abs(marquee.x1 - marquee.x0) > 3 && (
         <div
           className="bp-marquee"
@@ -266,6 +302,15 @@ export function Canvas() {
           }}
         />
       )}
+
+      {/* Empty state */}
+{isEmpty && (
+  <div className="bp-empty-state">
+    <div className="bp-empty-icon">📌</div>
+    <h2>This board is clear</h2>
+    <p>Double-click to pin a note, or use the toolbar to add shapes and strings</p>
+  </div>
+)}
     </div>
   )
 }

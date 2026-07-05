@@ -59,15 +59,6 @@ export function ShotHarness() {
       bottom: params.get('bottom') || 'pants',
       shoes: params.get('shoes') || 'sneakers',
       hair: params.get('hair') || DEFAULT_AVATAR.hair,
-      // accessory slots, for verifying the cosmetic system headlessly
-      accessories: {
-        eyewear: params.get('eyewear') || undefined,
-        headwear: params.get('headwear') || undefined,
-        face: params.get('face') || undefined,
-        neck: params.get('neck') || undefined,
-        back: params.get('back') || undefined,
-        hand: params.get('hand') || undefined,
-      },
     }),
     [bodyType, params],
   )

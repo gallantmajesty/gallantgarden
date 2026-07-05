@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import { insforge } from '../lib/insforge'
 import { normalizeAvatar, type AvatarConfig } from '../avatar/config'
+import { getDeviceLabel } from '../lib/session'
 import type { PlayerIdentity, PlayerState, RosterEntry } from './types'
 
 // ============================================================================
@@ -35,16 +36,16 @@ export function getTarget(id: string): PlayerState | undefined {
   return targets.get(id)
 }
 
-/** A token unique to THIS browser tab, persisted in sessionStorage (per-tab, not
- *  shared like localStorage). Appended to the network id so two tabs — or two
- *  devices — of the same account are distinct players that can see each other,
- *  instead of colliding on one id and each treating the other as "self". */
-function tabToken(): string {
+/** A token unique to THIS device, persisted in sessionStorage (per-device, not
+ *  shared like localStorage). Appended to the network id so two devices of the
+ *  same account are distinct players that can see each other, instead of colliding
+ *  on one id and each treating the other as "self". */
+function deviceToken(): string {
   try {
-    let t = sessionStorage.getItem('sf.tab')
+    let t = sessionStorage.getItem('sf.device')
     if (!t) {
       t = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-      sessionStorage.setItem('sf.tab', t)
+      sessionStorage.setItem('sf.device', t)
     }
     return t
   } catch {
@@ -52,11 +53,25 @@ function tabToken(): string {
   }
 }
 
-/** Stable per-tab network id: the auth user id (or a persisted guest id) plus a
- *  per-tab token. Use this for the realm identity's `id`. */
+/** Stable per-device network id: the auth user id (or a persisted guest id) plus a
+ *  per-device token. Use this for the realm identity's `id`. */
 export function networkId(userId?: string): string {
   const base = userId || guestId()
-  return `${base}:${tabToken()}`
+  return `${base}:${deviceToken()}`
+}
+
+/** Get device-specific token for multiplayer identification. */
+function deviceToken(): string {
+  try {
+    let t = sessionStorage.getItem('sf.device')
+    if (!t) {
+      t = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+      sessionStorage.setItem('sf.device', t)
+    }
+    return t
+  } catch {
+    return `${Date.now().toString(36)}`
+  }
 }
 
 /** Persisted guest id so a signed-out session is one consistent base identity. */
@@ -71,6 +86,11 @@ function guestId(): string {
   } catch {
     return `guest_${Date.now().toString(36)}`
   }
+}
+
+/** Get device label for multiplayer identity. */
+function getDeviceLabelForIdentity(): string {
+  return getDeviceLabel()
 }
 
 interface NetStore {
@@ -111,6 +131,7 @@ function helloPayload() {
     rank: selfIdentity?.rank ?? '',
     avatar: selfIdentity?.avatar,
     state: localState,
+    device: getDeviceLabelForIdentity(),
   }
 }
 
@@ -163,7 +184,7 @@ function handleHello(msg: unknown) {
   if (!forUs(channel)) return
   const id = body.id as string | undefined
   if (!id || id === selfId || !body.avatar) return
-  console.log('[multiplayer] hello from', id, body.name)
+  console.log('[multiplayer] hello from', id, body.name, 'on', body.device)
   const now = Date.now()
   const known = !!useRealmNet.getState().roster[id]
   setRoster(id, {

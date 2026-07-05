@@ -203,7 +203,7 @@
 .bp-node.shape-polaroid .bp-node-surface::after,
 .bp-node.shape-document .bp-node-surface::after { display: none; }
 
-/* ---- 4-side connection ports — always visible n8n-style dots ---- */
+/* ---- invisible connection ports — drag from any edge of a note to connect ---- */
 .bp-port {
   position: absolute;
   width: 14px;
@@ -214,7 +214,8 @@
   z-index: 14;
   pointer-events: auto;
   cursor: crosshair;
-  transition: transform 0.12s ease;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 .bp-port::after {
   content: '';
@@ -222,25 +223,21 @@
   inset: -6px;
   border-radius: 50%;
 }
-.bp-port:hover { transform: scale(1.35); }
+.bp-port:hover { opacity: 1; transform: scale(1.4); }
 .bp-port-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 45%),
+    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 45%),
     radial-gradient(circle at 50% 50%, var(--bp-accent), color-mix(in srgb, var(--bp-accent) 62%, #000) 100%);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45), 0 0 6px color-mix(in srgb, var(--bp-accent) 40%, transparent);
-  transition: box-shadow 0.12s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 8px color-mix(in srgb, var(--bp-accent) 60%, transparent);
 }
-.bp-port:hover .bp-port-dot {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45), 0 0 12px color-mix(in srgb, var(--bp-accent) 70%, transparent);
-}
-/* side positioning */
-.bp-port-top    { top: -7px;    left: 50%;  margin-left: -7px; }
-.bp-port-right  { right: -7px;  top: 50%;   margin-top: -7px; }
-.bp-port-bottom { bottom: -7px; left: 50%;  margin-left: -7px; }
-.bp-port-left   { left: -7px;   top: 50%;   margin-top: -7px; }
+/* side positioning — precise edge anchors for the connection drag */
+.bp-port-top    { top: 0;     left: 50%; margin-left: -7px; }
+.bp-port-right  { right: 0;  top: 50%; margin-top: -7px; }
+.bp-port-bottom { bottom: 0; left: 50%; margin-left: -7px; }
+.bp-port-left   { left: 0;   top: 50%; margin-top: -7px; }
 /* card the dragged string will drop onto */
 .bp-node.drop-target .bp-node-surface {
   outline: 2px dashed var(--bp-accent);
@@ -374,7 +371,14 @@
   border-radius: 16px;
   flex-wrap: wrap;
 }
-.bp-toolbar .sf-btn.tiny, .sf-btn.tiny { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
+.bp-toolbar .sf-btn.tiny, .sf-btn.tiny { 
+  padding: 7px 12px; 
+  font-size: 13px; 
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
+  color: var(--on-glass);
+}
 .bp-toolbar-divider { width: 1px; align-self: stretch; background: var(--bp-border); margin: 2px 2px; }
 .bp-toolbar-spacer { flex: 1; }
 .bp-toolbar-board { position: relative; display: flex; align-items: center; gap: 2px; }
@@ -388,7 +392,14 @@
   width: 200px;
 }
 .bp-title-input:hover, .bp-title-input:focus { border-color: var(--bp-border); background: var(--bp-panel-soft); outline: none; }
-.bp-caret { color: var(--bp-text-soft); font-size: 12px; padding: 4px; }
+.bp-caret { 
+  color: var(--on-glass); 
+  font-size: 12px; 
+  padding: 4px;
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
+  border-radius: 6px;
+}
 .bp-rel { position: relative; }
 
 .bp-iconbtn {
@@ -398,9 +409,9 @@
   place-items: center;
   border-radius: 9px;
   font-size: 16px;
-  color: var(--bp-text);
-  background: var(--bp-panel-soft);
-  border: 1px solid var(--bp-border);
+  color: var(--on-glass);
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
 }
 .bp-iconbtn:hover { filter: brightness(1.06); }
 .bp-iconbtn.on { background: var(--bp-accent); color: #fff; border-color: transparent; }
@@ -427,18 +438,29 @@
 .bp-menu-item {
   text-align: left;
   font: 600 14px var(--sans);
-  color: var(--bp-text);
+  color: var(--on-glass);
   padding: 8px 10px;
   border-radius: 9px;
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
 }
-.bp-menu-item:hover { background: rgba(var(--mg-accent-rgb, 138, 108, 255), 0.16); }
+.bp-menu-item:hover { 
+  background: linear-gradient(135deg, rgba(140,95,50,0.40), rgba(110,75,35,0.50));
+  filter: brightness(1.08);
+}
 .bp-menu-item.on { background: rgba(var(--mg-accent-rgb, 138, 108, 255), 0.22); }
 .bp-menu-item.danger { color: var(--danger, #e25b4b); }
 .bp-menu-item.grow { flex: 1; }
 .bp-menu-row { display: flex; align-items: center; gap: 2px; }
 .bp-menu-sep { height: 1px; background: var(--bp-border); margin: 4px 2px; }
 .bp-shapemenu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
-.bp-shapemenu-item { font-size: 13px; padding: 8px 9px; }
+.bp-shapemenu-item { 
+  font-size: 13px; 
+  padding: 8px 9px;
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
+  color: var(--on-glass);
+}
 
 /* ---------------- inspector ---------------- */
 .bp-inspector {
@@ -673,7 +695,16 @@
 .bp-ai-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .bp-ai-pair { display: flex; flex-direction: column; font: 600 12px var(--sans); color: var(--bp-text); }
 .bp-ai-pair em { font-style: normal; font-size: 11px; color: var(--bp-text-soft); }
-.bp-ai-listbtn { text-align: left; display: flex; flex-direction: column; padding: 7px 9px; border-radius: 9px; background: var(--bp-panel-soft); border: 1px solid var(--bp-border); }
+.bp-ai-listbtn { 
+  text-align: left; 
+  display: flex; 
+  flex-direction: column; 
+  padding: 7px 9px; 
+  border-radius: 9px; 
+  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
+  border: 1px solid rgba(180,130,60,0.18);
+  color: var(--on-glass);
+}
 .bp-ai-listbtn b { font: 700 12px var(--sans); color: var(--bp-text); }
 .bp-ai-listbtn em { font-style: normal; font-size: 11px; color: var(--bp-text-soft); }
 .bp-ai-path { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 3px; }
@@ -701,4 +732,34 @@
   .bp-shape-grid { grid-template-columns: repeat(4, 1fr); }
   .bp-preset-grid { grid-template-columns: repeat(3, 1fr); }
   .bp-grad-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
+   Section Chevron / Collapsible
+   ============================================================ */
+.bp-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0 0 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.bp-section-toggle:focus-visible {
+  outline: 2px solid var(--bp-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.bp-chevron {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  line-height: 1;
+}
+.bp-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }

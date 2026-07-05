@@ -4,7 +4,7 @@ export function Placeholder({ title, note }: { title: string; note: string }) {
   const navigate = useNavigate()
   return (
     <div style={{ position: 'relative', height: '100svh', overflow: 'hidden' }}>
-      <button className="sf-btn secondary back-btn" onClick={() => navigate('/sticky')}>
+      <button className="sf-btn secondary back-btn" onClick={() => navigate('/')}>
         ← Back
       </button>
       <div

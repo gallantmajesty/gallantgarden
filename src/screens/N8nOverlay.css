@@ -1,0 +1,134 @@
+/* ─────────────────────────────────────────────────────────────────
+   N8N WORKFLOW STYLE OVERLAY
+   Drops into the same scope as Blueprint.css — same .bp-* namespace,
+   same variables, so this merges cleanly.
+   ───────────────────────────────────────────────────────────────── */
+
+/* ── node body ─────────────────────────────────────────────────── */
+.n8n-node {
+  position: absolute;
+  width: 200px;
+  background: #1f2937;
+  border: 1.5px solid #374151;
+  border-radius: 10px;
+  color: #e5e7eb;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  transition: box-shadow .18s, border-color .18s;
+}
+.n8n-node:active { cursor: grabbing; }
+.n8n-node.selected {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245,158,11,.18), 0 8px 24px rgba(0,0,0,.45);
+}
+
+/* header strip */
+.n8n-node-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: #111827;
+  border-radius: 9px 9px 0 0;
+  border-bottom: 1px solid #1f2937;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f3f4f6;
+  letter-spacing: .01em;
+}
+.n8n-node-icon { font-size: 14px; line-height: 1; }
+.n8n-node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* body */
+.n8n-node-body {
+  padding: 14px 10px 10px;
+  min-height: 60px;
+  display: flex;
+  align-items: flex-start;
+}
+.n8n-editor {
+  width: 100%;
+  min-height: 48px;
+  background: transparent;
+  color: inherit;
+  border: none;
+  outline: none;
+  resize: none;
+  font: inherit;
+  line-height: 1.45;
+}
+.n8n-node-text {
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: .82;
+}
+
+/* ── ports ──────────────────────────────────────────────────────── */
+.n8n-ports-left,
+.n8n-ports-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 0;
+  pointer-events: none;
+}
+.n8n-ports-left  { left: -14px; }
+.n8n-ports-right { right: -14px; }
+
+.n8n-port {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: crosshair;
+  transition: transform .12s, filter .12s;
+}
+.n8n-port-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px #1f2937, 0 0 8px rgba(245,158,11,.55);
+  transition: transform .12s, box-shadow .12s;
+}
+.n8n-port:hover .n8n-port-dot,
+.n8n-port.active .n8n-port-dot {
+  transform: scale(1.35);
+  box-shadow: 0 0 0 3px #1f2937, 0 0 14px rgba(245,158,11,.9);
+}
+.n8n-port-label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.n8n-port-in  .n8n-port-label { right: 30px; }
+.n8n-port-out .n8n-port-label { left:  30px; }
+
+/* input-target highlight (when dragging from another node) */
+.n8n-node.input-target {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16,185,129,.18), 0 8px 24px rgba(0,0,0,.4);
+}
+.n8n-node.output-active .n8n-port-out .n8n-port-dot {
+  background: #fff;
+  box-shadow: 0 0 0 3px #1f2937, 0 0 14px rgba(255,255,255,.9);
+}

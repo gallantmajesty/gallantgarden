@@ -14,9 +14,6 @@ import {
   SphereGeometry,
   TorusGeometry,
 } from 'three'
-import { getAccessory } from './accessories/catalog'
-import { ACCESSORY_SLOTS, type EquippedAccessories } from './accessories/types'
-
 // v3 reframed clothing as predefined cosmetic ITEMS rather than free colour
 // swaps: garments (top/bottom/shoes) are item ids whose colour is baked into the
 // item (GARMENT_HEX) and unlocked via progression — there are no per-garment
@@ -24,12 +21,7 @@ import { ACCESSORY_SLOTS, type EquippedAccessories } from './accessories/types'
 // height, skin, hair (style + colour) and eye colour. Older persisted blobs are
 // brought forward by normalizeAvatar (the dropped *Color keys are simply ignored
 // by the {...DEFAULT} spread).
-//
-// v4 adds `accessories`: a slot→item-id map of equipped cosmetic accessories
-// (glasses/hats/face/neck/back/handheld — see src/avatar/accessories/). At most
-// one item per slot; all slots can be worn at once. Item ids resolve to the
-// accessory catalog; normalizeAvatar drops any unknown / slot-mismatched id.
-export const AVATAR_SCHEMA_VERSION = 5
+export const AVATAR_SCHEMA_VERSION = 6
 
 export type BodyType = 'male' | 'female'
 
@@ -49,8 +41,8 @@ export interface AvatarConfig {
   top: string // -> TOPS id
   bottom: string // -> BOTTOMS id
   shoes: string // -> SHOES id
-  // --- equipped cosmetic accessories (slot -> accessory catalog id) ---
-  accessories: EquippedAccessories
+  // --- character selection ---
+  characterId?: string
 }
 
 /* ----------------------------------------------------------------- palettes */
@@ -156,6 +148,7 @@ export const TOPS: GarmentOption[] = [
   { id: 'jacket', name: 'Jacket', hex: '#4a4f5c' },
   { id: 'blazer', name: 'Academic Blazer', hex: '#243049' },
   { id: 'robe', name: 'Scholar Robe', hex: '#2a1a3a' },
+  { id: 'frock', name: 'Frock', hex: '#e88faa' },
 ]
 
 // Skirt removed: clothing determines appearance, not body type, and no body type
@@ -188,7 +181,7 @@ export const HEIGHT_REF = 170 // config height that maps to rig scale 1.0
 type StarterCosmetics = Pick<AvatarConfig, 'hair' | 'top' | 'bottom' | 'shoes'>
 
 const STARTER_MALE: StarterCosmetics = { hair: 'short_messy', top: 'hoodie', bottom: 'pants', shoes: 'sneakers' }
-const STARTER_FEMALE: StarterCosmetics = { hair: 'ponytail', top: 'tee', bottom: 'leggings', shoes: 'sneakers' }
+const STARTER_FEMALE: StarterCosmetics = { hair: 'bob', top: 'frock', bottom: 'leggings', shoes: 'sneakers' }
 
 export function starterCosmetics(bodyType: BodyType): StarterCosmetics {
   return bodyType === 'female' ? { ...STARTER_FEMALE } : { ...STARTER_MALE }
@@ -202,7 +195,6 @@ export const DEFAULT_AVATAR: AvatarConfig = {
   hairColor: 'brown',
   eyes: 'brown',
   ...STARTER_MALE,
-  accessories: {},
 }
 
 /* ----------------------------------------------------------- swatch helpers */
@@ -240,12 +232,7 @@ const LEGACY_HAIR: Record<string, string> = {
  *  retired cosmetic ids (legacy hair names, the removed `skirt`) onto valid
  *  current ids so old saves never render a missing/floating cosmetic. */
 export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined): AvatarConfig {
-  const prev = input?.v ?? 0
   const merged = { ...DEFAULT_AVATAR, ...(input ?? {}), v: AVATAR_SCHEMA_VERSION }
-
-  // v5: force-clear accessories from older saves (they were stored from
-  // exploratory sessions and show unwanted pencil/cap on every load).
-  if (prev < 5) merged.accessories = {}
 
   // hair: map legacy ids, then ensure the result is in this body's library.
   const mappedHair = LEGACY_HAIR[merged.hair] ?? merged.hair
@@ -254,17 +241,6 @@ export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined)
 
   // bottom: the removed `skirt` (and any unknown id) coerces to pants.
   if (!ALL_BOTTOM_IDS.has(merged.bottom)) merged.bottom = 'pants'
-
-  // accessories: keep only ids that exist in the catalog AND match their slot;
-  // anything unknown/removed/mismatched is silently dropped (never renders).
-  const inAcc = (merged.accessories ?? {}) as EquippedAccessories
-  const acc: EquippedAccessories = {}
-  for (const slot of ACCESSORY_SLOTS) {
-    const id = inAcc[slot]
-    const item = getAccessory(id)
-    if (id && item && item.slot === slot) acc[slot] = id
-  }
-  merged.accessories = acc
 
   return merged
 }
@@ -290,7 +266,6 @@ export function randomizeAvatar(): AvatarConfig {
     hairColor: pick(HAIR_COLORS).id,
     eyes: pick(EYE_COLORS).id,
     ...starterCosmetics(bodyType),
-    accessories: {},
   }
 }
 

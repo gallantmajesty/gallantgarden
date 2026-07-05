@@ -206,8 +206,10 @@ interface SettingsState {
   fps: boolean
   animations: boolean // master switch for non-essential UI animation
   reduceMotion: boolean // accessibility: minimise motion app-wide
+  highContrast: boolean // accessibility: high contrast mode
   // camera
   cameraMode: CameraMode
+  cameraPreset: number // 0 = free orbit, 1-4 = fixed camera angles
   sensitivity: number // 0.2 .. 2
   invertY: boolean
   hideAvatarWhenMovingCamera: boolean
@@ -330,7 +332,9 @@ const DEFAULTS: SettingsData = {
   fps: false,
   animations: true,
   reduceMotion: false,
+  highContrast: false,
   cameraMode: 'third', // see your chosen character by default (Roblox-style)
+  cameraPreset: 0, // free orbit by default; 1-4 are fixed angles when seated
   sensitivity: 1,
   invertY: false,
   hideAvatarWhenMovingCamera: false,
@@ -420,13 +424,14 @@ export const useSettings = create<SettingsState>((set, get) => {
 /** Apply the visual/motion settings to <html> as data attributes + CSS vars so
  *  the whole app (and the document background) reacts. Pure DOM, no React. */
 export function applyVisualSettings(
-  s: Pick<SettingsState, 'theme' | 'brightness' | 'themePreset' | 'reduceMotion' | 'animations'>,
+  s: Pick<SettingsState, 'theme' | 'brightness' | 'themePreset' | 'reduceMotion' | 'animations' | 'highContrast'>,
 ): void {
   const el = document.documentElement
   el.dataset.theme = s.theme
   el.dataset.preset = s.themePreset
   el.dataset.reduceMotion = String(s.reduceMotion)
   el.dataset.animations = s.animations ? 'on' : 'off'
+  el.dataset.highContrast = String(s.highContrast)
   el.style.setProperty('--app-brightness', String(s.brightness))
   el.style.colorScheme = s.theme
   const preset = THEME_PRESETS.find((p) => p.id === s.themePreset)

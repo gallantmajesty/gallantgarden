@@ -63,15 +63,23 @@ function load(): Persisted {
     if (!raw) return fallback
     const p = JSON.parse(raw) as Partial<Persisted>
     const preset = getPreset(p.presetId)
+    let pos: WidgetPos | null = null
+    if (p.pos && typeof p.pos.x === 'number' && typeof p.pos.y === 'number') {
+      // Clamp to screen bounds so the widget is never off-screen
+      const w = 220, h = 60, m = 10
+      const maxX = (typeof window !== 'undefined' ? window.innerWidth : 1200) - w - m
+      const maxY = (typeof window !== 'undefined' ? window.innerHeight : 800) - h - m
+      pos = {
+        x: Math.max(m, Math.min(p.pos.x, maxX)),
+        y: Math.max(m, Math.min(p.pos.y, maxY)),
+      }
+    }
     return {
       presetId: preset ? preset.id : fallback.presetId,
       volume: typeof p.volume === 'number' ? Math.max(0, Math.min(1, p.volume)) : fallback.volume,
       playing: !!p.playing,
       expanded: !!p.expanded,
-      pos:
-        p.pos && typeof p.pos.x === 'number' && typeof p.pos.y === 'number'
-          ? { x: p.pos.x, y: p.pos.y }
-          : null,
+      pos,
     }
   } catch {
     return fallback

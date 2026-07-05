@@ -23,19 +23,12 @@ const cTop = new Color()
 const cHorizon = new Color()
 const cNightTop = new Color('#070b18')
 const cNightHor = new Color('#131c33')
-const cDayTop = new Color('#3f7fd6')
-const cDayHor = new Color('#cfe2ee')
-const cDusk = new Color('#ff8a4a')
 const tmp = new Color()
 
-function smooth(x: number) {
-  return Math.max(0, Math.min(1, x))
-}
-
 /**
- * Continuous day/night cycle + dynamic weather. Drives the sky dome, sun, moon,
- * stars, all global lights, and fog imperatively through refs (no per-frame
- * re-renders), and renders rain through the windows + streaks on the glass.
+ * Night-only atmosphere. The sky dome is permanently dark, stars and moon are
+ * always visible, rain falls perpetually, and the only directional light is a
+ * faint cool moonlight. The hall glows warm from its lanterns.
  */
 export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rainDrops, sunRef, onSunReady }: { shadows: boolean; fog: boolean; rainScale: number; shadowMap: number; rainDrops: number; sunRef?: MutableRefObject<Mesh | null>; onSunReady?: () => void }) {
   const dir = useRef<DirectionalLight>(null)
@@ -51,8 +44,8 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
         side: BackSide,
         depthWrite: false,
         uniforms: {
-          top: { value: new Color('#3f7fd6') },
-          horizon: { value: new Color('#cfe2ee') },
+          top: { value: new Color('#070b18') },
+          horizon: { value: new Color('#131c33') },
         },
         vertexShader: `
           varying vec3 vP;
@@ -73,12 +66,6 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
   const sunDir = useMemo(() => new Vector3(), [])
   const wnext = useRef({ t: 4, seed: 0x9e37 >>> 0 })
 
-  // When the graphics quality changes the directional shadow-map resolution, the
-  // GPU render-target was already allocated at the old size and won't resize on
-  // its own. Dispose it so three rebuilds it (the renderer auto-updates the
-  // shadow map each frame) at the new size — otherwise the "Quality" setting
-  // visibly does nothing to shadow sharpness until a full reload. (Enabling /
-  // disabling shadows wholesale is handled by the Canvas `shadows` prop.)
   useEffect(() => {
     const d = dir.current
     if (!d) return
@@ -93,24 +80,22 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
     const dt = Math.min(dtRaw, 0.05)
     const s = useSettings.getState()
 
-    // ---- advance time of day ----
-    if (!s.timePaused) env.t = (env.t + (dt / 300) * s.timeSpeed) % 1 // ~5 min/cycle at 1×
-    const angle = (env.t - 0.25) * Math.PI * 2
-    const elev = Math.sin(angle)
-    sunDir.set(Math.cos(angle), Math.max(-0.35, elev), 0.28).normalize()
+    // ---- NIGHT ONLY: time is frozen, dayFactor always 0 ----
+    env.t = 0.0
+    env.dayFactor = 0.0
+
+    // moon sits high in the sky — a cool silver disc
+    sunDir.set(0.3, 0.65, 0.2).normalize()
     env.sun.x = sunDir.x
     env.sun.y = sunDir.y
     env.sun.z = sunDir.z
-    const day = smooth(elev * 1.4 + 0.15)
-    env.dayFactor = day
-    const dusk = Math.exp(-(elev * elev) / 0.05) // golden-hour weight
 
     // ---- weather targets ----
     if (s.weatherAuto) {
-      // continuously evolving rain/fog via layered slow sines
+      // slowly drifting rain/fog at night
       const tt = env.t * Math.PI * 2
-      env.rainTarget = smooth(0.45 + 0.5 * Math.sin(tt * 1.3) + 0.25 * Math.sin(tt * 0.5 + 1))
-      env.fogTarget = smooth(0.2 + 0.3 * Math.sin(tt * 0.7 + 2))
+      env.rainTarget = 0.45 + 0.35 * Math.sin(tt * 1.3 + 2)
+      env.fogTarget = 0.3 + 0.25 * Math.sin(tt * 0.7 + 2)
     } else {
       const map: Record<string, [number, number]> = {
         clear: [0, 0.08],
@@ -125,56 +110,51 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
     env.rain += (env.rainTarget - env.rain) * Math.min(1, dt * 0.4)
     env.fog += (env.fogTarget - env.fog) * Math.min(1, dt * 0.4)
 
-    // ---- sky colours ----
-    cTop.copy(cNightTop).lerp(cDayTop, day)
-    cHorizon.copy(cNightHor).lerp(cDayHor, day)
-    tmp.copy(cDusk)
-    cHorizon.lerp(tmp, dusk * 0.6 * day)
-    cTop.lerp(tmp, dusk * 0.25 * day)
+    // ---- sky colours: always night ----
+    cTop.copy(cNightTop)
+    cHorizon.copy(cNightHor)
     // grey out with fog
-    tmp.set('#8a9098')
+    tmp.set('#1a1e2a')
     cHorizon.lerp(tmp, env.fog * 0.5)
     cTop.lerp(tmp, env.fog * 0.3)
     ;(skyMat.uniforms.top.value as Color).copy(cTop)
     ;(skyMat.uniforms.horizon.value as Color).copy(cHorizon)
 
-    // ---- lights (kept soft & warm — cosy, never a showroom) ----
+    // ---- lights: faint cool moonlight + warm interior fill ----
     if (dir.current) {
-      dir.current.position.set(sunDir.x * 120, Math.max(6, sunDir.y * 120), sunDir.z * 120)
-      // very gentle, warm sun — just enough to model the outdoor world and lift
-      // the interior; never the harsh white shafts the user disliked
-      dir.current.intensity = day * 0.34 * (1 - env.fog * 0.55)
-      tmp.set('#ffe1b2').lerp(cDusk, dusk * 0.7)
-      dir.current.color.copy(tmp)
+      // moonlight — very faint, cool blue-white
+      // Only update position if it actually changed to reduce unnecessary calculations
+      const newPos = new Vector3(sunDir.x * 120, sunDir.y * 120, sunDir.z * 120)
+      if (!dir.current.position.equals(newPos)) {
+        dir.current.position.copy(newPos)
+      }
+      dir.current.intensity = 0.12 * (1 - env.fog * 0.55)
+      dir.current.color.set('#b0c4de')
       dir.current.castShadow = shadows
     }
     if (hemi.current) {
-      // generous warm sky fill so the hall reads soft & cosy, not high-contrast.
-      // A storm flash is folded in here (env.lightning) instead of a dedicated
-      // point-light, so lightning costs zero extra real-time lights. After dark
-      // the fill is lifted and warmed so the interior stays cosy, never murky.
-      hemi.current.intensity = 0.42 + day * 0.26 + env.lightning * env.lightning * 1.6
+      // dark cool sky fill — the hall is lit by lanterns, not the sky
+      hemi.current.intensity = 0.18 + env.lightning * env.lightning * 1.6
       const hc = hemi.current.color as Color
-      hc.copy(cHorizon)
-      tmp.set('#6a4a2e')
-      hc.lerp(tmp, (1 - day) * 0.5)
+      hc.set('#1a1e2e')
+      tmp.set('#0a0e18')
+      hc.lerp(tmp, 0.5)
     }
     if (fog.current) {
       ;(fog.current.color as Color).copy(cHorizon)
-      fog.current.density = fogOn ? 0.004 + env.fog * 0.022 + (1 - day) * 0.004 : 0.0016
+      fog.current.density = fogOn ? 0.006 + env.fog * 0.022 : 0.002
     }
 
-    // ---- sun / moon / stars ----
+    // ---- sun hidden, moon + stars always visible ----
     if (sun.current) {
-      sun.current.position.set(sunDir.x * 360, sunDir.y * 360, sunDir.z * 360)
-      sun.current.visible = sunDir.y > -0.1
+      sun.current.visible = false
     }
     if (moon.current) {
-      moon.current.position.set(-sunDir.x * 360, -sunDir.y * 360, -sunDir.z * 360)
-      moon.current.visible = sunDir.y < 0.1
+      moon.current.position.set(sunDir.x * 360, sunDir.y * 360, sunDir.z * 360)
+      moon.current.visible = true
     }
     if (stars.current) {
-      stars.current.visible = day < 0.35
+      stars.current.visible = true
     }
 
     // ---- lightning (storms / night) ----
@@ -191,37 +171,40 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
 
   return (
     <group>
-      {/* sky dome */}
+      {/* sky dome — always night */}
       <mesh material={skyMat} scale={600}>
         <sphereGeometry args={[1, 32, 16]} />
       </mesh>
 
+      {/* stars always visible */}
       <group ref={stars}>
-        <Stars radius={300} depth={60} count={1800} factor={6} saturation={0} fade speed={0.5} />
+        <Stars radius={300} depth={60} count={1800} factor={6} saturation={0} fade speed={0.4} />
       </group>
 
-      {/* sun + moon discs (glow via bloom). The sun also feeds the Ultra GodRays
-          effect, so its mesh is published to the parent via sunRef/onSunReady. */}
+      {/* sun (hidden) — keep mesh for compat but invisible */}
       <mesh
         ref={(m) => {
           sun.current = m
           if (sunRef) sunRef.current = m
           if (m && onSunReady) onSunReady()
         }}
+        visible={false}
       >
         <sphereGeometry args={[14, 16, 16]} />
         <meshBasicMaterial color="#fff3c8" />
       </mesh>
+
+      {/* moon — bright silver disc, always visible */}
       <mesh ref={moon}>
-        <sphereGeometry args={[10, 16, 16]} />
-        <meshBasicMaterial color="#d8e4f0" />
+        <sphereGeometry args={[12, 20, 20]} />
+        <meshBasicMaterial color="#e8eef8" />
       </mesh>
 
-      <hemisphereLight ref={hemi} args={['#cfe2ee', '#241a10', 0.5]} />
+      <hemisphereLight ref={hemi} args={['#1a1e2e', '#0a0e18', 0.22]} />
       <directionalLight
         ref={dir}
-        intensity={1.5}
-        color="#fff2d8"
+        intensity={0.15}
+        color="#b0c4de"
         castShadow
         shadow-radius={6}
         shadow-mapSize={[shadowMap || 1024, shadowMap || 1024]}
@@ -233,7 +216,7 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
         shadow-camera-far={260}
         shadow-bias={-0.0004}
       />
-      <fogExp2 ref={fog} attach="fog" args={['#cfe2ee', 0.006]} />
+      <fogExp2 ref={fog} attach="fog" args={['#131c33', 0.006]} />
 
       <Rain scale={rainScale} drops={rainDrops} />
       <GlassStreaks />

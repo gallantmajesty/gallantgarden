@@ -1,7 +1,7 @@
 // @ts-nocheck
-import { Component, Suspense, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
+import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { PerformanceMonitor, Sparkles } from '@react-three/drei'
+import { Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, N8AO, GodRays } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
@@ -20,6 +20,7 @@ import { Aurora } from './Aurora'
 import { FloatingBooks } from './FloatingBooks'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
+import { FrustumCuller } from './FrustumCuller'
 import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
@@ -65,35 +66,10 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   const sunRef = useRef<Mesh | null>(null)
   const [sunReady, setSunReady] = useState(false)
 
-  // Runtime device-pixel-ratio. Starts at the quality ceiling and is auto-scaled
-  // DOWN by the PerformanceMonitor below when the GPU can't keep up (and back up
-  // when it has headroom). This is the single most reliable FPS lever on weak
-  // laptops — the same scene rendered at fewer pixels. Reset to the ceiling
-  // whenever the Quality setting changes.
+  // Runtime device-pixel-ratio. Fixed at the quality ceiling — no dynamic
+  // scaling to avoid the single-frame black blink that DPR resizes cause.
   const [dpr, setDpr] = useState(preset.dpr)
   useEffect(() => setDpr(preset.dpr), [preset.dpr])
-
-  // DPR floor: the PerformanceMonitor may drop to this when the GPU struggles.
-  // Now that the per-frame cost is much lower (≈5 forward lights instead of ~13,
-  // dpr ceiling 1.5, far less overdraw), the governor rarely needs to shed pixels —
-  // so the floor is raised back to 0.85. This is the direct fix for the
-  // "sharp at first, then blurry a few seconds in" report: the scene stays crisp
-  // because it no longer collapses to a soft 0.6 under transient load.
-  const dprFloor = 0.85
-
-  // Warm-up gate. The first few seconds after entering the realm are dominated
-  // by one-time stalls (Suspense asset loads, shader/program compilation,
-  // texture uploads, EffectComposer warm-up). Those frame-time spikes look like
-  // a struggling GPU to the PerformanceMonitor, so if it samples during that
-  // window it permanently sheds pixels right as the scene is about to settle —
-  // the "sharp at first, then blurry a few seconds in" bug. 5 s is enough to
-  // cover the typical Suspense waterfall + shader compile without leaving the
-  // governor blind for too long. (Was 8 s — the extra 3 s gave no benefit.)
-  const [govReady, setGovReady] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setGovReady(true), 5000)
-    return () => clearTimeout(t)
-  }, [])
 
   return (
     <>
@@ -103,49 +79,35 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
     >
-      {/* Auto-resolution governor: when the frame rate drops below the healthy
-          band we shed pixels; when it recovers we add them back. Keeps motion
-          smooth on integrated GPUs instead of locking at a fixed heavy DPR.
-          Mounted only after the warm-up window so transient load-time stalls
-          can't trigger a permanent downscale.
-          DPR floor is 0.6 (down from 0.85) giving the governor real headroom
-          to actually help weak GPUs — the main fix for the 1–10 FPS issue. */}
-      {govReady && (
-        <PerformanceMonitor
-          bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
-          flipflops={1}
-          factor={1}
-          onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
-          onFallback={() => setDpr(dprFloor)}
-        />
-      )}
-
+      <color attach="background" args={['#0c0a0a']} />
       <QualitySync shadows={preset.shadows} />
       <ShadowThrottle enabled={preset.shadows} />
       <TextureQualitySync anisotropy={preset.anisotropy} />
 
       <SoftBoundary>
-        <Suspense fallback={null}>
-          <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
+        <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
+        <FrustumCuller distance={60}>
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
-        </Suspense>
+        </FrustumCuller>
       </SoftBoundary>
 
-      {/* warm interior fill so the hall is always cosily lit — never pitch-black
-          at night — while the lanterns add the real pools of light */}
-      <ambientLight intensity={0.44} color="#ffd9a8" />
+      {/* warm interior fill so the hall is always cosily lit — the lanterns add
+          the real pools of golden light against the dark night outside */}
+      <ambientLight intensity={0.38} color="#ffd9a8" />
 
       <LibraryShell />
       <Bookshelves />
       <StudyTables />
-      <Decor />
-      <Lanterns />
+      <FrustumCuller distance={40}>
+        <Decor />
+        <Lanterns />
+      </FrustumCuller>
       <KnowledgeTree />
 
       {/* Magical layer — all instanced/particle/shader, zero extra real lights and
           zero full-screen passes. Gated by the same particle/detail budget so they
           shed on low-end settings and Performance Mode. */}
-      {preset.particles && <Fireflies count={Math.round(18 + preset.dust)} />}
+      {preset.particles && <Fireflies count={Math.round(12 + preset.dust * 0.8)} />}
       {preset.particles && <Aurora />}
       {preset.lodBias < 1 && <FloatingBooks count={preset.lodBias < 0.5 ? 8 : 5} />}
 
@@ -153,10 +115,14 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         // PERF: small, soft motes. Smaller size + lower opacity keeps the blended
         // overdraw down (these sprites span the whole hall volume); the count is
         // already capped at 24 in scenePreset().
-        <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.8} speed={0.14} color="#ffe6b0" opacity={0.4} />
+        <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
       )}
 
-      {preset.particles && <SeasonalOverlay enabled={preset.particles} particleMultiplier={preset.lodBias < 1 ? 0.8 : 1} />}
+      {preset.particles && (
+        <FrustumCuller distance={30}>
+          <SeasonalOverlay enabled={preset.particles} particleMultiplier={preset.lodBias < 1 ? 0.8 : 1} />
+        </FrustumCuller>
+      )}
       <PlayerController />
       <RemotePlayers />
       <PerfLogger />
@@ -165,8 +131,8 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
           0 disables the composer's expensive MSAA pass. */}
       {preset.bloom && !preset.ultra && (
         <EffectComposer enableNormalPass={false} multisampling={0}>
-          <Bloom luminanceThreshold={0.75} luminanceSmoothing={0.3} intensity={0.5} kernelSize={KernelSize.SMALL} mipmapBlur />
-          <Vignette eskil={false} offset={0.14} darkness={0.85} />
+          <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.4} intensity={0.4} kernelSize={KernelSize.SMALL} mipmapBlur />
+          <Vignette eskil={false} offset={0.16} darkness={0.8} />
         </EffectComposer>
       )}
 
@@ -178,12 +144,12 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       {preset.ultra && (
         <EffectComposer enableNormalPass={false} multisampling={2}>
           {[
-            <N8AO key="ao" aoRadius={1.4} distanceFalloff={1} intensity={2.2} quality="medium" halfRes />,
-            <Bloom key="bloom" luminanceThreshold={0.7} luminanceSmoothing={0.3} intensity={0.6} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
+            <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes />,
+            <Bloom key="bloom" luminanceThreshold={0.75} luminanceSmoothing={0.4} intensity={0.5} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
             sunReady ? (
-              <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={60} density={0.92} decay={0.92} weight={0.4} exposure={0.5} clampMax={1} />
+              <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
             ) : null,
-            <Vignette key="vig" eskil={false} offset={0.14} darkness={0.85} />,
+            <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} />,
           ].filter(Boolean) as ReactElement[]}
         </EffectComposer>
       )}

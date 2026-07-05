@@ -17,6 +17,7 @@ export interface ProfileLayout {
 export const PROFILE_WIDGETS = [
   'about',
   'favorite-subject',
+  'study-goals',
   'interests',
   'schedule',
   'stats',

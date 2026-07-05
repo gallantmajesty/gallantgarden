@@ -94,12 +94,12 @@ export interface BlueprintNode {
   updatedAt: string
 }
 
-export type LineStyle = 'solid' | 'dashed' | 'animated'
+export type LineStyle = 'solid' | 'dashed' | 'dotted' | 'animated'
 export type Curve = 'curved' | 'straight'
 export type Port = 'top' | 'right' | 'bottom' | 'left'
 
 /** A string between two notes. Visual props fall back to its ConnectionType
- *  when left null, so changing a type restyles every edge that uses it. */
+ * when left null, so changing a type restyles every edge that uses it. */
 export interface BlueprintEdge {
   id: string
   from: string // node id
@@ -114,6 +114,9 @@ export interface BlueprintEdge {
   curve?: Curve | null
   glow?: number | null
   label?: string
+  // yarn palette overrides (null = inherit from connection type's yarn settings, or fall back to above)
+  yarnColor?: string | null
+  yarnStyle?: YarnStyle | null
 }
 
 /** A reusable connection category (string colour, style, etc.). */
@@ -128,6 +131,8 @@ export interface ConnectionType {
   icon?: string // optional emoji/glyph shown on the chip + thread label
   hidden?: boolean // when true, threads of this type are hidden on the wall
   builtin: boolean
+  yarnColor?: string // override colour used when this type is drawn (null = use color)
+  yarnStyle?: YarnStyle // additional per-type string style override
 }
 
 /** A named bundle of connection types a user can apply in one click. The board
@@ -291,34 +296,10 @@ export const NOTE_PRESETS: NotePreset[] = [
     patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#262019', borderColor: 'rgba(255,245,225,0.14)', borderWidth: 1, radius: 6, shadow: 0.55, glow: 0, textColor: '#f2ece0' },
   },
   {
-    id: 'index',
-    name: 'Index card',
-    swatch: 'repeating-linear-gradient(0deg,#fffdf8,#fffdf8 9px,#dfe7f0 10px)',
-    patch: { shape: 'card', bgKind: 'paper', bgColor: '#fffdf8', borderColor: 'rgba(40,60,90,0.18)', borderWidth: 1, radius: 4, shadow: 0.4, glow: 0, textColor: '#26303f' },
-  },
-  {
-    id: 'photo',
-    name: 'Polaroid',
-    swatch: '#ffffff',
-    patch: { shape: 'polaroid', bgKind: 'solid', bgColor: '#ffffff', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, radius: 3, shadow: 0.6, glow: 0, textColor: '#2a2a2a' },
-  },
-  {
     id: 'redthread',
     name: 'Suspect',
     swatch: 'linear-gradient(135deg,#fff1ef,#ffd9d2)',
     patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#fff1ef', borderColor: '#c0392b', borderWidth: 2, radius: 6, shadow: 0.5, glow: 0.2, textColor: '#3a1714' },
-  },
-  {
-    id: 'highlight',
-    name: 'Highlight',
-    swatch: 'linear-gradient(135deg,#fff7c2,#ffe27a)',
-    patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#ffe98a', borderColor: 'rgba(120,90,0,0.22)', borderWidth: 1, radius: 6, shadow: 0.45, glow: 0, textColor: '#3a2f06' },
-  },
-  {
-    id: 'glasspane',
-    name: 'Glass',
-    swatch: 'linear-gradient(135deg,rgba(255,255,255,0.6),rgba(255,255,255,0.25))',
-    patch: { shape: 'rounded', bgKind: 'glass', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1, radius: 16, shadow: 0.4, glow: 0.15, textColor: '#f3f5fb' },
   },
   {
     id: 'theme',
@@ -326,12 +307,29 @@ export const NOTE_PRESETS: NotePreset[] = [
     swatch: 'rgba(var(--mg-accent-rgb,91,124,250),0.4)',
     patch: { shape: 'rounded', bgKind: 'theme', borderColor: 'var(--mg-border, rgba(20,30,60,0.14))', borderWidth: 1, radius: 14, shadow: 0.4, glow: 0.2, textColor: 'var(--mg-text, #1c2333)' },
   },
-  {
-    id: 'document',
-    name: 'Document',
-    swatch: '#ffffff',
-    patch: { shape: 'document', bgKind: 'solid', bgColor: '#ffffff', borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1, radius: 4, shadow: 0.35, glow: 0, textColor: '#1f242c' },
-  },
+]
+
+// ── Yarn palette ──────────────────────────────────────────────────────────────
+// Colours styled after real investigation-board string.
+export const YARN_COLORS: { name: string; hex: string }[] = [
+  { name: 'Evidence Red', hex: '#B22222' },
+  { name: 'Police Blue', hex: '#1F5AA6' },
+  { name: 'Forest Green', hex: '#2E8B57' },
+  { name: 'Amber',       hex: '#D4A017' },
+  { name: 'Royal Purple',hex: '#6A3D9A' },
+  { name: 'Ivory',       hex: '#F2F2F2' },
+  { name: 'Charcoal',    hex: '#2B2B2B' },
+]
+
+// String visual styles you can apply per thread-type (and per-edge via EdgeInspector).
+export type YarnStyle = 'solid' | 'dashed' | 'dotted' | 'thick' | 'arrow'
+
+export const YARN_STYLE_META: { value: YarnStyle; label: string; dasharray?: string; arrow?: boolean }[] = [
+  { value: 'solid',   label: '─── Normal' },
+  { value: 'dashed',  label: '- - - Dashed', dasharray: '8 7' },
+  { value: 'dotted',  label: '···· Dotted', dasharray: '2 6' },
+  { value: 'thick',   label: '═══ Thick',   dasharray: undefined },
+  { value: 'arrow',   label: '↝ Arrow',    arrow: true },
 ]
 
 let _spawn = 0
@@ -392,16 +390,25 @@ export function htmlToText(html: string): string {
     .trim()
 }
 
-/** Resolve an edge's effective visual props (per-edge override ?? type). */
+// Internal resolved style; may include yarn-only values not in the base LineStyle union.
+export interface ResolvedEdgeStyle {
+  color: string
+  thickness: number
+  lineStyle: string
+  curve: Curve
+  glow: number
+}
+
+/** Resolve an edge's effective visual props (edge yarn overrides ?? type yarn ?? type base). */
 export function resolveEdgeStyle(
   edge: BlueprintEdge,
   type: ConnectionType | undefined,
-): { color: string; thickness: number; lineStyle: LineStyle; curve: Curve; glow: number } {
+): ResolvedEdgeStyle {
   const t = type ?? BUILTIN_CONNECTION_TYPES[0]
   return {
-    color: edge.color ?? t.color,
+    color: edge.yarnColor ?? type?.yarnColor ?? edge.color ?? t.color,
     thickness: edge.thickness ?? t.thickness,
-    lineStyle: edge.lineStyle ?? t.lineStyle,
+    lineStyle: edge.yarnStyle ?? type?.yarnStyle ?? edge.lineStyle ?? t.lineStyle,
     curve: edge.curve ?? t.curve,
     glow: edge.glow ?? t.glow,
   }

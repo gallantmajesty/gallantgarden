@@ -25,6 +25,25 @@
 .mp-compact {
   border-radius: 999px;
   padding: 6px 8px 6px 6px;
+  position: relative;
+}
+/* tiny flower accent near the glyph */
+.mp-compact .mp-bar-glyph {
+  position: relative;
+}
+.mp-compact .mp-bar-glyph::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  background: var(--petal-pink);
+  border-radius: 50% 0 50% 0;
+  transform: rotate(45deg);
+  box-shadow: var(--flower-shadow);
+  animation: float-petal 3s ease-in-out infinite;
+  pointer-events: none;
 }
 .mp-bar {
   display: flex;

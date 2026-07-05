@@ -3,14 +3,14 @@
 // DayNightWeather component writes these each frame; other components (sky,
 // lights, rain, glass) read them in their own useFrame loops.
 //
-// `t` is the time of day in [0,1): 0 = midnight, 0.25 = sunrise, 0.5 = noon,
-// 0.75 = sunset.
+// NIGHT ONLY: `t` is frozen at midnight. dayFactor is always 0.
+// The world is perpetually dark — lanterns, moon and rain set the mood.
 
 export const env = {
-  t: 0.78, // start at a cosy golden evening (lamps on, sunset glow)
+  t: 0.0, // frozen at midnight — night only, no day cycle
   // derived each frame by DayNightWeather:
-  sun: { x: 0.4, y: 0.5, z: 0.2 }, // normalised sun direction
-  dayFactor: 0.3, // 0 night … 1 full day
+  sun: { x: 0.4, y: 0.5, z: 0.2 }, // normalised sun direction (unused at night, kept for compat)
+  dayFactor: 0.0, // always 0 — permanent night
   // weather (current values lerp toward targets set from settings)
   rain: 0.5, // 0..1 visible rain intensity
   rainTarget: 0.5,
@@ -20,7 +20,8 @@ export const env = {
 }
 
 export function resetEnv() {
-  env.t = 0.3
+  env.t = 0.0
+  env.dayFactor = 0.0
   env.rain = env.rainTarget
   env.fog = env.fogTarget
   env.lightning = 0

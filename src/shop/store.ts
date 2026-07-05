@@ -4,17 +4,10 @@
 
 import { create } from 'zustand'
 import { insforge } from '../lib/insforge'
-import { STARTER_ITEM_IDS as MARKET_STARTERS } from '../marketplace/catalog'
 import { STARTER_THEME_IDS } from '../lib/magnet/themes'
 
-// Starter item IDs from the accessory catalog (granted free at account creation)
-const ACCESSORY_STARTERS = [
-  'gl_round', 'hat_beanie', 'hat_cap', 'face_mask', 'neck_bowtie',
-  'back_pack', 'hand_book', 'hand_pencil', 'hand_coffee',
-]
-
 const STORAGE_KEY = 'sf.shop.inventory'
-const ALL_STARTERS = [...MARKET_STARTERS, ...ACCESSORY_STARTERS, ...STARTER_THEME_IDS]
+const ALL_STARTERS = [...STARTER_THEME_IDS]
 
 interface ShopState {
   userId: string | null

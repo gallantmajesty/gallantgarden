@@ -20,6 +20,10 @@ export interface WebBackground {
   label: string
   /** path under /public */
   src: string
+  /** optional glass color overrides for this specific background */
+  glassFill?: string
+  glassFillStrong?: string
+  glassBorder?: string
 }
 
 /** Every value here maps to a CSS custom property consumed across the UI. */
@@ -76,31 +80,34 @@ export const WEB_THEMES: WebTheme[] = [
     accents: ['#c2a878', '#9aa7b8', '#d8c49a'],
     backgrounds: [
       { id: 'silent-ruins', label: 'Silent Ruins', src: '/themes/fantasy-silent-ruins.jpg' },
-      { id: 'dark-fantasy-castle', label: 'Shadow Citadel', src: '/themes/dark-fantasy-castle.png' },
-      { id: 'fantasy-kingdom', label: 'Royal Dominion', src: '/themes/fantasy-kingdom.png' },
+      { id: 'dark-fantasy-castle', label: 'Shadow Citadel', src: '/themes/dark-fantasy-castle.png',
+        glassFill: 'linear-gradient(135deg, rgba(60,70,110,0.45), rgba(40,50,90,0.55))',
+        glassFillStrong: 'linear-gradient(135deg, rgba(70,80,120,0.52), rgba(50,60,100,0.62))',
+        glassBorder: 'rgba(120,140,200,0.25)' },
+      { id: 'fantasy-kingdom', label: 'Royal Dominion', src: '/themes/fantasy-kingdom.png',
+        glassFill: 'linear-gradient(135deg, rgba(50,70,100,0.45), rgba(35,55,85,0.55))',
+        glassFillStrong: 'linear-gradient(135deg, rgba(60,80,110,0.52), rgba(45,65,95,0.62))',
+        glassBorder: 'rgba(100,130,180,0.25)' },
     ],
-    palette: {
-      accent: '#c2a878',
-      accentDark: '#94794d',
-      accent2: '#d8c49a',
-      glassFill: 'linear-gradient(135deg, rgba(150,146,138,0.18), rgba(30,28,26,0.40))',
-      glassFillStrong: 'linear-gradient(135deg, rgba(168,162,150,0.28), rgba(34,32,30,0.54))',
-      glassBorder: 'rgba(210,200,182,0.42)',
-      glassShadow:
-        '0 12px 36px rgba(6,5,4,0.55), inset 0 1px 0 rgba(236,230,218,0.42), inset 0 -14px 30px rgba(120,104,72,0.18)',
-      glassShadowHover:
-        '0 20px 50px rgba(6,5,4,0.65), inset 0 1px 0 rgba(236,230,218,0.52), inset 0 -14px 30px rgba(120,104,72,0.24)',
-      ink: '#f1eee7',
-      inkSoft: '#c6c1b6',
-      onGlass: '#f7f3ea',
-      woodSolid: '#4a463f',
-      panelTop: 'rgba(38,36,34,0.91)',
-      panelBot: 'rgba(22,21,20,0.93)',
-      scrim:
-        'linear-gradient(180deg, rgba(8,7,6,0.40) 0%, rgba(10,9,8,0.14) 45%, rgba(6,5,4,0.52) 100%)',
-      glowA: 'rgba(194,168,120,0.24)',
-      glowB: 'rgba(154,167,184,0.18)',
-    },
+     palette: {
+       accent: '#c2a878',
+       accentDark: '#94794d',
+       accent2: '#d8c49a',
+       glassFill: 'linear-gradient(135deg, rgba(60,50,35,0.38), rgba(30,24,16,0.48))',
+       glassFillStrong: 'linear-gradient(135deg, rgba(75,62,42,0.45), rgba(40,32,20,0.55))',
+       glassBorder: 'rgba(194,168,120,0.15)',
+       glassShadow: '0 2px 8px rgba(0,0,0,0.18)',
+       glassShadowHover: '0 4px 12px rgba(0,0,0,0.24)',
+       ink: '#f1eee7',
+       inkSoft: '#c6c1b6',
+       onGlass: '#f7f3ea',
+       woodSolid: '#4a463f',
+       panelTop: 'rgba(38,36,34,0.90)',
+       panelBot: 'rgba(22,21,20,0.92)',
+       scrim: 'linear-gradient(180deg, rgba(8,7,6,0.35) 0%, rgba(10,9,8,0.10) 45%, rgba(6,5,4,0.42) 100%)',
+       glowA: 'rgba(194,168,120,0.10)',
+       glowB: 'rgba(154,167,184,0.08)',
+     },
   },
 
   // ------------------------------------------------------------------- Love
@@ -112,31 +119,30 @@ export const WEB_THEMES: WebTheme[] = [
     dark: false,
     accents: ['#ff6f9c', '#e23e5c', '#ff9ec4'],
     backgrounds: [
-      { id: 'reed-field', label: 'Whispering Reeds', src: '/themes/love-reed-field.jpg' },
-      { id: 'moonlit-oak', label: 'Moonlit Oak', src: '/themes/rain-moonlit-oak.jpg' },
+      { id: 'moonlit-oak', label: 'Moonlit Oak', src: '/themes/rain-moonlit-oak.jpg',
+        glassFill: 'linear-gradient(135deg, rgba(80,90,120,0.48), rgba(65,75,105,0.58))',
+        glassFillStrong: 'linear-gradient(135deg, rgba(95,105,135,0.55), rgba(78,88,120,0.65))',
+        glassBorder: 'rgba(140,155,200,0.28)' },
     ],
-    palette: {
-      accent: '#ff6f9c',
-      accentDark: '#d6447a',
-      accent2: '#ff9ec4',
-      glassFill: 'linear-gradient(135deg, rgba(255,255,255,0.42), rgba(255,198,219,0.22))',
-      glassFillStrong: 'linear-gradient(135deg, rgba(255,251,253,0.58), rgba(255,196,220,0.32))',
-      glassBorder: 'rgba(255,226,236,0.62)',
-      glassShadow:
-        '0 10px 34px rgba(120,30,70,0.28), inset 0 1px 0 rgba(255,255,255,0.72), inset 0 -14px 30px rgba(230,120,170,0.16)',
-      glassShadowHover:
-        '0 18px 46px rgba(120,30,70,0.36), inset 0 1px 0 rgba(255,255,255,0.82), inset 0 -14px 30px rgba(230,120,170,0.2)',
-      ink: '#5a2740',
-      inkSoft: '#955a76',
-      onGlass: '#56213c',
-      woodSolid: '#9a4068',
-      panelTop: 'rgba(255,248,251,0.93)',
-      panelBot: 'rgba(255,234,243,0.93)',
-      scrim:
-        'radial-gradient(120% 90% at 50% 12%, rgba(255,160,200,0.06) 0%, rgba(80,20,50,0) 45%, rgba(70,16,44,0.32) 100%)',
-      glowA: 'rgba(255,140,185,0.30)',
-      glowB: 'rgba(226,62,92,0.22)',
-    },
+     palette: {
+       accent: '#ff6f9c',
+       accentDark: '#d6447a',
+       accent2: '#ff9ec4',
+       glassFill: 'linear-gradient(135deg, rgba(255,210,195,0.35), rgba(255,180,170,0.45))',
+       glassFillStrong: 'linear-gradient(135deg, rgba(255,225,215,0.42), rgba(255,195,185,0.52))',
+       glassBorder: 'rgba(255,190,170,0.30)',
+       glassShadow: '0 2px 8px rgba(120,30,70,0.12)',
+       glassShadowHover: '0 4px 12px rgba(120,30,70,0.18)',
+       ink: '#5a2740',
+       inkSoft: '#955a76',
+       onGlass: '#56213c',
+       woodSolid: '#9a4068',
+       panelTop: 'rgba(255,248,251,0.92)',
+       panelBot: 'rgba(255,234,243,0.92)',
+       scrim: 'radial-gradient(120% 90% at 50% 12%, rgba(255,160,200,0.04) 0%, rgba(80,20,50,0) 45%, rgba(70,16,44,0.22) 100%)',
+       glowA: 'rgba(255,140,185,0.08)',
+       glowB: 'rgba(226,62,92,0.06)',
+     },
   },
 
   // -------------------------------------------------------------------- Cyber
@@ -151,28 +157,25 @@ export const WEB_THEMES: WebTheme[] = [
       { id: 'hacker-matrix', label: 'Matrix Rain', src: '/themes/hacker-matrix.png' },
       { id: 'trading-terminal', label: 'Trading Floor', src: '/themes/trading-terminal.png' },
     ],
-    palette: {
-      accent: '#00ff88',
-      accentDark: '#00cc6a',
-      accent2: '#00ccff',
-      glassFill: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(10,20,15,0.40))',
-      glassFillStrong: 'linear-gradient(135deg, rgba(0,230,120,0.25), rgba(15,30,22,0.54))',
-      glassBorder: 'rgba(0,255,136,0.35)',
-      glassShadow:
-        '0 12px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0,255,136,0.35), inset 0 -14px 30px rgba(0,180,90,0.15)',
-      glassShadowHover:
-        '0 20px 50px rgba(0,0,0,0.65), inset 0 1px 0 rgba(0,255,136,0.45), inset 0 -14px 30px rgba(0,180,90,0.22)',
-      ink: '#e0ffe8',
-      inkSoft: '#a0d0b0',
-      onGlass: '#e8fff0',
-      woodSolid: '#0a2818',
-      panelTop: 'rgba(10,25,18,0.91)',
-      panelBot: 'rgba(5,15,10,0.93)',
-      scrim:
-        'linear-gradient(180deg, rgba(0,10,5,0.40) 0%, rgba(0,8,4,0.14) 45%, rgba(0,6,3,0.52) 100%)',
-      glowA: 'rgba(0,255,136,0.22)',
-      glowB: 'rgba(0,204,255,0.18)',
-    },
+     palette: {
+       accent: '#00ff88',
+       accentDark: '#00cc6a',
+       accent2: '#00ccff',
+       glassFill: 'linear-gradient(135deg, rgba(0,40,25,0.38), rgba(0,25,18,0.48))',
+       glassFillStrong: 'linear-gradient(135deg, rgba(0,55,35,0.45), rgba(0,35,25,0.55))',
+       glassBorder: 'rgba(0,255,136,0.15)',
+       glassShadow: '0 2px 8px rgba(0,0,0,0.20)',
+       glassShadowHover: '0 4px 12px rgba(0,0,0,0.26)',
+       ink: '#e0ffe8',
+       inkSoft: '#a0d0b0',
+       onGlass: '#e8fff0',
+       woodSolid: '#0a2818',
+       panelTop: 'rgba(10,25,18,0.90)',
+       panelBot: 'rgba(5,15,10,0.92)',
+       scrim: 'linear-gradient(180deg, rgba(0,10,5,0.35) 0%, rgba(0,8,4,0.10) 45%, rgba(0,6,3,0.42) 100%)',
+       glowA: 'rgba(0,255,136,0.08)',
+       glowB: 'rgba(0,204,255,0.06)',
+     },
   },
 
   // -------------------------------------------------------------- Cozy Night
@@ -185,30 +188,30 @@ export const WEB_THEMES: WebTheme[] = [
     accents: ['#ffb347', '#ff6b6b', '#74b9ff'],
     backgrounds: [
       { id: 'cozy-study-desk', label: 'Study Nook', src: '/themes/cozy-study-desk.png' },
-      { id: 'anime-study-night', label: 'Night Scholar', src: '/themes/anime-study-night.png' },
+      { id: 'anime-study-night', label: 'Night Scholar', src: '/themes/anime-study-night.png',
+        glassFill: 'linear-gradient(135deg, rgba(50,65,100,0.42), rgba(35,48,80,0.52))',
+        glassFillStrong: 'linear-gradient(135deg, rgba(60,78,115,0.50), rgba(42,58,92,0.60))',
+        glassBorder: 'rgba(90,115,170,0.22)' },
     ],
-    palette: {
-      accent: '#ffb347',
-      accentDark: '#e09030',
-      accent2: '#ff6b6b',
-      glassFill: 'linear-gradient(135deg, rgba(255,179,71,0.18), rgba(40,30,20,0.40))',
-      glassFillStrong: 'linear-gradient(135deg, rgba(255,190,90,0.28), rgba(48,36,24,0.54))',
-      glassBorder: 'rgba(255,200,130,0.42)',
-      glassShadow:
-        '0 12px 36px rgba(10,8,4,0.55), inset 0 1px 0 rgba(255,220,160,0.42), inset 0 -14px 30px rgba(180,120,50,0.18)',
-      glassShadowHover:
-        '0 20px 50px rgba(10,8,4,0.65), inset 0 1px 0 rgba(255,220,160,0.52), inset 0 -14px 30px rgba(180,120,50,0.24)',
-      ink: '#fff5e6',
-      inkSoft: '#d4b896',
-      onGlass: '#fff8ee',
-      woodSolid: '#4a3828',
-      panelTop: 'rgba(42,32,22,0.91)',
-      panelBot: 'rgba(25,18,12,0.93)',
-      scrim:
-        'linear-gradient(180deg, rgba(15,10,5,0.40) 0%, rgba(12,8,4,0.14) 45%, rgba(8,5,2,0.52) 100%)',
-      glowA: 'rgba(255,179,71,0.24)',
-      glowB: 'rgba(255,107,107,0.18)',
-    },
+     palette: {
+       accent: '#ffb347',
+       accentDark: '#e09030',
+       accent2: '#ff6b6b',
+       glassFill: 'linear-gradient(135deg, rgba(180,120,50,0.32), rgba(140,90,30,0.42))',
+       glassFillStrong: 'linear-gradient(135deg, rgba(200,135,60,0.40), rgba(160,105,40,0.50))',
+       glassBorder: 'rgba(255,179,71,0.18)',
+       glassShadow: '0 2px 8px rgba(0,0,0,0.20)',
+       glassShadowHover: '0 4px 12px rgba(0,0,0,0.26)',
+       ink: '#fff5e6',
+       inkSoft: '#d4b896',
+       onGlass: '#fff8ee',
+       woodSolid: '#4a3828',
+       panelTop: 'rgba(42,32,22,0.90)',
+       panelBot: 'rgba(25,18,12,0.92)',
+       scrim: 'linear-gradient(180deg, rgba(15,10,5,0.35) 0%, rgba(12,8,4,0.10) 45%, rgba(8,5,2,0.42) 100%)',
+       glowA: 'rgba(255,179,71,0.08)',
+       glowB: 'rgba(255,107,107,0.06)',
+     },
   },
 ]
 
@@ -218,8 +221,8 @@ export const WEB_THEMES_SOON: { id: string; name: string; emoji: string }[] = [
   { id: 'ember', name: 'Ember', emoji: '🔥' },
 ]
 
-export const DEFAULT_WEB_THEME_ID = 'rain'
-export const DEFAULT_WEB_BG_ID = 'moonlit-oak'
+export const DEFAULT_WEB_THEME_ID = 'cozy-night'
+export const DEFAULT_WEB_BG_ID = 'cozy-study-desk'
 
 /** Quick text-colour choices for the font-colour picker (plus "Auto" = null and
  *  a custom colour wheel, handled in the UI). */
@@ -247,11 +250,13 @@ export function getWebBackground(theme: WebTheme, bgId: string | null): WebBackg
  *        theme's default accent.
  * @param fontColor optional user-chosen text colour (hex) that overrides the
  *        theme's default ink — used to keep text legible on any background.
+ * @param bgId optional background ID to use background-specific glass colors
  */
 export function applyWebTheme(
   themeId: string,
   accentOverride?: string | null,
   fontColor?: string | null,
+  bgId?: string | null,
 ): void {
   const theme = getWebTheme(themeId)
   const p = theme.palette
@@ -272,9 +277,23 @@ export function applyWebTheme(
   s.setProperty('--gold', accent)
   s.setProperty('--gold-dark', accentDark)
 
-  s.setProperty('--glass-fill', p.glassFill)
-  s.setProperty('--glass-fill-strong', p.glassFillStrong)
-  s.setProperty('--glass-border', p.glassBorder)
+  // Check for background-specific glass color overrides
+  let glassFill = p.glassFill
+  let glassFillStrong = p.glassFillStrong
+  let glassBorder = p.glassBorder
+  
+  if (bgId) {
+    const bg = theme.backgrounds.find((b) => b.id === bgId)
+    if (bg) {
+      if (bg.glassFill) glassFill = bg.glassFill
+      if (bg.glassFillStrong) glassFillStrong = bg.glassFillStrong
+      if (bg.glassBorder) glassBorder = bg.glassBorder
+    }
+  }
+
+  s.setProperty('--glass-fill', glassFill)
+  s.setProperty('--glass-fill-strong', glassFillStrong)
+  s.setProperty('--glass-border', glassBorder)
   s.setProperty('--glass-shadow', p.glassShadow)
   s.setProperty('--glass-shadow-hover', p.glassShadowHover)
 

@@ -6,32 +6,19 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { useAvatar } from '../avatar/store'
+import { characterById } from '../avatar/characters'
 import {
-  BOTTOMS,
   EYE_COLORS,
   HEIGHT_MAX,
   HEIGHT_MIN,
-  SHOES,
   SKINS,
-  TOPS,
   hairHex,
   hairsFor,
-  starterCosmetics,
   type AvatarConfig,
-  type GarmentOption,
   type StyleOption,
   type Swatch,
 } from '../avatar/config'
-import { accessoriesByCategory } from '../avatar/accessories/catalog'
-import {
-  CATEGORY_LABEL,
-  CATEGORY_ORDER,
-  SLOT_FOR_ACCESSORY_CATEGORY,
-  type AccessoryItem,
-} from '../avatar/accessories/types'
-import { RARITY_COLOR, RARITY_LABEL } from '../marketplace/types'
 import { useProfile } from '../store/profile'
-import { useShop } from '../shop/store'
 import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
 import './AvatarCreator.css'
 
@@ -46,8 +33,6 @@ import './AvatarCreator.css'
 // Emotes live in the realm/game world, not the avatar editor — the editor is a
 // focused dressing room. The preview just idles + turntable-rotates.
 
-type DockTab = 'customize' | 'items' | 'accessories'
-
 export function AvatarCreator() {
   const navigate = useNavigate()
   const isDesktop = useIsDesktop()
@@ -57,24 +42,11 @@ export function AvatarCreator() {
   const save = useAvatar((s) => s.save)
   const userXp = useProfile((s) => s.xp)
   const userPremiumXp = useProfile((s) => s.premiumXp)
-  const shopOwned = useShop((s) => s.ownedItems)
-  const shopPurchase = useShop((s) => s.purchase)
 
-  const [dock, setDock] = useState<DockTab>('customize')
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
-  const [previewItem, setPreviewItem] = useState<AccessoryItem | null>(null)
 
   if (!isDesktop) return <DesktopOnly />
-
-  // When previewing an unowned item, merge it into the config so the 3D rig shows it
-  const displayConfig = useMemo(() => {
-    if (!previewItem) return config
-    return {
-      ...config,
-      accessories: { ...config.accessories, [previewItem.slot]: previewItem.id },
-    }
-  }, [config, previewItem])
 
   async function onSave() {
     setSaving(true)
@@ -92,19 +64,15 @@ export function AvatarCreator() {
           <span className="ac-brand-name">Focus Lily</span>
         </button>
 
-        {/* Focused dressing-room nav: Home / Shop / Avatar only. Quests, Garden &
-            Friends live elsewhere — the editor stays distraction-free. Shop will
-            open this editor on its Marketplace tab once that lands (Phase 3); for
-            now it just keeps you in the dressing room. */}
         <nav className="ac-nav">
           <button className="ac-nav-item" onClick={() => navigate('/')}>
             <Glyph kind="home" /> Home
           </button>
-          <button className="ac-nav-item" onClick={() => navigate('/avatar')}>
-            <Glyph kind="shop" /> Shop
+          <button className="ac-nav-item" onClick={() => navigate('/character-select')}>
+            <Glyph kind="users" /> Characters
           </button>
           <button className="ac-nav-item" data-on onClick={() => navigate('/avatar')}>
-            <Glyph kind="body" /> Avatar
+            <Glyph kind="body" /> Customize
           </button>
         </nav>
 
@@ -125,7 +93,7 @@ export function AvatarCreator() {
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <Suspense fallback={<div className="ac-stage-veil" />}>
-            <AvatarCanvas config={displayConfig} controlsRef={controls} />
+            <AvatarCanvas config={config} controlsRef={controls} />
           </Suspense>
         </section>
 
@@ -133,14 +101,8 @@ export function AvatarCreator() {
         <aside className="ac-dock">
           <div className="ac-dock-head">
             <div className="ac-dock-toggle">
-              <button data-on={dock === 'customize'} onClick={() => setDock('customize')}>
+              <button data-on>
                 <Glyph kind="sliders" /> Customize
-              </button>
-              <button data-on={dock === 'items'} onClick={() => setDock('items')}>
-                <Glyph kind="bag" /> Items
-              </button>
-              <button data-on={dock === 'accessories'} onClick={() => setDock('accessories')}>
-                <Glyph kind="gem" /> Accessories
               </button>
             </div>
             <button className="ac-dock-x" onClick={() => navigate('/')} aria-label="Close">
@@ -148,22 +110,10 @@ export function AvatarCreator() {
             </button>
           </div>
 
-          {dock === 'customize' ? (
-            // Customize is intentionally limited to intrinsic APPEARANCE — body
-            // type, height, skin, eyes. Clothing + hair are owned cosmetics and
-            // live in "My Items", not here.
-            <div className="ac-dock-scroll">
-              <BodyTab config={config} set={set} />
-            </div>
-          ) : dock === 'items' ? (
-            <div className="ac-dock-scroll">
-              <MyItems config={config} set={set} />
-            </div>
-          ) : (
-            <div className="ac-dock-scroll">
-              <AccessoriesPanel config={config} set={set} shopOwned={shopOwned} userXp={userXp} onPreview={setPreviewItem} />
-            </div>
-          )}
+          <div className="ac-dock-scroll">
+            <CharacterDisplayTab config={config} />
+            <BodyTab config={config} set={set} />
+          </div>
 
           <div className="ac-dock-foot">
             <button className="ac-save" onClick={onSave} disabled={saving}>
@@ -174,34 +124,6 @@ export function AvatarCreator() {
             </button>
           </div>
         </aside>
-
-        {/* ---- preview bar: try-before-you-buy ---- */}
-        {previewItem && (
-          <div className="ac-preview-bar">
-            <div className="ac-preview-info">
-              <span className="ac-preview-name">{previewItem.name}</span>
-              <span className="ac-preview-price">
-                <img src="/icons/leaf.png" alt="" style={{ width: 14, height: 14, verticalAlign: 'middle', marginRight: 3 }} />
-                {previewItem.price}
-              </span>
-            </div>
-            <div className="ac-preview-actions">
-              <button className="ac-preview-buy" onClick={() => {
-                const newLeaves = shopPurchase(previewItem.id, previewItem.price, userXp)
-                if (newLeaves !== userXp) {
-                  useProfile.setState({ xp: newLeaves })
-                  set({ accessories: { ...config.accessories, [previewItem.slot]: previewItem.id } })
-                  setPreviewItem(null)
-                }
-              }} disabled={userXp < previewItem.price}>
-                Buy &amp; Equip
-              </button>
-              <button className="ac-preview-cancel" onClick={() => setPreviewItem(null)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -211,26 +133,35 @@ export function AvatarCreator() {
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
+function CharacterDisplayTab({ config }: { config: AvatarConfig }) {
+  const character = characterById(config.characterId || 'james')
+  
+  return (
+    <div className="ac-field">
+      <span className="ac-field-label">Selected Character</span>
+      <div className="character-display">
+        <div className="character-info">
+          <h3>{character.name}</h3>
+          {character.special && (
+            <div className="character-special-badge">
+              🌟 Special Character
+            </div>
+          )}
+        </div>
+        <button 
+          className="change-character-btn"
+          onClick={() => navigate('/character-select')}
+        >
+          Change Character
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function BodyTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  // Switching gender applies that gender's STARTER cosmetics (hair + outfit) so the
-  // two starters stay distinct, while leaving the player's height/skin/eyes intact.
-  const setGender = (bodyType: AvatarConfig['bodyType']) => {
-    if (config.bodyType === bodyType) return
-    set({ bodyType, ...starterCosmetics(bodyType) })
-  }
   return (
     <>
-      <Field label="Body type">
-        <div className="ac-seg">
-          <button data-on={config.bodyType === 'male'} onClick={() => setGender('male')}>
-            Male
-          </button>
-          <button data-on={config.bodyType === 'female'} onClick={() => setGender('female')}>
-            Female
-          </button>
-        </div>
-      </Field>
-
       <Field label={<>Height <b>{config.height} cm</b></>}>
         <input
           className="ac-range"
@@ -254,6 +185,14 @@ function BodyTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
         swatches={EYE_COLORS}
         selected={config.eyes}
         onPick={(id) => set({ eyes: id })}
+      />
+
+      <StyleField
+        label="Hairstyles"
+        styles={hairsFor(config.bodyType)}
+        selected={config.hair}
+        tileHex={() => hairHex(config.hairColor)}
+        onPick={(id) => set({ hair: id })}
       />
     </>
   )
@@ -309,22 +248,6 @@ function StyleField({
   )
 }
 
-/** Style-only picker for owned cosmetic garments — each tile shows the item's own
- *  baked colour. There is no colour picker: colour is a property of the item. */
-function GarmentField({
-  label,
-  items,
-  selected,
-  onPick,
-}: {
-  label: string
-  items: GarmentOption[]
-  selected: string
-  onPick: (id: string) => void
-}) {
-  return <StyleField label={label} styles={items} selected={selected} tileHex={(s) => (s as GarmentOption).hex} onPick={onPick} />
-}
-
 /** Colour swatch row for a predefined appearance palette (skin / hair / eyes).
  *  Fixed palette only — no custom colour, in keeping with the limited-but-curated
  *  customization philosophy. */
@@ -355,93 +278,6 @@ function SwatchField({
         ))}
       </div>
     </Field>
-  )
-}
-
-/* ----------------------------------------------------------------- my items */
-// Base-body cosmetics: hair + clothing. These are always available.
-// Accessories (glasses, hats, wings, etc.) are bought with leaves in the Accessories tab.
-
-function MyItems({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  return (
-    <>
-      <p className="ac-items-note">
-        Base cosmetics — always available. Buy accessories with leaves in the Accessories tab.
-      </p>
-      <StyleField
-        label="Hairstyles"
-        styles={hairsFor(config.bodyType)}
-        selected={config.hair}
-        tileHex={() => hairHex(config.hairColor)}
-        onPick={(id) => set({ hair: id })}
-      />
-      <GarmentField label="Tops" items={TOPS} selected={config.top} onPick={(id) => set({ top: id })} />
-      <GarmentField label="Bottoms" items={BOTTOMS} selected={config.bottom} onPick={(id) => set({ bottom: id })} />
-      <GarmentField label="Shoes" items={SHOES} selected={config.shoes} onPick={(id) => set({ shoes: id })} />
-      <p className="ac-items-note">Glasses, hats, wings, handhelds &amp; more live in the Accessories tab.</p>
-    </>
-  )
-}
-
-/* ----------------------------------------------------------------- accessories */
-// The cosmetic accessory wardrobe: 7 categories, one item per conflicting slot,
-// but every slot can be worn at once (hat + glasses + scarf + wings + a book…).
-// Clicking a tile equips it, or unequips it if it's already on. Items show
-// leaf prices — buy to unlock, then equip freely.
-function AccessoriesPanel({ config, set, shopOwned, userXp, onPreview }: {
-  config: AvatarConfig; set: SetFn
-  shopOwned: string[]
-  userXp: number
-  onPreview: (item: AccessoryItem | null) => void
-}) {
-  const eq = config.accessories
-  return (
-    <>
-      <p className="ac-items-note">
-        Mix &amp; match — wear a hat, glasses, a scarf, wings and a handheld all at once. Tap an item to preview it first.
-      </p>
-      {CATEGORY_ORDER.map((cat) => {
-        const slot = SLOT_FOR_ACCESSORY_CATEGORY[cat]
-        const equippedId = eq[slot] ?? null
-        return (
-          <Field key={cat} label={CATEGORY_LABEL[cat]}>
-            <div className="ac-acc-grid">
-              {accessoriesByCategory(cat).map((it) => {
-                const owned = shopOwned.includes(it.id) || it.price === 0
-                const on = equippedId === it.id
-                const canBuy = !owned && userXp >= it.price
-                return (
-                  <button
-                    key={it.id}
-                    className={`ac-acc-tile ${!owned ? 'ac-acc-tile--locked' : ''}`}
-                    data-on={on}
-                    style={{ ['--rarity' as string]: RARITY_COLOR[it.rarity] }}
-                    title={`${it.name} · ${RARITY_LABEL[it.rarity]}${!owned ? ` · ${it.price} leaves` : ''}`}
-                    onClick={() => {
-                      if (owned) {
-                        onPreview(null)
-                        set({ accessories: { ...eq, [slot]: on ? null : it.id } })
-                      } else if (canBuy) {
-                        onPreview(it)
-                      }
-                    }}
-                  >
-                    <span className="ac-acc-dot" />
-                    <span className="ac-acc-name">{it.name}</span>
-                    {!owned && (
-                      <span className="ac-acc-price" style={{ color: canBuy ? '#6fb86a' : '#ff6a6a' }}>
-                        <img src="/icons/leaf.png" alt="" style={{ width: 12, height: 12, verticalAlign: 'middle', marginRight: 2 }} /> {it.price}
-                      </span>
-                    )}
-                    {owned && on && <span className="ac-acc-tick"><Glyph kind="check" /></span>}
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
-        )
-      })}
-    </>
   )
 }
 
@@ -602,6 +438,7 @@ type GlyphKind =
   | 'sliders' | 'bag' | 'gem' | 'close' | 'check' | 'auto'
   | 'body' | 'hair' | 'eyes' | 'top' | 'bottom' | 'shoes'
   | 'idle' | 'wave' | 'happy' | 'celebrate' | 'sit'
+  | 'users'
 
 function Glyph({ kind }: { kind: GlyphKind }) {
   const c = {
