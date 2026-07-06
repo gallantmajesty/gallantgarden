@@ -88,8 +88,11 @@ export async function suggestUsername(seed: string, selfId?: string): Promise<st
 /** Generate a random unique username like `fl_7x2k9m`. Probes until free. */
 export async function generateRandomUsername(): Promise<string> {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  const randomSegment = (len: number) =>
-    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  const randomSegment = (len: number) => {
+    const bytes = new Uint8Array(len)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => chars[b % chars.length]).join('')
+  }
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = `fl_${randomSegment(6)}`

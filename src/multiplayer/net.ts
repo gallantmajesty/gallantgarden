@@ -44,7 +44,9 @@ function deviceToken(): string {
   try {
     let t = sessionStorage.getItem('sf.device')
     if (!t) {
-      t = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+      const bytes = new Uint8Array(8)
+      crypto.getRandomValues(bytes)
+      t = `${Date.now().toString(36)}${Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('')}`
       sessionStorage.setItem('sf.device', t)
     }
     return t
@@ -65,7 +67,9 @@ function guestId(): string {
   try {
     let g = localStorage.getItem('sf.guestId')
     if (!g) {
-      g = `guest_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+      const bytes = new Uint8Array(16)
+      crypto.getRandomValues(bytes)
+      g = `guest_${Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('')}${Date.now().toString(36)}`
       localStorage.setItem('sf.guestId', g)
     }
     return g
@@ -109,12 +113,14 @@ let lastPubTime = 0
 
 /* --------------------------------------------------------------- helpers ---- */
 
+const MAX_NAME_LEN = 30
+
 function helloPayload() {
   return {
     id: selfId,
-    name: selfIdentity?.name ?? 'Explorer',
+    name: (selfIdentity?.name ?? 'Explorer').slice(0, MAX_NAME_LEN),
     country: selfIdentity?.country ?? null,
-    rank: selfIdentity?.rank ?? '',
+    rank: (selfIdentity?.rank ?? '').slice(0, 20),
     avatar: selfIdentity?.avatar,
     state: localState,
     device: getDeviceLabelForIdentity(),
@@ -170,14 +176,13 @@ function handleHello(msg: unknown) {
   if (!forUs(channel)) return
   const id = body.id as string | undefined
   if (!id || id === selfId || !body.avatar) return
-  console.log('[multiplayer] hello from', id, body.name, 'on', body.device)
   const now = Date.now()
   const known = !!useRealmNet.getState().roster[id]
   setRoster(id, {
     id,
-    name: (body.name as string) || 'Explorer',
+    name: ((body.name as string) || 'Explorer').slice(0, MAX_NAME_LEN),
     country: (body.country as string | null) ?? null,
-    rank: (body.rank as string) || '',
+    rank: ((body.rank as string) || '').slice(0, 20),
     avatar: normalizeAvatar(body.avatar as Partial<AvatarConfig>),
     lastSeen: now,
   })
@@ -222,7 +227,7 @@ function bindListeners() {
   insforge.realtime.on('seat-claim', handleSeatClaim)
   insforge.realtime.on('seat-release', handleSeatRelease)
   // Also listen for raw socket events to diagnose message format
-  insforge.realtime.on('connect', () => console.log('[multiplayer] socket connected'))
+  insforge.realtime.on('connect', () => { /* connected */ })
   insforge.realtime.on('connect_error', (err) => console.error('[multiplayer] socket connect_error:', err))
   insforge.realtime.on('disconnect', (reason) => console.warn('[multiplayer] socket disconnected:', reason))
   insforge.realtime.on('error', (err) => console.error('[multiplayer] socket error:', err))
@@ -282,8 +287,9 @@ function handleSeatClaim(msg: unknown) {
   const seatIndex = body.seatIndex as number | undefined
   const displayName = (body.displayName as string) || 'Explorer'
   if (id === selfId || seatIndex == null) return
-  const { claimSeat } = require('../three/train/interior') as typeof import('../three/train/interior')
-  claimSeat(seatIndex, id, displayName)
+  void import('../three/train/interior').then(({ claimSeat }) => {
+    claimSeat(seatIndex, id, displayName)
+  }).catch(() => { /* module not loaded */ })
 }
 
 function handleSeatRelease(msg: unknown) {
@@ -292,8 +298,9 @@ function handleSeatRelease(msg: unknown) {
   const id = body.id as string | undefined
   const seatIndex = body.seatIndex as number | undefined
   if (id === selfId || seatIndex == null) return
-  const { releaseSeat } = require('../three/train/interior') as typeof import('../three/train/interior')
-  releaseSeat(seatIndex)
+  void import('../three/train/interior').then(({ releaseSeat }) => {
+    releaseSeat(seatIndex)
+  }).catch(() => { /* module not loaded */ })
 }
 
 /** Broadcast a seat claim to other passengers. */
@@ -332,7 +339,6 @@ export async function joinRealm(channel: string, identity: PlayerIdentity): Prom
       console.error('[multiplayer] subscribe failed:', sub.error)
       return
     }
-    console.log('[multiplayer] subscribed to', channel)
   } catch (err) {
     console.error('[multiplayer] connect/subscribe failed:', err)
     return

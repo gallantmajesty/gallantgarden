@@ -61,20 +61,16 @@ export const REALM_PRESENCE_LIVE = true
 
 /* ----------------------------------------------------- experimental realms */
 
-/** Developer access. Lets the team reach hidden experimental realms without
- *  exposing them to normal users: load the app once with `?dev=1` and it sticks
- *  (persisted to localStorage); `?dev=0` clears it. Public users never enable
- *  this, so anything gated behind it stays invisible to them. */
-const DEV_ACCESS_KEY = 'sf.dev'
+/** Developer access. Restricted to production builds via build-time gating.
+ *  In production, this always returns false. */
 export function isDevAccess(): boolean {
+  if (!import.meta.env.DEV) return false
   try {
     const q = new URLSearchParams(window.location.search).get('dev')
-    if (q === '1') localStorage.setItem(DEV_ACCESS_KEY, '1')
-    else if (q === '0') localStorage.removeItem(DEV_ACCESS_KEY)
-    return localStorage.getItem(DEV_ACCESS_KEY) === '1'
-  } catch {
-    return false
-  }
+    if (q === '1') return true
+    if (q === '0') return false
+  } catch { /* ignore */ }
+  return false
 }
 
 /** Master launch switch for the Train Station Realm — FocusLily's third flagship

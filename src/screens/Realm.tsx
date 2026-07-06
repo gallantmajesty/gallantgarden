@@ -278,11 +278,6 @@ function TrainRealm() {
   const navigate = useNavigate()
   const enterGlobal = useRealm((s) => s.enterGlobal)
   const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
-  const [unlocked, setUnlocked] = useState(() => {
-    try { return sessionStorage.getItem('train_unlocked') === '1' } catch { return false }
-  })
-  const [pw, setPw] = useState('')
-  const [pwErr, setPwErr] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -300,42 +295,6 @@ function TrainRealm() {
   function join(roomId: string, name: string) {
     enterGlobal(roomId, name)
     navigate('/realm/explore?world=train-station')
-  }
-
-  if (!unlocked) {
-    return (
-      <>
-        <header className="realm-head">
-          <span className="sf-pill">Train Station</span>
-          <h1>Enter password</h1>
-          <p>This area is password-protected.</p>
-        </header>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (pw === '5908') {
-              setUnlocked(true)
-              setPwErr('')
-              try { sessionStorage.setItem('train_unlocked', '1') } catch {}
-            } else {
-              setPwErr('Wrong password')
-            }
-          }}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 340, width: '100%' }}
-        >
-          <input
-            className="sf-input"
-            type="password"
-            placeholder="Password"
-            value={pw}
-            onChange={(e) => { setPw(e.target.value); setPwErr('') }}
-            autoFocus
-          />
-          {pwErr && <p style={{ color: '#b5562f', fontSize: 13, fontWeight: 600, margin: 0 }}>{pwErr}</p>}
-          <button className="sf-btn water" type="submit" style={{ width: '100%' }}>Unlock</button>
-        </form>
-      </>
-    )
   }
 
   return (

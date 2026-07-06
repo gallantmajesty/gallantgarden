@@ -72,6 +72,15 @@ export function parseProfilePublic(raw: unknown): ProfilePublic {
         .map((l) => (l && typeof l === 'object' ? (l as Record<string, unknown>) : {}))
         .filter((l) => typeof l.url === 'string' && l.url)
         .map((l) => ({ label: str(l.label) || str(l.url), url: str(l.url) }))
+        .filter((l) => {
+          // Validate URL protocol to prevent javascript:/data: XSS
+          try {
+            const u = new URL(l.url)
+            return ['https:', 'http:', 'mailto:'].includes(u.protocol)
+          } catch {
+            return false
+          }
+        })
     : []
   return {
     bio: str(o.bio),

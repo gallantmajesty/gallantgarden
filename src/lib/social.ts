@@ -135,12 +135,15 @@ export async function getPublicProfileById(id: string): Promise<PublicProfile | 
 export async function searchUsers(query: string, limit = 20): Promise<PublicProfile[]> {
   const q = query.trim()
   if (q.length < 2) return []
-  const like = `%${q.replace(/[%_]/g, '')}%`
+  // Sanitize for PostgREST: strip all non-alphanumeric chars except spaces
+  const safe = q.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50)
+  if (!safe) return []
+  const like = `%${safe.replace(/[%_]/g, '')}%`
   const { data, error } = await insforge.database
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .or(`username.ilike.${like},display_name.ilike.${like}`)
-    .limit(limit)
+    .limit(Math.min(limit, 50))
   if (error || !data) return []
   return (data as Record<string, unknown>[]).map(mapPublic)
 }

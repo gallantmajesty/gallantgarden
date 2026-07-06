@@ -933,6 +933,11 @@ function SocialLinksWidget({ view, editing }: { view: ProfileView; editing: bool
     const u = url.trim()
     if (!u || links.length >= 6) return
     const href = /^https?:\/\//.test(u) ? u : `https://${u}`
+    // Validate URL protocol to prevent javascript:/data: XSS
+    try {
+      const parsed = new URL(href)
+      if (!['https:', 'http:', 'mailto:'].includes(parsed.protocol)) return
+    } catch { return }
     savePublic({ socialLinks: [...links, { label: label.trim() || href.replace(/^https?:\/\//, ''), url: href }] })
     setLabel('')
     setUrl('')

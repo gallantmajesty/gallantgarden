@@ -279,9 +279,16 @@ function PerfLogger() {
   // TEMP perf-audit hook: expose the live renderer + scene graph so the external
   // profiler (probe.cjs) can compute exact triangle/draw/light counts directly,
   // bypassing the unreliable gl.info.render under the postprocessing composer.
-  // Remove with the PerfHarness when the optimisation pass is done.
+  // Only in development — never expose engine internals in production.
   useEffect(() => {
-    ;(window as unknown as Record<string, unknown>).__perfStore = { gl, scene }
+    if (import.meta.env.DEV) {
+      ;(window as unknown as Record<string, unknown>).__perfStore = { gl, scene }
+    }
+    return () => {
+      if (import.meta.env.DEV) {
+        try { delete (window as unknown as Record<string, unknown>).__perfStore } catch { /* ignore */ }
+      }
+    }
   }, [gl, scene])
 
   useFrame((_, dt) => {

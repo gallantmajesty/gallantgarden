@@ -107,9 +107,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       redirectTo: window.location.origin,
     })
     if (error) return error.message
-    // The SDK redirects automatically (skipBrowserRedirect is false); this is a
-    // belt-and-braces fallback in case a host blocks the auto-redirect.
-    if (data?.url) window.location.assign(data.url)
+    // Validate the redirect URL to prevent open redirect attacks
+    if (data?.url) {
+      try {
+        const redirectUrl = new URL(data.url)
+        const originUrl = new URL(window.location.origin)
+        if (redirectUrl.origin === originUrl.origin) {
+          window.location.assign(data.url)
+        } else {
+          console.error('[Auth] OAuth redirect URL does not match app origin, blocking redirect')
+        }
+      } catch {
+        console.error('[Auth] Invalid OAuth redirect URL')
+      }
+    }
     return null
   }, [])
 

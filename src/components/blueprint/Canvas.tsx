@@ -189,18 +189,11 @@ export function Canvas() {
   }
 
   function startConnect(nodeId: string, port: Port, e: React.PointerEvent) {
-    console.log('startConnect called:', { nodeId, port })
     const from = useBlueprint.getState().doc.nodes.find((n) => n.id === nodeId)
-    if (!from) {
-      console.log('Node not found:', nodeId)
-      return
-    }
-    const activeTypeId = useBlueprint.getState().activeTypeId
-    console.log('Active connection type:', activeTypeId)
+    if (!from) return
     const rect = ref.current!.getBoundingClientRect()
     const cur = useBlueprint.getState().doc.viewport
     const to = screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cur)
-    console.log('Setting connecting state:', { from: from.id, fromPort: port, to })
     setConnecting({ from, fromPort: port, to })
 
     const handleMove = (ev: PointerEvent) => {
@@ -217,24 +210,9 @@ export function Canvas() {
       const target = nodeAt(w, nodeId)
       const activeTypeId = useBlueprint.getState().activeTypeId
       
-      console.log('Connection attempt:', {
-        from: from.id,
-        to: target?.id,
-        activeTypeId,
-        targetFound: !!target,
-        differentNode: target && target.id !== nodeId
-      })
-      
       if (target && target.id !== nodeId && activeTypeId) {
         const { fromPort, toPort } = autoPorts(from, target)
-        console.log('Adding edge:', { from: from.id, fromPort, to: target.id, toPort, typeId: activeTypeId })
         addEdge(from.id, fromPort, target.id, toPort, activeTypeId)
-      } else {
-        console.log('Connection failed:', {
-          target: target?.id,
-          sameNode: target && target.id === nodeId,
-          noActiveType: !activeTypeId
-        })
       }
       setConnecting(null)
     }

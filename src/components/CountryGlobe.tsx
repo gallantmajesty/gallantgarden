@@ -20,7 +20,10 @@ function latLonToVector3(lat: number, lon: number, radius: number): THREE.Vector
 
 async function getCountryLatLon(code: string): Promise<{ lat: number; lon: number } | null> {
   try {
-    const res = await fetch(`https://restcountries.com/v3.1/alpha/${code}?fields=latlng`)
+    // Sanitize country code to only allow alphanumeric characters (ISO 3166-1 alpha-2)
+    const safeCode = code.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    if (!safeCode || safeCode.length > 3) return null
+    const res = await fetch(`https://restcountries.com/v3.1/alpha/${safeCode}?fields=latlng`)
     if (!res.ok) return null
     const data = await res.json()
     if (Array.isArray(data) && data[0]?.latlng) {

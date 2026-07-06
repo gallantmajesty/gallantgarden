@@ -19,15 +19,15 @@ const LavaPadDebug = /* #__PURE__ */ lazy(() => import('../../three/lava-pad/Lav
 type Screen = 'matchType' | 'lobby' | 'game'
 
 function recordMatchStart() {
-  console.log('[Analytics] Match started')
+  // TODO: wire to analytics SDK
 }
 
-function recordMatchComplete(survivalTime: number, placement: number) {
-  console.log('[Analytics] Match completed', { survivalTime, placement })
+function recordMatchComplete(_survivalTime: number, _placement: number) {
+  // TODO: wire to analytics SDK
 }
 
 function recordDisconnect() {
-  console.log('[Analytics] Match disconnected')
+  // TODO: wire to analytics SDK
 }
 
 export function LavaPad() {

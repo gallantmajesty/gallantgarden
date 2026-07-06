@@ -53,9 +53,6 @@ export function CharacterSelection() {
   
   const [selectedCharacter, setSelectedCharacter] = useState('james')
   
-  console.log('CharacterSelection - selectedCharacter:', selectedCharacter)
-  console.log('CharacterSelection - allCharacters:', ALL_CHARACTERS)
-  
   const allCharacters = ALL_CHARACTERS
   
   const handleCharacterSelect = (characterId: string) => {

@@ -55,7 +55,9 @@ export function getSessionId(): string | null {
   const id = getSessionId()
   if (!id) return false
   try {
-    const result = await insforge.functions.invoke('claim_session')
+    const result = await insforge.functions.invoke('claim_session', {
+      body: { session_id: id, device_label: deviceLabel },
+    })
     if ('error' in result && result.error) throw result.error
     const data = 'data' in result ? result.data : undefined
     return (data as { success?: boolean })?.success === true

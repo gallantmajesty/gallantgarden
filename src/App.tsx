@@ -25,10 +25,6 @@ const TaskMagnet = lazy(() => import('./screens/TaskMagnet').then(m => ({ defaul
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })))
 const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ default: m.AvatarCreator })))
 const CharacterSelection = lazy(() => import('./screens/CharacterSelection').then(m => ({ default: m.CharacterSelection })))
-const SimpleTestAvatar = lazy(() => import('./screens/SimpleTestAvatar').then(m => ({ default: m.SimpleTestAvatar })))
-const ShotHarness = lazy(() => import('./screens/ShotHarness').then(m => ({ default: m.ShotHarness })))
-const PerfHarness = lazy(() => import('./screens/PerfHarness').then(m => ({ default: m.PerfHarness })))
-const CalcHub = lazy(() => import('./calc/ui/CalcHub').then(m => ({ default: m.CalcHub })))
 const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
 const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
 
@@ -61,25 +57,6 @@ export default function App() {
       offWeb()
     }
   }, [])
-
-  // TEMP (torso review): a no-auth screenshot harness. Remove with ShotHarness.
-  if (window.location.pathname === '/__shot') return <ShotHarness />
-
-  // TEMP (perf pass): a no-auth, no-presence direct mount of Forest Hall so the
-  // environment can be profiled in isolation (1 player, no crowd). Remove with
-  // PerfHarness when the optimization pass is done.
-  if (window.location.pathname === '/__perf') return <PerfHarness />
-
-  // TEMP (calc verify): a no-auth direct mount of the Calculator Hub for visual
-  // checks. Safe to remove — it short-circuts before auth.
-  if (window.location.pathname === '/__calc') {
-    return (
-      <>
-        <WebBackground />
-        <CalcHub />
-      </>
-    )
-  }
 
   const PUBLIC_PATHS = new Set(['/', '/about'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
@@ -136,7 +113,6 @@ export default function App() {
               <Route path="/u/:username" element={<Profile />} />
               <Route path="/avatar" element={<AvatarCreator />} />
               <Route path="/character-select" element={<CharacterSelection />} />
-              <Route path="/test-avatar" element={<SimpleTestAvatar />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/lava-pad" element={<LavaPad />} />
               <Route path="*" element={<Navigate to="/" replace />} />

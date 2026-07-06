@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import DOMPurify from 'dompurify'
 import {
   makeBoard,
   makeNode,
@@ -278,8 +279,10 @@ newBoard: (title) => {
 
     // Text edits stream in while typing — persist on a debounce (applyLight) and
     // skip per-keystroke history so undo granularity stays coarse but smooth.
+    // Sanitize HTML at the storage layer to prevent stored XSS.
     setNodeHtml: (id, html) => {
-      applyLight((d) => mapNode(d, id, (n) => ({ ...n, html, updatedAt: nowIso() })))
+      const clean = DOMPurify.sanitize(html)
+      applyLight((d) => mapNode(d, id, (n) => ({ ...n, html: clean, updatedAt: nowIso() })))
     },
 
     updateNodeStyle: (id, patch) => {

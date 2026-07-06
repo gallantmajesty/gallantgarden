@@ -35,6 +35,16 @@ function deriveFontFamilyFromUrl(url) {
 }
 
 async function loadFontFromStylesheet(url) {
+  // Validate URL is from a trusted origin before fetching
+  try {
+    const parsed = new URL(url)
+    const allowedHosts = ['fonts.googleapis.com', 'db.onlinewebfonts.com']
+    if (!allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
+      throw new Error('Untrusted font stylesheet origin')
+    }
+  } catch {
+    throw new Error('Invalid or untrusted font stylesheet URL')
+  }
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Failed to fetch font stylesheet (${response.status})`);
   const cssText = await response.text();
@@ -74,6 +84,18 @@ async function loadFontFromFile(url) {
 }
 
 async function loadCustomFont(fontUrl) {
+  // Validate URL is from a trusted origin before loading
+  try {
+    const parsed = new URL(fontUrl)
+    const allowedHosts = ['fonts.googleapis.com', 'db.onlinewebfonts.com', 'fonts.gstatic.com']
+    const isTrusted = allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))
+    if (!isTrusted && !fontUrl.startsWith('data:')) {
+      throw new Error('Untrusted font origin')
+    }
+  } catch (e) {
+    if (e.message === 'Untrusted font origin') throw e
+    throw new Error('Invalid font URL')
+  }
   const isStylesheet = fontUrl.includes('fonts.googleapis.com') || /\.css(\?.*)?$/i.test(fontUrl);
   return isStylesheet ? loadFontFromStylesheet(fontUrl) : loadFontFromFile(fontUrl);
 }

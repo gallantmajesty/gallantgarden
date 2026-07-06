@@ -363,14 +363,12 @@ function RealmConnection() {
     let stopHeartbeat: (() => void) | null = null
 
     void (async () => {
-      console.log('[realm] assigning instance for', roomKey)
       const instance = await assignInstance(roomKey, REALM_CAPACITY)
       if (cancelled) {
         void leavePresence() // we were unmounted mid-assign; release the claimed slot
         return
       }
       const channel = realmChannel(active, instance)
-      console.log('[realm] joining channel', channel, 'as', name)
       await joinRealm(channel, { id, name, country: country ?? null, rank: rank || '', avatar })
       if (cancelled) {
         void leaveRealm()
