@@ -111,7 +111,7 @@ export function AvatarCreator() {
           </div>
 
           <div className="ac-dock-scroll">
-            <CharacterDisplayTab config={config} />
+            <CharacterDisplayTab config={config} navigate={navigate} />
             <BodyTab config={config} set={set} />
           </div>
 
@@ -133,7 +133,7 @@ export function AvatarCreator() {
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
-function CharacterDisplayTab({ config }: { config: AvatarConfig }) {
+function CharacterDisplayTab({ config, navigate }: { config: AvatarConfig; navigate: (path: string) => void }) {
   const character = characterById(config.characterId || 'james')
   
   return (

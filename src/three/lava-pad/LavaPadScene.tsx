@@ -1,6 +1,7 @@
 // Lava Pad Scene — Canvas wrapper with lighting, atmosphere, and composition
 
 import { useEffect, useRef, useState } from 'react'
+import type * as THREE from 'three'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { PerformanceMonitor, Sky, Cloud, Stars } from '@react-three/drei'
 import { useScenePreset } from '../../store/quality'

@@ -51,13 +51,14 @@ export function getSessionId(): string | null {
 }
 
 /** Claim the single-session lock for this device. Returns true if successful. */
-export async function claimSession(): Promise<boolean> {
+ export async function claimSession(): Promise<boolean> {
   const id = getSessionId()
   if (!id) return false
   try {
-    const { data, error } = await insforge.functions.invoke('claim_session', { session_id: id })
-    if (error) throw error
-    return data?.success === true
+    const result = await insforge.functions.invoke('claim_session')
+    if ('error' in result && result.error) throw result.error
+    const data = 'data' in result ? result.data : undefined
+    return (data as { success?: boolean })?.success === true
   } catch {
     return false
   }

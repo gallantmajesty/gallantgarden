@@ -285,7 +285,6 @@ export function Canvas() {
   dragSourceId={connecting?.from.id ?? null}
   previewTo={connecting?.to}
   onPortDown={startConnect}
-  onAddConnected={() => {}}
 />
 ))}
       </div>

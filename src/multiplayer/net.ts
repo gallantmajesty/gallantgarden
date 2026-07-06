@@ -60,20 +60,6 @@ export function networkId(userId?: string): string {
   return `${base}:${deviceToken()}`
 }
 
-/** Get device-specific token for multiplayer identification. */
-function deviceToken(): string {
-  try {
-    let t = sessionStorage.getItem('sf.device')
-    if (!t) {
-      t = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-      sessionStorage.setItem('sf.device', t)
-    }
-    return t
-  } catch {
-    return `${Date.now().toString(36)}`
-  }
-}
-
 /** Persisted guest id so a signed-out session is one consistent base identity. */
 function guestId(): string {
   try {

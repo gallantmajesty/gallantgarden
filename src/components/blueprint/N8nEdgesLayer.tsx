@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { smoothPoint, type Pt } from '../../lib/blueprint/geom'
 import { resolveEdgeStyle, type BlueprintNode, type ResolvedEdgeStyle } from '../../lib/blueprint/types'
@@ -13,7 +13,6 @@ interface N8nEdgesLayerProps {
   preview: ConnectingPreview | null
 }
 
-/** n8n-style connection layer: bezier strings, direction arrows, type-colored glow + animated flow. */
 export function N8nEdgesLayer({ preview }: N8nEdgesLayerProps) {
   const nodes = useBlueprint((s) => s.doc.nodes)
   const edges = useBlueprint((s) => s.doc.edges)
@@ -23,9 +22,7 @@ export function N8nEdgesLayer({ preview }: N8nEdgesLayerProps) {
   const hoverNodeId = useBlueprint((s) => s.hoverNodeId)
   const selectEdge = useBlueprint((s) => s.selectEdge)
   const deleteEdge = useBlueprint((s) => s.deleteEdge)
-
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
 

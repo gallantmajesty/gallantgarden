@@ -1,4 +1,4 @@
-import { useCallback, type CSSProperties } from 'react'
+import { useCallback } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { YARN_COLORS, YARN_STYLE_META } from '../../lib/blueprint/types'
 
@@ -12,10 +12,9 @@ export function YarnPalette({ compact = false }: YarnPaletteProps) {
   const setActiveYarnColor = useBlueprint((s) => s.setActiveYarnColor)
   const setActiveYarnStyle = useBlueprint((s) => s.setActiveYarnStyle)
 
-const pickColor = useCallback(
+  const pickColor = useCallback(
     (hex: string | null) => {
       setActiveYarnColor(hex)
-      setPickerOpen(false)
     },
     [setActiveYarnColor],
   )
@@ -23,11 +22,11 @@ const pickColor = useCallback(
   const currentColor = activeYarnColor ?? 'var(--mg-accent, #c0392b)'
 
   return (
-    <div className={`bp-yarnpalette ${compact ? 'compact' : ''}`}>
+    <div className={'bp-yarnpalette ' + (compact ? 'compact' : '')}>
       <span className="bp-yarnpalette-label" title="Active yarn colour">🧵</span>
       <div className="bp-yarnpalette-swatches">
         <button
-          className={`bp-yarnswatch ${!activeYarnColor ? 'active' : ''}`}
+          className={'bp-yarnswatch ' + (!activeYarnColor ? 'active' : '')}
           style={{ '--sw': 'var(--mg-accent, #c0392b)' } as React.CSSProperties}
           title="Use thread type colour"
           onClick={() => pickColor(null)}
@@ -35,7 +34,7 @@ const pickColor = useCallback(
         {YARN_COLORS.map((c) => (
           <button
             key={c.hex}
-            className={`bp-yarnswatch ${activeYarnColor === c.hex ? 'active' : ''}`}
+            className={'bp-yarnswatch ' + (activeYarnColor === c.hex ? 'active' : '')}
             style={{ '--sw': c.hex } as React.CSSProperties}
             title={c.name}
             onClick={() => pickColor(c.hex)}
@@ -47,7 +46,7 @@ const pickColor = useCallback(
           {YARN_STYLE_META.map((s) => (
             <button
               key={s.value}
-              className={`bp-yarnstyle-btn ${activeYarnStyle === s.value ? 'active' : ''}`}
+              className={'bp-yarnstyle-btn ' + (activeYarnStyle === s.value ? 'active' : '')}
               title={s.label}
               onClick={() => setActiveYarnStyle(s.value)}
             >

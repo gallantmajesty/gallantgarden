@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
-  resetKeys?: (string | number)[]
+  resetKeys?: readonly (string | number)[]
 }
 
 interface State {
@@ -22,6 +22,15 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary:', error, errorInfo)
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (!this.state.hasError) return
+    if (!prevProps.resetKeys || !this.props.resetKeys) return
+    if (prevProps.resetKeys.length !== this.props.resetKeys.length) return
+    if (prevProps.resetKeys.some((v, i) => v !== this.props.resetKeys![i])) {
+      this.setState({ hasError: false, error: null })
+    }
   }
 
   render() {
