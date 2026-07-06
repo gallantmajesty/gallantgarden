@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { insforge } from '../lib/insforge'
-import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
+import { runGlobalInit, runUserTeardown } from '../lib/appInit'
 import { initSession } from '../lib/session'
 import { networkId } from '../multiplayer/net'
 
@@ -19,10 +19,6 @@ export interface AuthUser {
   isGuest?: boolean
 }
 
-/** OAuth identity providers wired in the UI. These must match the providers
- *  enabled server-side in InsForge (see docs/OAUTH_SETUP.md). InsForge runs the
- *  full OAuth 2.0 / PKCE flow and stores the session in a secure httpOnly cookie —
- *  no tokens or passwords ever live in our client code. */
 export type OAuthProvider = 'google' | 'github' | 'microsoft'
 
 interface AuthContextValue {
@@ -38,96 +34,84 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function mapSupabaseUser(u: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null): AuthUser | null {
+  if (!u) return null
+  return {
+    id: u.id,
+    email: u.email ?? '',
+    profile: {
+      name: (u.user_metadata?.full_name ?? u.user_metadata?.name ?? undefined) as string | undefined,
+      avatar_url: (u.user_metadata?.avatar_url ?? null) as string | null,
+    },
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data, error } = await insforge.auth.getCurrentUser()
-    setUser(error ? null : ((data?.user as AuthUser) ?? null))
+    const { data } = await supabase.auth.getUser()
+    setUser(mapSupabaseUser(data.user))
   }, [])
 
   useEffect(() => {
     let cancelled = false
-    // Initialize session for multi-device support
     initSession()
-    // Once-per-device first-launch config (independent of who signs in).
     void runGlobalInit()
-    void (async () => {
-      try {
-        const { data, error } = await insforge.auth.getCurrentUser()
+
+    const handleHashChange = () => {
+      supabase.auth.getSession().then(({ data }) => {
         if (cancelled) return
-        const u = error ? null : ((data?.user as AuthUser) ?? null)
+        const u = mapSupabaseUser(data.session?.user ?? null)
         setUser(u)
-        if (u) {
-          await runUserInit(u)
-        }
-      } catch (e) {
-        console.error('[Auth] getCurrentUser failed:', e)
-      } finally {
+        if (u) void runUserInit?.(u)
+      }).catch((e) => console.error('[Auth] session restore failed:', e)).finally(() => {
         if (!cancelled) setLoading(false)
-      }
-    })()
+      })
+    }
+
+    handleHashChange()
+    window.addEventListener('hashchange', handleHashChange)
     return () => {
       cancelled = true
+      window.removeEventListener('hashchange', handleHashChange)
     }
   }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await insforge.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return error.message
-    const u = (data?.user as AuthUser) ?? null
+    const u = mapSupabaseUser(data.user)
     setUser(u)
-    if (u) {
-      await runUserInit(u)
-    }
+    if (u) await runUserInit?.(u)
     return null
   }, [])
 
-  const signUp = useCallback(
-    async (email: string, password: string, name: string) => {
-      const { data, error } = await insforge.auth.signUp({ email, password, name })
-      if (error) return error.message
-      // Email verification is disabled, so an accessToken comes back immediately.
-      const u = (data?.user as AuthUser) ?? null
-      setUser(u)
-      if (u) {
-        await runUserInit(u)
-      }
-      return null
-    },
-    [],
-  )
+  const signUp = useCallback(async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
+    if (error) return error.message
+    const u = mapSupabaseUser(data.user)
+    setUser(u)
+    if (u) await runUserInit?.(u)
+    return null
+  }, [])
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
-    // PKCE flow: the SDK generates the verifier/challenge, then redirects the
-    // browser to the provider. On return, `insforge_code` is exchanged for a
-    // session automatically during getCurrentUser() (see the bootstrap effect).
-    const { data, error } = await insforge.auth.signInWithOAuth(provider, {
-      redirectTo: window.location.origin,
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
     })
     if (error) return error.message
-    // Validate the redirect URL to prevent open redirect attacks
+    // Always redirect — Supabase returns the URL to redirect to
     if (data?.url) {
-      try {
-        const redirectUrl = new URL(data.url)
-        const originUrl = new URL(window.location.origin)
-        if (redirectUrl.origin === originUrl.origin) {
-          window.location.assign(data.url)
-        } else {
-          console.error('[Auth] OAuth redirect URL does not match app origin, blocking redirect')
-        }
-      } catch {
-        console.error('[Auth] Invalid OAuth redirect URL')
-      }
+      window.location.assign(data.url)
     }
     return null
   }, [])
 
   const signInAsGuest = useCallback(async () => {
-    // Create a lightweight guest user object — no InsForge auth session.
-    // XP/progress lives in localStorage keyed by the guest network ID.
-    // When the guest later signs up, their localStorage data is migrated.
     const guestNetId = networkId()
     const guestUser: AuthUser = {
       id: guestNetId,
@@ -136,11 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isGuest: true,
     }
     setUser(guestUser)
-    await runUserInit(guestUser)
+    await runUserInit?.(guestUser)
   }, [])
 
   const signOut = useCallback(async () => {
-    await insforge.auth.signOut()
+    await supabase.auth.signOut()
     runUserTeardown()
     setUser(null)
   }, [])
@@ -150,11 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signOut, refresh],
   )
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

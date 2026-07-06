@@ -19,6 +19,10 @@ export function MatchManager() {
       }, 800)
       return () => clearTimeout(timer)
     }
+    if (phase === 'playersJoining') {
+      const timer = setTimeout(() => setPhase('countdown'), 1500)
+      return () => clearTimeout(timer)
+    }
   }, [phase])
 
   // Auto-transition finished → results after a brief pause

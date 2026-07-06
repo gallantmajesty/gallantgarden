@@ -20,6 +20,7 @@ import { SpectatorMode } from './SpectatorMode'
 import { SessionManager } from './SessionManager'
 import { LavaPadNetworking } from './LavaPadNetworking'
 import { useLavaPadStore } from './store'
+import { useSessionStore } from './sessionStore'
 
 const DPR_FLOOR = 0.85
 
@@ -97,8 +98,14 @@ export function LavaPadScene({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
     const store = useLavaPadStore.getState()
     if (store.phase === 'waiting') {
-      store.setPhase('playersJoining')
-      store.setCountdown(ARENA_CONFIG.match.countdownDuration)
+      const { playMode } = useSessionStore.getState()
+      if (playMode === 'single') {
+        store.setPhase('countdown')
+        store.setCountdown(ARENA_CONFIG.match.countdownDuration)
+      } else {
+        store.setPhase('playersJoining')
+        store.setCountdown(ARENA_CONFIG.match.countdownDuration)
+      }
     }
   }, [])
 

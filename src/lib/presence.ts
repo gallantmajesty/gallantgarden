@@ -13,10 +13,10 @@ let currentStatus: StudyStatus = 'available'
 
 /** Write my presence (best-effort; never throws). */
 async function beat(): Promise<void> {
-  const { data } = await insforge.auth.getCurrentUser()
+  const { data } = await insforge.auth.getUser()
   const id = (data?.user as { id?: string } | undefined)?.id
   if (!id) return
-  await insforge.database
+        await insforge
     .from('profiles')
     .update({ last_seen_at: new Date().toISOString(), study_status: currentStatus })
     .eq('id', id)

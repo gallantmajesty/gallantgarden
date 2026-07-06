@@ -66,7 +66,7 @@ function SeasonalParticles({ multiplier }: { multiplier: number }) {
   })
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
       <planeGeometry args={[0.15, 0.15]} />
       <meshBasicMaterial
         color={config.particleColor}

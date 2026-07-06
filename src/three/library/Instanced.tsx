@@ -62,6 +62,7 @@ export function InstancedBoxes({
       args={[undefined, undefined, Math.max(1, items.length)]}
       castShadow={castShadow}
       receiveShadow={receiveShadow}
+      frustumCulled={false}
     >
       <boxGeometry />
       <meshStandardMaterial

@@ -192,7 +192,7 @@ function PillarFrames({ positions }: { positions: [number, number, number][] }) 
     mesh.instanceMatrix.needsUpdate = true
   }, [positions])
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length)]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length)]} frustumCulled={false}>
       <torusGeometry args={[0.2, 0.03, 6, 10]} />
       <meshStandardMaterial color={IRON} metalness={0.6} roughness={0.5} />
     </instancedMesh>
@@ -222,7 +222,7 @@ function GlowCores({ positions, flicker }: { positions: [number, number, number]
   })
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length)]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length)]} frustumCulled={false}>
       <sphereGeometry args={[0.16, 10, 10]} />
       <meshStandardMaterial color="#fff0c8" emissive={GLOW_EMISSIVE} emissiveIntensity={1.9} />
     </instancedMesh>

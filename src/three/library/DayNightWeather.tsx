@@ -1,4 +1,4 @@
-import { type MutableRefObject, useEffect, useMemo, useRef } from 'react'
+import { type MutableRefObject, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Stars } from '@react-three/drei'
 import {
@@ -30,7 +30,7 @@ const tmp = new Color()
  * always visible, rain falls perpetually, and the only directional light is a
  * faint cool moonlight. The hall glows warm from its lanterns.
  */
-export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rainDrops, sunRef, onSunReady }: { shadows: boolean; fog: boolean; rainScale: number; shadowMap: number; rainDrops: number; sunRef?: MutableRefObject<Mesh | null>; onSunReady?: () => void }) {
+export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, sunRef, onSunReady }: { fog: boolean; rainScale: number; shadowMap: number; rainDrops: number; sunRef?: MutableRefObject<Mesh | null>; onSunReady?: () => void }) {
   const dir = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
   const fog = useRef<FogExp2>(null)
@@ -65,16 +65,6 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
 
   const sunDir = useMemo(() => new Vector3(), [])
   const wnext = useRef({ t: 4, seed: 0x9e37 >>> 0 })
-
-  useEffect(() => {
-    const d = dir.current
-    if (!d) return
-    const size = shadowMap || 1024
-    d.shadow.mapSize.set(size, size)
-    d.shadow.map?.dispose()
-    d.shadow.map = null as unknown as typeof d.shadow.map
-    d.castShadow = shadows
-  }, [shadowMap, shadows])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
@@ -130,7 +120,6 @@ export function DayNightWeather({ shadows, fog: fogOn, rainScale, shadowMap, rai
       }
       dir.current.intensity = 0.12 * (1 - env.fog * 0.55)
       dir.current.color.set('#b0c4de')
-      dir.current.castShadow = shadows
     }
     if (hemi.current) {
       // dark cool sky fill — the hall is lit by lanterns, not the sky
@@ -302,7 +291,7 @@ function RainSide({ side, scale, count }: { side: number; scale: number; count: 
   })
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, count]} frustumCulled={false}>
       <boxGeometry args={[0.03, 1.2, 0.03]} />
       <meshBasicMaterial color="#dbeaf6" transparent opacity={0.55} />
     </instancedMesh>
@@ -384,7 +373,7 @@ function GlassStreaks() {
   })
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, 160]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, 160]} frustumCulled={false}>
       <boxGeometry args={[0.07, 1, 0.06]} />
       <meshBasicMaterial color="#dbeaf6" transparent opacity={0.36} />
     </instancedMesh>

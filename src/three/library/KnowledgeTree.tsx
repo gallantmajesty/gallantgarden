@@ -262,7 +262,7 @@ function Canopy({ leaves }: { leaves: Leaf[] }) {
   }, [leaves])
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, leaves.length)]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, leaves.length)]} frustumCulled={false}>
       <icosahedronGeometry args={[0.7, 0]} />
       <meshStandardMaterial emissive="#ffb24a" emissiveIntensity={0.28} roughness={0.7} flatShading />
     </instancedMesh>

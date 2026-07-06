@@ -151,16 +151,16 @@ function PineForest({ trees }: { trees: Tree[] }) {
   const n = Math.max(1, trees.length)
   return (
     <group>
-      <instancedMesh ref={trunkRef} args={[undefined, undefined, n]}>
+      <instancedMesh ref={trunkRef} args={[undefined, undefined, n]} frustumCulled={false}>
         <cylinderGeometry args={[1, 1, 1, 6]} />
         <meshStandardMaterial color="#1a1008" roughness={1} />
       </instancedMesh>
       <group ref={sway}>
-        <instancedMesh ref={lowRef} args={[undefined, undefined, n]} castShadow>
+        <instancedMesh ref={lowRef} args={[undefined, undefined, n]} castShadow frustumCulled={false}>
           <coneGeometry args={[1, 1, 7]} />
           <meshStandardMaterial color="#0e1e0f" roughness={1} flatShading />
         </instancedMesh>
-        <instancedMesh ref={topRef} args={[undefined, undefined, n]} castShadow>
+        <instancedMesh ref={topRef} args={[undefined, undefined, n]} castShadow frustumCulled={false}>
           <coneGeometry args={[1, 1, 7]} />
           <meshStandardMaterial color="#132616" roughness={1} flatShading />
         </instancedMesh>

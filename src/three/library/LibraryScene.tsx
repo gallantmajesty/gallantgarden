@@ -20,10 +20,11 @@ import { Aurora } from './Aurora'
 import { FloatingBooks } from './FloatingBooks'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
-import { FrustumCuller } from './FrustumCuller'
+
 import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
+import { DebugProbe, DebugHud } from './DebugOverlay'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
   state = { failed: false, msg: '' }
@@ -80,129 +81,147 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
     >
       <color attach="background" args={['#0c0a0a']} />
-      <QualitySync shadows={preset.shadows} />
-      <ShadowThrottle enabled={preset.shadows} />
+      <SystemToggles />
+      <ShadowManager enabled={preset.shadows} refreshInterval={8} />
       <TextureQualitySync anisotropy={preset.anisotropy} />
 
       <SoftBoundary>
-        <DayNightWeather shadows={preset.shadows} fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
-        <FrustumCuller distance={60}>
+        <ToggleGroup group="dayNight">
+          <DayNightWeather fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
+        </ToggleGroup>
+        <ToggleGroup group="exterior">
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
-        </FrustumCuller>
+        </ToggleGroup>
       </SoftBoundary>
 
       {/* warm interior fill so the hall is always cosily lit — the lanterns add
           the real pools of golden light against the dark night outside */}
       <ambientLight intensity={0.38} color="#ffd9a8" />
 
-      <LibraryShell />
-      <Bookshelves />
-      <StudyTables />
-      <FrustumCuller distance={40}>
+      <ToggleGroup group="interior">
+        <LibraryShell />
+        <Bookshelves />
+        <StudyTables />
         <Decor />
+        <KnowledgeTree />
+      </ToggleGroup>
+
+      <ToggleGroup group="lanterns">
         <Lanterns />
-      </FrustumCuller>
-      <KnowledgeTree />
+      </ToggleGroup>
 
       {/* Magical layer — all instanced/particle/shader, zero extra real lights and
           zero full-screen passes. Gated by the same particle/detail budget so they
           shed on low-end settings and Performance Mode. */}
-      {preset.particles && <Fireflies count={Math.round(12 + preset.dust * 0.8)} />}
-      {preset.particles && <Aurora />}
-      {preset.lodBias < 1 && <FloatingBooks count={preset.lodBias < 0.5 ? 8 : 5} />}
+      <ToggleGroup group="particles">
+        {preset.particles && <Fireflies count={Math.round(12 + preset.dust * 0.8)} />}
+        {preset.particles && <Aurora />}
+        {preset.lodBias < 1 && <FloatingBooks count={preset.lodBias < 0.5 ? 8 : 5} />}
+        {preset.dust > 0 && (
+          <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
+        )}
+      </ToggleGroup>
 
-      {preset.dust > 0 && (
-        // PERF: small, soft motes. Smaller size + lower opacity keeps the blended
-        // overdraw down (these sprites span the whole hall volume); the count is
-        // already capped at 24 in scenePreset().
-        <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
-      )}
-
-      {preset.particles && (
-        <FrustumCuller distance={30}>
+      <ToggleGroup group="seasonal">
+        {preset.particles && (
           <SeasonalOverlay enabled={preset.particles} particleMultiplier={preset.lodBias < 1 ? 0.8 : 1} />
-        </FrustumCuller>
-      )}
+        )}
+      </ToggleGroup>
       <PlayerController />
-      <RemotePlayers />
+      <ToggleGroup group="remotePlayers">
+        <RemotePlayers />
+      </ToggleGroup>
       <PerfLogger />
+      <DebugProbe />
 
       {/* Standard post tier (default): cheap mipmap bloom + vignette. multisampling
           0 disables the composer's expensive MSAA pass. */}
-      {preset.bloom && !preset.ultra && (
-        <EffectComposer enableNormalPass={false} multisampling={0}>
-          <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.4} intensity={0.4} kernelSize={KernelSize.SMALL} mipmapBlur />
-          <Vignette eskil={false} offset={0.16} darkness={0.8} />
-        </EffectComposer>
-      )}
+      <ToggleGroup group="post">
+        {preset.bloom && !preset.ultra && (
+          <EffectComposer enableNormalPass={false} multisampling={0}>
+            <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.4} intensity={0.4} kernelSize={KernelSize.SMALL} mipmapBlur />
+            <Vignette eskil={false} offset={0.16} darkness={0.8} />
+          </EffectComposer>
+        )}
 
-      {/* Ultra post tier (opt-in, off by default): adds N8 ambient occlusion for
-          corner depth, god-ray shafts from the sun, and (first-person only) a
-          shallow depth-of-field. Heavier full-screen passes — for strong GPUs that
-          accept lower FPS. Bloom + vignette stay. The effects are assembled as a
-          filtered array because EffectComposer's children type rejects `false`. */}
-      {preset.ultra && (
-        <EffectComposer enableNormalPass={false} multisampling={2}>
-          {[
-            <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes />,
-            <Bloom key="bloom" luminanceThreshold={0.75} luminanceSmoothing={0.4} intensity={0.5} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
-            sunReady ? (
-              <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
-            ) : null,
-            <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} />,
-          ].filter(Boolean) as ReactElement[]}
-        </EffectComposer>
-      )}
+        {/* Ultra post tier (opt-in, off by default): adds N8 ambient occlusion for
+            corner depth, god-ray shafts from the sun, and (first-person only) a
+            shallow depth-of-field. Heavier full-screen passes — for strong GPUs that
+            accept lower FPS. Bloom + vignette stay. The effects are assembled as a
+            filtered array because EffectComposer's children type rejects `false`. */}
+        {preset.ultra && (
+          <EffectComposer enableNormalPass={false} multisampling={2}>
+            {[
+              <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes />,
+              <Bloom key="bloom" luminanceThreshold={0.75} luminanceSmoothing={0.4} intensity={0.5} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
+              sunReady ? (
+                <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
+              ) : null,
+              <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} />,
+            ].filter(Boolean) as ReactElement[]}
+          </EffectComposer>
+        )}
+      </ToggleGroup>
     </Canvas>
     <SceneReady onReady={onReady} />
+    <DebugHud />
     </>
   )
 }
 
 /**
- * Shadow-map update governor — the single biggest *quality-preserving* GPU win.
+ * Single owner of all shadow-map GL state. No other component may modify:
+ *   - gl.shadowMap.enabled
+ *   - gl.shadowMap.autoUpdate
+ *   - gl.shadowMap.needsUpdate
+ *   - directionalLight.shadow.map
+ *   - directionalLight.castShadow
  *
- * The hall casts ONE directional shadow over ~49 casters into a 1024² (or higher)
- * depth map. By default three re-renders that entire depth pass EVERY FRAME — and
- * because the day/night cycle nudges the sun a hair each frame, the renderer never
- * gets to skip it. That is a full extra ~49-object scene pass at 60 fps for shadows
- * that visibly change perhaps once a second.
- *
- * Fix: turn off automatic shadow updates and refresh the map only every Nth frame
- * (plus immediately whenever shadows are toggled). The sun moves ~0.0008 rad per
- * frame, so a refresh every 8 frames is visually identical while cutting the shadow
- * pass to ~1/8 of its cost. No resolution, sharpness or coverage is touched.
+ * When shadows are enabled, autoUpdate is turned off and the map is refreshed
+ * only every `refreshInterval` frames — a ~8x GPU saving with no visible
+ * difference since the sun barely moves per frame. When shadows are disabled,
+ * autoUpdate is left at its default (true) and needsUpdate is not touched so
+ * the renderer simply skips the shadow pass.
  */
-const SHADOW_REFRESH_INTERVAL = 8
-function ShadowThrottle({ enabled }: { enabled: boolean }) {
+function ShadowManager({ enabled, refreshInterval = 8 }: { enabled: boolean; refreshInterval?: number }) {
   const gl = useThree((s) => s.gl)
   const frame = useRef(0)
+
   useEffect(() => {
-    gl.shadowMap.autoUpdate = false
-    // force a fresh render of the map right after (un)toggling shadows
-    gl.shadowMap.needsUpdate = enabled
+    if (enabled) {
+      // Throttle: disable automatic rebuild, force one immediate refresh, then
+      // let the useFrame cadence take over.
+      gl.shadowMap.autoUpdate = false
+      gl.shadowMap.needsUpdate = true
+    } else {
+      // Shadows off: restore defaults so the renderer skips the shadow pass
+      // cleanly without leaving stale state.
+      gl.shadowMap.autoUpdate = true
+      gl.shadowMap.enabled = false
+    }
     return () => {
-      // restore default behaviour if this scene unmounts
+      // Clean up on unmount: restore auto-update so other scenes aren't broken.
       gl.shadowMap.autoUpdate = true
     }
   }, [gl, enabled])
+
   useFrame(() => {
-    if (!enabled) return
-    frame.current = (frame.current + 1) % SHADOW_REFRESH_INTERVAL
+    // Check the debug toggle (key 7) — reads the global without touching GL
+    // state directly. The actual mutation happens only here in ShadowManager.
+    const toggleOn = _sysToggles.shadows
+    const shouldRender = enabled && toggleOn
+
+    if (gl.shadowMap.enabled !== shouldRender) {
+      gl.shadowMap.enabled = shouldRender
+      gl.shadowMap.needsUpdate = true
+    }
+
+    if (!shouldRender) return
+
+    frame.current = (frame.current + 1) % refreshInterval
     if (frame.current === 0) gl.shadowMap.needsUpdate = true
   })
-  return null
-}
 
-/** Applies graphics-quality changes that the WebGL renderer won't pick up from a
- *  React prop on its own — chiefly toggling the shadow map on/off live so the
- *  "Quality" setting visibly updates the scene without a reload. */
-function QualitySync({ shadows }: { shadows: boolean }) {
-  const gl = useThree((s) => s.gl)
-  useEffect(() => {
-    gl.shadowMap.enabled = shadows
-    gl.shadowMap.needsUpdate = true
-  }, [gl, shadows])
   return null
 }
 
@@ -235,6 +254,77 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
     })
   }, [anisotropy, gl, scene])
   return null
+}
+
+/**
+ * System elimination toggles — press number keys to disable/enable subsystems.
+ *   1 = DayNightWeather  2 = Exterior  3 = LibraryShell+Bookshelves+Decor
+ *   4 = Lanterns         5 = Fireflies/Aurora/Sparkles  6 = SeasonalOverlay
+ *   7 = Shadows          8 = PostProcessing              9 = RemotePlayers
+ *   0 = Fog
+ *
+ * Shadow toggle (key 7) is read by ShadowManager on each frame — this component
+ * only flips the boolean, it never touches gl.shadowMap directly.
+ *
+ * The toggle state is stored in a global so it survives re-renders.
+ * Press Ctrl+Shift+R to reset all toggles to ON.
+ */
+const _sysToggles: Record<string, boolean> = {
+  dayNight: true, exterior: true, interior: true, lanterns: true,
+  particles: true, seasonal: true, shadows: true, post: true,
+  remotePlayers: true, fog: true,
+}
+if (typeof window !== 'undefined') (window as any).__sysToggles = _sysToggles
+
+function SystemToggles() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const map: Record<string, string> = {
+        '1': 'dayNight', '2': 'exterior', '3': 'interior',
+        '4': 'lanterns', '5': 'particles', '6': 'seasonal',
+        '7': 'shadows', '8': 'post', '9': 'remotePlayers', '0': 'fog',
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+        Object.keys(_sysToggles).forEach(k => _sysToggles[k] = true)
+        console.log('[Toggles] All systems ON')
+        return
+      }
+      const key = map[e.key]
+      if (key) {
+        _sysToggles[key] = !_sysToggles[key]
+        console.log(`[Toggles] ${key}: ${_sysToggles[key] ? 'ON' : 'OFF'}`)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  return null
+}
+
+/** Wrapper that conditionally renders children based on system toggle state. */
+function ToggleGroup({ group, children }: { group: string; children: ReactNode }) {
+  const [enabled, setEnabled] = useState(_sysToggles[group] ?? true)
+  useEffect(() => {
+    const iv = setInterval(() => setEnabled(_sysToggles[group] ?? true), 100)
+    return () => clearInterval(iv)
+  }, [group])
+  if (!enabled) return null
+  return <>{children}</>
+}
+
+/** Hook to check a system toggle — returns false when the system is disabled. */
+export function useSystemToggle(key: string): boolean {
+  const [enabled, setEnabled] = useState(_sysToggles[key] ?? true)
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const cur = _sysToggles[key] ?? true
+      setEnabled(prev => prev === cur ? prev : cur)
+    }, 100)
+    return () => clearInterval(iv)
+  }, [key])
+  return enabled
 }
 
 /**
