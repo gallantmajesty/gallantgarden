@@ -1,19 +1,21 @@
-import { createClient } from '@insforge/sdk'
+import { createClient } from '@supabase/supabase-js'
 
-const projectId = import.meta.env.VITE_INSFORGE_PROJECT_ID
-const appKey = import.meta.env.VITE_INSFORGE_APP_KEY
-const apiKey = import.meta.env.VITE_INSFORGE_API_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabaseConfigured = Boolean(projectId && apiKey)
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
 if (!supabaseConfigured) {
   console.error(
-    '[Focus Lily] Missing InsForge configuration: set VITE_INSFORGE_PROJECT_ID and VITE_INSFORGE_API_KEY in .env.local.',
+    '[Focus Lily] Missing Supabase configuration: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.',
   )
 }
 
-export const insforge = createClient({
-  baseUrl: `https://${appKey}.us-east.insforge.app`,
-  anonKey: apiKey,
-  debug: import.meta.env.DEV,
+export const supabase = createClient(supabaseUrl || 'https://unconfigured.invalid', supabaseAnonKey || 'unconfigured', {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
 })
+
+export { supabase as insforge }
