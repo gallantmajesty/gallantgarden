@@ -5,7 +5,7 @@ export const supabaseConfigured = Boolean(projectId && apiKey)
 
 if (!supabaseConfigured) {
   console.error(
-    '[Focus Lily] Missing InsForge configuration: set VITE_INSFORGE_PROJECT_ID and VITE_INSFORGE_API_KEY in .env.local.',
+    '[Focus Lily] Missing InsForge configuration: set VITE_INSFORGE_APP_KEY and VITE_INSFORGE_API_KEY in .env.local.',
   )
 }
 
