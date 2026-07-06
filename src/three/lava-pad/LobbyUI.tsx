@@ -1,7 +1,5 @@
 // 🏔️ LavaPad Lobby UI — Hero section, entry gate to the game
 // Single-page: no navigation, state-driven transitions
-
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayerStore } from './playerStore'
 import { useCosmeticStore } from './cosmeticStore'

@@ -1,14 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useEffect, useMemo, useState, useCallback, useContext, createContext, type ReactNode } from 'react'
 import { insforge } from '../lib/insforge'
-import { runGlobalInit, runUserTeardown } from '../lib/appInit'
+import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
 import { initSession } from '../lib/session'
 import { networkId } from '../multiplayer/net'
 
@@ -34,14 +26,18 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function mapSupabaseUser(u: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null): AuthUser | null {
+function mapInsForgeUser(
+  u:
+    | { id: string; email: string; profile?: { name?: string; avatar_url?: string | null } | null; metadata?: Record<string, unknown> | null }
+    | null,
+): AuthUser | null {
   if (!u) return null
   return {
     id: u.id,
     email: u.email ?? '',
     profile: {
-      name: (u.user_metadata?.full_name ?? u.user_metadata?.name ?? undefined) as string | undefined,
-      avatar_url: (u.user_metadata?.avatar_url ?? null) as string | null,
+      name: u.profile?.name,
+      avatar_url: u.profile?.avatar_url ?? null,
     },
   }
 }
@@ -51,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.auth.getUser()
-    setUser(mapSupabaseUser(data.user))
+    const result = await insforge.auth.getCurrentUser()
+    setUser(mapInsForgeUser(result.data?.user ?? null))
   }, [])
 
   useEffect(() => {
@@ -60,54 +56,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initSession()
     void runGlobalInit()
 
-    const handleHashChange = () => {
-      supabase.auth.getSession().then(({ data }) => {
-        if (cancelled) return
-        const u = mapSupabaseUser(data.session?.user ?? null)
-        setUser(u)
-        if (u) void runUserInit?.(u)
-      }).catch((e) => console.error('[Auth] session restore failed:', e)).finally(() => {
+    const restore = async () => {
+      try {
+        await refresh()
+      } catch (e) {
+        console.error('[Auth] session restore failed:', e)
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
     }
 
-    handleHashChange()
-    window.addEventListener('hashchange', handleHashChange)
-    return () => {
-      cancelled = true
-      window.removeEventListener('hashchange', handleHashChange)
-    }
+    void restore()
   }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await insforge.auth.signInWithPassword({ email, password })
     if (error) return error.message
-    const u = mapSupabaseUser(data.user)
+    const u = mapInsForgeUser(data?.user ?? null)
     setUser(u)
     if (u) await runUserInit?.(u)
     return null
   }, [])
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
+    const { data, error } = await insforge.auth.signUp({ email, password, name })
     if (error) return error.message
-    const u = mapSupabaseUser(data.user)
+    const u = mapInsForgeUser(data?.user ?? null)
     setUser(u)
     if (u) await runUserInit?.(u)
     return null
   }, [])
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo },
+    const { error } = await insforge.auth.signInWithOAuth(provider, {
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : '',
     })
     if (error) return error.message
-    // Always redirect — Supabase returns the URL to redirect to
-    if (data?.url) {
-      window.location.assign(data.url)
-    }
     return null
   }, [])
 
@@ -124,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    await insforge.auth.signOut()
     runUserTeardown()
     setUser(null)
   }, [])

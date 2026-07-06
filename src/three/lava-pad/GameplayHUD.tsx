@@ -1,5 +1,4 @@
 // 🎮 LavaPad Gameplay HUD — Redesigned to match target design exactly
-import { useEffect, useState } from 'react'
 import { useLavaPadStore } from './store'
 import { usePlayerStore } from './playerStore'
 import { Pause, Coins } from 'lucide-react'

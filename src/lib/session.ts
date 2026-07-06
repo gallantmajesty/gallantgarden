@@ -1,5 +1,3 @@
-import { supabase } from '../lib/insforge'
-
 let sessionId: string | null = null
 let deviceLabel: string | null = null
 

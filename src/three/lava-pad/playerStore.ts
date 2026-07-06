@@ -100,14 +100,14 @@ interface PlayerProgressStore {
   // Actions
   addCoins: (amount: number) => void
   addXP: (amount: number) => void
-  recordGame: (survivalTime: number, placement: number, earnedCoins: number) => void
+  recordGame: (survivalTime: number, placement: number, _earnedCoins: number) => void
   resetSession: () => void
   calculateRewards: (survivalTime: number, placement: number) => { coins: number; xp: number }
 }
 
 export const usePlayerStore = create<PlayerProgressStore>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       coins: 0,
       totalCoinsEarned: 0,
       xp: 0,
@@ -140,7 +140,7 @@ export const usePlayerStore = create<PlayerProgressStore>()(
           }
         }),
 
-      recordGame: (survivalTime, placement, earnedCoins) =>
+      recordGame: (survivalTime, placement, _earnedCoins) =>
         set((s) => {
           const isNewBest = survivalTime > s.bestTime
           const isTop3 = placement <= 3

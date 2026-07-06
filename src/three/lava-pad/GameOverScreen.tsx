@@ -12,7 +12,6 @@ interface GameOverScreenProps {
 
 export function GameOverScreen({ onPlayAgain, onBackToLobby }: GameOverScreenProps) {
   const results = useLavaPadStore((s) => s.results)
-  const players = useLavaPadStore((s) => s.players)
   const localPlayerId = useLavaPadStore((s) => s.localPlayerId)
   const sessionCoins = usePlayerStore((s) => s.sessionCoins)
   const sessionXP = usePlayerStore((s) => s.sessionXP)

@@ -63,7 +63,7 @@ interface CosmeticStore {
   selectedCharacter: string
   selectedPadSkin: string
   selectedTrail: string
-  ownedCharacterslapCharacters: string[]
+  ownedCharacters: string[]
   ownedPadSkins: string[]
   ownedTrails: string[]
 

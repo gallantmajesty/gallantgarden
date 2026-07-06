@@ -173,7 +173,7 @@ export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number)
     const l = pendingLeaves
     const g = pendingGoldenLeaves
     try {
-        await insforge
+        await insforge.database
         .from('profiles')
         .upsert([{ id: userId, xp: l, premium_xp: g }], { onConflict: 'id' })
     } catch {

@@ -13,13 +13,13 @@ let currentStatus: StudyStatus = 'available'
 
 /** Write my presence (best-effort; never throws). */
 async function beat(): Promise<void> {
-  const { data } = await insforge.auth.getUser()
-  const id = (data?.user as { id?: string } | undefined)?.id
+  const result = await insforge.auth.getCurrentUser()
+  const id = result.data?.user?.id
   if (!id) return
-        await insforge
-    .from('profiles')
-    .update({ last_seen_at: new Date().toISOString(), study_status: currentStatus })
-    .eq('id', id)
+  await insforge.database
+  .from('profiles')
+  .update({ last_seen_at: new Date().toISOString(), study_status: currentStatus })
+  .eq('id', id)
 }
 
 /** Start the heartbeat loop. Idempotent. */
