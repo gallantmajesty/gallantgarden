@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { Group, MathUtils, type PerspectiveCamera as TPerspectiveCamera, Vector3 } from 'three'
