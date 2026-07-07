@@ -212,10 +212,10 @@
   animation: mg-shoot var(--dur) linear infinite var(--d);
 }
 @keyframes mg-shoot {
-  0% { left: -12%; opacity: 0; }
+  0% { transform: translateX(-12%); opacity: 0; }
   5% { opacity: 1; }
-  16% { left: 112%; opacity: 0; }
-  100% { left: 112%; opacity: 0; }
+  16% { transform: translateX(112%); opacity: 0; }
+  100% { transform: translateX(112%); opacity: 0; }
 }
 
 /* synthwave sun + perspective grid */
@@ -385,6 +385,7 @@
   padding: 18px 16px;
   background: var(--mg-panel);
   border-right: 1px solid var(--mg-border);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 .mg-back {
@@ -499,6 +500,7 @@
   padding: 14px 24px;
   border-bottom: 1px solid var(--mg-border);
   background: color-mix(in srgb, var(--mg-panel) 60%, transparent);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 .mg-burger {
@@ -534,6 +536,7 @@
   border: 1px solid var(--mg-border);
   color: var(--mg-text);
   font-weight: 600;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -543,6 +546,7 @@
   border: 1px solid var(--mg-border);
   border-radius: var(--mg-radius);
   box-shadow: 0 10px 30px var(--mg-shadow);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 .mg-panel.pad { padding: 18px; }
@@ -587,6 +591,7 @@
   background: var(--mg-panel);
   border: 1px solid var(--mg-border);
   box-shadow: 0 8px 22px var(--mg-shadow);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   overflow: hidden;
 }
@@ -770,6 +775,7 @@
   display: grid; place-items: center;
   padding: 20px;
   background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   animation: mg-fade 0.18s ease;
 }
@@ -781,6 +787,7 @@
   border: 1px solid var(--mg-border);
   border-radius: var(--mg-radius);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   animation: mg-pop 0.2s ease;
 }
@@ -885,6 +892,7 @@
   border: 1px solid var(--mg-border);
   background: var(--mg-panel);
   box-shadow: 0 8px 22px var(--mg-shadow);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   cursor: pointer;
   transition: transform 0.15s;
@@ -922,7 +930,7 @@
 .mg-search input:focus { box-shadow: none; }
 
 .mg-tasklist { display: flex; flex-direction: column; gap: 10px; }
-.mg-taskcard { border-radius: var(--mg-radius); background: var(--mg-panel); border: 1px solid var(--mg-border); box-shadow: 0 6px 18px var(--mg-shadow); backdrop-filter: blur(12px); overflow: hidden; }
+.mg-taskcard { border-radius: var(--mg-radius); background: var(--mg-panel); border: 1px solid var(--mg-border); box-shadow: 0 6px 18px var(--mg-shadow); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); overflow: hidden; }
 .mg-taskcard.done { opacity: 0.6; }
 .mg-taskcard-main { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
 .mg-taskcard.done .mg-check { background: var(--mg-accent); color: #fff; }
@@ -1125,4 +1133,34 @@
   .mg-hero-text h1 { font-size: 20px; }
   .mg-content { padding: 12px; }
   .mg-topbar { padding: 8px 12px; }
+}
+
+/* ============================================================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================================================ */
+
+/* Respect reduced-motion preference for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .mg-root,
+  .mg-root *,
+  .mg-root *::before,
+  .mg-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Disable expensive backdrop-filter on mobile/touch devices for better performance */
+@media (max-width: 768px), (pointer: coarse) {
+  .mg-panel,
+  .mg-stat,
+  .mg-room,
+  .mg-taskcard,
+  .mg-modal,
+  .mg-loading-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
