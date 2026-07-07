@@ -168,37 +168,44 @@ export function SeatSelectionOverlay() {
         </div>
 
         {/* Actions — always visible at bottom */}
-        <div className="sso-actions">
-          <button
-            className="sf-btn water sso-skip"
-            disabled={selected == null}
-            onClick={() => {
-              if (selected != null) {
+          <div className="sso-actions">
+            <button
+              className="sf-btn water sso-skip"
+              disabled={selected == null}
+              onClick={() => {
+                if (selected != null) {
+                  pickSeat(selected)
+                  startWalk()
+                  useSeatFlow.getState().arrive()
+                  useWorld.getState().sit(selected)
+                  useSeatFlow.getState().markEntrancePlayed()
+                }
+              }}
+            >
+              Skip to seat
+            </button>
+            <button
+              className="sf-btn water sso-join"
+              disabled={selected == null}
+              onClick={() => {
+                if (selected == null) return
                 pickSeat(selected)
                 startWalk()
                 useSeatFlow.getState().arrive()
                 useWorld.getState().sit(selected)
                 useSeatFlow.getState().markEntrancePlayed()
-              }
-            }}
-          >
-            Skip to seat
-          </button>
-          <button
-            className="sf-btn water sso-join"
-            disabled={selected == null}
-            onClick={() => {
-              if (selected == null) return
-              pickSeat(selected)
-              startWalk()
-              useSeatFlow.getState().arrive()
-              useWorld.getState().sit(selected)
-              useSeatFlow.getState().markEntrancePlayed()
-            }}
-          >
-            Join Study Session
-          </button>
-        </div>
+              }}
+            >
+              Join Study Session
+            </button>
+          </div>
+          
+          {/* Camera Mode Instructions */}
+          <div className="sso-camera-info">
+            <p className="sso-camera-text">
+              Camera Controls: Press 1-4 for personal camera modes, 5 for universal camera
+            </p>
+          </div>
       </div>
     </div>
   )

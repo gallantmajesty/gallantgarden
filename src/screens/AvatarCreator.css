@@ -708,3 +708,108 @@
   .ac-preview-buy { flex: 1; }
   .ac-preview-cancel { flex: 0 0 auto; }
 }
+
+/* Character selection grid — Stumble Guys style */
+.ac-char-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ac-char-tabs {
+  display: flex;
+  gap: 4px;
+}
+.ac-char-tab {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: rgba(255, 255, 255, 0.08);
+  color: #9a8a6a;
+}
+.ac-char-tab.active {
+  background: #d49040;
+  color: #fff;
+}
+.ac-char-tab:nth-child(4) { color: #a855f7; }
+.ac-char-tab:nth-child(4).active { background: #a855f7; color: #fff; }
+.ac-char-tab:nth-child(5) { color: #f59e0b; }
+.ac-char-tab:nth-child(5).active { background: #f59e0b; color: #fff; }
+.ac-char-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.ac-char-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 6px;
+  border-radius: 10px;
+  border: 2px solid rgba(180, 130, 60, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.15s;
+  overflow: hidden;
+}
+.ac-char-tile:hover {
+  border-color: rgba(180, 130, 60, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+.ac-char-tile.selected {
+  border-color: #d49040;
+  background: rgba(212, 144, 64, 0.12);
+}
+.ac-char-avatar {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.ac-char-emoji {
+  font-size: 36px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+.ac-char-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.ac-char-selected-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #d49040;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-align: center;
+  padding: 2px 0;
+}
+.ac-char-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.ac-char-tile-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ece7ff;
+}
+.ac-char-rarity {
+  font-size: 9px;
+  color: #9a8a6a;
+  font-weight: 600;
+}

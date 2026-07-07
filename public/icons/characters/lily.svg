@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="120" height="160">
+  <!-- Lily - Cute girl character -->
+  <!-- Hair (long, brown) -->
+  <ellipse cx="60" cy="38" rx="30" ry="28" fill="#8B4513"/>
+  <rect x="30" y="38" width="60" height="30" rx="6" fill="#8B4513"/>
+  <!-- Hair sides (pigtails/long) -->
+  <ellipse cx="28" cy="55" rx="10" ry="18" fill="#8B4513"/>
+  <ellipse cx="92" cy="55" rx="10" ry="18" fill="#8B4513"/>
+  <!-- Head -->
+  <rect x="36" y="30" width="48" height="44" rx="10" fill="#FDDCB5"/>
+  <!-- Blush -->
+  <ellipse cx="42" cy="58" rx="6" ry="3" fill="#FFB6C1" opacity="0.5"/>
+  <ellipse cx="78" cy="58" rx="6" ry="3" fill="#FFB6C1" opacity="0.5"/>
+  <!-- Eyes -->
+  <ellipse cx="48" cy="50" rx="5" ry="6" fill="#1a1a1a"/>
+  <ellipse cx="72" cy="50" rx="5" ry="6" fill="#1a1a1a"/>
+  <!-- Eye shine -->
+  <circle cx="50" cy="48" r="2" fill="white"/>
+  <circle cx="74" cy="48" r="2" fill="white"/>
+  <!-- Smile -->
+  <path d="M52 62 Q60 68 68 62" stroke="#e07070" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Dress/Top -->
+  <rect x="34" y="78" width="52" height="40" rx="6" fill="#FF69B4"/>
+  <!-- Dress collar -->
+  <ellipse cx="60" cy="82" rx="12" ry="6" fill="#FFB6C1"/>
+  <!-- Arms -->
+  <rect x="20" y="80" width="14" height="34" rx="7" fill="#FDDCB5"/>
+  <rect x="86" y="80" width="14" height="34" rx="7" fill="#FDDCB5"/>
+  <!-- Hands -->
+  <circle cx="27" cy="116" r="7" fill="#FDDCB5"/>
+  <circle cx="93" cy="116" r="7" fill="#FDDCB5"/>
+  <!-- Skirt -->
+  <path d="M34 116 L30 144 L90 144 L86 116 Z" fill="#FF69B4" rx="4"/>
+  <!-- Shoes -->
+  <rect x="36" y="142" width="20" height="10" rx="5" fill="#FF1493"/>
+  <rect x="64" y="142" width="20" height="10" rx="5" fill="#FF1493"/>
+</svg>

@@ -44,7 +44,7 @@ export function validateUsername(raw: string): UsernameCheck {
  *  the DB unique index remains the final guard. */
 export async function isUsernameAvailable(raw: string, selfId?: string): Promise<boolean> {
   const u = normalizeUsername(raw)
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('public_profiles')
     .select('id')
     .eq('username', u)

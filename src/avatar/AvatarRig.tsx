@@ -91,6 +91,7 @@ export function AvatarRig({
               <group ref={bind('head')} position={[0, P.neckLen, 0]}>
                 <Head P={P} skin={skin} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} />
                 <Hair config={config} P={P} hairM={hairM} />
+                <BlueCap P={P} />
               </group>
             </group>
           </group>
@@ -290,6 +291,58 @@ function Hair({ config, P, hairM }: { config: AvatarConfig; P: Proportions; hair
     case 'braided': return <group>{texturedCap([r * 1.09, r * 1.02, r * 1.09], 0.18, 0.11)}{fringe(0.84)}{sideFall(1.3, 0.18, 0.1)}<Strand m={hairM} len={r * 2.5} rTop={r * 0.32} rBot={r * 0.08} p={[0, cy + r * 0.3, -r * 0.6]} rot={[-0.08, 0, 0]} /></group>
     default: return null
   }
+}
+
+/* ================================================ BLUE CAP ================================================ */
+
+function BlueCap({ P }: { P: Proportions }) {
+  const r = P.headR
+  const cy = r * 0.92
+  const strawLight = sharedMaterial('#e8d5a3', 0.78)
+  const strawMid = sharedMaterial('#d4c090', 0.78)
+  const strawDark = sharedMaterial('#c4a870', 0.78)
+  const ribbonMat = sharedMaterial('#1a1a1a', 0.6)
+
+  return (
+    <group position={[0, cy + r * 0.68, 0]}>
+      {/* Flat top disc */}
+      <mesh geometry={boxGeo(r * 0.95, r * 0.03, r * 0.95)} material={strawLight} position={[0, r * 0.16, 0]} castShadow />
+
+      {/* Crown — short cylinder */}
+      <mesh geometry={latheGeo([
+        [r * 0.48, -r * 0.01],
+        [r * 0.48, r * 0.15],
+      ])} material={strawMid} position={[0, 0, 0]} castShadow />
+
+      {/* Black ribbon — sits right on the brim at crown base */}
+      <mesh geometry={latheGeo([
+        [r * 0.485, -r * 0.025],
+        [r * 0.505, -r * 0.025],
+        [r * 0.505, r * 0.015],
+        [r * 0.485, r * 0.015],
+      ])} material={ribbonMat} position={[0, 0, 0]} />
+
+      {/* Flat brim — thin, proper proportions */}
+      <mesh geometry={latheGeo([
+        [r * 0.50, r * 0.0],
+        [r * 0.85, r * 0.0],
+        [r * 0.86, -r * 0.008],
+        [r * 0.86, -r * 0.022],
+        [r * 0.85, -r * 0.025],
+        [r * 0.50, -r * 0.025],
+      ])} material={strawMid} position={[0, -r * 0.02, 0]} castShadow />
+
+      {/* Subtle straw rings on brim */}
+      {[0.58, 0.67, 0.76].map((s, i) => (
+        <mesh key={i} geometry={torusGeo(r * s, r * 0.004, 6, 48)} material={i % 2 === 0 ? strawDark : strawLight} position={[0, -r * 0.018, 0]} rotation={[Math.PI / 2, 0, 0]} />
+      ))}
+
+      {/* Subtle straw rings on top disc */}
+      {[0.18, 0.32].map((s, i) => (
+        <mesh key={`t${i}`} geometry={torusGeo(r * s, r * 0.003, 6, 32)} material={i % 2 === 0 ? strawDark : strawMid} position={[0, r * 0.178, 0]} rotation={[Math.PI / 2, 0, 0]} />
+      ))}
+    </group>
+  )
 }
 
 /* ================================================ ARMS ================================================ */

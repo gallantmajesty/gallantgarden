@@ -1,5 +1,8 @@
 # AGENTS.md
 
+## MEMORY — READ FIRST
+Before starting any session, read `C:\Users\taksh\Music\frd\MEMORY.md` to restore context from previous conversations. This is our shared memory — it contains project history, user preferences, and past decisions.
+
 <!-- INSFORGE:START -->
 ## InsForge backend
 

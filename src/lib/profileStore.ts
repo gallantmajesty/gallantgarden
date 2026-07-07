@@ -21,7 +21,7 @@ let cacheUser: string | null = null
 /** Load (and cache) the current user's settings document. Returns `{}` when the
  *  user has no profile row yet or the fetch fails (offline-tolerant). */
 export async function loadProfileSettings(userId: string): Promise<ProfileSettings> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('profiles')
     .select('settings')
     .eq('id', userId)
@@ -52,7 +52,7 @@ export async function patchProfileSettings(
   const base = cacheUser === userId && cache ? cache : await loadProfileSettings(userId)
   const next: ProfileSettings = { ...base, ...patch }
 
-  const { error } = await insforge.database
+  const { error } = await insforge
     .from('profiles')
     .upsert([{ id: userId, settings: next }], { onConflict: 'id' })
 

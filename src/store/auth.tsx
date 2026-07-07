@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/insforge'
 import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
 import { initSession } from '../lib/session'
 import { networkId } from '../multiplayer/net'
@@ -34,15 +34,34 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function mapInsforgeUser(u: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null): AuthUser | null {
-  if (!u) return null
+function mapSupabaseUser(su: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null): AuthUser | null {
+  if (!su) return null
   return {
-    id: u.id,
-    email: u.email ?? '',
+    id: su.id,
+    email: su.email ?? '',
     profile: {
-      name: (u.user_metadata?.name as string) ?? (u.user_metadata?.full_name as string) ?? undefined,
-      avatar_url: (u.user_metadata?.avatar_url as string) ?? null,
+      name: (su.user_metadata?.name as string) ?? (su.user_metadata?.full_name as string) ?? undefined,
+      avatar_url: (su.user_metadata?.avatar_url as string) ?? null,
     },
+  }
+}
+
+async function enrichWithProfile(u: AuthUser): Promise<AuthUser> {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('display_name, avatar_url')
+      .eq('id', u.id)
+      .maybeSingle()
+    return {
+      ...u,
+      profile: {
+        name: data?.display_name ?? u.profile?.name,
+        avatar_url: data?.avatar_url ?? u.profile?.avatar_url ?? null,
+      },
+    }
+  } catch {
+    return u
   }
 }
 
@@ -51,8 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data } = await insforge.auth.getUser()
-    setUser(mapInsforgeUser(data.user))
+    const { data } = await supabase.auth.getUser()
+    const u = mapSupabaseUser(data.user)
+    if (u) {
+      const enriched = await enrichWithProfile(u)
+      setUser(enriched)
+    } else {
+      setUser(null)
+    }
   }, [])
 
   useEffect(() => {
@@ -62,12 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const restoreSession = async () => {
       try {
-        const { data } = await insforge.auth.getUser()
-        const u = mapInsforgeUser(data.user)
+        const { data } = await supabase.auth.getSession()
+        const u = mapSupabaseUser(data.session?.user ?? null)
         if (cancelled) return
-        setUser(u)
         if (u) {
-          await runUserInit(u)
+          const enriched = await enrichWithProfile(u)
+          setUser(enriched)
+          await runUserInit(enriched)
+        } else {
+          setUser(null)
         }
       } catch (e) {
         console.error('[Auth] session restore failed:', e)
@@ -88,23 +116,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await insforge.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return error.message
-    setUser(mapInsforgeUser(data.user))
-    if (data.user) await runUserInit(data.user)
+    const u = mapSupabaseUser(data.user)
+    if (u) {
+      const enriched = await enrichWithProfile(u)
+      setUser(enriched)
+      await runUserInit(enriched)
+    }
     return null
   }, [])
 
   const signUp = useCallback(
     async (email: string, password: string, name: string) => {
-      const { data, error } = await insforge.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { name } },
       })
       if (error) return error.message
-      setUser(mapInsforgeUser(data.user))
-      if (data.user) await runUserInit(data.user)
+      const u = mapSupabaseUser(data.user)
+      if (u) {
+        const enriched = await enrichWithProfile(u)
+        setUser(enriched)
+        await runUserInit(enriched)
+      }
       return null
     },
     [],
@@ -114,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const redirectTo = typeof window !== 'undefined' ? window.location.origin : 'https://focuslily.com'
       console.log('[Auth] signInWithProvider', provider, 'redirectTo:', redirectTo)
-      const { data, error } = await insforge.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo },
       })
@@ -122,7 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[Auth] OAuth error:', error)
         return error.message
       }
-      // Supabase returns the URL to redirect to — always follow it.
       if (data?.url) {
         window.location.assign(data.url)
       }
@@ -146,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    const { error } = await insforge.auth.signOut()
+    const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
     runUserTeardown()
     setUser(null)

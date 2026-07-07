@@ -37,7 +37,7 @@ export async function getMessages(
   before?: string,
   limit = MESSAGE_PAGE,
 ): Promise<Message[]> {
-  let q = insforge.database
+  let q = insforge
     .from('messages')
     .select('*')
     .eq('conversation_id', conversationId)
@@ -51,7 +51,7 @@ export async function getMessages(
 
 /** Move my read cursor to now (powers unread state + the peer's read receipt). */
 export async function markRead(conversationId: string, meId: string): Promise<void> {
-  await insforge.database
+  await insforge
     .from('conversation_members')
     .update({ last_read_at: new Date().toISOString() })
     .eq('conversation_id', conversationId)
@@ -79,7 +79,7 @@ interface MemberRow {
 /** Build a summary of every conversation I'm in (for friend-list badges +
  *  read receipts). One round-trip per table, joined client-side. */
 export async function getConversationSummaries(meId: string): Promise<ConversationSummary[]> {
-  const mine = await insforge.database
+  const mine = await insforge
     .from('conversation_members')
     .select('conversation_id, user_id, last_read_at')
     .eq('user_id', meId)
@@ -89,7 +89,7 @@ export async function getConversationSummaries(meId: string): Promise<Conversati
 
   const [convosRes, othersRes] = await Promise.all([
     insforge.from('conversations').select('*').in('id', ids),
-    insforge.database
+    insforge
       .from('conversation_members')
       .select('conversation_id, user_id, last_read_at')
       .in('conversation_id', ids)

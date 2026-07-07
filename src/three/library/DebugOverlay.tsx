@@ -26,11 +26,6 @@ export interface DebugStats {
   programs: number
   geo: number
   tex: number
-  camX: number
-  camY: number
-  camZ: number
-  near: number
-  far: number
   spikes: number
   recreations: number
   ctxLost: boolean
@@ -38,7 +33,6 @@ export interface DebugStats {
 
 const stats: DebugStats = {
   fps: 0, draws: 0, tris: 0, programs: 0, geo: 0, tex: 0,
-  camX: 0, camY: 0, camZ: 0, near: 0, far: 0,
   spikes: 0, recreations: 0, ctxLost: false,
 }
 if (typeof window !== 'undefined') (window as any).__debugStats = stats
@@ -49,7 +43,6 @@ if (typeof window !== 'undefined') (window as any).__debugStats = stats
 
 export function DebugProbe() {
   const gl = useThree((s) => s.gl)
-  const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
 
   // WebGL context-loss listener
@@ -124,11 +117,6 @@ export function DebugProbe() {
       stats.programs = gl.info.programs?.length ?? 0
       stats.geo = m.geometries
       stats.tex = m.textures
-      stats.camX = camera.position.x
-      stats.camY = camera.position.y
-      stats.camZ = camera.position.z
-      stats.near = (camera as any).near ?? 0
-      stats.far = (camera as any).far ?? 0
       a.frames = 0
       a.since = 0
     }
@@ -200,8 +188,6 @@ export function DebugHud() {
     { label: 'Programs', value: String(s.programs) },
     { label: 'Geo', value: String(s.geo) },
     { label: 'Tex', value: String(s.tex) },
-    { label: 'Cam', value: `(${s.camX.toFixed(1)}, ${s.camY.toFixed(1)}, ${s.camZ.toFixed(1)})` },
-    { label: 'Near/Far', value: `${s.near.toFixed(2)} / ${s.far.toFixed(0)}` },
     { label: 'Spikes', value: String(s.spikes), color: s.spikes > 0 ? '#f66' : '#cfc' },
     { label: 'Recreations', value: String(s.recreations), color: s.recreations > 0 ? '#f66' : '#cfc' },
     { label: 'Context', value: s.ctxLost ? 'LOST' : 'OK', color: s.ctxLost ? '#f00' : '#6f6' },

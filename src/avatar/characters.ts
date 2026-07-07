@@ -38,35 +38,22 @@ export const CHARACTERS: Character[] = [
     scale: 1,
     yOffset: 0,
     fallback: look('male', {
-      skin: 'tan', hair: 'short_messy', hairColor: 'black',
+      skin: 'light', hair: 'short_neat', hairColor: 'brown',
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
     }),
-    description: 'Classic student with a friendly look'
+    description: 'Friendly student with a cool black outfit'
   },
   {
     id: 'claire',
-    name: 'Claire',
+    name: 'Lily',
     model: 'claire.glb',
     scale: 1,
     yOffset: 0,
     fallback: look('female', {
-      skin: 'tan', hair: 'twintails', hairColor: 'chestnut',
+      skin: 'light', hair: 'twintails', hairColor: 'chestnut',
       top: 'blazer', bottom: 'pants', shoes: 'boots',
     }),
     description: 'Studious student with stylish appearance'
-  },
-  {
-    id: 'samurai',
-    name: 'Samurai',
-    model: 'samurai.glb',
-    scale: 1,
-    yOffset: 0,
-    fallback: look('male', {
-      skin: 'tan', hair: 'short_messy', hairColor: 'black',
-      top: 'jacket', bottom: 'pants', shoes: 'sneakers',
-    }),
-    description: 'Legendary warrior with traditional armor',
-    special: true
   },
 ]
 

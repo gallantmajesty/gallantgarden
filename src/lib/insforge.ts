@@ -13,8 +13,6 @@ if (!supabaseConfigured) {
 
 const client = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
-// Add .database shim so existing code like `insforge.database.from(...)` works
-// (Supabase client uses `.from()` directly, not `.database.from()`)
 const insforge = Object.assign(client, {
   database: client,
 })

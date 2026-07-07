@@ -96,7 +96,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     let xp = 0
     let premiumXp = 0
     try {
-      const { data: row } = await insforge.database
+      const { data: row } = await insforge
         .from('profiles')
         .select('username, display_name, avatar_url, public_profile, xp, premium_xp')
         .eq('id', userId)
@@ -145,7 +145,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     const username = normalizeUsername(raw)
-    const { error } = await insforge.database
+    const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, username }], { onConflict: 'id' })
     if (error) return false // likely a unique-violation race — caller re-checks
@@ -157,7 +157,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     const name = raw.trim().slice(0, 40)
     if (!userId || !name) return false
-    const { error } = await insforge.database
+    const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, display_name: name }], { onConflict: 'id' })
     if (error) return false
@@ -169,7 +169,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     const pub: ProfilePublic = { ...get().pub, ...patch }
-    const { error } = await insforge.database
+    const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, public_profile: pub }], { onConflict: 'id' })
     if (error) return false
@@ -180,7 +180,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   setAvatarUrl: async (url) => {
     const userId = get().userId
     if (!userId) return false
-    const { error } = await insforge.database
+    const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, avatar_url: url }], { onConflict: 'id' })
     if (error) return false
@@ -192,7 +192,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return
     try {
-      const { data: row } = await insforge.database
+      const { data: row } = await insforge
         .from('profiles')
         .select('xp, premium_xp')
         .eq('id', userId)

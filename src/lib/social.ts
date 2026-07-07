@@ -35,7 +35,7 @@ const PUBLIC_COLS =
 /** Follow a user. Idempotent (upsert on the composite PK). */
 export async function followUser(meId: string, targetId: string): Promise<boolean> {
   if (meId === targetId) return false
-  const { error } = await insforge.database
+  const { error } = await insforge
     .from('follows')
     .upsert([{ follower_id: meId, following_id: targetId }], {
       onConflict: 'follower_id,following_id',
@@ -45,7 +45,7 @@ export async function followUser(meId: string, targetId: string): Promise<boolea
 
 /** Unfollow a user. */
 export async function unfollowUser(meId: string, targetId: string): Promise<boolean> {
-  const { error } = await insforge.database
+  const { error } = await insforge
     .from('follows')
     .delete()
     .eq('follower_id', meId)
@@ -101,7 +101,7 @@ export async function getMutualIds(a: string, b: string): Promise<string[]> {
 /** Resolve a batch of user ids into public profiles (for list rendering). */
 export async function getProfilesByIds(ids: string[]): Promise<PublicProfile[]> {
   if (!ids.length) return []
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .in('id', ids)
@@ -111,7 +111,7 @@ export async function getProfilesByIds(ids: string[]): Promise<PublicProfile[]> 
 
 /** Fetch one public profile by username (the /u/:username route). */
 export async function getPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .eq('username', username.toLowerCase())
@@ -122,7 +122,7 @@ export async function getPublicProfileByUsername(username: string): Promise<Publ
 
 /** Fetch one public profile by id. */
 export async function getPublicProfileById(id: string): Promise<PublicProfile | null> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .eq('id', id)
@@ -139,7 +139,7 @@ export async function searchUsers(query: string, limit = 20): Promise<PublicProf
   const safe = q.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50)
   if (!safe) return []
   const like = `%${safe.replace(/[%_]/g, '')}%`
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .or(`username.ilike.${like},display_name.ilike.${like}`)

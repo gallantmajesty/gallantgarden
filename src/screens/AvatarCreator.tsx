@@ -6,17 +6,8 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { useAvatar } from '../avatar/store'
-import { characterById } from '../avatar/characters'
 import {
-  EYE_COLORS,
-  HEIGHT_MAX,
-  HEIGHT_MIN,
-  SKINS,
-  hairHex,
-  hairsFor,
   type AvatarConfig,
-  type StyleOption,
-  type Swatch,
 } from '../avatar/config'
 import { useProfile } from '../store/profile'
 import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
@@ -68,9 +59,6 @@ export function AvatarCreator() {
           <button className="ac-nav-item" onClick={() => navigate('/')}>
             <Glyph kind="home" /> Home
           </button>
-          <button className="ac-nav-item" onClick={() => navigate('/character-select')}>
-            <Glyph kind="users" /> Characters
-          </button>
           <button className="ac-nav-item" data-on onClick={() => navigate('/avatar')}>
             <Glyph kind="body" /> Customize
           </button>
@@ -111,7 +99,7 @@ export function AvatarCreator() {
           </div>
 
           <div className="ac-dock-scroll">
-            <CharacterDisplayTab config={config} navigate={navigate} />
+            <CharacterDisplayTab config={config} set={set} />
             <BodyTab config={config} set={set} />
           </div>
 
@@ -133,69 +121,56 @@ export function AvatarCreator() {
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
-function CharacterDisplayTab({ config, navigate }: { config: AvatarConfig; navigate: (path: string) => void }) {
-  const character = characterById(config.characterId || 'james')
-  
+function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
+  const characters = [
+    { id: 'james', name: 'James', icon: '/icons/characters/james.svg', rarity: 'Common', color: '#8a8a8a', bg: '#e8f0ff' },
+    { id: 'claire', name: 'Lily', icon: '/icons/characters/lily.svg', rarity: 'Common', color: '#8a8a8a', bg: '#ffe8f0' },
+  ]
+  const tabs = ['ALL', 'COMMON', 'RARE', 'EPIC', 'LEGENDARY']
+  const [activeTab, setActiveTab] = useState('ALL')
+  const current = config.characterId || 'james'
+
+  const filtered = activeTab === 'ALL'
+    ? characters
+    : characters.filter(c => c.rarity.toLowerCase() === activeTab.toLowerCase())
+
   return (
-    <div className="ac-field">
-      <span className="ac-field-label">Selected Character</span>
-      <div className="character-display">
-        <div className="character-info">
-          <h3>{character.name}</h3>
-          {character.special && (
-            <div className="character-special-badge">
-              🌟 Special Character
+    <div className="ac-char-section">
+      <div className="ac-char-tabs">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            className={`ac-char-tab ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="ac-char-grid">
+        {filtered.map((ch) => (
+          <button
+            key={ch.id}
+            className={`ac-char-tile ${current === ch.id ? 'selected' : ''}`}
+            onClick={() => set({ characterId: ch.id } as any)}
+          >
+            <div className="ac-char-avatar" style={{ background: ch.bg }}>
+              <img className="ac-char-img" src={ch.icon} alt={ch.name} />
             </div>
-          )}
-        </div>
-        <button 
-          className="change-character-btn"
-          onClick={() => navigate('/character-select')}
-        >
-          Change Character
-        </button>
+            {current === ch.id && <div className="ac-char-selected-label">SELECTED</div>}
+            <div className="ac-char-info">
+              <span className="ac-char-tile-name">{ch.name}</span>
+              <span className="ac-char-rarity" style={{ color: ch.color }}>{ch.rarity}</span>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   )
 }
 
 function BodyTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  return (
-    <>
-      <Field label={<>Height <b>{config.height} cm</b></>}>
-        <input
-          className="ac-range"
-          type="range"
-          min={HEIGHT_MIN}
-          max={HEIGHT_MAX}
-          value={config.height}
-          onChange={(e) => set({ height: Number(e.target.value) })}
-        />
-      </Field>
-
-      <SwatchField
-        label="Skin"
-        swatches={SKINS}
-        selected={config.skin}
-        onPick={(id) => set({ skin: id })}
-      />
-
-      <SwatchField
-        label="Eye Color"
-        swatches={EYE_COLORS}
-        selected={config.eyes}
-        onPick={(id) => set({ eyes: id })}
-      />
-
-      <StyleField
-        label="Hairstyles"
-        styles={hairsFor(config.bodyType)}
-        selected={config.hair}
-        tileHex={() => hairHex(config.hairColor)}
-        onPick={(id) => set({ hair: id })}
-      />
-    </>
-  )
+  return null
 }
 
 /* ------------------------------------------------------------- control widgets */
