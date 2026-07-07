@@ -20,13 +20,14 @@ const SEAT_EYE = 1.74
 const CHAIR_SEAT_Y = 0.45
 const THIRD_DIST = 5.5
 const PRESET_DIST = 3.5 // fixed camera distance for presets
+const PRESET_3_DIST = 4.2 // slightly farther for preset 3 to avoid table intersection
 
 // 4 fixed camera angles relative to seat yaw (in radians):
 //   1 = left-behind    2 = front-left    3 = front-center    4 = right
 const PRESET_ANGLES: [number, number][] = [
   [0.6, -0.15],   // 1: left-behind
   [-2.5, -0.1],   // 2: front-left
-  [-3.14159, -0.12], // 3: front-center (directly in front)
+  [-3.1, -0.08],  // 3: front-center (slightly up to avoid table intersection)
   [0.9, -0.05],   // 4: right side
 ]
 
@@ -270,19 +271,37 @@ export function PlayerController() {
           const [angleOff, pitchOff] = PRESET_ANGLES[preset - 1]
           targetYaw.current = seat.yaw + angleOff
           targetPitch.current = pitchOff
-          const dist = PRESET_DIST
+          const dist = preset === 3 ? PRESET_3_DIST : PRESET_DIST
 
           const cp = Math.cos(targetPitch.current)
           const idealX = seat.pos[0] + Math.sin(targetYaw.current) * cp * dist
           const idealY = eyeY + Math.sin(targetPitch.current) * dist
           const idealZ = seat.pos[2] + Math.cos(targetYaw.current) * cp * dist
 
-          camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-          camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-          camPos.current.z = springDamper(camPos.current.z, idealZ, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+          // Collision detection for presets - avoid table intersection
+          const dx = idealX - seat.pos[0]
+          const dy = idealY - eyeY
+          const dz = idealZ - seat.pos[2]
+          const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dx, dy, dz, dist + 0.4, collision.blockers)
+          const collisionDist = Math.min(dist, hit - 0.4)
+          const softDist = collisionDist + COLLISION_SOFTNESS * (dist - collisionDist)
+
+          const actualDist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+          if (actualDist > softDist + 0.1) {
+            const dir = new Vector3(dx, dy, dz).normalize()
+            camPos.current.x = seat.pos[0] + dir.x * softDist
+            camPos.current.y = eyeY + dir.y * softDist
+            camPos.current.z = seat.pos[2] + dir.z * softDist
+          } else {
+            camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+            camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+            camPos.current.z = springDamper(camPos.current.z, idealZ, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
+          }
 
           cam.position.copy(camPos.current)
-          camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.25, seat.pos[2]), 1 - Math.exp(-15 * dt))
+// For preset 3, look slightly down at the table to avoid staring at the surface
+          const targetY = preset === 3 ? seat.pos[1] + 0.8 : eyeY - 0.25
+          camTarget.current.lerp(new Vector3(seat.pos[0], targetY, seat.pos[2]), 1 - Math.exp(-15 * dt))
           cam.lookAt(camTarget.current)
 
           st.yaw = targetYaw.current
