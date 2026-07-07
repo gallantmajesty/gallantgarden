@@ -49,9 +49,9 @@ export function PlayerController() {
 
   const seatFlowState = useSeatFlow()
   const p = useRef({
-    x: getInitialPos(seats, seatFlowState)[0],
-    y: getInitialPos(seats, seatFlowState)[1],
-    z: getInitialPos(seats, seatFlowState)[2],
+    x: getInitialPos(seats)[0],
+    y: getInitialPos(seats)[1],
+    z: getInitialPos(seats)[2],
     yaw: 0,
     seatedInit: false,
   })
@@ -246,8 +246,8 @@ export function PlayerController() {
   )
 }
 
-function getInitialPos(seats: ReturnType<typeof seatAnchors>, seatFlow: any): [number, number, number] {
-  const savedId = seatFlow.getState().selectedSeatId
+function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, number] {
+  const savedId = useSeatFlow.getState().selectedSeatId
   if (savedId != null && savedId >= 0 && savedId < seats.length) {
     return seats[savedId].pos
   }
