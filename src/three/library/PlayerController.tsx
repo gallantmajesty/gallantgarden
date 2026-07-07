@@ -47,10 +47,11 @@ export function PlayerController() {
   const targetCamPos = useRef(new Vector3())
   const targetLookAt = useRef(new Vector3())
 
+  const seatFlowState = useSeatFlow()
   const p = useRef({
-    x: getInitialPos(seats)[0],
-    y: getInitialPos(seats)[1],
-    z: getInitialPos(seats)[2],
+    x: getInitialPos(seats, seatFlowState)[0],
+    y: getInitialPos(seats, seatFlowState)[1],
+    z: getInitialPos(seats, seatFlowState)[2],
     yaw: 0,
     seatedInit: false,
   })
@@ -78,7 +79,7 @@ export function PlayerController() {
     const lastMousePos = useRef({ x: 0, y: 0 })
     
     const handleMouseDown = (e: MouseEvent) => {
-      if (e.button === 2 || (e.button === 0 && useWorld.getState().seat != null)) {
+      if (e.button === 2 || (e.button === 0 && worldState.seat != null)) {
         isDragging.current = true
         lastMousePos.current = { x: e.clientX, y: e.clientY }
         e.preventDefault()
@@ -97,8 +98,8 @@ export function PlayerController() {
       lastMousePos.current = { x: e.clientX, y: e.clientY }
       
       // Only allow free orbit when preset is 0 (not in fixed camera mode)
-      if (useSettings.getState().cameraPreset === 0) {
-        const seatId = useWorld.getState().seat
+      if (settings.cameraPreset === 0) {
+        const seatId = worldState.seat
         if (seatId != null && seats[seatId]) {
           const seat = seats[seatId]
           // Rotate around the seat
@@ -120,7 +121,7 @@ export function PlayerController() {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
       // Zoom in/out by adjusting distance from seat
-      const seatId = useWorld.getState().seat
+      const seatId = worldState.seat
       if (seatId != null && seats[seatId]) {
         const seat = seats[seatId]
         const currentDistance = currentCamPos.current.distanceTo(new Vector3(seat.pos[0], seat.pos[1], seat.pos[2]))
@@ -144,12 +145,15 @@ export function PlayerController() {
     }
   }, [gl, seats])
 
+  const settings = useSettings()
+  const worldState = useWorld()
+  
   useFrame((_, dt) => {
     const cam = camRef.current
     if (!cam) return
     
-    const s = useSettings.getState()
-    const seatId = useWorld.getState().seat
+    const s = settings
+    const seatId = worldState.seat
 
     // Handle standing/walking
     if (seatId == null) {
@@ -235,15 +239,15 @@ export function PlayerController() {
   return (
     <>
       <PerspectiveCamera ref={camRef} makeDefault fov={72} near={0.08} far={far} rotation-order="YXZ" />
-      <group ref={avatarRef} visible={useSettings.getState().cameraMode !== 'first'}>
+      <group ref={avatarRef} visible={settings.cameraMode !== 'first'}>
         <CharacterAvatar config={avatarConfig} locomotion={loco} />
       </group>
     </>
   )
 }
 
-function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, number] {
-  const savedId = useSeatFlow.getState().selectedSeatId
+function getInitialPos(seats: ReturnType<typeof seatAnchors>, seatFlow: any): [number, number, number] {
+  const savedId = seatFlow.getState().selectedSeatId
   if (savedId != null && savedId >= 0 && savedId < seats.length) {
     return seats[savedId].pos
   }
