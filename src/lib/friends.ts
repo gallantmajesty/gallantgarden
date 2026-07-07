@@ -48,7 +48,7 @@ export async function reportUser(
   reason: ReportReason,
   context = '',
 ): Promise<boolean> {
-  const { error } = await insforge.database
+  const { error } = await insforge
     .from('reports')
     .insert([{ reported_id: reportedId, reason, context }])
   return !error
@@ -58,7 +58,7 @@ export async function reportUser(
 
 /** Ids of everyone the current user is friends with (either side of the edge). */
 export async function getFriendIds(meId: string): Promise<string[]> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('friendships')
     .select('user_a, user_b')
   if (error || !data) return []
@@ -79,7 +79,7 @@ export interface FriendRequestWithProfile extends FriendRequest {
 
 /** Incoming pending requests (people who want to friend me), with profiles. */
 export async function getIncomingRequests(meId: string): Promise<FriendRequestWithProfile[]> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('friend_requests')
     .select('*')
     .eq('addressee_id', meId)
@@ -94,7 +94,7 @@ export async function getIncomingRequests(meId: string): Promise<FriendRequestWi
 
 /** Outgoing pending requests (people I've asked), with profiles. */
 export async function getOutgoingRequests(meId: string): Promise<FriendRequestWithProfile[]> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('friend_requests')
     .select('*')
     .eq('requester_id', meId)
@@ -109,7 +109,7 @@ export async function getOutgoingRequests(meId: string): Promise<FriendRequestWi
 
 /** Ids the current user has blocked. */
 export async function getBlockedIds(meId: string): Promise<string[]> {
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('blocks')
     .select('blocked_id')
     .eq('blocker_id', meId)

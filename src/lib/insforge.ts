@@ -1,19 +1,19 @@
-import { createClient } from '@insforge/sdk'
+import { createClient } from '@supabase/supabase-js'
 
-const insforgeUrl = import.meta.env.VITE_SUPABASE_URL
-const insforgeAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabaseConfigured = Boolean(insforgeUrl && insforgeAnonKey)
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
 if (!supabaseConfigured) {
   console.error(
-    '[Focus Lily] Missing InsForge configuration: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.',
+    '[Focus Lily] Missing Supabase configuration: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.',
   )
 }
 
-export const supabase = createClient({
-  baseUrl: insforgeUrl || 'https://e29j97zj.us-east.insforge.app',
-  anonKey: insforgeAnonKey || '',
-})
+export const supabase = createClient(
+  supabaseUrl || 'https://yotwndatwwyvqcmfhldi.supabase.co',
+  supabaseAnonKey || '',
+)
 
 export { supabase as insforge }

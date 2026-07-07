@@ -16,7 +16,7 @@ async function beat(): Promise<void> {
   const result = await insforge.auth.getUser()
   const id = result.data?.user?.id
   if (!id) return
-  await insforge.database
+  await insforge
   .from('profiles')
   .update({ last_seen_at: new Date().toISOString(), study_status: currentStatus })
   .eq('id', id)

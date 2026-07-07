@@ -57,7 +57,7 @@ function syncToDb(userId: string, items: string[]) {
     syncTimer = null
     const toSave = pendingItems
     try {
-      await insforge.database
+      await insforge
         .from('profiles')
         .upsert([{ id: userId, inventory: toSave }], { onConflict: 'id' })
     } catch {
@@ -79,7 +79,7 @@ export const useShop = create<ShopState>((set, get) => ({
     // Async DB sync — merge DB inventory with local
     ;(async () => {
       try {
-        const { data: row } = await insforge.database
+        const { data: row } = await insforge
           .from('profiles')
           .select('inventory')
           .eq('id', userId)

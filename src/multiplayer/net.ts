@@ -1,45 +1,30 @@
 // @ts-nocheck
 import { create } from 'zustand'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/insforge'
 import { normalizeAvatar, type AvatarConfig } from '../avatar/config'
 import { getDeviceLabel } from '../lib/session'
 import type { PlayerIdentity, PlayerState, RosterEntry } from './types'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // ============================================================================
-// Realm multiplayer — real-time presence + transform sync over InsForge realtime.
+// Realm multiplayer — real-time presence + transform sync over Supabase realtime.
 //
-// One channel per realm (`realm:lib:<roomId>`, `realm:custom:<id>`, …). Three
-// broadcast events:
-//   • hello — full identity + a current state snapshot. Sent on join, whenever
-//     the avatar/name changes, and on a 4s heartbeat. When we first see someone
-//     we reply with our own hello so discovery is symmetric (no server presence
-//     query required).
-//   • move  — id + transform, ~10×/sec, but only when something actually changed
-//     (plus a 1s keep-alive). This is the "efficient interval + no flooding" rule.
+// One channel per realm (`realm:<roomId>`). Three broadcast events:
+//   • hello — full identity + a current state snapshot.
+//   • move  — id + transform, ~10×/sec, but only when something actually changed.
 //   • bye   — id, on leave.
-//
-// Two stores of remote state, split by update rate:
-//   • `useRealmNet.roster` (zustand) — identities, changes only on join/leave →
-//     drives the roster UI and which avatars are mounted.
-//   • `targets` (plain Map) — the latest transform per player, rewritten ~10×/sec
-//     and read every frame by the renderer. Deliberately NOT React state.
 // ============================================================================
 
-const MOVE_HZ_MS = 100 // ~10 updates/sec
-const HEARTBEAT_MS = 4000 // identity re-broadcast (discovery + liveness)
+const MOVE_HZ_MS = 100
+const HEARTBEAT_MS = 4000
 const PRUNE_MS = 3000
-const STALE_MS = 12000 // drop a player we haven't heard from in this long
+const STALE_MS = 12000
 
-/** Latest transform snapshot per remote player (read every frame; never React). */
 const targets = new Map<string, PlayerState>()
 export function getTarget(id: string): PlayerState | undefined {
   return targets.get(id)
 }
 
-/** A token unique to THIS device, persisted in sessionStorage (per-device, not
- *  shared like localStorage). Appended to the network id so two devices of the
- *  same account are distinct players that can see each other, instead of colliding
- *  on one id and each treating the other as "self". */
 function deviceToken(): string {
   try {
     let t = sessionStorage.getItem('sf.device')
@@ -55,14 +40,11 @@ function deviceToken(): string {
   }
 }
 
-/** Stable per-device network id: the auth user id (or a persisted guest id) plus a
- *  per-device token. Use this for the realm identity's `id`. */
 export function networkId(userId?: string): string {
   const base = userId || guestId()
   return `${base}:${deviceToken()}`
 }
 
-/** Persisted guest id so a signed-out session is one consistent base identity. */
 function guestId(): string {
   try {
     let g = localStorage.getItem('sf.guestId')
@@ -78,17 +60,13 @@ function guestId(): string {
   }
 }
 
-/** Get device label for multiplayer identity. */
 function getDeviceLabelForIdentity(): string {
   return getDeviceLabel()
 }
 
 interface NetStore {
-  /** the channel we're currently joined to (null = solo / not in a realm) */
   channel: string | null
-  /** our own player id (excluded from the roster) */
   selfId: string | null
-  /** remote players only, keyed by id */
   roster: Record<string, RosterEntry>
 }
 
@@ -98,20 +76,16 @@ export const useRealmNet = create<NetStore>(() => ({
   roster: {},
 }))
 
-/* ----------------------------------------------------------- module state --- */
-
 let currentChannel: string | null = null
 let selfId: string | null = null
 let selfIdentity: PlayerIdentity | null = null
 let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false }
-let listenersBound = false
+let supabaseChannel: RealtimeChannel | null = null
 let moveTimer: number | null = null
 let heartbeatTimer: number | null = null
 let pruneTimer: number | null = null
 let lastPub: PlayerState | null = null
 let lastPubTime = 0
-
-/* --------------------------------------------------------------- helpers ---- */
 
 const MAX_NAME_LEN = 30
 
@@ -128,26 +102,74 @@ function helloPayload() {
 }
 
 async function publish(event: string, payload: unknown): Promise<void> {
-  if (!currentChannel) return
+  if (!supabaseChannel) return
   try {
-    await insforge.realtime.publish(currentChannel, event, payload)
+    await supabaseChannel.send({ type: 'broadcast', event, payload })
   } catch (err) {
     console.warn(`[multiplayer] publish "${event}" failed:`, err)
   }
 }
 
-/** Pull the payload + sender out of a SocketMessage, tolerant of whether the
- *  server spreads the payload onto the message or nests it under `payload`. */
-function parse(msg: unknown): { senderId?: string; channel?: string; body: Record<string, unknown> } {
-  const m = (msg ?? {}) as Record<string, unknown>
-  const meta = (m.meta ?? {}) as Record<string, unknown>
-  const nested = m.payload
-  const body = (nested && typeof nested === 'object' ? nested : m) as Record<string, unknown>
-  return { senderId: meta.senderId as string | undefined, channel: meta.channel as string | undefined, body }
+function handleHello(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  if (!id || id === selfId || !body.avatar) return
+  const now = Date.now()
+  const known = !!useRealmNet.getState().roster[id]
+  setRoster(id, {
+    id,
+    name: ((body.name as string) || 'Explorer').slice(0, MAX_NAME_LEN),
+    country: (body.country as string | null) ?? null,
+    rank: ((body.rank as string) || '').slice(0, 20),
+    avatar: normalizeAvatar(body.avatar as Partial<AvatarConfig>),
+    lastSeen: now,
+  })
+  if (body.state) targets.set(id, body.state as PlayerState)
+  if (!known) void publish('hello', helloPayload())
 }
 
-function forUs(channel?: string): boolean {
-  return !currentChannel || !channel || channel === currentChannel
+function handleMove(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  if (!id || id === selfId) return
+  if (!useRealmNet.getState().roster[id]) return
+  targets.set(id, {
+    x: Number(body.x) || 0,
+    y: Number(body.y) || 0,
+    z: Number(body.z) || 0,
+    yaw: Number(body.yaw) || 0,
+    speed: Number(body.speed) || 0,
+    grounded: body.grounded !== false,
+    seated: body.seated === true,
+  })
+  touch(id, Date.now())
+}
+
+function handleBye(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  if (id && id !== selfId) drop(id)
+}
+
+function handleSeatClaim(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  const seatIndex = body.seatIndex as number | undefined
+  const displayName = (body.displayName as string) || 'Explorer'
+  if (id === selfId || seatIndex == null) return
+  void import('../three/train/interior').then(({ claimSeat }) => {
+    claimSeat(seatIndex, id, displayName)
+  }).catch(() => { /* module not loaded */ })
+}
+
+function handleSeatRelease(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  const seatIndex = body.seatIndex as number | undefined
+  if (id === selfId || seatIndex == null) return
+  void import('../three/train/interior').then(({ releaseSeat }) => {
+    releaseSeat(seatIndex)
+  }).catch(() => { /* module not loaded */ })
 }
 
 function setRoster(id: string, entry: RosterEntry) {
@@ -169,73 +191,6 @@ function drop(id: string) {
   })
 }
 
-/* ------------------------------------------------------------- listeners ---- */
-
-function handleHello(msg: unknown) {
-  const { channel, body } = parse(msg)
-  if (!forUs(channel)) return
-  const id = body.id as string | undefined
-  if (!id || id === selfId || !body.avatar) return
-  const now = Date.now()
-  const known = !!useRealmNet.getState().roster[id]
-  setRoster(id, {
-    id,
-    name: ((body.name as string) || 'Explorer').slice(0, MAX_NAME_LEN),
-    country: (body.country as string | null) ?? null,
-    rank: ((body.rank as string) || '').slice(0, 20),
-    avatar: normalizeAvatar(body.avatar as Partial<AvatarConfig>),
-    lastSeen: now,
-  })
-  if (body.state) targets.set(id, body.state as PlayerState)
-  // First time we see them: announce ourselves back so they learn about us too.
-  // Bounded to first-sight, so two clients exchange exactly one hello pair.
-  if (!known) void publish('hello', helloPayload())
-}
-
-function handleMove(msg: unknown) {
-  const { channel, body } = parse(msg)
-  if (!forUs(channel)) return
-  const id = body.id as string | undefined
-  if (!id || id === selfId) return
-  // Ignore movement from players we haven't met yet — their hello heartbeat
-  // (≤4s) will introduce them, then their moves start applying.
-  if (!useRealmNet.getState().roster[id]) return
-  targets.set(id, {
-    x: Number(body.x) || 0,
-    y: Number(body.y) || 0,
-    z: Number(body.z) || 0,
-    yaw: Number(body.yaw) || 0,
-    speed: Number(body.speed) || 0,
-    grounded: body.grounded !== false,
-    seated: body.seated === true,
-  })
-  touch(id, Date.now())
-}
-
-function handleBye(msg: unknown) {
-  const { channel, body } = parse(msg)
-  if (!forUs(channel)) return
-  const id = body.id as string | undefined
-  if (id && id !== selfId) drop(id)
-}
-
-function bindListeners() {
-  if (listenersBound) return
-  insforge.realtime.on('hello', handleHello)
-  insforge.realtime.on('move', handleMove)
-  insforge.realtime.on('bye', handleBye)
-  insforge.realtime.on('seat-claim', handleSeatClaim)
-  insforge.realtime.on('seat-release', handleSeatRelease)
-  // Also listen for raw socket events to diagnose message format
-  insforge.realtime.on('connect', () => { /* connected */ })
-  insforge.realtime.on('connect_error', (err) => console.error('[multiplayer] socket connect_error:', err))
-  insforge.realtime.on('disconnect', (reason) => console.warn('[multiplayer] socket disconnected:', reason))
-  insforge.realtime.on('error', (err) => console.error('[multiplayer] socket error:', err))
-  listenersBound = true
-}
-
-/* ----------------------------------------------------------------- loops ---- */
-
 function moved(a: PlayerState, b: PlayerState): boolean {
   return (
     Math.abs(a.x - b.x) > 0.01 ||
@@ -250,8 +205,6 @@ function moved(a: PlayerState, b: PlayerState): boolean {
 
 function tickMove() {
   const now = Date.now()
-  // Only send when the player actually moved, plus a 1s keep-alive so a still
-  // player isn't pruned. This is what keeps 40–50 players off the network floor.
   if (lastPub && !moved(lastPub, localState) && now - lastPubTime < 1000) return
   lastPub = { ...localState }
   lastPubTime = now
@@ -278,51 +231,18 @@ function stopLoops() {
   moveTimer = heartbeatTimer = pruneTimer = null
 }
 
-/* --------------------------------------------------------- train seat sync -- */
-
-function handleSeatClaim(msg: unknown) {
-  const { channel, body } = parse(msg)
-  if (!forUs(channel)) return
-  const id = body.id as string | undefined
-  const seatIndex = body.seatIndex as number | undefined
-  const displayName = (body.displayName as string) || 'Explorer'
-  if (id === selfId || seatIndex == null) return
-  void import('../three/train/interior').then(({ claimSeat }) => {
-    claimSeat(seatIndex, id, displayName)
-  }).catch(() => { /* module not loaded */ })
-}
-
-function handleSeatRelease(msg: unknown) {
-  const { channel, body } = parse(msg)
-  if (!forUs(channel)) return
-  const id = body.id as string | undefined
-  const seatIndex = body.seatIndex as number | undefined
-  if (id === selfId || seatIndex == null) return
-  void import('../three/train/interior').then(({ releaseSeat }) => {
-    releaseSeat(seatIndex)
-  }).catch(() => { /* module not loaded */ })
-}
-
-/** Broadcast a seat claim to other passengers. */
 export function publishSeatClaim(seatIndex: number, displayName: string): void {
   void publish('seat-claim', { id: selfId, seatIndex, displayName })
 }
 
-/** Broadcast a seat release to other passengers. */
 export function publishSeatRelease(seatIndex: number): void {
   void publish('seat-release', { id: selfId, seatIndex })
 }
 
-/* -------------------------------------------------------------- public API -- */
-
-/** Feed the local player's transform every frame (cheap — just stores it; the
- *  move loop decides when to actually publish). */
 export function setLocalState(s: PlayerState): void {
   localState = s
 }
 
-/** Join (or switch to) a realm channel and start syncing. Safe to call again
- *  with a new channel — it leaves the previous one first. */
 export async function joinRealm(channel: string, identity: PlayerIdentity): Promise<void> {
   if (currentChannel && currentChannel !== channel) await leaveRealm()
   selfId = identity.id
@@ -331,24 +251,26 @@ export async function joinRealm(channel: string, identity: PlayerIdentity): Prom
   lastPub = null
   targets.clear()
   useRealmNet.setState({ channel, selfId: identity.id, roster: {} })
-  bindListeners()
+
   try {
-    await insforge.realtime.connect()
-    const sub = await insforge.realtime.subscribe(channel)
-    if (!sub.ok) {
-      console.error('[multiplayer] subscribe failed:', sub.error)
-      return
-    }
+    supabaseChannel = supabase.channel(channel)
+
+    supabaseChannel
+      .on('broadcast', { event: 'hello' }, handleHello)
+      .on('broadcast', { event: 'move' }, handleMove)
+      .on('broadcast', { event: 'bye' }, handleBye)
+      .on('broadcast', { event: 'seat-claim' }, handleSeatClaim)
+      .on('broadcast', { event: 'seat-release' }, handleSeatRelease)
+
+    await supabaseChannel.subscribe()
   } catch (err) {
-    console.error('[multiplayer] connect/subscribe failed:', err)
+    console.error('[multiplayer] channel subscribe failed:', err)
     return
   }
   await publish('hello', helloPayload())
   startLoops()
 }
 
-/** Update our broadcast identity (avatar cosmetics, name, country, rank changed
- *  while in-realm) and push it out immediately so others re-skin us live. */
 export function updateIdentity(identity: PlayerIdentity): void {
   selfId = identity.id
   selfIdentity = identity
@@ -356,17 +278,16 @@ export function updateIdentity(identity: PlayerIdentity): void {
   void publish('hello', helloPayload())
 }
 
-/** Leave the current realm: announce departure, unsubscribe, clear state. */
 export async function leaveRealm(): Promise<void> {
   stopLoops()
-  const channel = currentChannel
-  if (channel) {
+  if (currentChannel) {
     await publish('bye', { id: selfId })
     try {
-      insforge.realtime.unsubscribe(channel)
-    } catch {
-      /* already gone */
-    }
+      if (supabaseChannel) {
+        supabase.removeChannel(supabaseChannel)
+        supabaseChannel = null
+      }
+    } catch { /* already gone */ }
   }
   currentChannel = null
   targets.clear()

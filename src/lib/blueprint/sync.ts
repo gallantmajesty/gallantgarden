@@ -116,14 +116,14 @@ interface CloudRow {
 /** Upsert one board to the cloud (update-by-id, insert if it didn't exist). */
 async function pushBoard(uid: string, doc: BoardDoc): Promise<void> {
   const payload = { title: doc.title, doc, updated_at: doc.updatedAt }
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('blueprints')
     .update(payload)
     .eq('id', doc.id)
     .select('id')
   if (error) return // swallow — retried on next change
   if (!data || data.length === 0) {
-    await insforge.database
+    await insforge
       .from('blueprints')
       .insert([{ id: doc.id, owner_id: uid, ...payload }])
       .select('id')
@@ -168,7 +168,7 @@ export async function reconcile(uid: string): Promise<BoardMeta[]> {
   const localMetas = listBoardsLocal(uid)
   const localById = new Map(localMetas.map((m) => [m.id, m]))
 
-  const { data, error } = await insforge.database
+  const { data, error } = await insforge
     .from('blueprints')
     .select('id, title, doc, updated_at')
   if (error || !data) return localMetas // offline / error — local only
