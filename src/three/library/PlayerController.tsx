@@ -46,9 +46,12 @@ function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, 
 }
 
 function springDamper(current: number, target: number, stiffness: number, damping: number, dt: number): number {
+  // Prevent NaN or infinity values
+  if (!isFinite(current) || !isFinite(target) || !isFinite(dt)) return current
+  
   const diff = target - current
   const springForce = diff * stiffness
-  const damperForce = -damping * 0
+  const damperForce = -damping * diff // Fixed: actual damping based on position difference
   const acceleration = springForce + damperForce
   return current + acceleration * dt * dt + diff * (1 - Math.exp(-damping * dt))
 }
@@ -194,7 +197,9 @@ export function PlayerController() {
     const dt = Math.min(dtRaw, 0.05)
     const cam = camRef.current
     if (!cam) return
-    const s = useSettings.getState()
+    // Cache state reads to avoid repeated calls in useFrame loop
+    const settings = useSettings.getState()
+    const s = settings
     const st = p.current
 
     const seatId = useWorld.getState().seat
@@ -287,11 +292,18 @@ export function PlayerController() {
           const softDist = collisionDist + COLLISION_SOFTNESS * (dist - collisionDist)
 
           const actualDist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-          if (actualDist > softDist + 0.1) {
+          const needsCollisionFix = actualDist > softDist + 0.1
+          
+          if (needsCollisionFix) {
             const dir = new Vector3(dx, dy, dz).normalize()
-            camPos.current.x = seat.pos[0] + dir.x * softDist
-            camPos.current.y = eyeY + dir.y * softDist
-            camPos.current.z = seat.pos[2] + dir.z * softDist
+            const targetX = seat.pos[0] + dir.x * softDist
+            const targetY = eyeY + dir.y * softDist
+            const targetZ = seat.pos[2] + dir.z * softDist
+            
+            // Use spring damper even for collision correction to avoid jittering
+            camPos.current.x = springDamper(camPos.current.x, targetX, CAMERA_STIFFNESS * 0.8, CAMERA_DAMPING * 1.2, dt)
+            camPos.current.y = springDamper(camPos.current.y, targetY, CAMERA_STIFFNESS * 0.8, CAMERA_DAMPING * 1.2, dt)
+            camPos.current.z = springDamper(camPos.current.z, targetZ, CAMERA_STIFFNESS * 0.8, CAMERA_DAMPING * 1.2, dt)
           } else {
             camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
             camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
