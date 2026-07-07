@@ -13,7 +13,6 @@ import type { Locomotion } from '../../avatar/animation'
 import { useAvatar } from '../../avatar/store'
 import { setLocalState } from '../../multiplayer/net'
 import { useSeatFlow } from '../../store/seatFlow'
-import { EmoteLabel } from './EmoteLabel'
 
 const SEAT_EYE = 1.74
 const CHAIR_SEAT_Y = 0.45
@@ -239,7 +238,6 @@ export function PlayerController() {
       <group ref={avatarRef} visible={useSettings.getState().cameraMode !== 'first'}>
         <CharacterAvatar config={avatarConfig} locomotion={loco} />
       </group>
-      {emote && <EmoteLabel text={emote} />}
     </>
   )
 }
