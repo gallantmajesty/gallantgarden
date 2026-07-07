@@ -11,7 +11,7 @@ export const MESSAGE_PAGE = 30
 
 /** Get (or atomically create) the DM conversation with a friend. Returns its id. */
 export async function getOrCreateDm(other: string): Promise<string | null> {
-  const { data, error } = await insforge.database.rpc('get_or_create_dm', { other })
+  const { data, error } = await insforge.rpc('get_or_create_dm', { other })
   if (error) return null
   // rpc returns the scalar uuid (string) or { ... } depending on shape
   return (typeof data === 'string' ? data : (data as { get_or_create_dm?: string })?.get_or_create_dm) ?? null
@@ -20,7 +20,7 @@ export async function getOrCreateDm(other: string): Promise<string | null> {
 /** Send a message. Returns the persisted row, or null if rejected (not friends,
  *  blocked, empty). */
 export async function sendMessage(conversationId: string, body: string): Promise<Message | null> {
-  const { data, error } = await insforge.database.rpc('send_message', {
+  const { data, error } = await insforge.rpc('send_message', {
     conversation: conversationId,
     body,
   })
@@ -88,7 +88,7 @@ export async function getConversationSummaries(meId: string): Promise<Conversati
   const ids = myRows.map((r) => r.conversation_id)
 
   const [convosRes, othersRes] = await Promise.all([
-    insforge.database.from('conversations').select('*').in('id', ids),
+    insforge.from('conversations').select('*').in('id', ids),
     insforge.database
       .from('conversation_members')
       .select('conversation_id, user_id, last_read_at')

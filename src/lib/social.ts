@@ -55,14 +55,14 @@ export async function unfollowUser(meId: string, targetId: string): Promise<bool
 
 /** Ids of everyone `userId` follows. */
 export async function getFollowingIds(userId: string): Promise<string[]> {
-  const { data, error } = await insforge.database.rpc('get_following_ids', { p_user_id: userId })
+  const { data, error } = await insforge.rpc('get_following_ids', { p_user_id: userId })
   if (error || !data) return []
   return data as string[]
 }
 
 /** Ids of everyone who follows `userId`. */
 export async function getFollowerIds(userId: string): Promise<string[]> {
-  const { data, error } = await insforge.database.rpc('get_follower_ids', { p_user_id: userId })
+  const { data, error } = await insforge.rpc('get_follower_ids', { p_user_id: userId })
   if (error || !data) return []
   return data as string[]
 }
@@ -74,14 +74,14 @@ export interface FollowCounts {
 
 /** Follower + following counts for a user (derived from the follows table). */
 export async function getCounts(userId: string): Promise<FollowCounts> {
-  const { data, error } = await insforge.database.rpc('get_follow_count', { p_user_id: userId })
+  const { data, error } = await insforge.rpc('get_follow_count', { p_user_id: userId })
   if (error || !data) return { followers: 0, following: 0 }
   return data as FollowCounts
 }
 
 /** Does `meId` follow `targetId`? */
 export async function isFollowing(meId: string, targetId: string): Promise<boolean> {
-  const { data, error } = await insforge.database.rpc('get_is_following', {
+  const { data, error } = await insforge.rpc('get_is_following', {
     p_follower_id: meId,
     p_following_id: targetId,
   })
@@ -91,7 +91,7 @@ export async function isFollowing(meId: string, targetId: string): Promise<boole
 
 /** Users that BOTH `a` and `b` follow in common (mutual connections). */
 export async function getMutualIds(a: string, b: string): Promise<string[]> {
-  const { data, error } = await insforge.database.rpc('get_mutual_following_ids', { p_a: a, p_b: b })
+  const { data, error } = await insforge.rpc('get_mutual_following_ids', { p_a: a, p_b: b })
   if (error || !data) return []
   return data as string[]
 }

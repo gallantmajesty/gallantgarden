@@ -13,7 +13,7 @@ let currentStatus: StudyStatus = 'available'
 
 /** Write my presence (best-effort; never throws). */
 async function beat(): Promise<void> {
-  const result = await insforge.auth.getCurrentUser()
+  const result = await insforge.auth.getUser()
   const id = result.data?.user?.id
   if (!id) return
   await insforge.database

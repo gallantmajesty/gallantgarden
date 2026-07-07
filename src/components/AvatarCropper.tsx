@@ -94,8 +94,12 @@ export function AvatarCropper({
       const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.92))
       if (!blob) return
       const out = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
-      const { data, error } = await insforge.storage.from('avatars').uploadAuto(out)
-      if (!error && data?.url) onDone(data.url)
+      const path = `avatars/${crypto.randomUUID()}.jpg`
+      const { data, error } = await insforge.storage.from('avatars').upload(path, out)
+      if (!error) {
+        const { data: pub } = insforge.storage.from('avatars').getPublicUrl(path)
+        onDone(pub.publicUrl)
+      }
     } finally {
       setBusy(false)
     }

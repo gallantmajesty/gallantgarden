@@ -12,13 +12,13 @@ import type { FriendRequest, PublicProfile, ReportReason } from './types'
 
 /** Send (or re-send) a friend request. Returns true on success. */
 export async function sendFriendRequest(addressee: string): Promise<boolean> {
-  const { error } = await insforge.database.rpc('send_friend_request', { addressee })
+  const { error } = await insforge.rpc('send_friend_request', { addressee })
   return !error
 }
 
 /** Accept or decline an incoming request by id. */
 export async function respondFriendRequest(requestId: string, accept: boolean): Promise<boolean> {
-  const { error } = await insforge.database.rpc('respond_friend_request', {
+  const { error } = await insforge.rpc('respond_friend_request', {
     request_id: requestId,
     accept,
   })
@@ -27,18 +27,18 @@ export async function respondFriendRequest(requestId: string, accept: boolean): 
 
 /** Remove an existing friend (either party). */
 export async function removeFriend(other: string): Promise<boolean> {
-  const { error } = await insforge.database.rpc('remove_friend', { other })
+  const { error } = await insforge.rpc('remove_friend', { other })
   return !error
 }
 
 /** Block a user — severs friendship, cancels requests, stops all contact. */
 export async function blockUser(target: string): Promise<boolean> {
-  const { error } = await insforge.database.rpc('block_user', { target })
+  const { error } = await insforge.rpc('block_user', { target })
   return !error
 }
 
 export async function unblockUser(target: string): Promise<boolean> {
-  const { error } = await insforge.database.rpc('unblock_user', { target })
+  const { error } = await insforge.rpc('unblock_user', { target })
   return !error
 }
 

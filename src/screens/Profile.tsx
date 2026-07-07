@@ -515,8 +515,12 @@ function BannerPicker({ view }: { view: ProfileView }) {
     if (!file) return
     setBusy(true)
     try {
-      const { data, error } = await insforge.storage.from('avatars').uploadAuto(file)
-      if (!error && data?.url) savePublic({ bannerImage: data.url, bannerPos: 50 })
+      const path = `avatars/${crypto.randomUUID()}`
+      const { error } = await insforge.storage.from('avatars').upload(path, file)
+      if (!error) {
+        const { data: pub } = insforge.storage.from('avatars').getPublicUrl(path)
+        savePublic({ bannerImage: pub.publicUrl, bannerPos: 50 })
+      }
     } finally {
       setBusy(false)
     }

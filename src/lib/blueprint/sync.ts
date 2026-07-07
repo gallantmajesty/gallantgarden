@@ -147,14 +147,14 @@ export function queueCloudPush(uid: string, doc: BoardDoc): void {
 }
 
 export async function deleteBoardCloud(boardId: string): Promise<void> {
-  await insforge.database.from('blueprints').delete().eq('id', boardId)
+  await insforge.from('blueprints').delete().eq('id', boardId)
 }
 
 // ---- media uploads ----------------------------------------------------------
 // Reuse the existing public `note-images` bucket so pasted/uploaded images
 // resolve to a stable public URL we can embed and export.
 export async function uploadMedia(file: File): Promise<string | null> {
-  const { data, error } = await insforge.storage.from('note-images').uploadAuto(file)
+  const { data, error } = await insforge.storage.from('note-images').upload(file)
   if (error || !data) return null
   return data.url
 }

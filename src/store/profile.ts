@@ -132,7 +132,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       const row: Record<string, unknown> = { id: userId }
       if (data.country) row.country = data.country
       if (data.rank) row.rank = data.rank
-      await insforge.database.from('profiles').upsert([row], { onConflict: 'id' })
+      await insforge.from('profiles').upsert([row], { onConflict: 'id' })
     } catch {
       /* column missing / offline — jsonb copy still has it */
     }

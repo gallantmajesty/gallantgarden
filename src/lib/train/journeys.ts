@@ -86,7 +86,7 @@ interface StartArgs {
 export async function syncStartJourney(userId: string | null, a: StartArgs): Promise<void> {
   if (!userId) return
   try {
-    await insforge.database.rpc('start_train_journey', {
+    await insforge.rpc('start_train_journey', {
       p_line_id: a.lineId,
       p_platform: a.platform,
       p_seat: a.seat,
@@ -103,7 +103,7 @@ export async function syncStartJourney(userId: string | null, a: StartArgs): Pro
 export async function syncHeartbeat(userId: string | null, activeFocusSec: number): Promise<void> {
   if (!userId) return
   try {
-    await insforge.database.rpc('train_journey_heartbeat', { p_active_focus_sec: Math.round(activeFocusSec) })
+    await insforge.rpc('train_journey_heartbeat', { p_active_focus_sec: Math.round(activeFocusSec) })
   } catch {
     /* ignore */
   }
@@ -113,7 +113,7 @@ export async function syncHeartbeat(userId: string | null, activeFocusSec: numbe
 export async function syncCompleteJourney(userId: string | null, e: JournalEntry): Promise<void> {
   if (!userId) return
   try {
-    await insforge.database.rpc('complete_train_journey', {
+    await insforge.rpc('complete_train_journey', {
       p_line_id: e.lineId,
       p_minutes: e.minutes,
       p_distance_km: e.distanceKm,
@@ -132,7 +132,7 @@ export async function syncCompleteJourney(userId: string | null, e: JournalEntry
 export async function syncAbandonJourney(userId: string | null): Promise<void> {
   if (!userId) return
   try {
-    await insforge.database.rpc('abandon_train_journey', {})
+    await insforge.rpc('abandon_train_journey', {})
   } catch {
     /* ignore */
   }
@@ -144,7 +144,7 @@ export async function syncAbandonJourney(userId: string | null): Promise<void> {
 export async function fetchActiveJourney(userId: string | null): Promise<PersistedJourney | null> {
   if (!userId) return null
   try {
-    const { data, error } = await insforge.database.rpc('get_active_train_journey', {})
+    const { data, error } = await insforge.rpc('get_active_train_journey', {})
     if (error || !data || typeof data !== 'object') return null
     const r = data as Record<string, unknown>
     if (!r.line_id || !r.ends_at) return null

@@ -32,7 +32,7 @@ export async function createRealm(
   playerLimit: number,
 ): Promise<Realm | null> {
   try {
-    const { data, error } = await insforge.database.rpc('create_realm', {
+    const { data, error } = await insforge.rpc('create_realm', {
       p_name: name,
       p_visibility: visibility,
       p_limit: playerLimit,
@@ -48,7 +48,7 @@ export async function createRealm(
  *  string ('realm not found' | 'realm closed' | 'friends only' | 'banned' | …). */
 export async function getRealmByCode(code: string): Promise<{ realm?: Realm; error?: string }> {
   try {
-    const { data, error } = await insforge.database.rpc('get_realm_by_code', { p_code: code })
+    const { data, error } = await insforge.rpc('get_realm_by_code', { p_code: code })
     if (error) return { error: error.message || 'could not open realm' }
     if (!data) return { error: 'realm not found' }
     return { realm: data as Realm }
@@ -63,7 +63,7 @@ export async function updateRealm(
   patch: { name?: string; visibility?: RealmVisibility; playerLimit?: number },
 ): Promise<Realm | null> {
   try {
-    const { data, error } = await insforge.database.rpc('update_realm', {
+    const { data, error } = await insforge.rpc('update_realm', {
       p_id: id,
       p_name: patch.name ?? null,
       p_visibility: patch.visibility ?? null,
@@ -79,7 +79,7 @@ export async function updateRealm(
 /** Owner-only: close a realm (drops it from discovery and rejects new joins). */
 export async function closeRealm(id: string): Promise<boolean> {
   try {
-    const { error } = await insforge.database.rpc('close_realm', { p_id: id })
+    const { error } = await insforge.rpc('close_realm', { p_id: id })
     return !error
   } catch {
     return false
@@ -89,7 +89,7 @@ export async function closeRealm(id: string): Promise<boolean> {
 /** Open, public realms for the discovery feed. */
 export async function listPublicRealms(): Promise<Realm[]> {
   try {
-    const { data, error } = await insforge.database.rpc('list_public_realms', {})
+    const { data, error } = await insforge.rpc('list_public_realms', {})
     if (error || !Array.isArray(data)) return []
     return data as Realm[]
   } catch {
