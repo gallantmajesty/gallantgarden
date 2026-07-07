@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : 'https://focuslily.com'
     const { data, error } = await insforge.auth.signInWithOAuth(provider, { redirectTo })
     if (error) return error.message
     // InsForge returns the URL to redirect to — always follow it.
