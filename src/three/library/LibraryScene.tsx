@@ -281,20 +281,11 @@ function SystemToggles() {
     const onKey = (e: KeyboardEvent) => {
       // Ignore if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      const map: Record<string, string> = {
-        '1': 'dayNight', '2': 'exterior', '3': 'interior',
-        '4': 'lanterns', '5': 'particles', '6': 'seasonal',
-        '7': 'shadows', '8': 'post', '9': 'remotePlayers', '0': 'fog',
-      }
+      // Only Ctrl+Shift+R to reset all toggles — no number keys (avoids
+      // conflict with camera presets 1-4 in PlayerController).
       if (e.ctrlKey && e.shiftKey && e.key === 'R') {
         Object.keys(_sysToggles).forEach(k => _sysToggles[k] = true)
         console.log('[Toggles] All systems ON')
-        return
-      }
-      const key = map[e.key]
-      if (key) {
-        _sysToggles[key] = !_sysToggles[key]
-        console.log(`[Toggles] ${key}: ${_sysToggles[key] ? 'ON' : 'OFF'}`)
       }
     }
     window.addEventListener('keydown', onKey)

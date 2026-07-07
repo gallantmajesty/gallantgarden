@@ -27,6 +27,17 @@ CREATE TRIGGER profiles_touch BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
+-- RLS + Grants for profiles
+-- ============================================================
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY profiles_select ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY profiles_insert ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY profiles_update ON profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY profiles_delete ON profiles FOR DELETE USING (auth.uid() = id);
+GRANT SELECT, INSERT, UPDATE, DELETE ON profiles TO authenticated;
+GRANT USAGE ON SCHEMA public TO authenticated;
+
+-- ============================================================
 -- 2. ONBOARDING: country column
 -- ============================================================
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS country text;
