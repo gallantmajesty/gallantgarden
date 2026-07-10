@@ -1,14 +1,18 @@
 import { Suspense, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { ContactShadows, OrbitControls } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
+import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
 import { useAvatar } from '../avatar/store'
 import {
   type AvatarConfig,
+  type StyleOption,
+  type Swatch,
 } from '../avatar/config'
+import { CHARACTERS, characterById } from '../avatar/characters'
 import { useProfile } from '../store/profile'
 import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
 import './AvatarCreator.css'
@@ -80,6 +84,7 @@ export function AvatarCreator() {
       <div className="ac-body">
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
+          <div className="ac-stage-name">{characterById(config.characterId || 'james').name}</div>
           <Suspense fallback={<div className="ac-stage-veil" />}>
             <AvatarCanvas config={config} controlsRef={controls} />
           </Suspense>
@@ -122,17 +127,14 @@ export function AvatarCreator() {
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
 function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  const characters = [
-    { id: 'james', name: 'James', icon: '/icons/characters/james.svg', rarity: 'Common', color: '#8a8a8a', bg: '#e8f0ff' },
-    { id: 'claire', name: 'Lily', icon: '/icons/characters/lily.svg', rarity: 'Common', color: '#8a8a8a', bg: '#ffe8f0' },
-  ]
+  const characters = CHARACTERS
   const tabs = ['ALL', 'COMMON', 'RARE', 'EPIC', 'LEGENDARY']
   const [activeTab, setActiveTab] = useState('ALL')
   const current = config.characterId || 'james'
 
   const filtered = activeTab === 'ALL'
     ? characters
-    : characters.filter(c => c.rarity.toLowerCase() === activeTab.toLowerCase())
+    : characters.filter(c => (c.rarity ?? '').toLowerCase() === activeTab.toLowerCase())
 
   return (
     <div className="ac-char-section">
@@ -152,7 +154,7 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
           <button
             key={ch.id}
             className={`ac-char-tile ${current === ch.id ? 'selected' : ''}`}
-            onClick={() => set({ characterId: ch.id } as any)}
+            onClick={() => set({ ...characterById(ch.id).fallback, characterId: ch.id })}
           >
             <div className="ac-char-avatar" style={{ background: ch.bg }}>
               <img className="ac-char-img" src={ch.icon} alt={ch.name} />
@@ -265,31 +267,59 @@ function AvatarCanvas({
   config: AvatarConfig
   controlsRef: React.RefObject<OrbitControlsImpl | null>
 }) {
+  // Wizard character renders as a transparent standalone shot — no pedestal, no
+  // floor shadow, no environment light: a single warm top-down spotlight + a
+  // faint rim light, orthographic front view, alpha channel on the canvas.
+  const isWizard = config.characterId === 'wizard'
+
   return (
     <Canvas
       shadows={false}
       dpr={[1, 1.5]}
-      camera={{ position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      orthographic={isWizard}
+      camera={isWizard
+        ? { position: [0, 1.1, 4], zoom: 90, near: 0.1, far: 50 }
+        : { position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }
+      }
+      gl={{ antialias: true, powerPreference: 'high-performance', alpha: isWizard, preserveDrawingBuffer: isWizard }}
+      style={isWizard ? { background: 'transparent' } : undefined}
     >
-      {/* warm café lighting — golden key + soft amber fill */}
-      <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
-      <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
-      <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
-      <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
-      <ambientLight intensity={0.25} color="#ffe8d0" />
+      {isWizard ? (
+        <>
+          {/* Warm top-down spotlight only + faint rim — per wizard character spec */}
+          <spotLight position={[0, 6, 1]} angle={0.6} penumbra={0.5} intensity={2.4} color="#fff0d8" />
+          <directionalLight position={[-3, 1.5, -2]} intensity={0.35} color="#d8c8ff" />
+          <group position={[0, -0.9, 0]}>
+            <PreviewAvatar config={config} />
+          </group>
+        </>
+      ) : (
+        <>
+          {/* warm café lighting — golden key + soft amber fill */}
+          <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
+          <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
+          <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
+          <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
+          <ambientLight intensity={0.25} color="#ffe8d0" />
 
-      {/* warm dust motes floating in lamplight */}
-      <DustMotes count={60} />
+          {/* warm dust motes floating in lamplight */}
+          <DustMotes count={60} />
 
-      <group position={[0, -0.9, 0]}>
-        <PreviewAvatar config={config} />
+          <group position={[0, -0.9, 0]}>
+            <PreviewAvatar config={config} />
 
-        {/* warm wooden pedestal with glowing edge */}
-        <CafePedestal />
+            {/* 360° cozy Korean café showcase surrounding the character */}
+            <KoreanCafeShowcase />
 
-        <ContactShadows position={[0, 0.002, 0]} opacity={0.4} scale={3} blur={2.6} far={2} resolution={256} color="#2a1a0a" />
-      </group>
+            {/* warm wooden pedestal with glowing edge */}
+            <CafePedestal />
+
+            {/* soft CIRCULAR contact shadow (radial gradient) — avoids the hard
+                square edge of ContactShadows */}
+            <SoftShadow />
+          </group>
+        </>
+      )}
 
       <OrbitControls
         ref={controlsRef}
@@ -354,49 +384,36 @@ function DustMotes({ count = 60 }: { count?: number }) {
   )
 }
 
-/** Warm wooden café pedestal with glowing ring edge */
-function CafePedestal() {
-  const ringRef = useRef<THREE.Mesh>(null!)
-  const glowRef = useRef<THREE.Mesh>(null!)
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime
-    if (ringRef.current) {
-      const mat = ringRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = 0.45 + Math.sin(t * 1.2) * 0.1
-    }
-    if (glowRef.current) {
-      const mat = glowRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = 0.12 + Math.sin(t * 0.8) * 0.05
-    }
-  })
-
+/** Soft circular ground shadow — a radial-gradient disc under the character so the
+ *  shadow reads as a natural round pool instead of a hard square. */
+function SoftShadow() {
+  const tex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = c.height = 128
+    const ctx = c.getContext('2d')!
+    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64)
+    g.addColorStop(0, 'rgba(24,12,4,0.5)')
+    g.addColorStop(0.6, 'rgba(24,12,4,0.24)')
+    g.addColorStop(1, 'rgba(24,12,4,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 128, 128)
+    return new THREE.CanvasTexture(c)
+  }, [])
   return (
-    <group>
-      {/* soft warm floor glow */}
-      <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-        <circleGeometry args={[1.2, 48]} />
-        <meshBasicMaterial color="#d49040" transparent opacity={0.12} />
-      </mesh>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
+      <circleGeometry args={[0.82, 48]} />
+      <meshBasicMaterial map={tex} transparent depthWrite={false} />
+    </mesh>
+  )
+}
 
-      {/* dark wooden floor disc */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.9, 48]} />
-        <meshStandardMaterial color="#3a2a18" roughness={0.85} metalness={0.05} />
-      </mesh>
-
-      {/* glowing warm ring — like a lantern edge */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}>
-        <ringGeometry args={[0.82, 0.88, 48]} />
-        <meshBasicMaterial color="#ff9040" transparent opacity={0.45} />
-      </mesh>
-
-      {/* inner accent ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-        <ringGeometry args={[0.54, 0.58, 48]} />
-        <meshBasicMaterial color="#c07030" transparent opacity={0.3} />
-      </mesh>
-    </group>
+/** Simple wooden café pedestal — just a floor disc so the character has ground. */
+function CafePedestal() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      <circleGeometry args={[0.9, 48]} />
+      <meshStandardMaterial color="#3a2a18" roughness={0.85} metalness={0.05} />
+    </mesh>
   )
 }
 

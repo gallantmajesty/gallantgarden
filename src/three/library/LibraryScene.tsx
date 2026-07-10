@@ -7,6 +7,7 @@ import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
 import { useSettings } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
+import { useSeatFlow } from '../../store/seatFlow'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'

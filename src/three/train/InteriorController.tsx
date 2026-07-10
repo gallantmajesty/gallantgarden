@@ -16,6 +16,9 @@ import { updateFrustum } from './optimization/CullingManager'
 const STAND_EYE = 1.58
 // Seated eye height when settled in the seat.
 const SEAT_EYE = 1.2
+// Base camera FOV; first-person scroll zooms subtly between 0.8× and 1.2× of it
+// (spec 1.6 — "Scroll wheel: zoom in/out (subtle, 0.8x to 1.2x FOV)").
+const BASE_FOV = 70
 
 export function InteriorController() {
   const gl = useThree((s) => s.gl)
@@ -44,6 +47,8 @@ export function InteriorController() {
   // Window auto-pan: smoothly turns camera to nearest window on journey start,
   // then hands back control after a few seconds.
   const autoPan = useRef({ active: false, startYaw: 0, targetYaw: 0, t: 0, duration: 3.0 })
+  // First-person FOV zoom ref (spec 1.6); restored to BASE_FOV on mount.
+  const fov = useRef(BASE_FOV)
 
   // ── drag-look + wheel zoom (shared between standing and seated) ──────────
 
@@ -67,9 +72,22 @@ export function InteriorController() {
     }
     const up = () => (drag.current.on = false)
     const wheel = (e: WheelEvent) => {
-      if (useSettings.getState().cameraMode === 'first') return
       e.preventDefault()
-      view.current.zoom = MathUtils.clamp(view.current.zoom + Math.sign(e.deltaY) * 0.5, 1.8, 6)
+      if (useSettings.getState().cameraMode === 'first') {
+        // Subtle FOV zoom (0.8×–1.2×) while seated/standing in first person.
+        fov.current = MathUtils.clamp(
+          fov.current + Math.sign(e.deltaY) * 2,
+          BASE_FOV * 0.8,
+          BASE_FOV * 1.2,
+        )
+        const cam = camRef.current
+        if (cam) {
+          cam.fov = fov.current
+          cam.updateProjectionMatrix()
+        }
+      } else {
+        view.current.zoom = MathUtils.clamp(view.current.zoom + Math.sign(e.deltaY) * 0.5, 1.8, 6)
+      }
     }
     el.addEventListener('pointerdown', down)
     el.addEventListener('wheel', wheel, { passive: false })
@@ -186,8 +204,8 @@ export function InteriorController() {
       l.speed = moving ? AISLE_WALK_SPEED : 0
     }
 
-    // Seat proximity — update nearestSeatRef for the glow in CarriageInterior.
-    const near = findNearestSeat(st.x, st.z, seats, 1.5)
+  // Seat proximity — update nearestSeatRef for the glow in CarriageInterior.
+  const near = findNearestSeat(st.x, st.z, seats, 1.5)
     nearestSeatRef.current = near ? { id: near.seat.id, pos: [near.seat.pos[0], near.seat.pos[1], near.seat.pos[2]] } : null
 
     // Update glow mesh position.

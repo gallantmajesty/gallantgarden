@@ -150,6 +150,19 @@
   border: none;
 }
 .ac-stage canvas:active { cursor: grabbing; }
+.ac-stage-name {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  z-index: 2;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
 .ac-stage-veil {
   position: absolute;
   inset: 0;
@@ -164,9 +177,9 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: linear-gradient(180deg, #f5ede4, #ebe2d6);
-  color: #2c2218;
-  border-left: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, #5b3a23, #432a18);
+  color: #f3e9dc;
+  border-left: 1px solid rgba(0, 0, 0, 0.25);
   box-shadow: -18px 0 50px rgba(0, 0, 0, 0.4);
 }
 
@@ -210,10 +223,10 @@
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  color: #8a7f93;
+  color: #c9b89a;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.ac-dock-x:hover { background: rgba(0, 0, 0, 0.06); color: #2c2540; }
+.ac-dock-x:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 
 /* icon tabs */
 .ac-tabs {
@@ -231,10 +244,10 @@
   gap: 5px;
   padding: 9px 2px 7px;
   border-radius: 12px;
-  color: #8a7f93;
+  color: #c9b89a;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.ac-tab:hover { background: rgba(180, 130, 60, 0.1); color: #5a3a18; }
+.ac-tab:hover { background: rgba(255, 220, 160, 0.1); color: #f3e9dc; }
 .ac-tab-ico {
   display: grid;
   place-items: center;
@@ -262,16 +275,16 @@
   gap: 22px;
 }
 .ac-dock-scroll::-webkit-scrollbar { width: 8px; }
-.ac-dock-scroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 8px; }
+.ac-dock-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 8px; }
 
 .ac-field { display: flex; flex-direction: column; gap: 11px; }
 .ac-field-label {
   font-family: var(--display);
   font-weight: 800;
   font-size: 15px;
-  color: #2c2218;
+  color: #f3e9dc;
 }
-.ac-field-label b { color: #8a5a20; }
+.ac-field-label b { color: #e0a85a; }
 
 /* body type segmented */
 .ac-seg { display: flex; gap: 8px; }
@@ -409,7 +422,7 @@
 .ac-quick button:hover { background: #d6cab8; }
 
 /* my items (stub) */
-.ac-items-note { font-size: 13px; color: #8a7f93; line-height: 1.5; }
+.ac-items-note { font-size: 13px; color: #c9b89a; line-height: 1.5; }
 .ac-items-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

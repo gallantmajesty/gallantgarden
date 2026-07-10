@@ -171,3 +171,57 @@ export function fabricTexture(baseHex: string): CanvasTexture {
     }
   })
 }
+
+/** Procedural hair strand/frizz texture (grayscale) used as a bump + roughness
+ *  map so hair reads as individual fibres instead of a smooth "clay" shell.
+ *  Vertical, slightly wavy strands of varied tone give surface relief. */
+export function hairFrizzTex(): CanvasTexture {
+  return cachedTexture('hair-frizz', (ctx, w, h) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, w, h)
+    // fine, wavy strands
+    for (let i = 0; i < 280; i++) {
+      const x = Math.random() * w
+      const tone = 95 + Math.floor(Math.random() * 95)
+      ctx.strokeStyle = `rgb(${tone},${tone},${tone})`
+      ctx.lineWidth = 0.5 + Math.random() * 1.7
+      ctx.beginPath()
+      let y = 0
+      let cx = x
+      ctx.moveTo(cx, y)
+      while (y < h) {
+        y += 5 + Math.random() * 9
+        cx = x + Math.sin(y * 0.05 + i) * (3 + Math.random() * 4)
+        ctx.lineTo(cx, y)
+      }
+      ctx.stroke()
+    }
+    // darker root flecks for depth
+    for (let i = 0; i < 140; i++) {
+      const x = Math.random() * w
+      const tone = 35 + Math.floor(Math.random() * 45)
+      ctx.strokeStyle = `rgba(${tone},${tone},${tone},0.5)`
+      ctx.lineWidth = 0.5 + Math.random()
+      ctx.beginPath()
+      ctx.moveTo(x, Math.random() * h * 0.35)
+      ctx.lineTo(x + (Math.random() - 0.5) * 4, Math.random() * h * 0.35 + h * 0.08)
+      ctx.stroke()
+    }
+  }, 256, 256)
+}
+
+/** Faint skin micro-texture (grayscale) for subtle surface relief — kills the
+ *  plastic-doll smoothness without changing the silhouette. */
+export function skinReliefTex(): CanvasTexture {
+  return cachedTexture('skin-relief', (ctx, w, h) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, w, h)
+    for (let i = 0; i < 5200; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const tone = Math.random() < 0.5 ? 120 : 60
+      ctx.fillStyle = `rgba(${tone},${tone},${tone},0.5)`
+      ctx.fillRect(x, y, 1, 1)
+    }
+  }, 256, 256)
+}

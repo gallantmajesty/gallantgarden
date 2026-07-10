@@ -21,8 +21,8 @@ import { useSettings } from '../../store/settings'
 // reusable temporaries (allocated once)
 const cTop = new Color()
 const cHorizon = new Color()
-const cNightTop = new Color('#070b18')
-const cNightHor = new Color('#131c33')
+const cNightTop = new Color('#172a4d')
+const cNightHor = new Color('#4a3522')
 const tmp = new Color()
 
 /**
@@ -44,8 +44,8 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
         side: BackSide,
         depthWrite: false,
         uniforms: {
-          top: { value: new Color('#070b18') },
-          horizon: { value: new Color('#131c33') },
+          top: { value: new Color('#172a4d') },
+          horizon: { value: new Color('#4a3522') },
         },
         vertexShader: `
           varying vec3 vP;

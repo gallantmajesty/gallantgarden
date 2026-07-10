@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTrain, DEPARTURE_SEC, ARRIVAL_CINEMATIC_SEC, EXPLORE_SEC } from '../../store/train'
 import { useStation } from '../../store/station'
 import { TRAIN_LINES } from '../../lib/train/lines'
-import { departureBoard, statusLabel, fmtCountdown, fmtHuman } from '../../lib/train/schedule'
+import { departureBoard, statusLabel, fmtCountdown, fmtHuman, platformStatus } from '../../lib/train/schedule'
 import { xpFor, coinsFor } from '../../lib/train/rewards'
 import { isMuted, setMuted } from '../../three/train/audio'
-import { Journal, StatsPanel, SettingsPanel, ChatOverlay, PassengerList, QuickActions } from './ui'
+import { Journal, StatsPanel, SettingsPanel, ChatOverlay, PassengerList, QuickActions, ReactionBar } from './ui'
 import './TrainHUD.css'
 
 // ============================================================================
@@ -69,6 +69,7 @@ export function TrainHUD() {
         <>
           <JourneyDock />
           <MilestoneToast />
+          <SeatAssignedToast />
           <QuickActions activePanel={activePanel} onToggle={togglePanel} />
           {activePanel === 'journal' && <Journal onClose={() => setActivePanel(null)} />}
           {activePanel === 'stats' && <StatsPanel onClose={() => setActivePanel(null)} />}
@@ -77,6 +78,7 @@ export function TrainHUD() {
         </>
       )}
       {phase === 'traveling' && <ChatOverlay />}
+      {phase === 'traveling' && <ReactionBar />}
       {phase === 'arriving' && <ArrivalCinematic />}
       {phase === 'exploring' && <ExplorationUI />}
       {phase === 'arrived' && <ArrivalScreen />}
@@ -150,8 +152,14 @@ function BoardingPrompt() {
   const line = TRAIN_LINES[near]
   if (!line) return null
 
+  // The doors are only open during the line's live boarding window. Outside it
+  // the train is either still approaching (or already gone) and the doors are
+  // sealed — show a locked/awaiting state instead of "now boarding" (spec 1.4).
+  const ps = platformStatus(line)
+  const boardable = ps.boardable
+
   return (
-    <div className="train-prompt water-glass" style={accentVars(line.mood.glow, line.mood.accent)}>
+    <div className={`train-prompt water-glass ${boardable ? '' : 'locked'}`} style={accentVars(line.mood.glow, line.mood.accent)}>
       <div className="train-prompt-plat">
         <span className="train-prompt-plat-n">{line.platform}</span>
         <span className="train-prompt-plat-l">Platform</span>
@@ -162,16 +170,32 @@ function BoardingPrompt() {
           <span className="train-prompt-dur">{durationLabel(line.minutes)}</span>
         </div>
         <span className="train-prompt-dest">→ {line.destination}</span>
-        <span className="train-prompt-status" style={{ color: '#8ef0a8', opacity: 0.95 }}>Now boarding</span>
+        {boardable ? (
+          <span className="train-prompt-status" style={{ color: '#8ef0a8', opacity: 0.95 }}>Now boarding</span>
+        ) : ps.phase === 'approaching' ? (
+          <span className="train-prompt-status" style={{ color: '#ffd27a', opacity: 0.95 }}>
+            Arriving in {fmtCountdown(ps.phaseRemaining)}
+          </span>
+        ) : (
+          <span className="train-prompt-status" style={{ color: '#ff8a8a', opacity: 0.95 }}>
+            Doors locked · returns {fmtHuman(ps.untilArrival)}
+          </span>
+        )}
       </div>
-      {isTouch ? (
-        <button className="sf-btn water train-prompt-cta" onClick={() => useTrain.getState().beginBoarding(line.id)}>
-          Board
-        </button>
+      {boardable ? (
+        isTouch ? (
+          <button className="sf-btn water train-prompt-cta" onClick={() => useTrain.getState().beginBoarding(line.id)}>
+            Board
+          </button>
+        ) : (
+          <div className="train-prompt-key">
+            Press <kbd>E</kbd>
+            <span>to board</span>
+          </div>
+        )
       ) : (
-        <div className="train-prompt-key">
-          Press <kbd>E</kbd>
-          <span>to board</span>
+        <div className="train-prompt-key locked">
+          <span>Wait for boarding</span>
         </div>
       )}
     </div>
@@ -402,11 +426,61 @@ function DepartureDock() {
       {seat == null && (
         <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
           <SitPrompt />
+          {departureSec <= 5 && (
+            <span className="train-doors-closing">⚠ Doors closing in {departureSec}s — sit now!</span>
+          )}
           <span style={{ fontSize: 11, opacity: 0.6, whiteSpace: 'nowrap' }}>
             Walk to the door and press <kbd>E</kbd> to step off
           </span>
         </div>
       )}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------- seat auto-assign */
+
+/**
+ * When the departure countdown hits zero and the player is still standing,
+ * the store auto-assigns the nearest empty seat (or leaves them standing if
+ * the carriage is full). This toast surfaces that outcome so the player gets
+ * the spec's "We found you a seat!" (or "standing room only") feedback instead
+ * of a silent camera snap. Purely presentational — driven by seat/departureSec
+ * transitions, no store changes.
+ */
+function SeatAssignedToast() {
+  const seat = useTrain((s) => s.seat)
+  const departureSec = useTrain((s) => s.departureSec)
+  const prevSeat = useRef<number | null>(seat)
+  const prevDep = useRef(departureSec)
+  const [toast, setToast] = useState<string | null>(null)
+  const hideRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    // Door just closed: departure countdown ended this tick.
+    if (prevDep.current > 0 && departureSec === 0) {
+      const msg =
+        seat != null && prevSeat.current == null
+          ? 'We found you a seat! 🪑'
+          : seat == null
+            ? 'Train is full — standing room only'
+            : null
+      if (hideRef.current) window.clearTimeout(hideRef.current)
+      if (msg) {
+        setToast(msg)
+        hideRef.current = window.setTimeout(() => setToast(null), 4200)
+      }
+    }
+    prevSeat.current = seat
+    prevDep.current = departureSec
+  }, [seat, departureSec])
+
+  useEffect(() => () => void (hideRef.current && window.clearTimeout(hideRef.current)), [])
+
+  if (!toast) return null
+  return (
+    <div className="train-seat-toast water-glass" role="status" aria-live="polite">
+      {toast}
     </div>
   )
 }

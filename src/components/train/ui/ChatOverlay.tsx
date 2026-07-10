@@ -1,6 +1,7 @@
 // Chat overlay — bottom-left semi-transparent message feed. Shows system
 // messages (departure, arrival), player chat, and milestone announcements.
-// Toggle input with Enter key; limited to 100 chars per message.
+// Toggle input with Enter key; limited to 100 chars per message. Supports
+// pre-defined quick-chat phrases (spec 6.3) and a light profanity filter (6.6).
 
 import { useEffect, useRef, useState } from 'react'
 import { useTrain } from '../../../store/train'
@@ -12,6 +13,27 @@ interface ChatMessage {
   name?: string
   seat?: number
   ts: number
+}
+
+// Pre-defined quick-chat phrases (spec 6.3) — no typing required.
+const QUICK_CHAT: Record<string, string[]> = {
+  greeting: ['Hello!', 'Hi there!', 'Welcome aboard!'],
+  encouragement: ['Great focus!', 'Keep going!', 'You got this!', 'Nice work!'],
+  journey: ['Love this route!', 'Beautiful view!', 'Tunnel ahead!'],
+  farewell: ['Great journey!', 'See you next time!', 'Safe travels!'],
+}
+
+// Minimal profanity filter (spec 6.6) — blanks out obvious offenders so the
+// carriage stays friendly. Deliberately small + client-side (defence in depth,
+// not a real moderation system).
+const PROFANITY = ['badword', 'damn', 'hell', 'crap', 'stupid', 'idiot']
+function filterProfanity(text: string): string {
+  let out = text
+  for (const w of PROFANITY) {
+    const re = new RegExp(`\\b${w}\\b`, 'gi')
+    out = out.replace(re, '*'.repeat(w.length))
+  }
+  return out
 }
 
 // Pre-seeded system messages based on journey phase
@@ -29,6 +51,7 @@ export function ChatOverlay() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputOpen, setInputOpen] = useState(false)
   const [inputText, setInputText] = useState('')
+  const [quickOpen, setQuickOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const idCounter = useRef(0)
@@ -70,8 +93,8 @@ export function ChatOverlay() {
     return () => window.removeEventListener('keydown', down)
   }, [inputOpen, phase])
 
-  const send = () => {
-    const text = inputText.trim()
+  const send = (raw?: string) => {
+    const text = filterProfanity((raw ?? inputText).trim())
     if (!text) return
     const msg: ChatMessage = {
       id: `msg-${++idCounter.current}`,
@@ -115,9 +138,43 @@ export function ChatOverlay() {
             placeholder="Type a message..."
             maxLength={100}
           />
-          <button className="sf-btn ghost sm" onClick={send}>Send</button>
+          <button className="sf-btn ghost sm" onClick={() => send()}>Send</button>
         </div>
       )}
+
+      {/* Quick chat (spec 6.3) — pre-defined phrases, no typing */}
+      <div className="train-chat-quick">
+        <button
+          className={`train-chat-quick-toggle ${quickOpen ? 'on' : ''}`}
+          onClick={() => setQuickOpen((v) => !v)}
+          title="Quick phrases"
+        >
+          😀
+        </button>
+        {quickOpen && (
+          <div className="train-chat-quick-panel">
+            {Object.entries(QUICK_CHAT).map(([cat, phrases]) => (
+              <div key={cat} className="train-chat-quick-cat">
+                <span className="train-chat-quick-cat-label">{cat}</span>
+                <div className="train-chat-quick-chips">
+                  {phrases.map((p) => (
+                    <button
+                      key={p}
+                      className="train-chat-quick-chip"
+                      onClick={() => {
+                        send(p)
+                        setQuickOpen(false)
+                      }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

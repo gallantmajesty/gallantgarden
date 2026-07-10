@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
+import { CHARACTERS } from '../avatar/characters'
 
-const ALL_CHARACTERS = [
-  { id: 'james', name: 'James', description: 'Friendly student', icon: '/icons/characters/james.svg', gender: 'male', rarity: 'common' as const },
-  { id: 'claire', name: 'Lily', description: 'Studious student', icon: '/icons/characters/lily.svg', gender: 'female', rarity: 'common' as const },
-]
+// Derived from the single roster in src/avatar/characters.ts so editing there
+// updates both this picker and the customization screen.
+const ALL_CHARACTERS = CHARACTERS.map((c) => ({
+  id: c.id,
+  name: c.name,
+  description: c.description ?? '',
+  icon: c.icon ?? '',
+  gender: c.gender ?? 'male',
+  rarity: (c.rarity ?? 'Common').toLowerCase() as 'common' | 'rare' | 'epic' | 'legendary',
+}))
 
 interface CharacterCardProps {
   character: typeof ALL_CHARACTERS[number]

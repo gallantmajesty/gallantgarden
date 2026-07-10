@@ -83,38 +83,40 @@ const MALE: Proportions = {
   footLen: 0.18,
 }
 
-// Chibi female: same big head, narrower shoulders, wider hips,
-// pronounced waist pinch, subtle bust, longer legs.
+// Female shares the SAME skeleton (bone hierarchy) and SAME overall height as
+// the male (James) — hipsY, limb lengths and head size are identical — but has a
+// clearly feminine silhouette: narrower shoulders, wider hips, a bust, and
+// slimmer limbs/hands/feet. Gender reads from body shape AND hair/clothing.
 const FEMALE: Proportions = {
-  hipsY: 0.62,
-  spineLen: 0.11,
-  chestLen: 0.17,
-  neckLen: 0.045,
-  neckR: 0.046,
-  headR: 0.16,
+  ...MALE,
   shoulderW: 0.14,
-  hipW: 0.10,
-  upperArm: 0.15,
-  lowerArm: 0.13,
-  upperLeg: 0.25,
-  lowerLeg: 0.23,
-  shoulderR: 0.038,
-  elbowR: 0.030,
-  wristR: 0.025,
-  thighR: 0.058,
-  kneeR: 0.042,
-  ankleR: 0.033,
-  chestW: 0.118,
-  waistW: 0.09,
-  hipBoneW: 0.14,
+  hipW: 0.105,
+  shoulderR: 0.044,
+  elbowR: 0.034,
+  wristR: 0.028,
+  thighR: 0.06,
+  kneeR: 0.044,
+  ankleR: 0.034,
+  chestW: 0.12,
+  waistW: 0.095,
+  hipBoneW: 0.135,
   torsoD: 0.092,
-  bust: 0.04,
-  handLen: 0.08,
-  footLen: 0.15,
+  bust: 0.045,
+  handLen: 0.085,
+  neckR: 0.05,
+  footLen: 0.16,
 }
 
 export function proportionsFor(bodyType: BodyType): Proportions {
   return bodyType === 'female' ? FEMALE : MALE
+}
+
+/** Realistic (near-human) proportions for the Ruslana character: a small head
+ *  (~6 heads tall instead of the chibi ~3.5) on the feminine skeleton. Limb and
+ *  torso lengths stay close to FEMALE so the model still grounds correctly. */
+export const REALISTIC: Proportions = {
+  ...FEMALE,
+  headR: 0.095,
 }
 
 /** Uniform scale — fixed at 1.0 so all avatars are the same height. */

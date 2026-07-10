@@ -5,6 +5,7 @@ import type { Group } from 'three'
 import { PngIcon } from '../components/PngIcon'
 import { useRealm, type CustomRealm } from '../store/realm'
 import { useAvatar } from '../avatar/store'
+import { characterById } from '../avatar/characters'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
 import { LIBRARY_ROOMS, TRAIN_ROOMS } from '../lib/realm'
@@ -168,6 +169,8 @@ function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
 function CharacterOrb() {
   const navigate = useNavigate()
   const config = useAvatar((s) => s.config)
+  const character = characterById(config.characterId || 'james')
+
   return (
     <button className="realm-avatar" onClick={() => navigate('/avatar')} title="Customize character">
       <div className="realm-avatar-orb">
@@ -188,7 +191,7 @@ function CharacterOrb() {
       </div>
       <div className="realm-avatar-meta">
         <span className="realm-avatar-you">YOUR AVATAR</span>
-        <span className="realm-avatar-name">Study companion</span>
+        <span className="realm-avatar-name">{character.name}</span>
         <span className="realm-avatar-change">Customize ›</span>
       </div>
     </button>
@@ -197,13 +200,11 @@ function CharacterOrb() {
 
 function SpinningAvatar({ config }: { config: AvatarConfig }) {
   const g = useRef<Group>(null)
-  // No locomotion ref → the avatar holds a calm idle pose; we add only a slow
-  // turntable spin so the portrait feels alive without a walking animation.
   useFrame((_, dt) => {
-    if (g.current) g.current.rotation.y += dt * 0.6
+    if (g.current) g.current.rotation.y += dt * 0.4
   })
   return (
-    <group ref={g} position={[0, -0.92, 0]}>
+    <group ref={g} position={[0, -0.85, 0]}>
       <CharacterAvatar config={config} />
     </group>
   )

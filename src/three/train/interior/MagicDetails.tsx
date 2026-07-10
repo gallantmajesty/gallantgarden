@@ -9,6 +9,7 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BufferGeometry, Float32BufferAttribute, AdditiveBlending } from 'three'
 import { CARRIAGE } from '../interior'
+import { sharedPerfMonitor } from '../perfMonitor'
 
 const DUST_COUNT = 80
 
@@ -44,6 +45,9 @@ export function DustParticles() {
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return
+    // Gate visibility on the perf monitor's dust toggle (spec 3.10): when FPS
+    // sags the auto-adjuster drops particles to claw back frames.
+    pointsRef.current.visible = sharedPerfMonitor.dustParticlesEnabled
     const t = clock.getElapsedTime()
     const pos = pointsRef.current.geometry.attributes.position
     const phaseAttr = pointsRef.current.geometry.attributes.aPhase

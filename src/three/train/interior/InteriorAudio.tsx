@@ -29,6 +29,7 @@ import {
   playWhistle,
 } from '../audio'
 import type { LineId } from '../../../lib/train/lines'
+import { getRouteConfig, isInTunnel } from '../routes'
 
 export function InteriorAudio() {
   const phase = useTrain((s) => s.phase)
@@ -75,7 +76,12 @@ export function InteriorAudio() {
     mgr.updateListener(camera.position.x, camera.position.y, camera.position.z)
 
     // Update each layer
-    updateRumble(phase, preset, false, dt)
+    const line = TRAIN_LINES.find((l) => l.id === lineId) ?? TRAIN_LINES[0]
+    const st = useTrain.getState()
+    const inTunnel =
+      (phase === 'traveling' || phase === 'arriving') &&
+      isInTunnel(st.progress(), getRouteConfig(line).tunnels).active
+    updateRumble(phase, preset, inTunnel, dt)
     updateCreaks(phase, preset, dt, CARRIAGE.z1 - CARRIAGE.z0)
     updateExterior(phase, preset, dt)
     updateMusic(phase, preset, dt)

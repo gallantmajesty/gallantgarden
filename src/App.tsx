@@ -28,6 +28,7 @@ const CharacterSelection = lazy(() => import('./screens/CharacterSelection').the
 const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
 const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
 
+
 export default function App() {
   const { user, loading } = useAuth()
   const onboarded = useProfile((s) => s.onboarded)
@@ -115,6 +116,7 @@ export default function App() {
               <Route path="/character-select" element={<CharacterSelection />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/lava-pad" element={<LavaPad />} />
+
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

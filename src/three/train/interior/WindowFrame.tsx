@@ -14,9 +14,10 @@ const FRAME_THICK = 0.06
 interface WindowFrameProps {
   side: -1 | 1
   z: number
+  frost?: boolean
 }
 
-function SingleWindow({ side, z }: WindowFrameProps) {
+function SingleWindow({ side, z, frost }: WindowFrameProps) {
   const brassMat = useBrassMaterial()
   const glassMat = useGlassMaterial()
   const { halfW } = CARRIAGE
@@ -86,18 +87,35 @@ function SingleWindow({ side, z }: WindowFrameProps) {
           opacity={0.15}
         />
       </mesh>
+
+      {/* Window condensation / frost — appears on cold routes (e.g. Mountain,
+       *  Night Express in snow). A subtle semi-opaque ice film over the glass;
+       *  cheap, single draw per window, no GPU cost beyond the extra mesh. */}
+      {frost && (
+        <mesh position={[-side * 0.018, 0, 0]}>
+          <boxGeometry args={[0.012, WINDOW_H * 0.97, WINDOW_W * 0.97]} />
+          <meshStandardMaterial
+            color="#ECEFF1"
+            roughness={1}
+            metalness={0}
+            transparent
+            opacity={0.26}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
     </group>
   )
 }
 
 /** All windows along both sides of the carriage */
-export function WindowFrames() {
+export function WindowFrames({ frost = false }: { frost?: boolean }) {
   const windows = useMemo(() => carriageWindows(), [])
 
   return (
     <group>
       {windows.map((w, i) => (
-        <SingleWindow key={i} side={w.side} z={w.pos[2]} />
+        <SingleWindow key={i} side={w.side} z={w.pos[2]} frost={frost} />
       ))}
     </group>
   )

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <linearGradient id="furGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7A6248"/>
+      <stop offset="100%" stop-color="#4A3826"/>
+    </linearGradient>
+    <radialGradient id="skinGrad" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#FDEBD8"/>
+      <stop offset="100%" stop-color="#F0D2B0"/>
+    </radialGradient>
+    <radialGradient id="hairGrad" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#E8C071"/>
+      <stop offset="100%" stop-color="#B8902F"/>
+    </radialGradient>
+  </defs>
+
+  <!-- HAIR (blonde, behind) -->
+  <ellipse cx="100" cy="100" rx="54" ry="50" fill="url(#hairGrad)"/>
+
+  <!-- LONG BRAID down the right side -->
+  <path d="M150 110 Q164 150 156 196 Q150 210 140 200 Q146 155 138 116 Z" fill="url(#hairGrad)"/>
+  <path d="M146 130 Q156 132 152 142" stroke="rgba(0,0,0,0.12)" stroke-width="1.5" fill="none"/>
+  <path d="M144 150 Q155 152 150 162" stroke="rgba(0,0,0,0.12)" stroke-width="1.5" fill="none"/>
+  <path d="M142 170 Q153 172 148 182" stroke="rgba(0,0,0,0.12)" stroke-width="1.5" fill="none"/>
+  <circle cx="148" cy="202" r="6" fill="#B8902F"/>
+
+  <!-- FACE -->
+  <rect x="56" y="72" width="88" height="78" rx="22" fill="url(#skinGrad)"/>
+
+  <!-- EARS -->
+  <ellipse cx="54" cy="115" rx="8" ry="10" fill="#F0D2B0"/>
+  <ellipse cx="146" cy="115" rx="8" ry="10" fill="#F0D2B0"/>
+
+  <!-- EYES (blue) -->
+  <ellipse cx="80" cy="112" rx="7" ry="9" fill="#3a6ea5"/>
+  <ellipse cx="120" cy="112" rx="7" ry="9" fill="#3a6ea5"/>
+  <ellipse cx="82" cy="109" rx="3" ry="3.5" fill="white" opacity="0.85"/>
+  <ellipse cx="122" cy="109" rx="3" ry="3.5" fill="white" opacity="0.85"/>
+  <!-- rosy cheeks -->
+  <ellipse cx="72" cy="124" rx="6" ry="4" fill="#f4b8c4" opacity="0.5"/>
+  <ellipse cx="128" cy="124" rx="6" ry="4" fill="#f4b8c4" opacity="0.5"/>
+
+  <!-- MOUTH (soft smile) -->
+  <path d="M92 131 Q100 136 108 131" stroke="#c0607a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- USHANKA - fur hat -->
+  <!-- Ear flaps (drop to ear level) -->
+  <ellipse cx="46" cy="120" rx="20" ry="30" fill="url(#furGrad)"/>
+  <ellipse cx="154" cy="120" rx="20" ry="30" fill="url(#furGrad)"/>
+  <!-- Fur band around lower crown -->
+  <path d="M44 78 Q44 66 100 60 Q156 66 156 78 Q156 92 100 96 Q44 92 44 78 Z" fill="#3F3020"/>
+  <!-- Crown (rounded fur cap) -->
+  <path d="M52 80 Q52 34 100 28 Q148 34 148 80 Q148 70 100 66 Q52 70 52 80 Z" fill="url(#furGrad)"/>
+  <!-- Fur tufts -->
+  <circle cx="46" cy="92" r="6" fill="#73604A"/>
+  <circle cx="154" cy="92" r="6" fill="#73604A"/>
+  <circle cx="100" cy="29" r="5" fill="#3F3020"/>
+
+  <!-- HAIR (blonde fringe in front of face, below hat) -->
+  <path d="M56 86 Q56 80 70 80 L56 100 Z" fill="url(#hairGrad)"/>
+  <path d="M144 86 Q144 80 130 80 L144 100 Z" fill="url(#hairGrad)"/>
+
+  <!-- NECK -->
+  <rect x="88" y="148" width="24" height="14" rx="4" fill="url(#skinGrad)"/>
+
+  <!-- BODY - fitted winter coat (jacket) -->
+  <path d="M58 160 Q100 152 142 160 L138 224 Q100 230 62 224 Z" fill="#2b2f3a"/>
+  <!-- Coat centre seam -->
+  <path d="M100 160 L100 226" stroke="#4a5060" stroke-width="2" fill="none"/>
+  <!-- Collar V -->
+  <path d="M80 158 L100 174 L120 158" stroke="#4a5060" stroke-width="2.5" fill="none"/>
+  <!-- Shoulders -->
+  <ellipse cx="60" cy="166" rx="14" ry="8" fill="#343a48"/>
+  <ellipse cx="140" cy="166" rx="14" ry="8" fill="#343a48"/>
+
+  <!-- ARMS -->
+  <rect x="30" y="162" width="24" height="54" rx="12" fill="#2b2f3a"/>
+  <rect x="146" y="162" width="24" height="54" rx="12" fill="#2b2f3a"/>
+  <!-- HANDS -->
+  <circle cx="42" cy="218" r="10" fill="url(#skinGrad)"/>
+  <circle cx="158" cy="218" r="10" fill="url(#skinGrad)"/>
+
+  <!-- LEGGINGS -->
+  <rect x="62" y="222" width="32" height="34" rx="10" fill="#2b2d3a"/>
+  <rect x="106" y="222" width="32" height="34" rx="10" fill="#2b2d3a"/>
+
+  <!-- BOOTS -->
+  <rect x="58" y="250" width="38" height="10" rx="4" fill="#5c3518"/>
+  <rect x="104" y="250" width="38" height="10" rx="4" fill="#5c3518"/>
+</svg>

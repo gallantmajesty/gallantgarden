@@ -72,13 +72,35 @@ export function PerformanceOverlay() {
     return () => window.removeEventListener('keydown', down)
   }, [])
 
+  // Capture the renderer's native pixel ratio so we can restore it on exit.
+  const baseDpr = useRef(gl.getPixelRatio())
+
+  // Apply the monitor's auto-adjustment decisions to the actual renderer
+  // (spec 3.8 / 3.10): dynamic resolution scaling + dust-particle gate. The
+  // monitor only computes these numbers — here we push them into the GPU.
+  useEffect(() => {
+    const restoreDpr = baseDpr.current
+    return () => {
+      // Restore native resolution when leaving the train realm.
+      gl.setPixelRatio(restoreDpr)
+    }
+  }, [gl])
+
   // Update overlay text every 10 frames (not every frame — DOM writes are expensive)
   const frameCount = useRef(0)
+  const lastRes = useRef(1)
   useFrame((_, dt) => {
     frameCount.current++
     if (frameCount.current % 10 !== 0) return
 
     const snap = monitor.update(dt)
+
+    // Dynamic resolution scaling — only touch the renderer when it changes.
+    if (snap.resolution !== lastRes.current) {
+      lastRes.current = snap.resolution
+      gl.setPixelRatio((window.devicePixelRatio || 1) * snap.resolution)
+    }
+
     if (overlayRef.current) {
       overlayRef.current.style.display = visible ? 'block' : 'none'
       if (visible) {

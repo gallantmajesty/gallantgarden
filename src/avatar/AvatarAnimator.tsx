@@ -4,7 +4,6 @@ import type { AvatarRigHandle } from './AvatarRig'
 import {
   airPose,
   celebratePose,
-  deskSitPose,
   gaitAmount,
   gaitBounce,
   happyPose,
@@ -128,7 +127,7 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
     else if (preview === 'sit') pose = sitPose(t)
     else if (preview === 'jump') pose = airPose(Math.sin(t * 2) * 3)
     else if (preview === 'idle') pose = allowIdleMicro ? idlePose(t) : {}
-    else if (loco.seated) pose = deskSitPose(t) // auto, seated at a desk in-world
+    else if (loco.seated) pose = sitPose(t) // auto, seated in-world — hands rest on thighs
     else if (!loco.grounded) pose = airPose(loco.vy) // auto, airborne
     else if (land.current > 0.02) pose = landPose(land.current)
     else if (g > 0.06) pose = locomotionPose(phase, Math.max(1, g)) // walking/running
@@ -174,7 +173,8 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
       // Sit lowers the whole body so the seated pose reads as "on a chair" rather
       // than floating; otherwise it's the gait bob (walk/run) and zero at rest.
       let rootY: number
-      if (preview === 'sit' || (preview === 'auto' && loco.seated)) rootY = -0.26
+      if (preview === 'sit') rootY = -0.26 // editor emote: no chair, drop so it reads as seated
+      else if (preview === 'auto' && loco.seated) rootY = -0.05 // in-world: rest the hips on the chair seat (~0.52)
       else rootY = g > 0.06 && loco.grounded ? Math.abs(Math.sin(phase)) * gaitBounce(Math.max(1, g)) : 0
       // root.position.y is the avatar's own offset; keep x/z as-is
       root.position.y = rootY

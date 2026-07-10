@@ -9,7 +9,7 @@
 // so the builder is just layout + lighting.
 
 import { useMemo, useRef } from 'react'
-import { DoubleSide } from 'three'
+import { DoubleSide, DirectionalLight, Color, MathUtils } from 'three'
 import { CARRIAGE, carriageSeats, seatTable, ROWS, ROW_DZ, DOOR_Z } from '../interior'
 import { getInteriorTheme } from '../interiorThemes'
 import type { TrainLine } from '../../../lib/train/lines'
@@ -22,6 +22,8 @@ import { LuggageRack } from './LuggageRack'
 import { Seat, getSeatVariant } from './SeatFactory'
 import { DustParticles, CandleFlicker, MagicBookStack } from './MagicDetails'
 import { InteriorAudio } from './InteriorAudio'
+import { getRouteConfig, isInTunnel } from '../routes'
+import { computeTimeState } from '../routes/TimeOfDay'
 
 const DOOR_H = 2.2
 const DOOR_W = 0.9
@@ -296,6 +298,42 @@ function InteriorLighting() {
   )
 }
 
+/** Window light — directional sunlight/moonlight streaming in through the
+ *  carriage windows (spec 2.4). Colour + intensity follow the route's
+ *  time-of-day preset and the live journey progress; it cuts to black (and the
+ *  carriage goes "tunnel dark") while the train is inside a tunnel. On the
+ *  platform (not yet moving) it falls back to a cool blue station ambient. */
+function WindowLight({ line }: { line: TrainLine }) {
+  const sunRef = useRef<DirectionalLight>(null)
+  const cfg = useMemo(() => getRouteConfig(line), [line])
+  const tmp = useMemo(() => new Color(), [])
+
+  useFrame(() => {
+    const sun = sunRef.current
+    if (!sun) return
+    const st = useTrain.getState()
+    const moving = st.phase === 'traveling' || st.phase === 'arriving'
+    let color = '#FFB74D'
+    let intensity = 1.2
+    if (moving) {
+      const p = st.progress()
+      const inTunnel = isInTunnel(p, cfg.tunnels).active
+      const t = computeTimeState(p, cfg.timeOfDay)
+      color = t.sunColor
+      intensity = inTunnel ? 0 : t.sunIntensity
+    } else {
+      // cool blue station ambient through the glass while waiting to depart
+      color = '#9db4ff'
+      intensity = 0.4
+    }
+    sun.color.lerp(tmp.set(color), 0.08)
+    sun.intensity = MathUtils.lerp(sun.intensity, intensity, 0.08)
+  })
+
+  // Angled down through the windows from the +X side (spec: ~30° from vertical).
+  return <directionalLight ref={sunRef} position={[7, 3.5, 0]} color="#FFB74D" intensity={1.2} />
+}
+
 /** Main interior builder — assembles all Phase 2 systems */
 export function InteriorBuilder({ line }: { line: TrainLine }) {
   const theme = getInteriorTheme(line.id)
@@ -317,8 +355,8 @@ export function InteriorBuilder({ line }: { line: TrainLine }) {
       {/* Ceiling */}
       <Ceiling midZ={midZ} len={len} ceilY={ceilY} />
 
-      {/* Windows — brass-framed with glass */}
-      <WindowFrames />
+      {/* Windows — brass-framed with glass (+ frost film on cold routes) */}
+      <WindowFrames frost={line.weather === 'snow'} />
 
       {/* Curtains — velvet with sway animation */}
       {theme.curtains && <CurtainSystem />}
@@ -356,6 +394,9 @@ export function InteriorBuilder({ line }: { line: TrainLine }) {
 
       {/* Interior lighting */}
       <InteriorLighting />
+
+      {/* Window light — route/time-of-day sun through the glass + tunnel dark */}
+      <WindowLight line={line} />
 
       {/* Ambient audio */}
       <InteriorAudio />

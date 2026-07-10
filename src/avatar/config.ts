@@ -57,7 +57,7 @@ export interface Swatch {
 
 export const SKINS: Swatch[] = [
   { id: 'porcelain', name: 'Porcelain', hex: '#f3d3bd' },
-  { id: 'light', name: 'Light', hex: '#edbf9b' },
+  { id: 'light', name: 'Light', hex: '#F1D5B0' },
   { id: 'tan', name: 'Tan', hex: '#d39c6e' },
   { id: 'olive', name: 'Olive', hex: '#b97f53' },
   { id: 'brown', name: 'Brown', hex: '#8a5a37' },
@@ -66,7 +66,7 @@ export const SKINS: Swatch[] = [
 
 export const HAIR_COLORS: Swatch[] = [
   { id: 'black', name: 'Black', hex: '#221b1a' },
-  { id: 'brown', name: 'Brown', hex: '#5a3a22' },
+  { id: 'brown', name: 'Brown', hex: '#5C3A21' },
   { id: 'chestnut', name: 'Chestnut', hex: '#7b4a2b' },
   { id: 'blonde', name: 'Blonde', hex: '#d7a94b' },
   { id: 'auburn', name: 'Auburn', hex: '#8a3320' },
@@ -147,8 +147,9 @@ export const TOPS: GarmentOption[] = [
   { id: 'hoodie', name: 'Hoodie', hex: '#34507a' },
   { id: 'jacket', name: 'Jacket', hex: '#4a4f5c' },
   { id: 'blazer', name: 'Academic Blazer', hex: '#243049' },
-  { id: 'robe', name: 'Scholar Robe', hex: '#2a1a3a' },
+  { id: 'robe', name: 'Scholar Robe', hex: '#1B2B5A' },
   { id: 'frock', name: 'Frock', hex: '#e88faa' },
+  { id: 'sarafan', name: 'Sarafan', hex: '#b4202f' },
 ]
 
 // Skirt removed: clothing determines appearance, not body type, and no body type
@@ -159,6 +160,7 @@ export const BOTTOMS: GarmentOption[] = [
   { id: 'pants', name: 'Pants', hex: '#3a4257' },
   { id: 'shorts', name: 'Shorts', hex: '#6e6256' },
   { id: 'leggings', name: 'Leggings', hex: '#2b2d3a' },
+  { id: 'wizardpants', name: 'Wizard Pants', hex: '#141C3A' },
 ]
 
 const ALL_BOTTOM_IDS = new Set<string>(BOTTOMS.map((b) => b.id))
@@ -166,6 +168,7 @@ const ALL_BOTTOM_IDS = new Set<string>(BOTTOMS.map((b) => b.id))
 export const SHOES: GarmentOption[] = [
   { id: 'sneakers', name: 'Sneakers', hex: '#e9e6df' },
   { id: 'boots', name: 'Boots', hex: '#5c3518' },
+  { id: 'whiteshoes', name: 'White Shoes', hex: '#FFFFFF' },
 ]
 
 export const HEIGHT_MIN = 150
@@ -495,17 +498,12 @@ function buildTorso(rings: TorsoRing[]): BufferGeometry {
     }
   }
 
-  // bottom cap (normal -Y) and top cap (normal +Y)
+  // bottom cap (normal -Y) closes the hips; the TOP is left open so the
+  // torso doesn't show a flat plate disc under the chin (the neck covers it).
   const first = rings[0]
-  const last = rings[rings.length - 1]
   const botC = pos.length / 3
   pos.push(0, first.y, first.cz ?? 0)
   for (let i = 0; i < seg; i++) idx.push(botC, i, (i + 1) % seg)
-
-  const topStart = (rings.length - 1) * seg
-  const topC = pos.length / 3
-  pos.push(0, last.y, last.cz ?? 0)
-  for (let i = 0; i < seg; i++) idx.push(topC, topStart + i, topStart + ((i + 1) % seg))
 
   const g = new BufferGeometry()
   g.setAttribute('position', new Float32BufferAttribute(pos, 3))

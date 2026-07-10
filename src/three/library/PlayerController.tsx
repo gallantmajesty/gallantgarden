@@ -12,7 +12,10 @@ import { useSeatFlow } from '../../store/seatFlow'
 import { EmoteLabel } from './EmoteLabel'
 import { useAvatar } from '../../avatar/store'
 
-const SEAT_EYE = 1.74
+// Seated camera pivot height above the seat base. Tuned to the chibi rig: the
+// seated head is ~1.2 tall, so the pivot sits around chest/eye level (~1.15) —
+// NOT ~2.2 (which aimed the camera above the head at the hall/lanterns).
+const SEAT_EYE = 0.7
 const CHAIR_SEAT_Y = 0.45
 const THIRD_DIST = 5.5
 const PRESET_DIST = 3.5
@@ -25,10 +28,7 @@ const PRESET_ANGLES: [number, number][] = [
   [0.9, -0.05],
 ]
 
-const CAMERA_STIFFNESS = 45
-const CAMERA_DAMPING = 12
 const ORBIT_SMOOTHNESS = 8
-const COLLISION_SOFTNESS = 0.15
 
 function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, number] {
   const savedId = useSeatFlow.getState().selectedSeatId
@@ -37,14 +37,6 @@ function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, 
   }
   if (seats.length > 0) return seats[0].pos
   return [0, 0, HALL.halfL - 3]
-}
-
-function springDamper(current: number, target: number, stiffness: number, damping: number, dt: number): number {
-  const diff = target - current
-  const springForce = diff * stiffness
-  const damperForce = -damping * 0
-  const acceleration = springForce + damperForce
-  return current + acceleration * dt * dt + diff * (1 - Math.exp(-damping * dt))
 }
 
 function smoothClamp(value: number, min: number, max: number, smoothness: number): number {
@@ -62,9 +54,9 @@ export function PlayerController() {
 
   const camPos = useRef(new Vector3())
   const camTarget = useRef(new Vector3())
-  const camVel = useRef(new Vector3())
   const targetYaw = useRef(0)
   const targetPitch = useRef(0)
+  const camSeeded = useRef(false)
 
   const p = useRef({
     x: getInitialPos(seats)[0],
@@ -132,27 +124,19 @@ export function PlayerController() {
       if (useWorld.getState().seat == null) return
       const key = e.key
       if (key >= '1' && key <= '4') {
+        // Manual camera shifting: keys 1-4 always select that fixed seat-camera
+        // angle (consistent for every character).
         const preset = parseInt(key)
-        const current = useSettings.getState().cameraPreset
-        const isFemale = useAvatar.getState().config.bodyType === 'female'
-        let next: number
-        if (isFemale) {
-          next = current === preset ? (preset % 4) + 1 : preset
-        } else {
-          next = current === preset ? 0 : preset
-        }
-        useSettings.getState().set('cameraPreset', next)
-        if (current !== preset) {
-          const seatId = useWorld.getState().seat
-          if (seatId != null) {
-            const seat = seats[seatId]
-            if (seat) {
-              targetYaw.current = seat.yaw + PRESET_ANGLES[preset - 1][0]
-              targetPitch.current = PRESET_ANGLES[preset - 1][1]
-              p.current.yaw = targetYaw.current
-              p.current.pitch = targetPitch.current
-              p.current.zoom = PRESET_DIST
-            }
+        useSettings.getState().set('cameraPreset', preset)
+        const seatId = useWorld.getState().seat
+        if (seatId != null) {
+          const seat = seats[seatId]
+          if (seat) {
+            targetYaw.current = seat.yaw + PRESET_ANGLES[preset - 1][0]
+            targetPitch.current = PRESET_ANGLES[preset - 1][1]
+            p.current.yaw = targetYaw.current
+            p.current.pitch = targetPitch.current
+            p.current.zoom = PRESET_DIST
           }
         }
       }
@@ -195,6 +179,13 @@ export function PlayerController() {
         st.vy = 0
         st.grounded = true
 
+        // Anchor the local body ON the chair (the group was previously left at the
+        // world origin, so the seated character never appeared on its seat).
+        if (avatarRef.current) {
+          avatarRef.current.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
+          avatarRef.current.rotation.y = seat.yaw + Math.PI
+        }
+
         const l = loco.current
         l.seated = true
         l.speed = 0
@@ -228,40 +219,44 @@ export function PlayerController() {
         const preset = s.cameraPreset
         if (preset >= 1 && preset <= 4) {
           const [angleOff, pitchOff] = PRESET_ANGLES[preset - 1]
-          targetYaw.current = seat.yaw + angleOff
-          targetPitch.current = pitchOff
+          const yaw = seat.yaw + angleOff
+          const pitch = pitchOff
+          targetYaw.current = yaw
+          targetPitch.current = pitch
           const dist = preset === 3 ? PRESET_3_DIST : PRESET_DIST
-          const cp = Math.cos(targetPitch.current)
-          const idealX = seat.pos[0] + Math.sin(targetYaw.current) * cp * dist
-          const idealY = eyeY + Math.sin(targetPitch.current) * dist
-          const idealZ = seat.pos[2] + Math.cos(targetYaw.current) * cp * dist
-          const dx = idealX - seat.pos[0]
-          const dy = idealY - eyeY
-          const dz = idealZ - seat.pos[2]
-          const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dx, dy, dz, dist + 0.4, collision.blockers)
-          const collisionDist = Math.min(dist, hit - 0.4)
-          const softDist = collisionDist + COLLISION_SOFTNESS * (dist - collisionDist)
-          const actualDist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-          if (actualDist > softDist + 0.1) {
-            const dir = new Vector3(dx, dy, dz).normalize()
-            camPos.current.x = seat.pos[0] + dir.x * softDist
-            camPos.current.y = eyeY + dir.y * softDist
-            camPos.current.z = seat.pos[2] + dir.z * softDist
-          } else {
-            camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-            camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-            camPos.current.z = springDamper(camPos.current.z, idealZ, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-          }
+          const cp = Math.cos(pitch)
+          // UNIT direction from the seat's eye out to the camera (already length 1)
+          const dirX = Math.sin(yaw) * cp
+          const dirY = Math.sin(pitch)
+          const dirZ = Math.cos(yaw) * cp
+          // pull the camera in if a wall is closer than `dist` (rayHit needs a unit dir)
+          const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dirX, dirY, dirZ, dist, collision.blockers)
+          const safeDist = MathUtils.clamp(Math.min(dist, hit - 0.3), 0.6, dist)
+          const idealX = seat.pos[0] + dirX * safeDist
+          const idealY = eyeY + dirY * safeDist
+          const idealZ = seat.pos[2] + dirZ * safeDist
+          // seed the position on the first seated frame so we don't glide from a stale spot
+          if (!camSeeded.current) { camPos.current.set(idealX, idealY, idealZ); camSeeded.current = true }
+          // stable exponential smoothing — no spring oscillation / flicker
+          const a = 1 - Math.exp(-12 * dt)
+          camPos.current.x += (idealX - camPos.current.x) * a
+          camPos.current.y += (idealY - camPos.current.y) * a
+          camPos.current.z += (idealZ - camPos.current.z) * a
+          // hard safety: never let the camera leave the room (no void / see-through walls)
+          camPos.current.x = MathUtils.clamp(camPos.current.x, -HALL.halfW + 0.6, HALL.halfW - 0.6)
+          camPos.current.z = MathUtils.clamp(camPos.current.z, -HALL.halfL + 0.6, HALL.halfL - 0.6)
+          camPos.current.y = MathUtils.clamp(camPos.current.y, seat.pos[1] + 0.2, HALL.wallH - 0.5)
           cam.position.copy(camPos.current)
           const targetY = preset === 3 ? seat.pos[1] + 0.8 : eyeY - 0.25
-          camTarget.current.lerp(new Vector3(seat.pos[0], targetY, seat.pos[2]), 1 - Math.exp(-15 * dt))
+          camTarget.current.lerp(new Vector3(seat.pos[0], targetY, seat.pos[2]), a)
           cam.lookAt(camTarget.current)
-          st.yaw = targetYaw.current
-          st.pitch = targetPitch.current
+          st.yaw = yaw
+          st.pitch = pitch
           setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
           return
         }
 
+        // free orbit around the seat (drag to look), clamped to a comfy arc
         let yawDiff = st.yaw - seat.yaw
         yawDiff = Math.atan2(Math.sin(yawDiff), Math.cos(yawDiff))
         const minYaw = -(70 / 180) * Math.PI
@@ -273,25 +268,25 @@ export function PlayerController() {
         targetPitch.current = MathUtils.lerp(targetPitch.current, clampedPitch, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
         const dist = MathUtils.clamp(st.zoom, 2.0, 8)
         const cp = Math.cos(targetPitch.current)
-        const idealX = seat.pos[0] + Math.sin(targetYaw.current) * cp * dist
-        const idealY = eyeY + Math.sin(targetPitch.current) * dist
-        const idealZ = seat.pos[2] + Math.cos(targetYaw.current) * cp * dist
-        const dx = idealX - seat.pos[0]
-        const dy = idealY - eyeY
-        const dz = idealZ - seat.pos[2]
-        const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dx, dy, dz, dist + 0.4, collision.blockers)
-        const collisionDist = Math.min(dist, hit - 0.4)
-        const softDist = collisionDist + COLLISION_SOFTNESS * (dist - collisionDist)
-        camPos.current.x = springDamper(camPos.current.x, idealX, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-        camPos.current.y = springDamper(camPos.current.y, idealY, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-        camPos.current.z = springDamper(camPos.current.z, idealZ, CAMERA_STIFFNESS, CAMERA_DAMPING, dt)
-        const actualDist = camPos.current.distanceTo(new Vector3(seat.pos[0], eyeY, seat.pos[2]))
-        if (actualDist > softDist + 0.1) {
-          const dir = camPos.current.clone().sub(new Vector3(seat.pos[0], eyeY, seat.pos[2])).normalize()
-          camPos.current.set(seat.pos[0] + dir.x * softDist, eyeY + dir.y * softDist, seat.pos[2] + dir.z * softDist)
-        }
+        // UNIT direction (length 1) so the collision ray distance is correct
+        const dirX = Math.sin(targetYaw.current) * cp
+        const dirY = Math.sin(targetPitch.current)
+        const dirZ = Math.cos(targetYaw.current) * cp
+        const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dirX, dirY, dirZ, dist, collision.blockers)
+        const safeDist = MathUtils.clamp(Math.min(dist, hit - 0.3), 0.6, dist)
+        const idealX = seat.pos[0] + dirX * safeDist
+        const idealY = eyeY + dirY * safeDist
+        const idealZ = seat.pos[2] + dirZ * safeDist
+        if (!camSeeded.current) { camPos.current.set(idealX, idealY, idealZ); camSeeded.current = true }
+        const a = 1 - Math.exp(-12 * dt)
+        camPos.current.x += (idealX - camPos.current.x) * a
+        camPos.current.y += (idealY - camPos.current.y) * a
+        camPos.current.z += (idealZ - camPos.current.z) * a
+        camPos.current.x = MathUtils.clamp(camPos.current.x, -HALL.halfW + 0.6, HALL.halfW - 0.6)
+        camPos.current.z = MathUtils.clamp(camPos.current.z, -HALL.halfL + 0.6, HALL.halfL - 0.6)
+        camPos.current.y = MathUtils.clamp(camPos.current.y, seat.pos[1] + 0.2, HALL.wallH - 0.5)
         cam.position.copy(camPos.current)
-        camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.25, seat.pos[2]), 1 - Math.exp(-15 * dt))
+        camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.25, seat.pos[2]), a)
         cam.lookAt(camTarget.current)
         st.yaw = targetYaw.current
         st.pitch = targetPitch.current
@@ -302,14 +297,20 @@ export function PlayerController() {
 
     st.seatedInit = false
     st.autoWalkInit = false
+    camSeeded.current = false
   })
+
+  const avatarCfg = useAvatar((s) => s.config)
+  const seatWorld = useWorld((s) => s.seat)
+  const cameraModeR = useSettings((s) => s.cameraMode)
 
   return (
     <group ref={avatarRef}>
-      <mesh position={[0, 1, 0]}>
-        <capsuleGeometry args={[0.3, 1.5, 4, 8]} />
-        <meshStandardMaterial color="#ff0000" />
-      </mesh>
+      {/* Hide the local body in first-person so the seat-eye camera isn't rendered
+          inside its own head (which flickers/clips). */}
+      <group visible={seatWorld != null && cameraModeR !== 'first'}>
+        <CharacterAvatar config={avatarCfg} locomotion={loco} />
+      </group>
     </group>
   )
 }

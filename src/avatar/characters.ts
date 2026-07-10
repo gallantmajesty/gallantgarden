@@ -22,6 +22,13 @@ export interface Character {
   description?: string
   /** special character badge */
   special?: boolean
+  /** UI-only metadata for the character picker / customization screen */
+  icon?: string
+  rarity?: string
+  color?: string
+  bg?: string
+  /** 'male' | 'female' — kept here so it's trivial to see/edit each character's gender */
+  gender?: 'male' | 'female'
 }
 
 /** Build a fixed procedural look for a character's fallback rig. */
@@ -29,11 +36,26 @@ function look(bodyType: BodyType, over: Partial<AvatarConfig>): AvatarConfig {
   return { ...DEFAULT_AVATAR, bodyType, ...over }
 }
 
-// All characters available for selection
+// ============================================================================
+//  CHARACTER ROSTER  —  the playable characters (single source of truth)
+//  Edit anything below to change a character; both the customization screen
+//  (AvatarCreator) and the character picker (CharacterSelection) read from here.
+//
+//   1. james  → James  (MALE)   — black jacket student
+//   2. claire → Lily   (FEMALE) — ponytail + pink frock
+//   3. mia    → Mia    (FEMALE) — long auburn hair + blazer
+//   4. ruslan → Ruslana (FEMALE) — fair scholar in a red sarafan + pearl kokoshnik + long braid
+//   5. dino   → Dino (COSTUME)   — cute green dinosaur mascot, no human face, same skeleton
+//   6. rabbit → Bunny (COSTUME)  — white toy rabbit, pink suit, green rear flap, cotton tail
+//
+//  All share the SAME skeleton + height (see src/avatar/rig.ts). Gender is
+//  signalled by body shape, hair, clothing and colour — not scale.
+// ============================================================================
 export const CHARACTERS: Character[] = [
   {
     id: 'james',
     name: 'James',
+    gender: 'male',
     model: 'james.glb',
     scale: 1,
     yOffset: 0,
@@ -41,19 +63,96 @@ export const CHARACTERS: Character[] = [
       skin: 'light', hair: 'short_neat', hairColor: 'brown',
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
     }),
-    description: 'Friendly student with a cool black outfit'
+    description: 'Friendly student with a cool black outfit',
+    icon: '/icons/characters/james.svg',
+    rarity: 'Common',
+    color: '#8a8a8a',
+    bg: '#e8f0ff',
   },
   {
     id: 'claire',
     name: 'Lily',
+    gender: 'female',
     model: 'claire.glb',
     scale: 1,
     yOffset: 0,
     fallback: look('female', {
-      skin: 'light', hair: 'twintails', hairColor: 'chestnut',
-      top: 'blazer', bottom: 'pants', shoes: 'boots',
+      skin: 'light', hair: 'ponytail', hairColor: 'chestnut',
+      top: 'frock', bottom: 'leggings', shoes: 'sneakers',
     }),
-    description: 'Studious student with stylish appearance'
+    description: 'Cheerful girl with a cute ponytail and pink dress',
+    icon: '/icons/characters/lily.svg',
+    rarity: 'Common',
+    color: '#8a8a8a',
+    bg: '#ffe8f0',
+  },
+  {
+    id: 'mia',
+    name: 'Mia',
+    gender: 'female',
+    model: 'mia.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('female', {
+      skin: 'tan', hair: 'long_straight', hairColor: 'auburn',
+      top: 'blazer', bottom: 'leggings', shoes: 'boots',
+    }),
+    description: 'Bright scholar with long auburn hair and a smart blazer',
+    icon: '/icons/characters/mia.svg',
+    rarity: 'Common',
+    color: '#8a8a8a',
+    bg: '#fff0e0',
+  },
+  {
+    id: 'ruslan',
+    name: 'Ruslana',
+    gender: 'female',
+    model: 'ruslan.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('female', {
+      skin: 'porcelain', hair: 'braided', hairColor: 'blonde', eyes: 'blue',
+      top: 'sarafan', bottom: 'leggings', shoes: 'boots',
+    }),
+    description: 'Cheerful scholar from the snowy north in an embroidered red sarafan, a pearl kokoshnik and a long braid',
+    icon: '/icons/characters/ruslan.svg',
+    rarity: 'Common',
+    color: '#8a8a8a',
+    bg: '#eef3f8',
+  },
+  {
+    id: 'dino',
+    name: 'Dino',
+    gender: 'male',
+    model: 'dino.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('male', {
+      skin: 'light', hair: 'none', hairColor: 'black', eyes: 'brown',
+      top: 'tee', bottom: 'pants', shoes: 'sneakers',
+    }),
+    description: 'A cute green wild dinosaur costume — teeth, claws, plates and a spiky tail!',
+    icon: '/icons/characters/dino.svg',
+    rarity: 'Epic',
+    color: '#6cbf4a',
+    bg: '#eaf7dd',
+  },
+  {
+    id: 'rabbit',
+    name: 'Bunny',
+    gender: 'female',
+    model: 'rabbit.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('female', {
+      skin: 'light', hair: 'none', hairColor: 'brown', eyes: 'brown',
+      top: 'jacket', bottom: 'pants', shoes: 'sneakers',
+    }),
+    description: 'An adorable white toy rabbit in a pink suit with a green rear flap and a fluffy cotton tail',
+    icon: '/icons/characters/rabbit.svg',
+    rarity: 'Epic',
+    color: '#f2a3c0',
+    bg: '#fdeaf2',
   },
 ]
 

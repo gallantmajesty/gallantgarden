@@ -11,6 +11,7 @@ import { useScenePreset } from '../../store/quality'
 import { useStation } from '../../store/station'
 import { useTrain } from '../../store/train'
 import { TRAIN_LINES } from '../../lib/train/lines'
+import { platformStatus } from '../../lib/train/schedule'
 import { setLocalState } from '../../multiplayer/net'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import type { Locomotion } from '../../avatar/animation'
@@ -117,7 +118,10 @@ export function StationPlayerController() {
         const near = p.current.nearPlat
         if (near != null && useTrain.getState().phase === 'browsing') {
           const line = TRAIN_LINES[near]
-          useTrain.getState().beginBoarding(line.id)
+          // Only let the player step aboard during the live boarding window — the
+          // doors are sealed (locked) the rest of the cycle. Walking up to a
+          // departed train just refuses and the platform prompt shows "locked".
+          if (platformStatus(line).boardable) useTrain.getState().beginBoarding(line.id)
         }
       }
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault()
@@ -324,14 +328,15 @@ export function StationPlayerController() {
     if (useStation.getState().nearPlatform !== near) useStation.getState().setNearPlatform(near)
 
     // walk-through boarding: if the player has walked past the platform edge and
-    // is close to the train body, auto-trigger boarding regardless of schedule.
-    // The train will appear berthed with open doors for the player to step through.
+    // is close to the train body, auto-trigger boarding — but only during the
+    // live boarding window. Outside it the doors are locked and the player is
+    // held on the platform (the track-bed guard above keeps them off the rails).
     if (near != null && useTrain.getState().phase === 'browsing') {
       const line = TRAIN_LINES[near]
       const pl = plats[near]
       // player walked past the platform east edge into the track zone
       const distToTrain = Math.abs(st.x - pl.trackX)
-      if (distToTrain < 3.8) {
+      if (distToTrain < 3.8 && platformStatus(line).boardable) {
         useTrain.getState().beginBoarding(line.id)
       }
     }

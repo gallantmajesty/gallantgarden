@@ -41,18 +41,12 @@ interface SeatFlowState {
 }
 
 function getInitialStage(): FlowStage {
-  const saved = loadSavedSeat()
-  const seats = seatAnchors()
-  if (saved != null && saved < seats.length) return 'seated'
-  // Clear invalid saved seat
-  if (saved != null) saveSeat(null)
+  // Always show seat picker
+  saveSeat(null)
   return 'selecting'
 }
 
 function getInitialSeat(): number | null {
-  const saved = loadSavedSeat()
-  const seats = seatAnchors()
-  if (saved != null && saved < seats.length) return saved
   return null
 }
 
