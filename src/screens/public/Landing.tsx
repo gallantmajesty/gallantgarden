@@ -1226,7 +1226,7 @@ export function Landing() {
     { q: 'Is Focus Lily free?', a: 'Create an account to access the core features — pomodoro timer, study rooms, task magnet, notes, and more. Premium themes and avatar items are available as optional upgrades.' },
     { q: 'What makes this different from other study apps?', a: 'Focus Lily is a world, not a widget. It builds a living environment around your study habits — a real place you return to, with ambient audio, 3D spaces, and a social presence.' },
     { q: 'Can I study with friends?', a: 'Yes. Study rooms support real-time co-presence. Friends see each other, hear ambient audio together, and stay accountable.' },
-    { q: 'Does it work on mobile?', a: 'Focus Lily is currently available for desktop only. Mobile and tablet support is coming soon.' },
+    { q: 'Does it work on mobile?', a: 'Focus Lily works on mobile browsers today. The experience is optimized for smaller screens with touch controls.' },
   ]
 
   const realms = [

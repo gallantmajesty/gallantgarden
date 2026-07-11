@@ -249,12 +249,13 @@ export function sitPose(t: number): Pose {
     legLowerR: { x: 1.55 },
     footL: { x: 0.18 },
     footR: { x: 0.18 },
-    // upper arms hang DOWN beside the torso (positive x = forward rotation) so elbows
-    // sit at the sides, never behind the back. Forearms bend forward to rest on thighs.
-    armUpperL: { x: 0.15, z: -0.08 },
-    armUpperR: { x: 0.15, z: 0.08 },
-    armLowerL: { x: 1.1, z: 0.1 },
-    armLowerR: { x: 1.1, z: -0.1 },
+    // upper arms hang DOWN beside the torso; negative x rotates the (downward) arm
+    // FORWARD (+Z, toward the lap) — positive x would swing them behind the back.
+    // Forearms bend forward to rest on the thighs (hands in front, not behind).
+    armUpperL: { x: -0.15, z: -0.08 },
+    armUpperR: { x: -0.15, z: 0.08 },
+    armLowerL: { x: -1.1, z: 0.1 },
+    armLowerR: { x: -1.1, z: -0.1 },
   }
 }
 
@@ -278,11 +279,11 @@ export function deskSitPose(t: number): Pose {
     legLowerR: { x: 1.55 },
     footL: { x: 0.18 },
     footR: { x: 0.18 },
-    // upper arms hang down-and-forward (positive x), not behind the back. Forearms
-    // reach forward to the desk with a natural bend.
-    armUpperL: { x: 0.2, z: -0.05 },
-    armUpperR: { x: 0.2, z: 0.05 },
-    armLowerL: { x: 1.4, z: 0.08 },
-    armLowerR: { x: 1.4, z: -0.08 },
+    // upper arms hang down-and-forward (negative x = toward the desk, +Z), never
+    // behind the back. Forearms reach forward to the desktop with a natural bend.
+    armUpperL: { x: -0.2, z: -0.05 },
+    armUpperR: { x: -0.2, z: 0.05 },
+    armLowerL: { x: -1.4, z: 0.08 },
+    armLowerR: { x: -1.4, z: -0.08 },
   }
 }

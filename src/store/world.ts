@@ -6,19 +6,23 @@ import { useSeatFlow } from './seatFlow'
 interface WorldState {
   seat: number | null
   near: number | null
+  cinematic: boolean
   sit: (id: number) => void
   stand: () => void
   setNear: (id: number | null) => void
+  setCinematic: (v: boolean) => void
 }
 
 export const useWorld = create<WorldState>((set) => ({
   seat: null,
   near: null,
-  sit: (id) => set({ seat: id, near: null }),
+  cinematic: false,
+  sit: (id) => set({ seat: id, near: null, cinematic: false }),
   stand: () => {
     useSeatFlow.getState().unlock()
     useSeatFlow.getState().clearSeat()
-    set({ seat: null })
+    set({ seat: null, cinematic: false })
   },
   setNear: (id) => set((s) => (s.near === id ? s : { near: id })),
+  setCinematic: (v) => set({ cinematic: v }),
 }))

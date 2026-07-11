@@ -27,15 +27,11 @@ function rot(lx: number, lz: number, a: number): [number, number] {
 
 const CHAIR_CZ = [-TABLE.l / 2 + 1.4, -TABLE.l / 6, TABLE.l / 6, TABLE.l / 2 - 1.4]
 
-// One chair's parts in chair-local space (before the chair's own Y-rotation).
-const CHAIR_PARTS: { pos: [number, number, number]; size: [number, number, number]; color: string }[] = [
-  { pos: [0, 0.48, 0], size: [0.7, 0.08, 0.65], color: WOOD }, // seat — wider + deeper
-  { pos: [0, 0.82, -0.28], size: [0.7, 0.64, 0.08], color: WOOD }, // back — wider
-  { pos: [-0.28, 0.24, -0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-  { pos: [0.28, 0.24, -0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-  { pos: [-0.28, 0.24, 0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-  { pos: [0.28, 0.24, 0.26], size: [0.06, 0.48, 0.06], color: WOOD_DARK },
-]
+// A chair is built from rounded wooden parts (a Windsor-style reading chair)
+// instead of flat boxes: a padded seat, tapered cylinder legs, two back posts,
+// top + mid rails, vertical spindles and armrests. All parts collapse into a
+// handful of instanced draws for the whole hall (see the JSX below).
+const CHAIR_WOOD = '#6b4423'
 
 /**
  * All reading tables (ground + upper).
@@ -60,9 +56,11 @@ export function StudyTables() {
   }, [])
 
   // ---- instanced structure for every table + chair in the hall ----
-  const { frames, chairs } = useMemo(() => {
+  const { frames, seatBoxes, cushions, cylParts } = useMemo(() => {
     const frames: BoxItem[] = []
-    const chairs: BoxItem[] = []
+    const seatBoxes: BoxItem[] = []
+    const cushions: ShapeItem[] = []
+    const cylParts: ShapeItem[] = []
     const { w: W, l: L, h } = TABLE
     for (const t of tables) {
       const [tx, ty, tz] = t.pos
@@ -77,20 +75,56 @@ export function StudyTables() {
       ]) {
         frames.push({ pos: [tx + lx, ty + h / 2, tz + lz], size: [0.16, h, 0.16], color: WOOD_DARK })
       }
-      // 8 chairs (4 per long side), each facing the table
+      // 8 chairs (4 per long side), each facing the table — built as rounded
+      // wooden parts, not flat boxes.
       for (const sx of [-1, 1]) {
         const yaw = sx > 0 ? -Math.PI / 2 : Math.PI / 2
         for (const cz of CHAIR_CZ) {
           const cx = tx + sx * (W / 2 + 0.5)
           const ccz = tz + cz
-          for (const part of CHAIR_PARTS) {
-            const [rx, rz] = rot(part.pos[0], part.pos[2], yaw)
-            chairs.push({ pos: [cx + rx, ty + part.pos[1], ccz + rz], size: part.size, rotY: yaw, color: part.color })
+          const [srx, srz] = rot(0, 0, yaw)
+          seatBoxes.push({ pos: [cx + srx, ty + 0.47, ccz + srz], size: [0.64, 0.08, 0.58], rotY: yaw, color: CHAIR_WOOD })
+          cushions.push({ pos: [cx + srx, ty + 0.535, ccz + srz], scale: [0.3, 0.06, 0.27], rot: [0, yaw, 0], color: CLOTH })
+          // tapered legs
+          for (const [lx, lz] of [[-0.26, -0.23], [0.26, -0.23], [-0.26, 0.23], [0.26, 0.23]] as const) {
+            const [rx, rz] = rot(lx, lz, yaw)
+            cylParts.push({ pos: [cx + rx, ty + 0.23, ccz + rz], scale: [0.03, 0.46, 0.03], rot: [0, yaw, 0], color: WOOD_DARK })
+          }
+          // back posts
+          for (const lx of [-0.26, 0.26]) {
+            const [rx, rz] = rot(lx, -0.23, yaw)
+            cylParts.push({ pos: [cx + rx, ty + 0.81, ccz + rz], scale: [0.032, 0.62, 0.032], rot: [0, yaw, 0], color: WOOD_DARK })
+          }
+          // top + mid rails (lie along X)
+          {
+            const [rx, rz] = rot(0, -0.23, yaw)
+            cylParts.push({ pos: [cx + rx, ty + 1.12, ccz + rz], scale: [0.03, 0.52, 0.03], quat: composeYLocal(yaw, 0, 0, Math.PI / 2), color: WOOD_DARK })
+          }
+          {
+            const [rx, rz] = rot(0, -0.24, yaw)
+            cylParts.push({ pos: [cx + rx, ty + 0.74, ccz + rz], scale: [0.026, 0.52, 0.026], quat: composeYLocal(yaw, 0, 0, Math.PI / 2), color: WOOD_DARK })
+          }
+          // back spindles
+          for (const lx of [-0.13, 0, 0.13]) {
+            const [rx, rz] = rot(lx, -0.225, yaw)
+            cylParts.push({ pos: [cx + rx, ty + 0.8, ccz + rz], scale: [0.016, 0.56, 0.016], rot: [0, yaw, 0], color: CHAIR_WOOD })
+          }
+          // armrest rails (lie along Z)
+          for (const lx of [-0.3, 0.3]) {
+            const [rx, rz] = rot(lx, 0, yaw)
+            cylParts.push({ pos: [cx + rx, ty + 0.72, ccz + rz], scale: [0.025, 0.42, 0.025], quat: composeYLocal(yaw, Math.PI / 2, 0, 0), color: CHAIR_WOOD })
+          }
+          // armrest supports (front + back)
+          for (const lx of [-0.3, 0.3]) {
+            for (const lz of [0.18, -0.18]) {
+              const [rx, rz] = rot(lx, lz, yaw)
+              cylParts.push({ pos: [cx + rx, ty + 0.61, ccz + rz], scale: [0.022, 0.22, 0.022], rot: [0, yaw, 0], color: WOOD_DARK })
+            }
           }
         }
       }
     }
-    return { frames, chairs }
+    return { frames, seatBoxes, cushions, cylParts }
   }, [tables])
 
   // spread the limited budget of real lamp-lights evenly across the hall
@@ -99,9 +133,17 @@ export function StudyTables() {
   return (
     <group>
       {/* table tops cast shadow (one instanced draw); chairs are smaller — skip
-          their shadow to keep the shadow pass cheap */}
+          their shadow to keep the shadow pass cheap. Chairs are now rounded
+          Windsor-style parts (seat plank + padded cushion + a single instanced
+          draw for every cylinder part across the whole hall). */}
       <InstancedBoxes items={frames} roughness={0.55} metalness={0.05} castShadow receiveShadow />
-      <InstancedBoxes items={chairs} roughness={0.75} />
+      <InstancedBoxes items={seatBoxes} roughness={0.6} metalness={0.05} />
+      <InstancedShape items={cushions} roughness={0.9}>
+        <sphereGeometry args={[1, 16, 12]} />
+      </InstancedShape>
+      <InstancedShape items={cylParts} roughness={0.55} metalness={0.05}>
+        <cylinderGeometry args={[0.85, 1.0, 1, 10]} />
+      </InstancedShape>
 
       {/* ALL desk dressing across the hall as a fixed handful of instanced draws
           (was ~42 loose meshes PER table → ~670 draw calls at high). */}

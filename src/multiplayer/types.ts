@@ -29,6 +29,9 @@ export interface PlayerState {
   speed: number
   grounded: boolean
   seated: boolean
+  /** true while this player is driving / watching the shared Cinematic Tour — their
+   *  avatar is hidden from everyone else so it doesn't fly through the shared shot. */
+  cinematic: boolean
 }
 
 /** A remote player as tracked locally: their identity plus the last time we

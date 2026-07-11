@@ -1,15 +1,13 @@
-import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
+import { useCallback, useMemo, useState, memo, type CSSProperties } from 'react'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
-import { HALL } from '../../three/library/layout'
-import { seatAnchors } from '../../three/library/furniture'
+import { HALL, windowZs } from '../../three/library/layout'
+import { seatAnchors, TABLE, groundShelves, upperShelves, balconyPlatforms, columns, staircases, readingCorners } from '../../three/library/furniture'
 import type { Seat } from '../../three/library/furniture'
 
-// aspect ratios for map positioning
 const ASPECT_W = HALL.halfW * 2
 const ASPECT_L = HALL.halfL * 2
 
-/** Seat metadata for the hover card */
 interface SeatMeta {
   floor: 'Ground' | 'Upper Gallery'
   feature: string
@@ -28,16 +26,11 @@ function getSeatMeta(seat: Seat): SeatMeta {
   return { floor: isUpper ? 'Upper Gallery' : 'Ground', feature, quietness }
 }
 
-/** Audio hook placeholder — synthesised sounds ready for wiring up */
 function useAudioCues() {
   const playHover = useCallback(() => {
-    // TODO: wire to AudioEngine — page rustle / wood creak
-    // eslint-disable-next-line no-console
     if (import.meta.env.DEV) console.debug('[audio] seat hover')
   }, [])
   const playSelect = useCallback(() => {
-    // TODO: wire to AudioEngine — gentle bell chime
-    // eslint-disable-next-line no-console
     if (import.meta.env.DEV) console.debug('[audio] seat select')
   }, [])
   return { playHover, playSelect }
@@ -49,163 +42,114 @@ export function SeatSelectionOverlay() {
   const pickSeat = flow.pickSeat
   const startWalk = flow.startWalk
   const [selected, setSelected] = useState<number | null>(null)
-  const [hovered, setHovered] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<'ground' | 'upper'>('ground')
-  const [scale, setScale] = useState(1)
   const audio = useAudioCues()
-
-  // Responsive scale
-  useEffect(() => {
-    const onResize = () => {
-      const w = window.innerWidth
-      if (w < 640) setScale(0.75)
-      else if (w < 960) setScale(1)
-      else setScale(1.1)
-    }
-    onResize()
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
+  const cinematic = useWorld((s) => s.cinematic)
+  const wasSeated = flow.entrancePlayed
 
   const seats = useMemo(() => seatAnchors(), [])
 
-  // Map seat positions to normalised 0..1 within the hall
-  const seatPositions = useMemo(() => {
-    const pad = 0.06
-    // Group seats by table — round x aggressively so both sides of a table group together
-    const tableGroups = new Map<string, Seat[]>()
-    for (const s of seats) {
-      const key = `${Math.round(s.pos[0])},${Math.round(s.pos[2])}`
-      if (!tableGroups.has(key)) tableGroups.set(key, [])
-      tableGroups.get(key)!.push(s)
-    }
-    return seats.map((s) => {
-      const key = `${Math.round(s.pos[0])},${Math.round(s.pos[2])}`
-      const group = tableGroups.get(key) || []
-      // Sort by z then x to get a consistent order within each table
-      const sorted = [...group].sort((a, b) => a.pos[2] - b.pos[2] || a.pos[0] - b.pos[0])
-      const idx = sorted.findIndex((g) => g.id === s.id)
-      const count = sorted.length
-      // Spread chairs: offset along z (ny) for chairs at same x, offset along x (nx) for opposite sides
-      const seatGapZ = 0.04
-      const seatGapX = 0.025
-      const offsetZ = (idx - (count - 1) / 2) * seatGapZ
-      // Determine if this seat is on the left or right side of the table
-      const midX = group.reduce((sum, g) => sum + g.pos[0], 0) / group.length
-      const sideX = s.pos[0] < midX ? -seatGapX : seatGapX
-      const nx = ((s.pos[0] + HALL.halfW) / ASPECT_W) + sideX
-      const ny = ((s.pos[2] + HALL.halfL) / ASPECT_L) + offsetZ
-      return { ...s, nx: pad + nx * (1 - pad * 2), ny: pad + ny * (1 - pad * 2), meta: getSeatMeta(s) }
-    })
-  }, [seats])
+  const seatPositions = useMemo(() => seats.map((s) => ({
+    ...s,
+    nx: 0.05 + 0.9 * (s.pos[0] + HALL.halfW) / ASPECT_W,
+    ny: 0.05 + 0.9 * (s.pos[2] + HALL.halfL) / ASPECT_L,
+    meta: getSeatMeta(s),
+  })), [seats])
 
-  // Floor filtering
-  const groundSeats = useMemo(() => seatPositions.filter((s) => s.pos[1] < HALL.balconyY / 2), [seatPositions])
-  const upperSeats = useMemo(() => seatPositions.filter((s) => s.pos[1] >= HALL.balconyY / 2), [seatPositions])
-  const displayedSeats = activeTab === 'ground' ? groundSeats : upperSeats
+  const occupiedCount = useMemo(() => Object.keys(occupied).length, [occupied])
+  const availableCount = seatPositions.length - occupiedCount
 
-  const handleSelect = (id: number) => {
+  const sitDown = useCallback((seatId: number) => {
+    pickSeat(seatId)
+    startWalk()
+    useSeatFlow.getState().arrive()
+    useWorld.getState().sit(seatId)
+    useSeatFlow.getState().markEntrancePlayed()
+  }, [pickSeat, startWalk])
+
+  const handleSelect = useCallback((id: number) => {
     setSelected(id)
     audio.playSelect()
     pickSeat(id)
-  }
+  }, [audio, pickSeat])
 
-  const handleHover = (id: number | null) => {
-    if (id !== null && id !== hovered) audio.playHover()
-    setHovered(id)
-  }
+  const handleRandom = useCallback(() => {
+    const free = seatPositions.filter((s) => !occupied[s.id])
+    if (free.length === 0) return
+    const pick = free[Math.floor(Math.random() * free.length)]
+    audio.playSelect()
+    sitDown(pick.id)
+  }, [seatPositions, occupied, audio, sitDown])
+
+  const handleCancel = useCallback(() => {
+    useSeatFlow.getState().unlock()
+  }, [])
 
   return (
-    <div className="sso-root" style={{ opacity: 1, transition: 'opacity 0.5s ease' }}>
-      <div className="sso-panel">
-        {/* Header — fixed at top */}
-        <div className="sso-header">
-          <h2 className="sso-title">Choose your seat</h2>
-          <p className="sso-subtitle">Pick a place in the great hall to begin your study session</p>
-        </div>
-
-        {/* Legend */}
-        <div className="sso-legend">
-          <span className="sso-legend-item">
-            <span className="sso-dot available" /> Available
-          </span>
-          <span className="sso-legend-item">
-            <span className="sso-dot occupied" /> Occupied
-          </span>
-          <span className="sso-legend-item">
-            <span className="sso-dot selected" /> Selected
-          </span>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="sso-body">
-          {/* Floor Tabs */}
-          <div className="sso-tabs">
-            <button
-              className={`sso-tab ${activeTab === 'ground' ? 'active' : ''}`}
-              onClick={() => setActiveTab('ground')}
-            >
-              Ground floor
-            </button>
-            <button
-              className={`sso-tab ${activeTab === 'upper' ? 'active' : ''}`}
-              onClick={() => setActiveTab('upper')}
-            >
-              Upper gallery
-            </button>
+    <div className={`sso-root ${cinematic ? 'sso-tour' : ''}`} style={{ opacity: 1, transition: 'opacity 0.5s ease' }}>
+      <HangingLanterns />
+      {cinematic && (
+        <div className="sso-panel sso-tour-panel">
+          <div className="sso-tour-head">
+            <span className="sso-tour-badge">🎬</span>
+            <div>
+              <h2 className="sso-title">Cinematic Tour</h2>
+              <p className="sso-subtitle">Roaming the great hall — random angles, just for the mood</p>
+            </div>
           </div>
+          <div className="sso-actions sso-tour-actions">
+            <button className="sf-btn water" onClick={() => useWorld.getState().setCinematic(false)}>Stop Tour</button>
+            <button className="sso-btn-primary" onClick={() => useWorld.getState().setCinematic(false)}>Choose a seat</button>
+          </div>
+        </div>
+      )}
+      <div className={`sso-panel ${cinematic ? 'sso-hidden' : ''}`}>
+        <div className="sso-header">
+          {wasSeated && (
+            <button className="sso-cancel-btn" onClick={handleCancel} title="Cancel and go back">
+              ✕
+            </button>
+          )}
+          <div className="sso-header-illu" aria-hidden><IconHall /></div>
+          <div className="sso-header-text">
+            <h2 className="sso-title">Choose your seat</h2>
+            <p className="sso-subtitle">Pick a place in the great hall — the whole library on one map.</p>
+          </div>
+        </div>
 
-          {/* Seat Map */}
+        <div className="sso-legend">
+          <span className="sso-legend-item"><span className="sso-dot available" /> Available ({availableCount})</span>
+          <span className="sso-legend-item"><span className="sso-dot occupied" /> Occupied ({occupiedCount})</span>
+          <span className="sso-legend-item"><span className="sso-dot selected" /> Selected</span>
+        </div>
+
+        <div className="sso-body">
           <MapLayer
-            seats={displayedSeats}
-            scale={scale}
+            seats={seatPositions}
             occupied={occupied}
             selected={selected}
-            hovered={hovered}
-            onHover={handleHover}
             onSelect={handleSelect}
           />
         </div>
 
-        {/* Actions — always visible at bottom */}
-          <div className="sso-actions">
+        <div className="sso-actions">
+          <button
+            className="sso-btn-secondary"
+            onClick={handleRandom}
+            title="Pick a random available seat and sit down"
+          >
+            <span className="sso-btn-icon">🎲</span>
+            <span>Random Seat</span>
+          </button>
+          {selected != null && (
             <button
-              className="sf-btn water sso-skip"
-              disabled={selected == null}
-              onClick={() => {
-                if (selected != null) {
-                  pickSeat(selected)
-                  startWalk()
-                  useSeatFlow.getState().arrive()
-                  useWorld.getState().sit(selected)
-                  useSeatFlow.getState().markEntrancePlayed()
-                }
-              }}
+              className="sso-btn-primary"
+              onClick={() => sitDown(selected)}
             >
-              Skip to seat
+              <span className="sso-btn-icon">🪑</span>
+              <span>Join Study Session</span>
             </button>
-            <button
-              className="sf-btn water sso-join"
-              disabled={selected == null}
-              onClick={() => {
-                if (selected == null) return
-                pickSeat(selected)
-                startWalk()
-                useSeatFlow.getState().arrive()
-                useWorld.getState().sit(selected)
-                useSeatFlow.getState().markEntrancePlayed()
-              }}
-            >
-              Join Study Session
-            </button>
-          </div>
-          
-          {/* Camera Mode Instructions */}
-          <div className="sso-camera-info">
-            <p className="sso-camera-text">
-              Camera Controls: Press 1-4 for personal camera modes, 5 for universal camera
-            </p>
-          </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -221,88 +165,166 @@ interface DisplaySeat extends Seat {
 
 interface MapLayerProps {
   seats: DisplaySeat[]
-  scale: number
   occupied: Record<number, string>
   selected: number | null
-  hovered: number | null
-  onHover: (id: number | null) => void
   onSelect: (id: number) => void
 }
 
-function MapLayer({ seats, scale, occupied, selected, hovered, onHover, onSelect }: MapLayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const dragging = useRef(false)
-  const lastPos = useRef({ x: 0, y: 0 })
+function WindowGlyph({ x, z }: { x: number; z: number }) {
+  return (
+    <g className="sso-plan-window">
+      <rect x={x} y={z - 14} width={14} height={28} rx={2} />
+      <line x1={x + 7} y1={z - 14} x2={x + 7} y2={z + 14} />
+      <line x1={x} y1={z} x2={x + 14} y2={z} />
+    </g>
+  )
+}
 
-  // Pan with pointer drag
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('.sso-seat')) return
-    dragging.current = true
-    lastPos.current = { x: e.clientX, y: e.clientY }
-    e.currentTarget.setPointerCapture(e.pointerId)
-  }, [])
+function FireplaceGlyph({ x, z }: { x: number; z: number }) {
+  return (
+    <g className="sso-plan-fire">
+      <path d={`M${x} ${z + 18} V${z + 4} a16 16 0 0 1 32 0 V${z + 18} Z`} />
+      <path d={`M${x + 16} ${z + 13} c-6-9 3-13 0-19 c7 4 9 11 6 16 c6-4 3-11 3-11`} className="sso-plan-flame" />
+    </g>
+  )
+}
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragging.current) return
-    const dx = e.clientX - lastPos.current.x
-    const dy = e.clientY - lastPos.current.y
-    lastPos.current = { x: e.clientX, y: e.clientY }
-    setPan((p) => ({ x: p.x + dx, y: p.y + dy }))
-  }, [])
+function ShelfGlyph({ x, z, rot }: { x: number; z: number; rot: number }) {
+  const horizontal = Math.abs(rot) < 0.1 || Math.abs(Math.abs(rot) - Math.PI) < 0.1
+  const w = horizontal ? 26 : 8
+  const h = horizontal ? 8 : 26
+  return <rect x={x - w / 2} y={z - h / 2} width={w} height={h} rx={2} className="sso-plan-shelf" />
+}
 
-  const onPointerUp = useCallback(() => {
-    dragging.current = false
-  }, [])
+const MapPlan = memo(function MapPlan({ seats }: { seats: DisplaySeat[] }) {
+  const W = HALL.halfW
+  const L = HALL.halfL
+  const sx = (x: number) => ((x + W) / (2 * W)) * 560
+  const sy = (z: number) => ((z + L) / (2 * L)) * 920
+
+  const { tables, windows, shelves, decks, cols, corners, stairs } = useMemo(() => {
+    const tableGroups = new Map<string, Seat[]>()
+    for (const s of seats) {
+      const key = `${Math.round(s.pos[0] / 13) * 13},${Math.round(s.pos[2] / 18) * 18}`
+      if (!tableGroups.has(key)) tableGroups.set(key, [])
+      tableGroups.get(key)!.push(s)
+    }
+    return {
+      tables: [...tableGroups.values()].map((g) => ({
+        cx: g.reduce((a, s) => a + s.pos[0], 0) / g.length,
+        cz: g.reduce((a, s) => a + s.pos[2], 0) / g.length,
+      })),
+      windows: windowZs(),
+      shelves: [...groundShelves(), ...upperShelves()],
+      decks: balconyPlatforms(),
+      cols: columns(),
+      corners: readingCorners(),
+      stairs: staircases(),
+    }
+  }, [seats])
+
+  const sideX = W - HALL.balconyDepth / 2
+  const railX = (s: number) => sx(s * (sideX - HALL.balconyDepth / 2))
 
   return (
+    <svg className="sso-plan" viewBox="0 0 560 920" preserveAspectRatio="none" aria-hidden>
+      <g transform="translate(28 46) scale(0.9 0.9)">
+        <rect x="6" y="6" width="548" height="908" rx="10" className="sso-plan-floor" />
+        <rect x="6" y="6" width="548" height="908" rx="10" className="sso-plan-wall" />
+        {windows.map((z, i) => (
+          <g key={i}>
+            <WindowGlyph x={2} z={sy(z)} />
+            <WindowGlyph x={544} z={sy(z)} />
+          </g>
+        ))}
+        <FireplaceGlyph x={560 / 2 - 16} z={14} />
+        {shelves.map((p, i) => (
+          <ShelfGlyph key={i} x={sx(p.pos[0])} z={sy(p.pos[2])} rot={p.rotY} />
+        ))}
+        {cols.map((c, i) => (
+          <rect key={i} x={sx(c[0]) - 3} y={sy(c[2]) - 3} width={6} height={6} rx={1} className="sso-plan-col" />
+        ))}
+        {corners.map((p, i) => (
+          <circle key={i} cx={sx(p.pos[0])} cy={sy(p.pos[2])} r={8} className="sso-plan-corner" />
+        ))}
+        {stairs.map((st, i) => (
+          <rect
+            key={i}
+            x={sx(st.side * (W - HALL.balconyDepth / 2)) - 5}
+            y={sy(21)}
+            width={10}
+            height={Math.max(6, sy(35) - sy(21))}
+            rx={2}
+            className="sso-plan-stair"
+          />
+        ))}
+        {decks.map((p, i) => {
+          const isSide = Math.abs(p.pos[0]) > HALL.halfW / 2
+          return (
+            <g key={i}>
+              <rect
+                x={sx(p.pos[0] - p.size[0] / 2)}
+                y={sy(p.pos[2] - p.size[2] / 2)}
+                width={p.size[0] * 10}
+                height={p.size[2] * 10}
+                rx={6}
+                className="sso-plan-deck"
+              />
+              {isSide && (
+                <line
+                  x1={sx(p.pos[0])}
+                  y1={sy(Math.min(p.pos[2] + p.size[2] / 2, HALL.halfL - 1))}
+                  x2={sx(p.pos[0] * 0.45)}
+                  y2={sy(HALL.halfL - 2)}
+                  className="sso-plan-walk"
+                />
+              )}
+            </g>
+          )
+        })}
+        {[-1, 1].map((s) => (
+          <line key={s} x1={railX(s)} y1={sy(-(L - 0.5))} x2={railX(s)} y2={sy(22)} className="sso-plan-rail" />
+        ))}
+        {tables.map((t, i) => (
+          <rect
+            key={i}
+            x={sx(t.cx) - TABLE.w * 5}
+            y={sy(t.cz) - TABLE.l * 5}
+            width={TABLE.w * 10}
+            height={TABLE.l * 10}
+            rx={6}
+            className="sso-plan-table"
+          />
+        ))}
+        <g className="sso-plan-tree">
+          <circle cx={280} cy={460} r={30} className="sso-plan-tree-dais" />
+          <rect x={276.5} y={450} width={7} height={42} className="sso-plan-tree-trunk" />
+          <polygon points="280,406 314,452 246,452" className="sso-plan-tree-canopy" />
+          <polygon points="280,428 306,468 254,468" className="sso-plan-tree-canopy" />
+        </g>
+        <circle cx={280} cy={908} r={9} className="sso-plan-entrance" />
+      </g>
+    </svg>
+  )
+})
+
+function MapLayer({ seats, occupied, selected, onSelect }: MapLayerProps) {
+  return (
     <div className="sso-map-outer">
-      <div
-        className="sso-map-wrapper"
-        ref={containerRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
-      >
-        <div
-          className="sso-map"
-          style={{
-            transform: `scale(${scale}) translate(${pan.x / scale}px, ${pan.y / scale}px)`,
-            transformOrigin: 'top center',
-          }}
-        >
-          {/* Hall walls (decorative) */}
-          <div className="sso-wall sso-wall-top" />
-          <div className="sso-wall sso-wall-left" />
-          <div className="sso-wall sso-wall-right" />
-          <div className="sso-wall sso-wall-bottom" />
-
-          {/* Inner hall border */}
-          <div className="sso-hall" />
-
-          {/* Entrance indicator */}
-          <div className="sso-entrance" title="Entrance">
-            <span>Entrance</span>
-          </div>
-
-          {/* Seats */}
+      <div className="sso-map-wrapper">
+        <div className="sso-map">
+          <MapPlan seats={seats} />
           {seats.map((s) => (
             <SeatDot
               key={s.id}
               seat={s}
               isOccupied={!!occupied[s.id]}
               isSelected={selected === s.id}
-              isHovered={hovered === s.id}
-              onHover={() => onHover(s.id)}
-              onLeave={() => onHover(null)}
               onClick={() => onSelect(s.id)}
             />
           ))}
         </div>
       </div>
-
-      <p className="sso-zoom-hint">Drag to pan</p>
     </div>
   )
 }
@@ -313,41 +335,26 @@ interface SeatDotProps {
   seat: DisplaySeat
   isOccupied: boolean
   isSelected: boolean
-  isHovered: boolean
-  onHover: () => void
-  onLeave: () => void
   onClick: () => void
 }
 
-function SeatDot({ seat, isOccupied, isSelected, isHovered, onHover, onLeave, onClick }: SeatDotProps) {
-  const [showCard, setShowCard] = useState(false)
-
-  useEffect(() => {
-    if (isHovered) {
-      const t = setTimeout(() => setShowCard(true), 200)
-      return () => clearTimeout(t)
-    }
-    setShowCard(false)
-  }, [isHovered])
-
+const SeatDot = memo(function SeatDot({ seat, isOccupied, isSelected, onClick }: SeatDotProps) {
   return (
     <button
-      className={`sso-seat ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
+      className={`sso-seat ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
       style={{
         left: `${seat.nx * 100}%`,
         top: `${seat.ny * 100}%`,
       }}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
       onClick={() => {
         if (!isOccupied) onClick()
       }}
       disabled={isOccupied}
       title={isOccupied ? 'Occupied' : `Seat ${seat.id + 1}`}
     >
-      {/* Hover Card */}
-      {showCard && !isOccupied && (
-        <div className="sso-seat-card" onClick={(e) => e.stopPropagation()}>
+      <span className="sso-seat-num">{seat.id + 1}</span>
+      {!isOccupied && (
+        <div className="sso-seat-card">
           <div className="sso-card-header">
             <span className="sso-card-number">Seat {seat.id + 1}</span>
             <span className={`sso-card-floor ${seat.meta.floor === 'Upper Gallery' ? 'upper' : ''}`}>
@@ -361,5 +368,80 @@ function SeatDot({ seat, isOccupied, isSelected, isHovered, onHover, onLeave, on
         </div>
       )}
     </button>
+  )
+})
+
+/* ------------------------------------------------------------------ */
+
+const INK = 'currentColor'
+
+function IconHall() {
+  return (
+    <svg className="sso-svg" viewBox="0 0 48 48" fill="none" stroke={INK} strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+      <path d="M7 21 L24 9 L41 21" />
+      <rect x="11" y="21" width="26" height="18" />
+      <path d="M17 39 V30 a3.5 3.5 0 0 1 7 0 V39" />
+      <path d="M24 39 V30 a3.5 3.5 0 0 1 7 0 V39" />
+      <line x1="17" y1="21" x2="17" y2="39" />
+      <line x1="31" y1="21" x2="31" y2="39" />
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Hanging lanterns across the whole page — they swing gently and the
+   warm glow flickers, like the great hall's ceiling lamps. Purely
+   decorative; the layer sits BEHIND the seat panel and ignores clicks. */
+
+interface LanternSpec {
+  left: number
+  top: number
+  cord: number
+  w: number
+  dur: number
+  delay: number
+}
+
+const LANTERNS: LanternSpec[] = [
+  { left: 3, top: 0, cord: 120, w: 30, dur: 6.2, delay: 0 },
+  { left: 12, top: 0, cord: 220, w: 38, dur: 7.6, delay: -1.5 },
+  { left: 21, top: 0, cord: 88, w: 26, dur: 5.4, delay: -3 },
+  { left: 30, top: 0, cord: 320, w: 44, dur: 8.4, delay: -0.7 },
+  { left: 39, top: 0, cord: 150, w: 32, dur: 6.8, delay: -2.2 },
+  { left: 48, top: 0, cord: 100, w: 28, dur: 7.1, delay: -4 },
+  { left: 57, top: 0, cord: 260, w: 40, dur: 8.0, delay: -1.1 },
+  { left: 66, top: 0, cord: 92, w: 26, dur: 5.8, delay: -3.3 },
+  { left: 75, top: 0, cord: 210, w: 36, dur: 7.3, delay: -0.4 },
+  { left: 84, top: 0, cord: 130, w: 30, dur: 6.5, delay: -2.7 },
+  { left: 93, top: 0, cord: 300, w: 44, dur: 8.8, delay: -1.9 },
+]
+
+function HangingLanterns() {
+  return (
+    <div className="sso-lanterns" aria-hidden>
+      {LANTERNS.map((l, i) => (
+        <div
+          key={i}
+          className="sso-lantern"
+          style={
+            {
+              left: `${l.left}%`,
+              top: `${l.top}%`,
+              '--cord': `${l.cord}px`,
+              '--w': `${l.w}px`,
+              '--dur': `${l.dur}s`,
+              '--delay': `${l.delay}s`,
+              '--fdur': `${Math.round(l.dur * 0.45 * 10) / 10}s`,
+              '--fdelay': `${Math.round(l.delay * 0.6 * 10) / 10}s`,
+            } as CSSProperties
+          }
+        >
+          <div className="sso-lantern-cord" />
+          <div className="sso-lantern-body">
+            <div className="sso-lantern-glow" />
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

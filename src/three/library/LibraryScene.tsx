@@ -2,12 +2,13 @@
 import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette, N8AO, GodRays } from '@react-three/postprocessing'
-import { KernelSize } from 'postprocessing'
+import { EffectComposer, Vignette, N8AO, GodRays, Bloom } from '@react-three/postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
+import { HalfFloatType, Vector3 } from 'three'
 import { useSettings } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
 import { useSeatFlow } from '../../store/seatFlow'
+import { useWorld } from '../../store/world'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -19,13 +20,13 @@ import { KnowledgeTree } from './KnowledgeTree'
 import { Fireflies } from './Fireflies'
 import { Aurora } from './Aurora'
 import { FloatingBooks } from './FloatingBooks'
+import { FantasyLayer } from './FantasyLayer'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 
 import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
-import { DebugProbe, DebugHud } from './DebugOverlay'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
   state = { failed: false, msg: '' }
@@ -56,17 +57,36 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean;
  * tree, furniture, exterior world, day/night + weather, player controller and
  * post-processing — scaling all of it to the chosen graphics quality.
  */
-export function LibraryScene({ onReady }: { onReady?: () => void }) {
+export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () => void; frameloop?: 'always' | 'demand' | 'never' }) {
   // The merged quality budget (user's six axes + transient Ctrl+F perf override).
   const preset = useScenePreset()
   // First-person only for the Ultra depth-of-field (blurring the avatar in
   // third-person looks wrong).
   const cameraMode = useSettings((s) => s.cameraMode)
+  // Bloom lives ONLY during the Cinematic Tour (key 5) — the rest of the time the
+  // stack is bloom-free, because even a subtle always-on bloom used to cause the
+  // angle-specific black blink at seated presets 3/4.
+  const cinematic = useWorld((s) => s.cinematic)
+  const bloomOn = useSettings((s) => s.bloom)
 
   // The sun disc mesh feeds the Ultra GodRays effect. It lives in DayNightWeather;
   // we hold a ref to it here and only mount GodRays once the mesh exists.
   const sunRef = useRef<Mesh | null>(null)
   const [sunReady, setSunReady] = useState(false)
+  // Whether the GodRays sun disc is currently in front of the camera. GodRays
+  // radial-blurs from the sun's *screen-space* position; once the sun goes
+  // behind the lens (the behind/side seated presets 3/4 look away from the room's
+  // window) that position is behind the camera (w < 0) and the effect divides by
+  // it → NaN → floods the whole screen black. We drop GodRays while off-screen.
+  const [sunVisible, setSunVisible] = useState(true)
+
+  // WebGL context-loss recovery. A dropped GL context (GPU driver spike,
+  // integrated/discrete GPU switch, tab throttling) shows the scene's near-black
+  // background for a frame — the "whole screen blinks" while idle. We MUST
+  // preventDefault on contextlost or the browser will never restore it, and on
+  // contextrestored we remount the postprocessing composer so its lost render
+  // targets are rebuilt (otherwise it stays black and the blink loops forever).
+  const [composerKey, setComposerKey] = useState(0)
 
   // Runtime device-pixel-ratio. Fixed at the quality ceiling — no dynamic
   // scaling to avoid the single-frame black blink that DPR resizes cause.
@@ -76,10 +96,28 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
   return (
     <>
     <Canvas
+      frameloop={frameloop}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
+      onCreated={(state) => {
+        const canvas = state.gl.domElement
+        canvas.addEventListener('webglcontextlost', (e) => {
+          // preventDefault is REQUIRED — without it the context is gone for good
+          // and the screen stays black forever. three/R3F handle the actual
+          // restore; we just must not let the browser abandon the context.
+          e.preventDefault()
+          console.warn('[LibraryScene] WebGL context lost — will restore')
+        })
+        canvas.addEventListener('webglcontextrestored', () => {
+          console.warn('[LibraryScene] WebGL context restored — rebuilding postprocessing')
+          // Force the EffectComposer(s) to remount so their render targets
+          // (lost with the context) are recreated; otherwise the screen
+          // stays black even after the context returns.
+          setComposerKey((k) => k + 1)
+        })
+      }}
     >
       <color attach="background" args={['#0c0a0a']} />
       <SystemToggles />
@@ -117,6 +155,11 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
       <ToggleGroup group="particles">
         {preset.particles && <Fireflies count={Math.round(12 + preset.dust * 0.8)} />}
         {preset.particles && <Aurora />}
+        {preset.particles && (
+          <SoftBoundary>
+            <FantasyLayer />
+          </SoftBoundary>
+        )}
         {preset.lodBias < 1 && <FloatingBooks count={preset.lodBias < 0.5 ? 8 : 5} />}
         {preset.dust > 0 && (
           <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
@@ -133,40 +176,78 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
         <RemotePlayers />
       </ToggleGroup>
       <PerfLogger />
-      <DebugProbe />
+      <DisableFrustumCulling />
+      <SunTracker sunRef={sunRef} onVisible={setSunVisible} />
 
       {/* Standard post tier (default): cheap mipmap bloom + vignette. multisampling
           0 disables the composer's expensive MSAA pass. */}
-      <ToggleGroup group="post">
-        {preset.bloom && !preset.ultra && (
-          <EffectComposer enableNormalPass={false} multisampling={0}>
-            <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.4} intensity={0.4} kernelSize={KernelSize.SMALL} mipmapBlur />
-            <Vignette eskil={false} offset={0.16} darkness={0.8} />
-          </EffectComposer>
-        )}
-
-        {/* Ultra post tier (opt-in, off by default): adds N8 ambient occlusion for
-            corner depth, god-ray shafts from the sun, and (first-person only) a
-            shallow depth-of-field. Heavier full-screen passes — for strong GPUs that
-            accept lower FPS. Bloom + vignette stay. The effects are assembled as a
-            filtered array because EffectComposer's children type rejects `false`. */}
-        {preset.ultra && (
-          <EffectComposer enableNormalPass={false} multisampling={2}>
-            {[
-              <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes />,
-              <Bloom key="bloom" luminanceThreshold={0.75} luminanceSmoothing={0.4} intensity={0.5} kernelSize={KernelSize.MEDIUM} mipmapBlur />,
-              sunReady ? (
-                <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
-              ) : null,
-              <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} />,
-            ].filter(Boolean) as ReactElement[]}
-          </EffectComposer>
-        )}
-      </ToggleGroup>
+      <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} />
     </Canvas>
     <SceneReady onReady={onReady} />
-    <DebugHud />
     </>
+  )
+}
+
+/**
+ * Post-processing stack with live per-effect kill-switches (Alt+Q/W/E/R →
+ * Bloom / Vignette / GodRays / N8AO). Each effect can be toggled off without
+ * remounting the whole app, so we can isolate which single pass causes the
+ * angle-specific blink at seated presets 3/4. The component re-renders on a
+ * short poll of the `_postToggles` global; only the composer re-renders, not
+ * the scene graph.
+ */
+function usePostToggleState() {
+  const [s, setS] = useState({ ..._postToggles })
+  useEffect(() => {
+    const iv = setInterval(() => setS({ ..._postToggles }), 100)
+    return () => clearInterval(iv)
+  }, [])
+  return s
+}
+
+function PostEffects({
+  preset, composerKey, sunReady, sunVisible, sunRef, cinematic, bloom,
+}: {
+  preset: ReturnType<typeof useScenePreset>
+  composerKey: number
+  sunReady: boolean
+  sunVisible: boolean
+  sunRef: React.MutableRefObject<Mesh | null>
+  cinematic: boolean
+  bloom: boolean
+}) {
+  const pt = usePostToggleState()
+  // Bloom lives ONLY during the Cinematic Tour (key 5), and only when the user's
+  // Bloom setting is on. The rest of the time the composer is bloom-free, because
+  // even a subtle always-on bloom used to cause the angle-specific black blink at
+  // seated presets 3/4. We still mount the composer when cinematic is on so the
+  // bloom pass can run if requested.
+  if (!preset.bloom && !preset.ultra && !cinematic) return null
+  const showBloom = cinematic && bloom
+  const bloomEl = showBloom ? (
+    <Bloom key="bloom" mipmapBlur intensity={0.9} luminanceThreshold={0.55} luminanceSmoothing={0.2} radius={0.7} />
+  ) : null
+  if (preset.ultra) {
+    return (
+      <EffectComposer key={`ultra-${composerKey}`} enableNormalPass={false} multisampling={2}>
+        {[
+          pt.n8ao ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes /> : null,
+          sunReady && sunVisible && pt.godrays ? (
+            <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
+          ) : null,
+          pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
+          bloomEl,
+        ].filter(Boolean) as ReactElement[]}
+      </EffectComposer>
+    )
+  }
+  return (
+    <EffectComposer key={`bloom-${composerKey}`} enableNormalPass={false} multisampling={0}>
+      {[
+        bloomEl,
+        pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
+      ].filter(Boolean) as ReactElement[]}
+    </EffectComposer>
   )
 }
 
@@ -184,14 +265,18 @@ export function LibraryScene({ onReady }: { onReady?: () => void }) {
  * autoUpdate is left at its default (true) and needsUpdate is not touched so
  * the renderer simply skips the shadow pass.
  */
-function ShadowManager({ enabled, refreshInterval = 8 }: { enabled: boolean; refreshInterval?: number }) {
+function ShadowManager({ enabled, refreshInterval = 300 }: { enabled: boolean; refreshInterval?: number }) {
   const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
   const frame = useRef(0)
+  const lastCam = useRef(new Vector3())
+  const prevShould = useRef<boolean | null>(null)
 
   useEffect(() => {
     if (enabled) {
-      // Throttle: disable automatic rebuild, force one immediate refresh, then
-      // let the useFrame cadence take over.
+      // Throttle: disable automatic rebuild, force ONE immediate refresh, then
+      // freeze. The library is static (sun barely moves, lanterns fixed), so the
+      // shadow maps only need to be computed once — not every few frames.
       gl.shadowMap.autoUpdate = false
       gl.shadowMap.needsUpdate = true
     } else {
@@ -207,20 +292,36 @@ function ShadowManager({ enabled, refreshInterval = 8 }: { enabled: boolean; ref
   }, [gl, enabled])
 
   useFrame(() => {
-    // Check the debug toggle (key 7) — reads the global without touching GL
-    // state directly. The actual mutation happens only here in ShadowManager.
+    // Debug toggle (key 7) — reads the global; mutation happens only here.
     const toggleOn = _sysToggles.shadows
     const shouldRender = enabled && toggleOn
 
-    if (gl.shadowMap.enabled !== shouldRender) {
+    // On (re)enable, render the shadow maps once so they're not stale.
+    if (prevShould.current !== null && prevShould.current !== shouldRender) {
       gl.shadowMap.enabled = shouldRender
-      gl.shadowMap.needsUpdate = true
+      if (shouldRender) gl.shadowMap.needsUpdate = true
     }
+    prevShould.current = shouldRender
 
     if (!shouldRender) return
 
-    frame.current = (frame.current + 1) % refreshInterval
-    if (frame.current === 0) gl.shadowMap.needsUpdate = true
+    // Only refresh the (very expensive — 48 shadow casters) maps when the
+    // camera has actually moved. While idle/sitting still the camera is
+    // stationary, so the maps freeze after the first render and we never pay
+    // the periodic multi-frame GPU stall that showed the near-black background
+    // as a "whole-screen blink". A rare safety refresh keeps things correct
+    // if something animated ever changes the lighting.
+    const moved = lastCam.current.distanceToSquared(camera.position) > 1e-4
+    if (moved) {
+      gl.shadowMap.needsUpdate = true
+      lastCam.current.copy(camera.position)
+    }
+    // NOTE: we do NOT refresh on a fixed timer while idle. The old code did
+    // `needsUpdate = true` every `refreshInterval` frames even when the camera
+    // was perfectly still — that periodic shadow-map re-render of ~48 casters is
+    // a multi-frame GPU stall that dropped a frame and showed the near-black
+    // background as a "whole-screen blink". The library/sun are static, so once
+    // the camera stops moving the maps stay frozen and the stall is gone.
   })
 
   return null
@@ -258,13 +359,17 @@ function TextureQualitySync({ anisotropy }: { anisotropy: number }) {
 }
 
 /**
- * System elimination toggles — press number keys to disable/enable subsystems.
- *   1 = DayNightWeather  2 = Exterior  3 = LibraryShell+Bookshelves+Decor
- *   4 = Lanterns         5 = Fireflies/Aurora/Sparkles  6 = SeasonalOverlay
- *   7 = Shadows          8 = PostProcessing              9 = RemotePlayers
- *   0 = Fog
+ * System elimination toggles — press Alt + number keys to disable/enable
+ * subsystems. The Alt modifier is REQUIRED so these never collide with the
+ * in-canvas camera-preset keys 1-4 (handled in PlayerController), which was
+ * previously causing the library to randomly drop its sky/lighting/interior
+ * whenever the user switched seated camera angles.
+ *   Alt+1 = DayNightWeather   Alt+2 = Exterior   Alt+3 = LibraryShell+Bookshelves+Decor
+ *   Alt+4 = Lanterns          Alt+5 = Fireflies/Aurora/Sparkles   Alt+6 = SeasonalOverlay
+ *   Alt+7 = Shadows           Alt+8 = PostProcessing              Alt+9 = RemotePlayers
+ *   Alt+0 = Fog
  *
- * Shadow toggle (key 7) is read by ShadowManager on each frame — this component
+ * Shadow toggle (Alt+7) is read by ShadowManager on each frame — this component
  * only flips the boolean, it never touches gl.shadowMap directly.
  *
  * The toggle state is stored in a global so it survives re-renders.
@@ -277,25 +382,47 @@ const _sysToggles: Record<string, boolean> = {
 }
 if (typeof window !== 'undefined') (window as any).__sysToggles = _sysToggles
 
+// Per-effect post-processing kill-switches — used to isolate which single
+// EffectComposer pass is causing the angle-specific blink at seated presets 3/4.
+//   Alt+W = Vignette   Alt+E = GodRays   Alt+R = N8AO
+// Bloom is no longer a kill-switch: it only renders during the Cinematic Tour
+// (key 5), so it can't flicker the seated presets anymore.
+const _postToggles: Record<string, boolean> = {
+  vignette: true, godrays: true, n8ao: true,
+}
+if (typeof window !== 'undefined') (window as any).__postToggles = _postToggles
+
 function SystemToggles() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Ignore if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+        Object.keys(_sysToggles).forEach(k => _sysToggles[k] = true)
+        _postToggles.vignette = _postToggles.godrays = _postToggles.n8ao = true
+        console.log('[Toggles] All systems + post effects ON')
+        return
+      }
+      // Debug subsystem toggles require Alt so they don't fire on the
+      // camera-preset keys 1-4 used while seated (see PlayerController).
+      if (!e.altKey) return
       const map: Record<string, string> = {
         '1': 'dayNight', '2': 'exterior', '3': 'interior',
         '4': 'lanterns', '5': 'particles', '6': 'seasonal',
         '7': 'shadows', '8': 'post', '9': 'remotePlayers', '0': 'fog',
       }
-      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-        Object.keys(_sysToggles).forEach(k => _sysToggles[k] = true)
-        console.log('[Toggles] All systems ON')
-        return
+      const postMap: Record<string, string> = {
+        'w': 'vignette', 'e': 'godrays', 'r': 'n8ao',
       }
-      const key = map[e.key]
+      const key = map[e.key] ?? postMap[e.key.toLowerCase()]
       if (key) {
-        _sysToggles[key] = !_sysToggles[key]
-        console.log(`[Toggles] ${key}: ${_sysToggles[key] ? 'ON' : 'OFF'}`)
+        if (_sysToggles[key] !== undefined) {
+          _sysToggles[key] = !_sysToggles[key]
+          console.log(`[Toggles] ${key}: ${_sysToggles[key] ? 'ON' : 'OFF'}`)
+        } else if (_postToggles[key] !== undefined) {
+          _postToggles[key] = !_postToggles[key]
+          console.log(`[Post] ${key}: ${_postToggles[key] ? 'ON' : 'OFF'}`)
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -441,5 +568,69 @@ function PerfLogger() {
     a.logged = true
   })
 
+  return null
+}
+
+/**
+ * Disable frustum culling on every mesh in the scene, every frame. For a static,
+ * enclosed interior the cost is negligible, but it removes a class of blink that
+ * is angle-specific to the behind/side seated presets (3/4):
+ *
+ *   A skinned mesh's bounding sphere is computed at its bind pose / origin, NOT
+ *   at the seat where the avatar is actually placed. When the camera looks AWAY
+ *   from the origin (presets 3/4: behind / side), that sphere leaves the frustum
+ *   and the avatar gets culled for a frame → it vanishes, revealing the dark
+ *   background → "blink". Front presets (1/2) look toward the origin, so the
+ *   avatar stays in frustum and never flickers.
+ *
+ * Running every frame (not just at mount) guarantees late-loaded character
+ * models — whose real SkinnedMesh is created after the GLTF/avatar config loads
+ * — are also covered.
+ */
+function DisableFrustumCulling() {
+  const scene = useThree((s) => s.scene)
+  useFrame(() => {
+    scene.traverse((o: Object3D) => {
+      const mesh = o as unknown as { isMesh?: boolean; frustumCulled?: boolean }
+      if (mesh.isMesh && mesh.frustumCulled) mesh.frustumCulled = false
+    })
+  })
+  return null
+}
+
+/**
+ * Tracks whether the GodRays sun disc is in front of the camera. GodRays does a
+ * radial blur from the sun's *screen-space* position; when the sun goes behind
+ * the camera (e.g. the behind/side seated presets 3/4, which look away from the
+ * room's main window), that position is behind the lens (w < 0) and the effect
+ * divides by it → NaN/garbage that floods the whole screen black — the
+ * angle-specific "blink" at presets 3/4. We simply drop GodRays while the sun is
+ * off-screen so the rest of the post stack (bloom / vignette / N8AO) keeps running.
+ */
+function SunTracker({ sunRef, onVisible }: { sunRef: React.MutableRefObject<Mesh | null>; onVisible: (v: boolean) => void }) {
+  const camera = useThree((s) => s.camera)
+  const prev = useRef(true)
+  const ndc = useRef(new Vector3())
+  useFrame(() => {
+    const sun = sunRef.current
+    if (!sun) {
+      if (prev.current) { prev.current = false; onVisible(false) }
+      return
+    }
+    // Project the sun's world position into normalized device coords. Behind the
+    // camera yields z > 1 (and flipped x/y), so the z test alone rejects it; the
+    // x/y bounds reject the screen EDGE, where the radial blur still reads
+    // off-canvas garbage and floods the screen black (the preset 3/4 blink).
+    sun.getWorldPosition(ndc.current)
+    ndc.current.project(camera)
+    const onScreen =
+      ndc.current.z < 1 &&
+      ndc.current.x > -0.75 && ndc.current.x < 0.75 &&
+      ndc.current.y > -0.75 && ndc.current.y < 0.75
+    if (onScreen !== prev.current) {
+      prev.current = onScreen
+      onVisible(onScreen)
+    }
+  })
   return null
 }

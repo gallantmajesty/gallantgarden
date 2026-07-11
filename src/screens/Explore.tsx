@@ -36,7 +36,7 @@ import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
 import { CinematicEntry } from '../components/library/CinematicEntry'
-import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
+
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { useSeatFlow } from '../store/seatFlow'
 import './Explore.css'
@@ -55,7 +55,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const searchParams = new URLSearchParams(location.search)
   const worldFromUrl = (searchParams.get('world') as 'library' | 'train-station') || defaultWorld
 
-  const isDesktop = useIsDesktop()
   const realm = useRealm((s) => s.active)
   const [ready, setReady] = useState(false)
   const [hint, setHint] = useState(true)
@@ -106,8 +105,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
     if (useSettings.getState().cameraMode === 'first') set('cameraMode', 'third')
   }, [set])
 
-  if (!isDesktop) return <DesktopOnly />
-
   // Experimental-realm route guard. If someone reaches a flagship route while it
   // is hidden (public build, no dev access) — e.g. a stale link or a manual
   // navigation — show an under-development screen instead of the scene. The scene
@@ -122,7 +119,10 @@ export function Explore({ defaultWorld }: ExploreProps) {
       {isTrain ? (
         <TrainStationScene onReady={() => setReady(true)} />
       ) : (
-        <LibraryScene onReady={() => setReady(true)} />
+        <LibraryScene
+          onReady={() => setReady(true)}
+          frameloop={seatFlowStage === 'selecting' ? 'never' : 'always'}
+        />
       )}
       <PomodoroTicker />
       <RealmConnection />
@@ -209,6 +209,11 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
           {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
           <LibraryFriendsPanel />
+
+          {/* Library Realm music widget (bottom-right) — local ambient presets +
+              a Spotify-connected mini player. Hidden during seat selection so the
+              picking screen stays uncluttered. */}
+          {!isTrain && seatFlowStage !== 'selecting' && <MusicPlayer />}
 
           {/* in-library calculator — a mini Basic calc docked lower-right, with a
               ⋮ menu that swaps in any other calculator (which opens quarter-screen) */}
@@ -949,6 +954,12 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             />
             <Toggle label="Ultra effects (SSAO · god rays · DoF) — high-end GPU" value={s.ultra} onChange={(v) => s.set('ultra', v)} />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
+          </Section>
+
+          <Section title="Cinematic Tour (key 5)">
+            <Toggle label="Enable cinematic tour" value={s.cinematicTour} onChange={(v) => s.set('cinematicTour', v)} />
+            <Toggle label="Cinematic camera zoom (dolly between shots)" value={s.cinematicZoom} onChange={(v) => s.set('cinematicZoom', v)} />
+            <Toggle label="Bloom during cinematic" value={s.bloom} onChange={(v) => s.set('bloom', v)} />
           </Section>
 
           <Section title="Focus timer">

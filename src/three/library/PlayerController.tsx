@@ -1,13 +1,13 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, Vector3 } from 'three'
-import { HALL } from './layout'
+import { HALL, PLAYER_BOUNDS } from './layout'
 import { buildCollision, rayHit } from './colliders'
-import { seatAnchors } from './furniture'
+import { seatAnchors, readingCorners, GALLERY_FRONT_Z } from './furniture'
 import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
-import { setLocalState } from '../../multiplayer/net'
+import { setLocalState, getCineHostId, getCineHostCam, publishCineCam, publishCineState, setLocalCineActive, getSelfId } from '../../multiplayer/net'
 import { useSeatFlow } from '../../store/seatFlow'
 import { EmoteLabel } from './EmoteLabel'
 import { useAvatar } from '../../avatar/store'
@@ -17,18 +17,40 @@ import { useAvatar } from '../../avatar/store'
 // NOT ~2.2 (which aimed the camera above the head at the hall/lanterns).
 const SEAT_EYE = 0.7
 const CHAIR_SEAT_Y = 0.45
-const THIRD_DIST = 5.5
-const PRESET_DIST = 3.5
-const PRESET_3_DIST = 4.2
+const THIRD_DIST = 4.0 // default orbit distance when seated
 
-const PRESET_ANGLES: [number, number][] = [
-  [0.6, -0.15],
-  [-2.5, -0.1],
-  [-3.1, -0.08],
-  [0.9, -0.05],
+// A single, clean seated camera: a smooth third-person orbit you aim with drag
+// and zoom with the wheel. No numbered presets. Default view faces the avatar
+// (so you see your own character), and you can orbit a full 360°. First-person
+// mode (cameraMode) drops the camera to eye level.
+const ORBIT_SMOOTHNESS = 9
+const MIN_ZOOM = 2.5
+const MAX_ZOOM = 9
+const MIN_PITCH = -0.4
+const MAX_PITCH = 0.7
+// Collision pull-in: never let the camera collapse closer than this to the
+// subject. A tiny floor (e.g. 0.6) embeds the camera inside nearby walls /
+// shelves / columns behind or beside a seat, which z-fights and reads as a
+// flicker. The room clamp keeps the camera inside the walls, so a larger
+// minimum just means a blocked direction sits at a stable, comfortable distance.
+const MIN_SAFE_DIST = 1.6
+const PULL_MARGIN = 0.5
+
+// Seated camera presets (keys 1-4). `yaw` is an offset added to the seat's
+// facing direction, `pitch` the orbit elevation, `zoom` the orbit distance.
+// Re-pressing the active preset key returns to free orbit.
+const SEAT_PRESETS: { yaw: number; pitch: number; zoom: number }[] = [
+  { yaw: 0.55, pitch: 0.18, zoom: 3.6 }, // 1 — front-right 3/4
+  { yaw: -0.55, pitch: 0.18, zoom: 3.6 }, // 2 — front-left 3/4
+  { yaw: Math.PI, pitch: 0.5, zoom: 4.4 }, // 3 — behind & above
+  { yaw: Math.PI / 2, pitch: 0.2, zoom: 4.0 }, // 4 — side profile
 ]
 
-const ORBIT_SMOOTHNESS = 8
+/** Smooth ease so the cinematic glide never snaps (which would read as a flicker). */
+function smoothstep(x: number): number {
+  const t = MathUtils.clamp(x, 0, 1)
+  return t * t * (3 - 2 * t)
+}
 
 function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, number] {
   const savedId = useSeatFlow.getState().selectedSeatId
@@ -37,12 +59,6 @@ function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, 
   }
   if (seats.length > 0) return seats[0].pos
   return [0, 0, HALL.halfL - 3]
-}
-
-function smoothClamp(value: number, min: number, max: number, smoothness: number): number {
-  if (value <= min) return min + (value - min) * Math.exp(-smoothness * Math.abs(value - min))
-  if (value >= max) return max + (value - max) * Math.exp(-smoothness * Math.abs(value - max))
-  return value
 }
 
 export function PlayerController() {
@@ -56,6 +72,7 @@ export function PlayerController() {
   const camTarget = useRef(new Vector3())
   const targetYaw = useRef(0)
   const targetPitch = useRef(0)
+  const safeDistRef = useRef(THIRD_DIST)
   const camSeeded = useRef(false)
 
   const p = useRef({
@@ -72,6 +89,7 @@ export function PlayerController() {
     bob: 0,
     camDist: THIRD_DIST,
     zoom: THIRD_DIST,
+    preset: 0, // 0 = free orbit, 1-4 = seated preset
     eye: 1.62,
     nearSeat: null as number | null,
     seatedInit: false,
@@ -81,6 +99,84 @@ export function PlayerController() {
   const wasSeated = useRef(false)
   const [emote, setEmote] = useState<string | null>(null)
   const emoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cinematic tour (key 5 / overlay button): the camera glides between random
+  // vantage points across the whole hall. `from`/`to` are camera positions,
+  // `lookFrom`/`lookTo` the aim points; we ease between them, dwell, then pick
+  // a fresh random waypoint.
+  const cine = useRef({
+    from: new Vector3(),
+    to: new Vector3(),
+    lookFrom: new Vector3(),
+    lookTo: new Vector3(),
+    fovFrom: 68,
+    fovTo: 68,
+    t: 0,
+    dur: 1,
+    dwell: 0,
+    active: false,
+  })
+  const CINE_FOV_BASE = 68
+  // Shared cinematic: scratch vectors + a publish throttle so the host only
+  // streams its camera ~11×/sec rather than every frame.
+  const _cv = useRef(new Vector3())
+  const _cv2 = useRef(new Vector3())
+  const cineCamPub = useRef(0)
+  const cineStateSent = useRef(false)
+  const wasCinematic = useRef(false)
+
+  const pickCine = () => {
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+    const zoom = useSettings.getState().cinematicZoom
+    const fov = zoom ? rnd(48, 80) : CINE_FOV_BASE
+    const roll = Math.random()
+    // 1) Upper-floor balcony overlook — stand on a side gallery and look down/across
+    //    the nave so the tour actually shows the upper floor (its tables + railings).
+    if (roll < 0.3) {
+      const side = Math.random() < 0.5 ? -1 : 1
+      const x = side * (HALL.halfW - HALL.balconyDepth / 2 - 0.3)
+      const z = rnd(-HALL.halfL + 8, GALLERY_FRONT_Z - 4)
+      const pos = new Vector3(x, HALL.balconyY + 1.2, z)
+      const look = new Vector3(-side * rnd(0, 6), rnd(1.5, 5), rnd(-HALL.halfL + 8, HALL.halfL - 8))
+      return { pos, look, fov }
+    }
+    // 2) Upper-gallery stroll — roam along the upper floor itself (its railings /
+    //    shelves / open atrium), keeping the camera away from the upper seats.
+    if (roll < 0.5) {
+      const side = Math.random() < 0.5 ? -1 : 1
+      const x = side * (HALL.halfW - HALL.balconyDepth / 2 - 0.4)
+      const z = rnd(-HALL.halfL + 6, GALLERY_FRONT_Z - 2)
+      const pos = new Vector3(x, HALL.balconyY + 1.5, z)
+      const look = new Vector3(side * rnd(2, 8), HALL.balconyY + rnd(0.5, 2), z + rnd(-6, 6))
+      return { pos, look, fov }
+    }
+    // 3) Reading-corner / bench close-up (ground or upper) — benches are fine to
+    //    frame (the soft seating, not a seated study avatar).
+    if (roll < 0.72) {
+      const corners = readingCorners()
+      const c = corners[Math.floor(Math.random() * corners.length)]
+      const pos = new Vector3(c.pos[0] + rnd(-2, 2), c.pos[1] + 1.4, c.pos[2] + rnd(-2, 2))
+      const look = new Vector3(c.pos[0], c.pos[1] + 0.8, c.pos[2])
+      return { pos, look, fov }
+    }
+    // 4) Free hall drift — frame the architecture (the golden tree, the nave, the
+    //    far shelves) and keep the camera away from seated study avatars so we never
+    //    catch someone's lower body. When we do glance at a seat, aim at head height.
+    const gallery = Math.random() < 0.4
+    const y = gallery ? HALL.balconyY + rnd(0.5, 3) : rnd(1.2, 6)
+    const x = rnd(PLAYER_BOUNDS.minX, PLAYER_BOUNDS.maxX)
+    const z = rnd(PLAYER_BOUNDS.minZ, PLAYER_BOUNDS.maxZ)
+    let look: Vector3
+    if (seats.length && Math.random() < 0.3) {
+      // Aim at head/shoulder height (never low) so a seated avatar isn't cropped.
+      const s = seats[Math.floor(Math.random() * seats.length)]
+      look = new Vector3(s.pos[0], s.pos[1] + 1.3, s.pos[2])
+    } else {
+      // The centrepiece Knowledge Tree or a point in the nave — pure architecture.
+      look = new Vector3(rnd(-6, 6), rnd(2.5, HALL.wallH * 0.7), rnd(-14, 14))
+    }
+    return { pos: new Vector3(x, y, z), look, fov }
+  }
 
   const far = useSettings((s) => (s as any).drawDistance === 'ultra' ? 500 : (s as any).drawDistance === 'high' ? 300 : 150)
 
@@ -101,6 +197,7 @@ export function PlayerController() {
     const move = (e: PointerEvent) => {
       const d = drag.current
       if (!d.on) return
+      p.current.preset = 0 // dragging leaves any fixed preset → free orbit
       const isFemale = useAvatar.getState().config.bodyType === 'female'
       const seated = useWorld.getState().seat != null
       if (isFemale && seated) return
@@ -109,7 +206,7 @@ export function PlayerController() {
       p.current.faceYaw -= (e.clientX - d.lx) * k
       p.current.yaw = p.current.faceYaw
       p.current.pitch += (e.clientY - d.ly) * k * (s.invertY ? 1 : -1)
-      p.current.pitch = MathUtils.clamp(p.current.pitch, -1.2, 1.2)
+      p.current.pitch = MathUtils.clamp(p.current.pitch, MIN_PITCH, MAX_PITCH)
       d.lx = e.clientX
       d.ly = e.clientY
     }
@@ -118,26 +215,37 @@ export function PlayerController() {
     }
     const wheel = (e: WheelEvent) => {
       e.preventDefault()
-      p.current.zoom = MathUtils.clamp(p.current.zoom + Math.sign(e.deltaY) * 0.6, 2.6, 10)
+      p.current.preset = 0 // manual zoom leaves any fixed preset
+      p.current.zoom = MathUtils.clamp(p.current.zoom + Math.sign(e.deltaY) * 0.6, MIN_ZOOM, MAX_ZOOM)
     }
     const keyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      // Universal cinematic tour — works whether seated or still choosing a seat.
+      // Gated by the Settings "Enable cinematic tour" switch (key 5).
+      if (e.key === '5') {
+        if (useSettings.getState().cinematicTour) {
+          useWorld.getState().setCinematic(!useWorld.getState().cinematic)
+        }
+        return
+      }
       if (useWorld.getState().seat == null) return
-      const key = e.key
-      if (key >= '1' && key <= '4') {
-        // Manual camera shifting: keys 1-4 always select that fixed seat-camera
-        // angle (consistent for every character).
-        const preset = parseInt(key)
-        useSettings.getState().set('cameraPreset', preset)
+      if (useWorld.getState().cinematic) useWorld.getState().setCinematic(false)
+      const n = parseInt(e.key, 10)
+      if (n >= 1 && n <= 4) {
+        const cur = p.current.preset
+        if (cur === n) {
+          p.current.preset = 0 // re-press the active preset → free orbit
+          return
+        }
+        p.current.preset = n
         const seatId = useWorld.getState().seat
-        if (seatId != null) {
-          const seat = seats[seatId]
-          if (seat) {
-            targetYaw.current = seat.yaw + PRESET_ANGLES[preset - 1][0]
-            targetPitch.current = PRESET_ANGLES[preset - 1][1]
-            p.current.yaw = targetYaw.current
-            p.current.pitch = targetPitch.current
-            p.current.zoom = PRESET_DIST
-          }
+        const seat = seatId != null ? seats[seatId] : undefined
+        if (seat) {
+          const pre = SEAT_PRESETS[n - 1]
+          // Set the orbit target angles; the per-frame easing glides there.
+          p.current.yaw = seat.yaw + pre.yaw
+          p.current.pitch = pre.pitch
+          p.current.zoom = pre.zoom
         }
       }
     }
@@ -161,10 +269,118 @@ export function PlayerController() {
     if (!cam) return
     const s = useSettings.getState()
     const st = p.current
+    const cinematic = useWorld.getState().cinematic
+
+    // Entering / leaving the shared cinematic tour: tell everyone so the host
+    // (smallest active id) can be elected and its camera broadcast to all.
+    if (wasCinematic.current && !cinematic) {
+      camSeeded.current = false
+      st.preset = 0
+      cine.current.active = false
+      cineStateSent.current = false
+      setLocalCineActive(false)
+      publishCineState(false)
+      // restore the camera's normal field of view
+      cam.fov = CINE_FOV_BASE
+      cam.updateProjectionMatrix()
+    }
+    if (!wasCinematic.current && cinematic) {
+      setLocalCineActive(true)
+      publishCineState(true)
+      cineStateSent.current = true
+    }
+    wasCinematic.current = cinematic
+
+    if (cinematic) {
+      const c = cine.current
+      if (!c.active) {
+        c.from.copy(cam.position)
+        c.lookFrom.copy(camTarget.current)
+        const wp = pickCine()
+        c.to.copy(wp.pos)
+        c.lookTo.copy(wp.look)
+        c.fovFrom = cam.fov
+        c.fovTo = wp.fov
+        c.t = 0
+        c.dur = 5 + Math.random() * 3
+        c.dwell = 0
+        c.active = true
+      }
+      // The player with the smallest id among those in cinematic drives + broadcasts
+      // the camera; every other cinematic viewer renders that same shared feed.
+      const selfId = getSelfId()
+      const isHost = selfId == null || getCineHostId() === selfId
+      if (isHost) {
+        if (c.dwell > 0) {
+          c.dwell -= dt
+        } else {
+          c.t += dt / c.dur
+          if (c.t >= 1) {
+            c.t = 1
+            c.dwell = 1.2 + Math.random() * 1.6
+          }
+          const e = smoothstep(c.t)
+          const px = c.from.x + (c.to.x - c.from.x) * e
+          const py = c.from.y + (c.to.y - c.from.y) * e
+          const pz = c.from.z + (c.to.z - c.from.z) * e
+          const lx = c.lookFrom.x + (c.lookTo.x - c.lookFrom.x) * e
+          const ly = c.lookFrom.y + (c.lookTo.y - c.lookFrom.y) * e
+          const lz = c.lookFrom.z + (c.lookTo.z - c.lookFrom.z) * e
+          cam.position.set(
+            MathUtils.clamp(px, -HALL.halfW + 0.6, HALL.halfW - 0.6),
+            MathUtils.clamp(py, 0.6, HALL.wallH - 0.6),
+            MathUtils.clamp(pz, -HALL.halfL + 0.6, HALL.halfL - 0.6),
+          )
+          camTarget.current.set(lx, ly, lz)
+          cam.lookAt(camTarget.current)
+          cam.fov = c.fovFrom + (c.fovTo - c.fovFrom) * e
+          cam.updateProjectionMatrix()
+          if (c.t >= 1 && c.dwell > 0) {
+            c.from.copy(cam.position)
+            c.lookFrom.copy(camTarget.current)
+            const wp = pickCine()
+            c.to.copy(wp.pos)
+            c.lookTo.copy(wp.look)
+            c.fovFrom = cam.fov
+            c.fovTo = wp.fov
+            c.t = 0
+            c.dur = 5 + Math.random() * 3
+          }
+        }
+        // Stream the authoritative camera to the other cinematic viewers.
+        const now = performance.now()
+        if (now - cineCamPub.current > 90) {
+          cineCamPub.current = now
+          publishCineCam(
+            [cam.position.x, cam.position.y, cam.position.z],
+            [camTarget.current.x, camTarget.current.y, camTarget.current.z],
+            cam.fov,
+          )
+        }
+      } else {
+        // Receiver: glide toward the shared host camera.
+        const hostCam = getCineHostCam()
+        if (hostCam) {
+          const k = 1 - Math.exp(-12 * dt)
+          _cv.current.set(hostCam.pos[0], hostCam.pos[1], hostCam.pos[2])
+          _cv2.current.set(hostCam.look[0], hostCam.look[1], hostCam.look[2])
+          cam.position.lerp(_cv.current, k)
+          camTarget.current.lerp(_cv2.current, k)
+          cam.lookAt(camTarget.current)
+          if (typeof hostCam.fov === 'number') {
+            cam.fov = MathUtils.lerp(cam.fov, hostCam.fov, k)
+            cam.updateProjectionMatrix()
+          }
+        }
+      }
+      setLocalState({ x: cam.position.x, y: cam.position.y, z: cam.position.z, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: true })
+      return
+    }
+
     const seatId = useWorld.getState().seat
 
     if (wasSeated.current && seatId == null) {
-      useSettings.getState().set('cameraPreset', 0)
+      camSeeded.current = false
     }
     wasSeated.current = seatId != null
 
@@ -192,112 +408,76 @@ export function PlayerController() {
 
         if (!st.seatedInit) {
           st.seatedInit = true
+          // Default: face the avatar (see your own character) at a comfy distance.
           st.yaw = seat.yaw
-          st.pitch = -0.2
-          st.zoom = 3.0
-          st.camDist = 3.0
+          st.pitch = 0.15
+          st.zoom = THIRD_DIST
+          st.camDist = THIRD_DIST
+          st.preset = 0
           targetYaw.current = seat.yaw
-          targetPitch.current = -0.2
-
-          if (useAvatar.getState().config.bodyType === 'female') {
-            const cur = useSettings.getState().cameraPreset
-            if (cur < 1 || cur > 4) {
-              useSettings.getState().set('cameraPreset', 1)
-            }
-          }
+          targetPitch.current = st.pitch
         }
 
         const eyeY = seat.pos[1] + CHAIR_SEAT_Y + SEAT_EYE
 
-        if (s.cameraMode === 'first') {
+         if (s.cameraMode === 'first') {
           cam.position.set(seat.pos[0], eyeY, seat.pos[2])
           cam.rotation.set(0, seat.yaw + Math.PI, 0)
-          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
+          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false })
           return
         }
 
-        const preset = s.cameraPreset
-        if (preset >= 1 && preset <= 4) {
-          const [angleOff, pitchOff] = PRESET_ANGLES[preset - 1]
-          const yaw = seat.yaw + angleOff
-          const pitch = pitchOff
-          targetYaw.current = yaw
-          targetPitch.current = pitch
-          const dist = preset === 3 ? PRESET_3_DIST : PRESET_DIST
-          const cp = Math.cos(pitch)
-          // UNIT direction from the seat's eye out to the camera (already length 1)
-          const dirX = Math.sin(yaw) * cp
-          const dirY = Math.sin(pitch)
-          const dirZ = Math.cos(yaw) * cp
-          // pull the camera in if a wall is closer than `dist` (rayHit needs a unit dir)
-          const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dirX, dirY, dirZ, dist, collision.blockers)
-          const safeDist = MathUtils.clamp(Math.min(dist, hit - 0.3), 0.6, dist)
-          const idealX = seat.pos[0] + dirX * safeDist
-          const idealY = eyeY + dirY * safeDist
-          const idealZ = seat.pos[2] + dirZ * safeDist
-          // seed the position on the first seated frame so we don't glide from a stale spot
-          if (!camSeeded.current) { camPos.current.set(idealX, idealY, idealZ); camSeeded.current = true }
-          // stable exponential smoothing — no spring oscillation / flicker
-          const a = 1 - Math.exp(-12 * dt)
-          camPos.current.x += (idealX - camPos.current.x) * a
-          camPos.current.y += (idealY - camPos.current.y) * a
-          camPos.current.z += (idealZ - camPos.current.z) * a
-          // hard safety: never let the camera leave the room (no void / see-through walls)
-          camPos.current.x = MathUtils.clamp(camPos.current.x, -HALL.halfW + 0.6, HALL.halfW - 0.6)
-          camPos.current.z = MathUtils.clamp(camPos.current.z, -HALL.halfL + 0.6, HALL.halfL - 0.6)
-          camPos.current.y = MathUtils.clamp(camPos.current.y, seat.pos[1] + 0.2, HALL.wallH - 0.5)
-          cam.position.copy(camPos.current)
-          const targetY = preset === 3 ? seat.pos[1] + 0.8 : eyeY - 0.25
-          camTarget.current.lerp(new Vector3(seat.pos[0], targetY, seat.pos[2]), a)
-          cam.lookAt(camTarget.current)
-          st.yaw = yaw
-          st.pitch = pitch
-          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
-          return
-        }
-
-        // free orbit around the seat (drag to look), clamped to a comfy arc
-        let yawDiff = st.yaw - seat.yaw
-        yawDiff = Math.atan2(Math.sin(yawDiff), Math.cos(yawDiff))
-        const minYaw = -(70 / 180) * Math.PI
-        const maxYaw = (70 / 180) * Math.PI
-        yawDiff = smoothClamp(yawDiff, minYaw, maxYaw, ORBIT_SMOOTHNESS * dt * 60)
-        const clampedYaw = seat.yaw + yawDiff
-        const clampedPitch = smoothClamp(st.pitch, -0.35, 0.35, ORBIT_SMOOTHNESS * dt * 60)
-        targetYaw.current = MathUtils.lerp(targetYaw.current, clampedYaw, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
-        targetPitch.current = MathUtils.lerp(targetPitch.current, clampedPitch, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
-        const dist = MathUtils.clamp(st.zoom, 2.0, 8)
+        // --- single smooth third-person orbit around the seated avatar ---
+        // Drag aims (st.yaw / st.pitch); we ease the live orbit angles toward
+        // them so motion is fluid, never snapping (which read as a flicker).
+        targetYaw.current = MathUtils.lerp(targetYaw.current, st.yaw, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
+        targetPitch.current = MathUtils.lerp(targetPitch.current, st.pitch, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
+        const dist = MathUtils.clamp(st.zoom, MIN_ZOOM, MAX_ZOOM)
         const cp = Math.cos(targetPitch.current)
-        // UNIT direction (length 1) so the collision ray distance is correct
+        // UNIT direction (length 1) from the seat eye out to the camera.
         const dirX = Math.sin(targetYaw.current) * cp
         const dirY = Math.sin(targetPitch.current)
         const dirZ = Math.cos(targetYaw.current) * cp
+        // Pull the camera in if a wall is closer than `dist`, but never collapse
+        // to a distance that embeds it in geometry (that z-fights → flicker).
+        // Smooth the pull-in distance so a ray that grazes a blocker edge (and
+        // would otherwise flip safeDist every frame) eases instead of jumping.
         const hit = rayHit(seat.pos[0], eyeY, seat.pos[2], dirX, dirY, dirZ, dist, collision.blockers)
-        const safeDist = MathUtils.clamp(Math.min(dist, hit - 0.3), 0.6, dist)
+        const targetSafe = MathUtils.clamp(Math.min(dist, hit - PULL_MARGIN), MIN_SAFE_DIST, dist)
+        if (!camSeeded.current) safeDistRef.current = targetSafe
+        else safeDistRef.current = MathUtils.lerp(safeDistRef.current, targetSafe, 1 - Math.exp(-10 * dt))
+        const safeDist = safeDistRef.current
         const idealX = seat.pos[0] + dirX * safeDist
         const idealY = eyeY + dirY * safeDist
         const idealZ = seat.pos[2] + dirZ * safeDist
+        // Seed on the first seated frame so we don't glide in from a stale spot.
         if (!camSeeded.current) { camPos.current.set(idealX, idealY, idealZ); camSeeded.current = true }
+        // Stable exponential smoothing — no spring oscillation.
         const a = 1 - Math.exp(-12 * dt)
         camPos.current.x += (idealX - camPos.current.x) * a
         camPos.current.y += (idealY - camPos.current.y) * a
         camPos.current.z += (idealZ - camPos.current.z) * a
+        // Hard safety: never let the camera leave the room.
         camPos.current.x = MathUtils.clamp(camPos.current.x, -HALL.halfW + 0.6, HALL.halfW - 0.6)
         camPos.current.z = MathUtils.clamp(camPos.current.z, -HALL.halfL + 0.6, HALL.halfL - 0.6)
         camPos.current.y = MathUtils.clamp(camPos.current.y, seat.pos[1] + 0.2, HALL.wallH - 0.5)
         cam.position.copy(camPos.current)
-        camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.25, seat.pos[2]), a)
+        camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.1, seat.pos[2]), a)
         cam.lookAt(camTarget.current)
-        st.yaw = targetYaw.current
-        st.pitch = targetPitch.current
-        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
+        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false })
       }
       return
     }
 
     st.seatedInit = false
     st.autoWalkInit = false
+    st.preset = 0
     camSeeded.current = false
+    // Standing / choosing-a-seat: ensure the broadcast no longer claims we're in
+    // the cinematic tour (so our avatar reappears for other players).
+    if (st.x !== undefined) {
+      setLocalState({ x: st.x, y: st.y, z: st.z, yaw: st.faceYaw, speed: 0, grounded: true, seated: false, cinematic: false })
+    }
   })
 
   const avatarCfg = useAvatar((s) => s.config)
@@ -307,7 +487,10 @@ export function PlayerController() {
   return (
     <group ref={avatarRef}>
       {/* Hide the local body in first-person so the seat-eye camera isn't rendered
-          inside its own head (which flickers/clips). */}
+          inside its own head (which flickers/clips). During the shared cinematic
+          tour the local avatar stays visible to the player, but RemotePlayers hides
+          it from everyone else (via the `cinematic` flag) so the broadcast feed is
+          clean. */}
       <group visible={seatWorld != null && cameraModeR !== 'first'}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
       </group>

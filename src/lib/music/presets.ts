@@ -1,14 +1,11 @@
 import type { MusicPreset } from './types'
 
-// The eight Library Realm focus presets, in the order they appear in the
-// playlist selector. v1 ships three that actually play:
-//   • Brown Noise   — synthesized (no asset)
-//   • Deep Focus    — synthesized (low-passed brown noise + faint pad)
-//   • Rain Ambience — reuses the existing /audio/rain.mp3
-// The other five are declared here for the full menu but marked `available:false`
-// (rendered greyed with a "soon" badge) until their audio is provided. When that
-// happens, swap their `source` from `{ kind: 'soon' }` to a `loop`/`tracks` spec
-// and flip `available` to true — nothing else needs to change.
+// The Library Realm focus presets, in the order they appear in the playlist
+// selector. The playable ones use either synthesized noise (no asset) or a real
+// looping audio file from /public/audio — including the rain recordings you saved
+// (rain.mp3, rain-interior.mp3, rain-exterior.mp3, rain-rumble.mp3) plus birds
+// and music-ambient. The remaining three are placeholder "soon" tiles until their
+// licensed tracks are added.
 //
 // Artwork needs NO image files: each tile is a coffee/gold CSS gradient (`tint`)
 // with the `glyph` on top.
@@ -60,13 +57,40 @@ export const MUSIC_PRESETS: MusicPreset[] = [
     available: true,
   },
   {
+    id: 'rain-interior',
+    name: 'Rain · Interior',
+    subtitle: 'Rain against the windows',
+    glyph: '🪟',
+    tint: ['#36474f', '#5f7682'],
+    source: { kind: 'loop', url: '/audio/rain-interior.mp3' },
+    available: true,
+  },
+  {
+    id: 'rain-exterior',
+    name: 'Rain · Exterior',
+    subtitle: 'Storm over the realm',
+    glyph: '🌧️',
+    tint: ['#2f3b47', '#50697a'],
+    source: { kind: 'loop', url: '/audio/rain-exterior.mp3' },
+    available: true,
+  },
+  {
+    id: 'rain-thunder',
+    name: 'Rain & Thunder',
+    subtitle: 'Distant rolling thunder',
+    glyph: '⛈️',
+    tint: ['#2b333d', '#4a5a68'],
+    source: { kind: 'loop', url: '/audio/rain-rumble.mp3' },
+    available: true,
+  },
+  {
     id: 'forest',
-    name: 'Forest Ambience',
+    name: 'Forest & Birds',
     subtitle: 'Birds & rustling leaves',
     glyph: '🌲',
     tint: ['#2f4a2f', '#5a7a4a'],
-    source: { kind: 'soon' },
-    available: false,
+    source: { kind: 'loop', url: '/audio/birds.mp3' },
+    available: true,
   },
   {
     id: 'night-library',
@@ -74,8 +98,8 @@ export const MUSIC_PRESETS: MusicPreset[] = [
     subtitle: 'Hushed late-night hall',
     glyph: '🌙',
     tint: ['#2a2540', '#4a4368'],
-    source: { kind: 'soon' },
-    available: false,
+    source: { kind: 'loop', url: '/audio/music-ambient.mp3' },
+    available: true,
   },
   {
     id: 'deep',

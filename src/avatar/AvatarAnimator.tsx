@@ -11,6 +11,7 @@ import {
   landPose,
   locomotionPose,
   sitPose,
+  deskSitPose,
   wavePose,
   type Locomotion,
   type Pose,
@@ -127,7 +128,7 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
     else if (preview === 'sit') pose = sitPose(t)
     else if (preview === 'jump') pose = airPose(Math.sin(t * 2) * 3)
     else if (preview === 'idle') pose = allowIdleMicro ? idlePose(t) : {}
-    else if (loco.seated) pose = sitPose(t) // auto, seated in-world — hands rest on thighs
+    else if (loco.seated) pose = deskSitPose(t) // auto, seated in-world — hands forward on the desk
     else if (!loco.grounded) pose = airPose(loco.vy) // auto, airborne
     else if (land.current > 0.02) pose = landPose(land.current)
     else if (g > 0.06) pose = locomotionPose(phase, Math.max(1, g)) // walking/running
@@ -174,10 +175,19 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
       // than floating; otherwise it's the gait bob (walk/run) and zero at rest.
       let rootY: number
       if (preview === 'sit') rootY = -0.26 // editor emote: no chair, drop so it reads as seated
-      else if (preview === 'auto' && loco.seated) rootY = -0.05 // in-world: rest the hips on the chair seat (~0.52)
+      else if (preview === 'auto' && loco.seated) rootY = -0.10 // in-world: rest the hips on the chair seat (~0.52, hip joint ~0.62)
       else rootY = g > 0.06 && loco.grounded ? Math.abs(Math.sin(phase)) * gaitBounce(Math.max(1, g)) : 0
       // root.position.y is the avatar's own offset; keep x/z as-is
       root.position.y = rootY
+    }
+
+    // ---- skirt follows the forward thighs while seated (otherwise a long
+    //      skirt stays vertical while the legs swing forward and the legs poke
+    //      through the front of the skirt). Eased so it doesn't snap. ----
+    const skirt = handle.skirt
+    if (skirt) {
+      const targetSkirt = loco.seated ? -1.0 : 0
+      skirt.rotation.x += (targetSkirt - skirt.rotation.x) * k
     }
 
     // ---- blink (skip when far/culled) ----

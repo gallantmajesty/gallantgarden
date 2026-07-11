@@ -1011,9 +1011,13 @@
   inset: 0;
   z-index: 25;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  background: linear-gradient(160deg, #1a120a 0%, #2a1c10 40%, #1a120a 100%);
+  overflow: auto;
+  padding: 28px 0 40px;
+  background:
+    linear-gradient(160deg, rgba(26, 18, 10, 0.78) 0%, rgba(42, 28, 16, 0.78) 40%, rgba(26, 18, 10, 0.78) 100%),
+    url('/seat-selection-bg.webp') center / cover no-repeat fixed;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   animation: sso-fade-in 0.6s ease both;
@@ -1025,17 +1029,19 @@
 }
 
 .sso-panel {
-  width: min(820px, 92vw);
-  max-height: 92vh;
+  position: relative;
+  z-index: 2;
+  width: min(960px, 94vw);
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 28px 32px 32px;
-  background: linear-gradient(180deg, rgba(58, 36, 20, 0.97), rgba(36, 22, 12, 0.98));
+  background: linear-gradient(180deg, rgba(58, 36, 20, 0.88), rgba(36, 22, 12, 0.92));
   border: 1px solid rgba(138, 90, 48, 0.35);
   border-radius: 20px;
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(201, 168, 124, 0.12);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .sso-body {
@@ -1154,16 +1160,13 @@
 
 .sso-map-outer {
   position: relative;
-  margin-top: 80px;
+  margin-top: 8px;
 }
 
 .sso-map-wrapper {
   margin: 0 60px 40px;
   overflow: visible;
-  cursor: grab;
   border-radius: 14px;
-  touch-action: none;
-  user-select: none;
 }
 
 .sso-map-wrapper:active {
@@ -1182,13 +1185,40 @@
   position: relative;
   width: 100%;
   aspect-ratio: 56 / 92;
-  max-height: 55vh;
-  background: linear-gradient(180deg, rgba(42, 28, 16, 0.85), rgba(28, 18, 10, 0.9));
+  background: linear-gradient(180deg, rgba(42, 28, 16, 0.75), rgba(28, 18, 10, 0.8));
   border: 1px solid rgba(92, 58, 30, 0.35);
   border-radius: 14px;
   overflow: visible;
   box-shadow: inset 0 0 40px rgba(92, 58, 30, 0.08), inset 0 2px 0 rgba(138, 90, 48, 0.1);
 }
+
+/* Illustrated floor-plan layer (tables, windows, fireplace, shelves) */
+.sso-plan {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.sso-plan-floor { fill: rgba(60, 40, 22, 0.35); }
+.sso-plan-wall { fill: none; stroke: rgba(201, 168, 124, 0.5); stroke-width: 3; }
+.sso-plan-window rect { fill: rgba(168, 216, 228, 0.35); stroke: rgba(201, 168, 124, 0.55); stroke-width: 1.5; }
+.sso-plan-window line { stroke: rgba(201, 168, 124, 0.55); stroke-width: 1.5; }
+.sso-plan-fire path:first-child { fill: rgba(120, 70, 40, 0.6); stroke: rgba(201, 168, 124, 0.55); stroke-width: 1.5; }
+.sso-plan-flame { fill: rgba(240, 160, 80, 0.75); stroke: none; }
+.sso-plan-shelf { fill: rgba(120, 80, 45, 0.5); stroke: rgba(201, 168, 124, 0.35); stroke-width: 1; }
+.sso-plan-table { fill: rgba(150, 110, 70, 0.45); stroke: rgba(201, 168, 124, 0.55); stroke-width: 2; }
+.sso-plan-balcony { fill: rgba(90, 60, 35, 0.3); stroke: rgba(201, 168, 124, 0.45); stroke-width: 2; stroke-dasharray: 5 4; }
+.sso-plan-entrance { fill: rgba(127, 185, 138, 0.55); stroke: rgba(127, 185, 138, 0.8); stroke-width: 2; }
+.sso-plan-deck { fill: rgba(120, 80, 45, 0.45); stroke: rgba(201, 168, 124, 0.5); stroke-width: 2; }
+.sso-plan-walk { stroke: rgba(150, 105, 60, 0.7); stroke-width: 5; stroke-dasharray: 4 4; fill: none; }
+.sso-plan-rail { stroke: rgba(201, 168, 124, 0.55); stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
+.sso-plan-col { fill: rgba(150, 110, 70, 0.5); stroke: rgba(201, 168, 124, 0.4); stroke-width: 1; }
+.sso-plan-stair { fill: rgba(120, 80, 45, 0.4); stroke: rgba(150, 105, 60, 0.5); stroke-width: 1; }
+.sso-plan-corner { fill: rgba(150, 110, 70, 0.5); stroke: rgba(201, 168, 124, 0.45); stroke-width: 1.5; }
+.sso-plan-tree-dais { fill: rgba(138, 122, 94, 0.35); stroke: rgba(201, 168, 124, 0.45); stroke-width: 1.5; }
+.sso-plan-tree-trunk { fill: rgba(120, 80, 40, 0.85); stroke: none; }
+.sso-plan-tree-canopy { fill: rgba(232, 192, 110, 0.72); stroke: rgba(232, 192, 110, 0.95); stroke-width: 1.5; stroke-linejoin: round; }
 
 /* Decorative walls */
 .sso-wall {
@@ -1233,29 +1263,28 @@
 .sso-seat {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   border: 1.5px solid rgba(138, 90, 48, 0.25);
   background: linear-gradient(135deg, #a8d86e, #7fb98a);
   color: #2a1c10;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, background .2s ease, border-color .2s ease;
-  padding: 0 3px;
+  padding: 0;
   overflow: visible;
   white-space: nowrap;
   text-overflow: ellipsis;
   box-shadow: 0 2px 6px rgba(127, 185, 138, 0.2), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
-.sso-seat:hover,
-.sso-seat.hovered {
-  transform: translate(-50%, -50%) scale(1.4);
+.sso-seat:hover {
+  transform: translate(-50%, -50%) scale(1.35);
   box-shadow: 0 0 0 4px rgba(127, 185, 138, .3), 0 4px 14px rgba(127, 185, 138, 0.3);
   z-index: 5;
   border-color: rgba(255,255,255,0.25);
@@ -1266,11 +1295,15 @@
   cursor: not-allowed;
   border-color: rgba(138, 90, 48, .15);
   font-size: 7px;
-  width: auto;
-  min-width: 22px;
-  max-width: 60px;
+  width: 16px;
+  height: 16px;
   box-shadow: 0 2px 6px rgba(212, 114, 138, 0.15), inset 0 1px 0 rgba(255,255,255,0.08);
-  opacity: 0.7;
+  opacity: 0.65;
+}
+
+.sso-seat.occupied:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+  box-shadow: 0 0 0 3px rgba(212, 114, 138, .2), 0 4px 10px rgba(212, 114, 138, 0.2);
 }
 
 .sso-seat.selected {
@@ -1281,18 +1314,22 @@
   animation: sso-seat-pulse 1.5s ease-in-out infinite;
 }
 
+.sso-seat.selected:hover {
+  transform: translate(-50%, -50%) scale(1.35);
+}
+
 @keyframes sso-seat-pulse {
   0%, 100% { box-shadow: 0 0 0 5px rgba(201, 168, 124, .3), 0 4px 18px rgba(201, 168, 124, 0.3); }
   50% { box-shadow: 0 0 0 8px rgba(201, 168, 124, .15), 0 4px 22px rgba(201, 168, 124, 0.4); }
 }
 
-/* Hover Card */
+/* Hover Card — pure CSS, no JS needed */
 .sso-seat-card {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%);
-  width: 140px;
+  transform: translateX(-50%) translateY(6px);
+  width: 148px;
   padding: 8px 10px;
   background: linear-gradient(180deg, rgba(58, 36, 20, 0.98), rgba(36, 22, 12, 0.98));
   border: 1px solid rgba(138, 90, 48, 0.4);
@@ -1300,8 +1337,17 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   z-index: 10;
-  animation: sso-card-pop 0.25s cubic-bezier(.34,1.56,.64,1) both;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease 0.25s, visibility 0s ease 0.45s, transform 0.2s ease 0.25s;
   backdrop-filter: blur(8px);
+}
+
+.sso-seat:hover .sso-seat-card {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 0.25s;
 }
 
 .sso-seat-card::after {
@@ -1312,11 +1358,6 @@
   transform: translateX(-50%);
   border: 4px solid transparent;
   border-top-color: rgba(36, 22, 12, 0.98);
-}
-
-@keyframes sso-card-pop {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.92); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
 .sso-card-header {
@@ -1376,37 +1417,52 @@
   justify-content: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 0 0;
+  padding: 16px 0 4px;
 }
 
-.sso-skip {
-  align-self: center;
-  min-width: 120px;
-  background: rgba(92, 58, 30, 0.25);
-  border: 1px solid rgba(92, 58, 30, 0.5);
+/* Cancel button — top-right corner of header */
+.sso-cancel-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(138, 90, 48, 0.3);
+  background: rgba(58, 36, 20, 0.5);
   color: rgba(240, 223, 192, 0.65);
-  font-size: 13px;
-  padding: 12px 20px;
-  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.sso-skip:hover {
-  background: rgba(92, 58, 30, 0.45);
-  border-color: rgba(138, 90, 48, 0.6);
+.sso-cancel-btn:hover {
+  background: rgba(180, 80, 80, 0.35);
+  border-color: rgba(200, 100, 100, 0.5);
   color: #f0dfc0;
-  transform: translateY(-1px);
+  transform: scale(1.08);
 }
 
-.sso-join {
-  align-self: center;
-  min-width: 220px;
-  padding: 14px 28px;
+.sso-cancel-btn:active {
+  transform: scale(0.95);
+}
+
+/* Primary action button */
+.sso-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
   font-family: var(--display, 'Georgia', serif);
-  font-weight: 800;
+  font-weight: 700;
   font-size: 15px;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
   color: #1a1206;
   background: linear-gradient(135deg, #e8c080, #c9a87c);
   border: 2px solid rgba(138, 90, 48, 0.5);
@@ -1416,9 +1472,15 @@
   box-shadow: 0 4px 20px rgba(138, 90, 48, 0.3), inset 0 1px 0 rgba(255,255,255,0.15);
   position: relative;
   overflow: hidden;
+  animation: sso-btn-appear 0.3s cubic-bezier(.34,1.56,.64,1) both;
 }
 
-.sso-join::before {
+@keyframes sso-btn-appear {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sso-btn-primary::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -1427,22 +1489,54 @@
   transition: transform 0.5s ease;
 }
 
-.sso-join:hover:not(:disabled)::before {
+.sso-btn-primary:hover::before {
   transform: translateX(100%);
 }
 
-.sso-join:hover:not(:disabled) {
-  transform: translateY(-3px) scale(1.02);
+.sso-btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
   box-shadow: 0 8px 32px rgba(138, 90, 48, 0.4);
 }
 
-.sso-join:disabled {
-  opacity: .4;
-  cursor: not-allowed;
-  background: rgba(92, 58, 30, 0.15);
-  border-color: rgba(92, 58, 30, 0.25);
-  color: rgba(240, 223, 192, 0.4);
-  box-shadow: none;
+.sso-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Secondary action button */
+.sso-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: var(--display, 'Georgia', serif);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  color: rgba(240, 223, 192, 0.8);
+  background: rgba(58, 36, 20, 0.5);
+  border: 1.5px solid rgba(138, 90, 48, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.sso-btn-secondary:hover {
+  background: rgba(92, 58, 30, 0.55);
+  border-color: rgba(138, 90, 48, 0.6);
+  color: #f0dfc0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.sso-btn-secondary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.sso-btn-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 /* --- Cinematic Entry --- */
@@ -1523,8 +1617,295 @@
 @media (max-width: 640px) {
   .sso-panel { padding: 18px 20px 22px; gap: 10px; }
   .sso-title { font-size: 22px; }
-  .sso-map-wrapper { margin-left: 16px; margin-right: 16px; }
-  .sso-seat { width: 20px; height: 20px; }
+  .sso-map-wrapper { margin-left: 10px; margin-right: 10px; }
+  .sso-seat { width: 17px; height: 17px; font-size: 8px; }
+  .sso-seat.occupied { width: 14px; height: 14px; }
+  .sso-seat-card { width: 130px; font-size: 11px; }
   .cinematic-title { font-size: 24px; }
-  .sso-join { min-width: 180px; padding: 12px 20px; font-size: 14px; }
+  .sso-btn-primary { padding: 12px 24px; font-size: 14px; }
+  .sso-btn-secondary { padding: 10px 18px; font-size: 13px; }
+}
+
+/* ---- Cinematic Tour (button 5) ---- */
+.sso-tour {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+}
+.sso-tour .sso-panel { pointer-events: auto; }
+
+.sso-hidden { display: none; }
+
+.sso-tour-panel {
+  width: min(380px, 92vw);
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  padding: 20px 22px 22px;
+  gap: 16px;
+  animation: sso-fade-in 0.4s ease both;
+}
+
+.sso-tour-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sso-tour-badge {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(202, 168, 74, 0.4));
+  animation: cinematic-pulse 1.6s ease-in-out infinite;
+}
+
+.sso-tour-actions { flex-direction: row; flex-wrap: wrap; }
+
+.sso-cinematic {
+  width: 100%;
+  margin-top: 4px;
+  background: linear-gradient(135deg, rgba(202, 168, 74, 0.25), rgba(138, 90, 48, 0.3));
+  border: 1px solid rgba(202, 168, 74, 0.5);
+  color: #f3e3c2;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(202, 168, 74, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.sso-cinematic:hover {
+  background: linear-gradient(135deg, rgba(202, 168, 74, 0.4), rgba(138, 90, 48, 0.45));
+  transform: translateY(-1px);
+}
+
+/* Seat number label on the map dots */
+.sso-seat-num {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.sso-seat.occupied .sso-seat-num { font-size: 8px; opacity: 0.85; }
+
+/* ---- Full-screen layout: big map + side preview ---- */
+.sso-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 2px;
+}
+.sso-header-illu {
+  width: 46px;
+  height: 46px;
+  color: #e8c080;
+  flex: none;
+}
+.sso-header-illu svg { width: 100%; height: 100%; display: block; }
+.sso-header-text { flex: 1; text-align: left; }
+.sso-header-hint {
+  font-size: 12px;
+  color: rgba(240, 223, 192, 0.55);
+  border: 1px solid rgba(138, 90, 48, 0.3);
+  padding: 6px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.sso-legend-sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(138, 90, 48, 0.35);
+  margin: 0 4px;
+}
+
+.sso-ic {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: #e8c080;
+  vertical-align: middle;
+}
+.sso-ic svg { width: 100%; height: 100%; display: block; }
+
+.sso-svg { display: block; }
+
+.sso-layout {
+  display: flex;
+  gap: 22px;
+  flex: 1;
+  min-height: 0;
+}
+.sso-map-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sso-side {
+  width: 340px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Seat preview card with the illustrative scene */
+.sso-preview {
+  background: rgba(36, 22, 12, 0.55);
+  border: 1px solid rgba(138, 90, 48, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sso-preview-art {
+  background: radial-gradient(120% 100% at 50% 0%, rgba(92, 58, 30, 0.4), rgba(28, 18, 10, 0.6));
+  border-radius: 10px;
+  padding: 10px;
+  color: #e8c080;
+}
+.sso-preview-art svg { width: 100%; height: auto; max-height: 190px; display: block; }
+.sso-preview-title {
+  font-family: var(--display, 'Georgia', serif);
+  font-size: 20px;
+  font-weight: 800;
+  color: #f0dfc0;
+}
+.sso-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(240, 223, 192, 0.85);
+}
+.sso-preview-ic {
+  width: 18px;
+  height: 18px;
+  color: #e8c080;
+  display: inline-flex;
+  flex: none;
+}
+.sso-preview-ic svg { width: 100%; height: 100%; display: block; }
+.sso-preview-empty {
+  align-items: center;
+  text-align: center;
+  color: rgba(240, 223, 192, 0.5);
+  padding: 28px 16px;
+}
+.sso-preview-empty svg {
+  width: 52px;
+  height: 52px;
+  color: rgba(201, 168, 124, 0.6);
+  margin-bottom: 8px;
+}
+.sso-preview-text { font-size: 13px; margin: 0; line-height: 1.4; }
+
+/* Responsive: stack the side panel under the map on narrow screens */
+@media (max-width: 900px) {
+  .sso-layout { flex-direction: column; }
+  .sso-side { width: auto; }
+  .sso-map { max-height: 50vh; }
+  .sso-header-hint { display: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Hanging lanterns — decorative layer across the whole seat-selection
+   page. They hang from the top of the page (or a lower "beam") and swing
+   gently; each warm glass body flickers. Sits behind the seat panel. */
+.sso-lanterns {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sso-lantern {
+  position: absolute;
+  transform-origin: top center;
+  animation: sso-swing var(--dur, 7s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+  will-change: transform;
+}
+
+/* the cord the lantern hangs from */
+.sso-lantern-cord {
+  width: 2px;
+  height: var(--cord, 120px);
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(150, 120, 70, 0.55), rgba(90, 60, 30, 0.18));
+}
+
+/* the lantern body — warm amber glass with a metallic cap + finial */
+.sso-lantern-body {
+  position: relative;
+  width: var(--w, 32px);
+  height: calc(var(--w, 32px) * 1.42);
+  margin: -1px auto 0;
+  border-radius: 46% 46% 50% 50% / 36% 36% 56% 56%;
+  background: radial-gradient(ellipse at 50% 34%, #fff0c4 0%, #ffc969 42%, #e89323 78%, #8a4a16 100%);
+  box-shadow:
+    inset 0 0 9px rgba(255, 224, 158, 0.85),
+    inset 0 -7px 11px rgba(120, 58, 10, 0.6),
+    0 0 20px 5px rgba(255, 176, 84, 0.5);
+}
+
+/* metallic cap at the top of the body */
+.sso-lantern-body::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 62%;
+  height: 9px;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #7a6038, #3c2c18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* bottom finial */
+.sso-lantern-body::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 9px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #7a6038, #2c1f10);
+}
+
+/* inner flame / glow that flickers */
+.sso-lantern-glow {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  width: 72%;
+  height: 56%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 244, 206, 0.95) 0%, rgba(255, 198, 116, 0.25) 58%, transparent 76%);
+  animation: sso-flicker var(--fdur, 3s) ease-in-out infinite;
+  animation-delay: var(--fdelay, 0s);
+}
+
+@keyframes sso-swing {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+
+@keyframes sso-flicker {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+
+/* Respect reduced-motion: keep the lanterns but stop the swing + flicker. */
+@media (prefers-reduced-motion: reduce) {
+  .sso-lantern { animation: none; }
+  .sso-lantern-glow { animation: none; }
 }

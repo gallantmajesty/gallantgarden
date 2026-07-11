@@ -14,7 +14,6 @@ import {
 } from '../avatar/config'
 import { CHARACTERS, characterById } from '../avatar/characters'
 import { useProfile } from '../store/profile'
-import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
 import './AvatarCreator.css'
 
 // Roblox-style customizer for the ONE base body, laid out like the product
@@ -30,7 +29,6 @@ import './AvatarCreator.css'
 
 export function AvatarCreator() {
   const navigate = useNavigate()
-  const isDesktop = useIsDesktop()
   const config = useAvatar((s) => s.config)
   const set = useAvatar((s) => s.set)
   const reset = useAvatar((s) => s.reset)
@@ -40,8 +38,6 @@ export function AvatarCreator() {
 
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
-
-  if (!isDesktop) return <DesktopOnly />
 
   async function onSave() {
     setSaving(true)

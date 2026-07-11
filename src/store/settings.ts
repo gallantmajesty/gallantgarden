@@ -160,9 +160,11 @@ export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false)
     treeLight: a.shadowQuality !== 'off' || post !== 'off',
     pillarDetail: lod < 0.5,
     windowDetail: lod < 0.75,
-    // dpr ceiling capped at 1.5: 2.0 quadruples fragment count for no visible gain
-    // on this fill-bound scene. The PerformanceMonitor still scales within this.
-    dpr: Math.min(1.5, Math.round(2 * a.resolutionScale * 100) / 100),
+    // dpr ceiling capped at 1.25: above ~1.25 the fill-bound scene gains
+    // almost nothing in sharpness while multiplying frame-buffer + bloom + shadow
+    // memory, which is what drives GPU context-loss (whole-screen black blink).
+    // The PerformanceMonitor still scales within this.
+    dpr: Math.min(1.25, Math.round(2 * a.resolutionScale * 100) / 100),
     far: Math.round(700 + 700 * vd),
     anisotropy: ANISO_LEVEL[a.textureQuality],
     lodBias: lod,
@@ -209,10 +211,13 @@ interface SettingsState {
   highContrast: boolean // accessibility: high contrast mode
   // camera
   cameraMode: CameraMode
-  cameraPreset: number // 0 = free orbit, 1-4 = fixed camera angles
   sensitivity: number // 0.2 .. 2
   invertY: boolean
   hideAvatarWhenMovingCamera: boolean
+  // cinematic tour (key 5)
+  cinematicTour: boolean // master switch for the Cinematic Tour (key 5)
+  cinematicZoom: boolean // let the cinematic camera dolly-zoom between waypoints
+  bloom: boolean // bloom effect (only ever shows during the cinematic tour)
   // lobby
   waitForLobbyReady: boolean // keep intro veil until lobby icons are loaded
   // audio (0..1)
@@ -334,10 +339,12 @@ const DEFAULTS: SettingsData = {
   reduceMotion: false,
   highContrast: false,
   cameraMode: 'third', // see your chosen character by default (Roblox-style)
-  cameraPreset: 0, // free orbit by default; 1-4 are fixed angles when seated
   sensitivity: 1,
   invertY: false,
   hideAvatarWhenMovingCamera: false,
+  cinematicTour: true,
+  cinematicZoom: true,
+  bloom: true,
   waitForLobbyReady: true,
   master: 0.8,
   ambientVol: 0.6,

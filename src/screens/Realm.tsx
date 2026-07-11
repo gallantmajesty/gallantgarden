@@ -11,7 +11,7 @@ import type { AvatarConfig } from '../avatar/config'
 import { LIBRARY_ROOMS, TRAIN_ROOMS } from '../lib/realm'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
 import { createRealm, getRealmByCode, listPublicRealms, inviteLink, type Realm as DbRealm, type RealmVisibility } from '../lib/realms'
-import { useIsDesktop, DesktopOnly } from '../components/DesktopOnly'
+
 import './Realm.css'
 
 type Mode = 'choose' | 'global' | 'library' | 'train' | 'custom'
@@ -19,10 +19,6 @@ type Mode = 'choose' | 'global' | 'library' | 'train' | 'custom'
 export function Realm() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('choose')
-  const isDesktop = useIsDesktop()
-
-  if (!isDesktop) return <DesktopOnly />
-
   return (
     <div className="realm-root">
       <div className="realm-topleft">

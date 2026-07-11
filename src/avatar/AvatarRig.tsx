@@ -28,6 +28,7 @@ export interface AvatarRigHandle {
   bones: BoneMap
   lids: Group | null
   root: Group | null
+  skirt: Group | null
 }
 
 type Mat = MeshStandardMaterial
@@ -49,9 +50,10 @@ export function AvatarRig({
 }) {
   const rootRef = useRef<Group>(null)
   const lidsRef = useRef<Group>(null)
+  const skirtRef = useRef<Group>(null)
   const bones = useMemo<BoneMap>(() => ({}), [])
 
-  useImperativeHandle(ref, () => ({ bones, lids: lidsRef.current, root: rootRef.current }), [bones])
+  useImperativeHandle(ref, () => ({ bones, lids: lidsRef.current, root: rootRef.current, skirt: skirtRef.current }), [bones])
 
   const P = proportionsFor(config.bodyType)
   const s = heightScale(config.height)
@@ -240,7 +242,7 @@ export function AvatarRig({
           const pinkMat = new MeshStandardMaterial({ color: '#d4a0b8', roughness: 0.75, metalness: 0, side: 2 })
           const blackMat = new MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.8, metalness: 0, side: 2 })
           return (
-            <group position={[0, 0.01, 0]}>
+            <group ref={skirtRef} position={[0, 0.01, 0]}>
               <mesh geometry={latheGeo([
                 [P.waistW * 1.02, 0],
                 [P.hipBoneW * 1.05, -skirtLen * 0.15],
@@ -265,7 +267,7 @@ export function AvatarRig({
           const goldMat = new MeshStandardMaterial({ color: '#D4AF37', roughness: 0.4, metalness: 0.2, side: 2 })
           const whiteMat = new MeshStandardMaterial({ color: '#f7f2e7', roughness: 0.85, metalness: 0, side: 2 })
           return (
-            <group position={[0, 0.01, 0]}>
+            <group ref={skirtRef} position={[0, 0.01, 0]}>
               <mesh geometry={latheGeo([
                 [P.waistW * 1.04, 0],
                 [P.hipBoneW * 1.06, -skirtLen * 0.15],

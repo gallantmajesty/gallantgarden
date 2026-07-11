@@ -25,6 +25,56 @@ export function getTarget(id: string): PlayerState | undefined {
   return targets.get(id)
 }
 
+// --- Cinematic tour shared-view sync ---------------------------------------
+// When any player enables the Cinematic Tour (key 5) they drive a single shared
+// camera that every *other* cinematic viewer renders too — so two people in the
+// tour see the exact same "screen". Entering/leaving is each player's own wish,
+// but the camera path is one broadcast feed. The player with the lexicographically
+// smallest id among those currently in cinematic is the "host" who drives + sends
+// the camera; everyone else receives and renders it.
+const cineActive = new Map<string, boolean>()
+const cineCamTargets = new Map<string, { pos: number[]; look: number[]; fov: number }>()
+let localCineActive = false
+
+export function setLocalCineActive(v: boolean): void {
+  localCineActive = v
+}
+
+export function getSelfId(): string | null {
+  return selfId
+}
+
+/** id of the player whose camera is authoritative for the shared cinematic, or
+ *  null if nobody (including the local player) is in cinematic. */
+export function getCineHostId(): string | null {
+  let host: string | null = null
+  const roster = useRealmNet.getState().roster
+  for (const id of cineActive.keys()) {
+    if (!cineActive.get(id)) continue
+    if (!roster[id]) continue
+    if (host == null || id < host) host = id
+  }
+  if (localCineActive && selfId && (host == null || selfId < host)) host = selfId
+  return host
+}
+
+/** The authoritative host camera (pos + look), or null if we don't have it yet. */
+export function getCineHostCam(): { pos: number[]; look: number[]; fov: number } | null {
+  const host = getCineHostId()
+  if (!host) return null
+  return cineCamTargets.get(host) ?? null
+}
+
+export function publishCineState(active: boolean): void {
+  if (!selfId) return
+  void publish('cine-state', { id: selfId, active })
+}
+
+export function publishCineCam(pos: [number, number, number], look: [number, number, number], fov: number): void {
+  if (!selfId) return
+  void publish('cine-cam', { id: selfId, pos, look, fov })
+}
+
 function deviceToken(): string {
   try {
     let t = sessionStorage.getItem('sf.device')
@@ -79,7 +129,7 @@ export const useRealmNet = create<NetStore>(() => ({
 let currentChannel: string | null = null
 let selfId: string | null = null
 let selfIdentity: PlayerIdentity | null = null
-let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false }
+let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false }
 let supabaseChannel: RealtimeChannel | null = null
 let moveTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -141,6 +191,7 @@ function handleMove(payload: { payload: Record<string, unknown> }) {
     speed: Number(body.speed) || 0,
     grounded: body.grounded !== false,
     seated: body.seated === true,
+    cinematic: body.cinematic === true,
   })
   touch(id, Date.now())
 }
@@ -149,6 +200,26 @@ function handleBye(payload: { payload: Record<string, unknown> }) {
   const body = payload.payload
   const id = body.id as string | undefined
   if (id && id !== selfId) drop(id)
+}
+
+function handleCineState(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  if (!id || id === selfId) return
+  cineActive.set(id, body.active === true)
+  touch(id, Date.now())
+}
+
+function handleCineCam(payload: { payload: Record<string, unknown> }) {
+  const body = payload.payload
+  const id = body.id as string | undefined
+  if (!id || id === selfId) return
+  const pos = body.pos as unknown
+  const look = body.look as unknown
+  const fov = typeof body.fov === 'number' ? (body.fov as number) : 68
+  if (!Array.isArray(pos) || !Array.isArray(look)) return
+  cineCamTargets.set(id, { pos: pos as number[], look: look as number[], fov })
+  touch(id, Date.now())
 }
 
 function handleSeatClaim(payload: { payload: Record<string, unknown> }) {
@@ -183,6 +254,8 @@ function touch(id: string, now: number) {
 
 function drop(id: string) {
   targets.delete(id)
+  cineActive.delete(id)
+  cineCamTargets.delete(id)
   useRealmNet.setState((s) => {
     if (!s.roster[id]) return s
     const next = { ...s.roster }
@@ -199,7 +272,8 @@ function moved(a: PlayerState, b: PlayerState): boolean {
     Math.abs(a.yaw - b.yaw) > 0.01 ||
     Math.abs(a.speed - b.speed) > 0.05 ||
     a.grounded !== b.grounded ||
-    a.seated !== b.seated
+    a.seated !== b.seated ||
+    a.cinematic !== b.cinematic
   )
 }
 
@@ -210,6 +284,7 @@ function tickMove() {
   lastPubTime = now
   void publish('move', { id: selfId, ...localState })
 }
+
 
 function prune() {
   const now = Date.now()
@@ -259,6 +334,8 @@ export async function joinRealm(channel: string, identity: PlayerIdentity): Prom
       .on('broadcast', { event: 'hello' }, handleHello)
       .on('broadcast', { event: 'move' }, handleMove)
       .on('broadcast', { event: 'bye' }, handleBye)
+      .on('broadcast', { event: 'cine-state' }, handleCineState)
+      .on('broadcast', { event: 'cine-cam' }, handleCineCam)
       .on('broadcast', { event: 'seat-claim' }, handleSeatClaim)
       .on('broadcast', { event: 'seat-release' }, handleSeatRelease)
 
