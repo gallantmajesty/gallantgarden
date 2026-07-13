@@ -77,6 +77,12 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const cinematic = useWorld((s) => s.cinematic)
   const bloomOn = useSettings((s) => s.bloom)
 
+  // During seat selection the 2D overlay covers the scene — skip heavy
+  // subsystems (post-processing, shadows, exterior, particles) so the GPU
+  // idles instead of spinning at 60 fps behind a DOM panel.
+  const seatStage = useSeatFlow((s) => s.stage)
+  const selecting = seatStage === 'selecting'
+
   // The sun disc mesh feeds the Ultra GodRays effect. It lives in DayNightWeather;
   // we hold a ref to it here and only mount GodRays once the mesh exists.
   const sunRef = useRef<Mesh | null>(null)
@@ -146,9 +152,10 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
     >
       <color attach="background" args={['#0c0a0a']} />
       <SystemToggles />
-      <ShadowManager enabled={preset.shadows} refreshInterval={8} />
+      <ShadowManager enabled={preset.shadows && !selecting} refreshInterval={8} />
       <TextureQualitySync anisotropy={preset.anisotropy} />
 
+      {!selecting && (
       <SoftBoundary>
         <ToggleGroup group="dayNight">
           <DayNightWeather fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
@@ -157,6 +164,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
         </ToggleGroup>
       </SoftBoundary>
+      )}
 
       {/* Warm, cozy interior fill — the heart of the "magical library" feel.
           A hemisphere light (cool sky / WARM ground) gives vertical surfaces
@@ -181,6 +189,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
       {/* Magical layer — all instanced/particle/shader, zero extra real lights and
           zero full-screen passes. Gated by the same particle/detail budget so they
           shed on low-end settings and Performance Mode. */}
+      {!selecting && (
       <ToggleGroup group="particles">
         {preset.particles && <Fireflies count={Math.round(8 + preset.dust * 0.6)} />}
         {preset.particles && <Aurora />}
@@ -196,12 +205,15 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
         )}
       </ToggleGroup>
+      )}
 
+      {!selecting && (
       <ToggleGroup group="seasonal">
         {preset.particles && (
           <SeasonalOverlay enabled={preset.particles} particleMultiplier={preset.lodBias < 1 ? 0.8 : 1} />
         )}
       </ToggleGroup>
+      )}
       <PlayerController />
       <ToggleGroup group="remotePlayers">
         <RemotePlayers />
@@ -212,7 +224,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
 
       {/* Standard post tier (default): cheap mipmap bloom + vignette. multisampling
           0 disables the composer's expensive MSAA pass. */}
-      <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} />
+      {!selecting && <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} />}
     </Canvas>
     <SceneReady onReady={handleReady} />
     </>
