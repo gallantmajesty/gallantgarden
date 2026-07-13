@@ -77,7 +77,10 @@ function heightToNormal(src: HTMLCanvasElement, strength: number, repeat: number
 }
 
 /** Warm wooden planks with subtle grain — for the floor. Rendered at 2× and let
- *  the context scale so the grain stays crisp at grazing angles (one-time cost). */
+ *  the context scale so the grain stays crisp at grazing angles (one-time cost).
+ *  Each plank now gets its own colour temperature (some honey, some coffee),
+ *  a few grain knots, and a worn highlight down the centre so the floor reads as
+ *  real aged timber rather than a flat tile. */
 export function makeWoodTexture(repeat = 8, seed = 7): CanvasTexture {
   const SS = 2
   const c = canvas(256 * SS)
@@ -88,8 +91,14 @@ export function makeWoodTexture(repeat = 8, seed = 7): CanvasTexture {
   ctx.fillRect(0, 0, 256, 256)
   const plankH = 32
   for (let y = 0; y < 256; y += plankH) {
-    const shade = 0.82 + rand() * 0.3
-    ctx.fillStyle = `rgb(${Math.floor(122 * shade)}, ${Math.floor(78 * shade)}, ${Math.floor(40 * shade)})`
+    // per-plank colour so no two boards share the exact tone
+    const baseR = 122, baseG = 78, baseB = 40
+    const warm = rand()
+    const shade = 0.78 + rand() * 0.4
+    const r = Math.floor((baseR + warm * 26) * shade)
+    const g = Math.floor((baseG + warm * 10) * shade)
+    const b = Math.floor((baseB - 6) * shade)
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
     ctx.fillRect(0, y, 256, plankH - 2)
     // grain streaks
     for (let i = 0; i < 22; i++) {
@@ -100,9 +109,113 @@ export function makeWoodTexture(repeat = 8, seed = 7): CanvasTexture {
       ctx.bezierCurveTo(80, gy + (rand() - 0.5) * 4, 170, gy + (rand() - 0.5) * 4, 256, gy)
       ctx.stroke()
     }
+    // a couple of knots per plank for organic imperfection
+    const knots = 1 + Math.floor(rand() * 2)
+    for (let k = 0; k < knots; k++) {
+      const kx = rand() * 256
+      const ky = y + rand() * plankH
+      const kr = 1.5 + rand() * 3
+      const kg = ctx.createRadialGradient(kx, ky, 0, kx, ky, kr)
+      kg.addColorStop(0, 'rgba(40,22,10,0.55)')
+      kg.addColorStop(1, 'rgba(40,22,10,0)')
+      ctx.fillStyle = kg
+      ctx.beginPath()
+      ctx.arc(kx, ky, kr, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // worn centre highlight (varnished boards catch the lantern light)
+    const hg = ctx.createLinearGradient(0, y, 0, y + plankH)
+    hg.addColorStop(0, 'rgba(255,220,170,0)')
+    hg.addColorStop(0.5, 'rgba(255,225,180,0.10)')
+    hg.addColorStop(1, 'rgba(255,220,170,0)')
+    ctx.fillStyle = hg
+    ctx.fillRect(0, y, 256, plankH - 2)
     // plank seam
     ctx.fillStyle = 'rgba(30,18,8,0.55)'
     ctx.fillRect(0, y + plankH - 2, 256, 2)
+  }
+  return finish(c, repeat)
+}
+
+/** A roughness map to pair with `makeWoodTexture`: darker = smoother/varnished,
+ *  lighter = weathered/matte. Gives the floor a believable mix of polished and
+ *  scuffed boards so the lantern speculars break up instead of smearing evenly. */
+export function makeWoodRoughnessTexture(repeat = 8, seed = 7): CanvasTexture {
+  const SS = 2
+  const c = canvas(256 * SS)
+  const ctx = c.getContext('2d')!
+  ctx.scale(SS, SS)
+  const rand = rng(seed + 101)
+  ctx.fillStyle = '#b8b8b8'
+  ctx.fillRect(0, 0, 256, 256)
+  const plankH = 32
+  for (let y = 0; y < 256; y += plankH) {
+    const rough = 0.55 + rand() * 0.4 // this plank's overall wear
+    for (let x = 0; x < 256; x += 2) {
+      const n = rough + (rand() - 0.5) * 0.25
+      const v = Math.max(0, Math.min(255, Math.floor(n * 255)))
+      ctx.fillStyle = `rgb(${v},${v},${v})`
+      ctx.fillRect(x, y, 2, plankH - 2)
+    }
+    // polished centre strip (lower roughness → smoother)
+    const sg = ctx.createLinearGradient(0, y, 0, y + plankH)
+    sg.addColorStop(0, 'rgba(40,40,40,0)')
+    sg.addColorStop(0.5, 'rgba(30,30,30,0.7)')
+    sg.addColorStop(1, 'rgba(40,40,40,0)')
+    ctx.fillStyle = sg
+    ctx.fillRect(0, y, 256, plankH - 2)
+    // dark seam (smooth groove)
+    ctx.fillStyle = 'rgba(20,20,20,0.8)'
+    ctx.fillRect(0, y + plankH - 2, 256, 2)
+  }
+  return finishLinear(c, repeat)
+}
+
+/** A grand-library carpet runner: deep crimson field, gold border and a faint
+ *  diamond trellis, tiled along the aisle. One draw call for the whole runner. */
+export function makeCarpetTexture(repeat = 1, seed = 3): CanvasTexture {
+  const N = 256
+  const c = canvas(N)
+  const ctx = c.getContext('2d')!
+  const rand = rng(seed)
+  // crimson gradient field
+  const g = ctx.createLinearGradient(0, 0, 0, N)
+  g.addColorStop(0, '#5a1422')
+  g.addColorStop(0.5, '#6e1a2c')
+  g.addColorStop(1, '#551320')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, N, N)
+  // muted mottling so it isn't a flat colour
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * N, y = rand() * N, r = 1 + rand() * 3
+    const d = (rand() - 0.5) * 30
+    ctx.fillStyle = `rgba(${110 + d},${26 + d * 0.4},${44 + d * 0.4},0.18)`
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  // gold border
+  ctx.strokeStyle = '#caa84a'
+  ctx.lineWidth = 10
+  ctx.strokeRect(14, 14, N - 28, N - 28)
+  ctx.strokeStyle = '#e7c45f'
+  ctx.lineWidth = 3
+  ctx.strokeRect(24, 24, N - 48, N - 48)
+  // diamond trellis
+  ctx.strokeStyle = 'rgba(231,196,95,0.35)'
+  ctx.lineWidth = 2
+  const cell = 64
+  for (let y = -cell; y < N + cell; y += cell) {
+    for (let x = -cell; x < N + cell; x += cell) {
+      const cx = x + ((Math.floor(y / cell) % 2) * cell) / 2
+      ctx.beginPath()
+      ctx.moveTo(cx, y - cell * 0.5)
+      ctx.lineTo(cx + cell * 0.5, y)
+      ctx.lineTo(cx, y + cell * 0.5)
+      ctx.lineTo(cx - cell * 0.5, y)
+      ctx.closePath()
+      ctx.stroke()
+    }
   }
   return finish(c, repeat)
 }

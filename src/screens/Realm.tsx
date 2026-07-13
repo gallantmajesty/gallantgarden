@@ -102,6 +102,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
 /* ---------------------------------------------------------- global sub-choose */
 
 function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
+  const navigate = useNavigate()
   return (
     <>
       <header className="realm-head">
@@ -151,6 +152,27 @@ function GlobalChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <h2>🚂 Train Station</h2>
           <p>Board a magical train and commit to a real study journey — from Express to Grand Journey.</p>
           <span className="realm-card-cta">Enter the station ›</span>
+        </button>
+
+        <button
+          className="realm-card water-glass"
+          onClick={() => navigate('/trainx')}
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onPointerLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
+          <div className="realm-card-orb">
+            <PngIcon name="realm" size={72} alt="TrainX" />
+          </div>
+          <h2>🎫 TrainX</h2>
+          <p>New! An airport-style booking hall — queue, book a carriage, then study in a luxury cabin as it rolls through fantasy scenery.</p>
+          <span className="realm-card-cta">Open booking center ›</span>
         </button>
       </div>
     </>

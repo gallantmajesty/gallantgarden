@@ -19,6 +19,7 @@ import {
   hairMaterial,
   type AvatarConfig,
 } from './config'
+import { AccessoryTray } from './Accessories'
 import { heightScale, proportionsFor, type BoneName, type Proportions } from './rig'
 import { focusLilyChestTex, focusLilyBackTex, hairFrizzTex, skinReliefTex } from './logoTextures'
 
@@ -72,14 +73,15 @@ export function AvatarRig({
   // Rabbit costume: a cute white toy bunny in a pink suit with a green rear cloth
   // flap and a fluffy cotton tail. White fur, pink suit, no human face.
   const isRabbit = config.characterId === 'rabbit'
+  const isAnimal = isDino || isRabbit
   const bunFur = sharedMaterial('#f8f5f0', 0.75)
   const bunPink = sharedMaterial('#f2a3c0', 0.6)
   const bunInner = sharedMaterial('#f6c2d6', 0.6)
   const bunGreen = sharedMaterial('#7cc47b', 0.6)
   const bunNose = sharedMaterial('#e488a6', 0.5)
 
-  const skin = isDino ? dinoMain : isRabbit ? bunFur : skinMaterial(skinHex(config.skin))
-  const hairM = hairMaterial(hairHex(config.hairColor))
+  const skin = isDino ? dinoMain : isRabbit ? bunFur : skinMaterial(config.skinColor ?? skinHex(config.skin))
+  const hairM = hairMaterial(config.hairColorHex ?? hairHex(config.hairColor))
   const eyeCol = eyeHex(config.eyes)
 
   // Procedural strand/frizz texture kills the smooth "clay" hair look: used as a
@@ -96,8 +98,8 @@ export function AvatarRig({
     skin.bumpMap = skinTex
     skin.bumpScale = 0.025
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : sharedMaterial(topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : sharedMaterial(bottomHex(config.bottom), 0.82)
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
   const shoeM = isDino ? dinoDark : isRabbit ? bunFur : sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
 
@@ -196,8 +198,8 @@ export function AvatarRig({
           </group>
         </group>
 
-        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} />
-        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} />
+        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} />
+        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} />
 
         {/* Dino tail — a thick tapering tail rooted at the lower back (overlapping
             the body so there's no gap), curving out and down, ridged with golden
@@ -296,6 +298,12 @@ export function AvatarRig({
         <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} clawM={dinoBelly} />
         <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} clawM={dinoBelly} />
 
+        {/* Equipped accessories on a little study desk that travels with the avatar
+            (so they're visible in the library hall too). */}
+        <group position={[0, -1.05, 0.62]}>
+          <AccessoryTray accessories={config.accessories} />
+        </group>
+
         {/* Wizard gold sparkle particles — 6 emitters: hands, robe hem, pouch */}
         {config.characterId === 'wizard' && (() => {
           const sparkleGold = new MeshStandardMaterial({ color: '#D4AF37', roughness: 0.6, metalness: 0, side: 2 })
@@ -390,7 +398,7 @@ function Head({
       <mesh geometry={sphereGeo(1)} material={sharedMaterial(isF ? '#d4a090' : '#c49080', 0.8)} scale={[r * 0.04, r * 0.06, r * 0.03]} position={[r * 0.88, eyeY + r * 0.02, -r * 0.03]} />
 
       {/* Eyelids for blink — sit just in front of the eye so they cover it */}
-      <group ref={lidsRef} scale={[1, 0, 1]} position={[0, eyeY, fz + r * 0.075]}>
+      <group ref={lidsRef} scale={[0, 0, 0]} position={[0, eyeY, fz + r * 0.075]}>
         <mesh geometry={sphereGeo(1)} material={skin} scale={[eyeR * 1.55, eyeR * 1.4, r * 0.015]} position={[-eyeX, 0, 0]} />
         <mesh geometry={sphereGeo(1)} material={skin} scale={[eyeR * 1.55, eyeR * 1.4, r * 0.015]} position={[eyeX, 0, 0]} />
       </group>
@@ -913,8 +921,13 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, clawM }: {
           [P.elbowR, 0],
         ])} material={skin} castShadow />
 
-        {/* Hand */}
-        <group position={[0, -P.lowerArm - P.wristR * 0.3, 0]}>
+        {/* Hand — pushed slightly forward (+Z) off the sleeve's centre line and
+            given a short exposed skin wrist so it never buries inside a long
+            sleeve (sleeved tops paint the whole forearm in the garment colour,
+            which otherwise made the hand read as "merged into the clothes"). */}
+        <group position={[0, -P.lowerArm - P.wristR * 0.2, P.wristR * 0.3]}>
+          {/* exposed skin wrist cuff between the sleeve end and the palm */}
+          <mesh geometry={taperGeo(P.wristR * 0.95, P.wristR * 0.7, P.wristR * 1.5)} material={skin} position={[0, P.wristR * 0.55, 0]} castShadow />
           <mesh geometry={sphereGeo(1)} material={skin} scale={[P.wristR * 1.3, P.handLen * 0.48, P.wristR * 1.1]} position={[0, -P.handLen * 0.3, 0]} castShadow />
           <mesh geometry={sphereGeo(1)} material={skin} scale={[P.wristR * 0.26, P.wristR * 0.26, P.wristR * 0.26]} position={[P.wristR * 0.88, -P.handLen * 0.12, P.wristR * 0.26]} />
           {[-P.wristR * 0.46, -P.wristR * 0.14, P.wristR * 0.14, P.wristR * 0.4].map((fx, i) => (
@@ -935,9 +948,9 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, clawM }: {
 
 /* ================================================ LEGS ================================================ */
 
-function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config }: {
+function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig
+  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'legUpperL' : 'legUpperR'
@@ -971,14 +984,17 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config }: {
         ])} material={calfMat} castShadow />
 
         <group ref={bind(foot)} position={[0, -P.lowerLeg - P.ankleR * 0.4, 0]}>
-          <mesh geometry={sphereGeo(1)} material={config.shoes === 'boots' ? shoeM : skin} scale={[P.ankleR * 1.1, P.ankleR * 1.1, P.ankleR * 1.1]} />
-          <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.2, P.ankleR * 0.8, P.footLen * 0.45]} position={[0, -P.ankleR * 0.08, P.footLen * 0.22]} castShadow />
-          <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.0, P.ankleR * 0.65, P.footLen * 0.3]} position={[0, -P.ankleR * 0.22, P.footLen * 0.62]} castShadow />
-          {!isDino && (
-            <mesh geometry={boxGeo(P.ankleR * 2.2, P.ankleR * 0.4, P.footLen * 1.0)} material={shoeAccent} position={[0, -P.ankleR * 0.6, P.footLen * 0.28]} castShadow />
-          )}
-          {config.shoes === 'boots' && !isDino && (
-            <mesh geometry={taperGeo(P.ankleR * 1.2, P.ankleR * 1.05, P.lowerLeg * 0.4)} material={shoeM} position={[0, P.lowerLeg * 0.2, -P.footLen * 0.02]} />
+          {/* ankle / foot — skin when bare (animals), shoe colour when booted */}
+          <mesh geometry={sphereGeo(1)} material={showShoes && config.shoes === 'boots' ? shoeM : skin} scale={[P.ankleR * 1.1, P.ankleR * 1.1, P.ankleR * 1.1]} />
+          {showShoes && (
+            <>
+              <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.2, P.ankleR * 0.8, P.footLen * 0.45]} position={[0, -P.ankleR * 0.08, P.footLen * 0.22]} castShadow />
+              <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.0, P.ankleR * 0.65, P.footLen * 0.3]} position={[0, -P.ankleR * 0.22, P.footLen * 0.62]} castShadow />
+              <mesh geometry={boxGeo(P.ankleR * 2.2, P.ankleR * 0.4, P.footLen * 1.0)} material={shoeAccent} position={[0, -P.ankleR * 0.6, P.footLen * 0.28]} castShadow />
+              {config.shoes === 'boots' && (
+                <mesh geometry={taperGeo(P.ankleR * 1.2, P.ankleR * 1.05, P.lowerLeg * 0.4)} material={shoeM} position={[0, P.lowerLeg * 0.2, -P.footLen * 0.02]} />
+              )}
+            </>
           )}
           {/* dino toe claws — three cream claws pointing forward */}
           {isDino && [-1, 0, 1].map((tx, i) => (

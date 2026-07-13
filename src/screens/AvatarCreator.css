@@ -826,3 +826,162 @@
   color: #9a8a6a;
   font-weight: 600;
 }
+
+/* ===================================================================== mind-map sidebar */
+.ac-mindmap {
+  flex: 0 0 156px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 22px 12px;
+  background: linear-gradient(180deg, #241a12, #18110b);
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+}
+.ac-mm-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: #c8a877;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  text-align: center;
+}
+.ac-mm-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ac-mm-line {
+  width: 2px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(212, 144, 64, 0.5), rgba(212, 144, 64, 0.15));
+}
+.ac-mm-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 116px;
+  padding: 12px 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(180, 130, 60, 0.18);
+  color: #b09878;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+.ac-mm-node:hover { background: rgba(212, 144, 64, 0.12); color: #f0e0cc; }
+.ac-mm-node.on {
+  color: #fff;
+  background: rgba(212, 144, 64, 0.18);
+  border-color: #d49040;
+  box-shadow: 0 0 0 2px rgba(212, 144, 64, 0.3), 0 6px 18px rgba(138, 90, 32, 0.3);
+}
+.ac-mm-ico {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+}
+.ac-mm-node.on .ac-mm-ico { background: linear-gradient(180deg, #c08040, #8a5a20); color: #fff; }
+.ac-mm-node svg { width: 20px; height: 20px; }
+.ac-mm-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* footer nav buttons: Back / Next */
+.ac-back {
+  flex: 0 0 auto;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  color: #6c6050;
+  background: #e0d4c4;
+  border-radius: 14px;
+  padding: 14px 18px;
+  transition: background 0.15s ease;
+}
+.ac-back:hover { background: #d6cab8; }
+.ac-back:disabled { opacity: 0.5; cursor: default; }
+.ac-next {
+  flex: 1;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  background: linear-gradient(180deg, #c08040, #8a5a20);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 6px 16px rgba(138, 90, 32, 0.4);
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.ac-next:hover { box-shadow: 0 8px 20px rgba(138, 90, 32, 0.5); }
+.ac-next:active { transform: translateY(1px); }
+.ac-next:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+
+/* free colour picker */
+.ac-color-row { display: flex; align-items: center; gap: 10px; }
+.ac-color {
+  width: 46px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  background: #efe7dd;
+  cursor: pointer;
+}
+.ac-color-hex {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: #f3e9dc;
+  letter-spacing: 0.5px;
+}
+.ac-color-clear {
+  margin-left: auto;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: #c8a877;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  padding: 7px 12px;
+}
+.ac-color-clear:hover { background: rgba(255, 255, 255, 0.12); }
+.ac-foot-note {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #c9b89a;
+}
+
+/* accessory picker tiles */
+.ac-acc-emoji {
+  flex: 0 0 auto;
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+.ac-acc-name small {
+  display: block;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 10px;
+  color: #9a8fa8;
+  margin-top: 2px;
+}
+
+/* responsive: collapse mind-map to a slim rail */
+@media (max-width: 1000px) {
+  .ac-mindmap { flex-basis: 70px; padding: 18px 8px; }
+  .ac-mm-title { display: none; }
+  .ac-mm-node { width: 52px; padding: 8px 4px; }
+  .ac-mm-label { display: none; }
+}
+

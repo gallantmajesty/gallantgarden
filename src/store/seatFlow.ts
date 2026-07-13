@@ -4,6 +4,12 @@ import type { Seat } from '../three/library/furniture'
 
 const STORAGE_KEY = 'library_last_seat'
 
+/** Once a student sits, they can't PICK A DIFFERENT seat for this long — the
+ *  "change seat" box (top-right, next to Stand up) stays locked and counts down.
+ *  This applies on the very first sit AND on every re-sit, so the rule is real
+ *  rather than a decorative timer. */
+export const SEAT_LOCK_MS = 10 * 60 * 1000
+
 export type FlowStage = 'selecting' | 'spawning' | 'walking' | 'seated' | 'free'
 
 function loadSavedSeat(): number | null {
@@ -34,6 +40,8 @@ interface SeatFlowState {
   pickSeat: (id: number) => void
   clearSeat: () => void
   startWalk: () => void
+  /** Lock seat-changing for SEAT_LOCK_MS from now (called on every sit). */
+  lockSeat: () => void
   arrive: () => void
   unlock: () => void
   setOccupied: (map: Record<number, string>) => void
@@ -71,9 +79,10 @@ export const useSeatFlow = create<SeatFlowState>((set) => ({
   },
   startWalk: () => set({ stage: 'walking' }),
   arrive: () => {
-    const lockUntil = Date.now() + 10 * 60 * 1000
+    const lockUntil = Date.now() + SEAT_LOCK_MS
     set({ stage: 'seated', seatLockUntil: lockUntil })
   },
+  lockSeat: () => set({ seatLockUntil: Date.now() + SEAT_LOCK_MS }),
   unlock: () => {
     saveSeat(null)
     set({ stage: 'selecting', selectedSeatId: null, seatLockUntil: null })

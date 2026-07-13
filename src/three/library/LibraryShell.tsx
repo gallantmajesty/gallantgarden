@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { DoubleSide, type MeshStandardMaterial, type Texture } from 'three'
 import { HALL, WINDOW, windowStep, windowZs } from './layout'
 import { balconyPlatforms, columns, GALLERY_FRONT_Z, staircases } from './furniture'
-import { makePlasterTexture, makeStainedGlassTexture, makeStoneNormalTexture, makeWoodNormalTexture, makeWoodTexture } from './textures'
+import { makeCarpetTexture, makePlasterTexture, makeStainedGlassTexture, makeStoneNormalTexture, makeWoodNormalTexture, makeWoodRoughnessTexture, makeWoodTexture } from './textures'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { env } from './env'
 import { useScenePreset } from '../../store/quality'
@@ -26,10 +26,12 @@ export function LibraryShell() {
   const realLights = preset.shadows || preset.bloom
   const wood = useMemo(() => makeWoodTexture(14, 7), [])
   const woodNormal = useMemo(() => makeWoodNormalTexture(14, 7), [])
+  const woodRough = useMemo(() => makeWoodRoughnessTexture(14, 7), [])
   const balconyWood = useMemo(() => makeWoodTexture(10, 13), [])
   const plaster = useMemo(() => makePlasterTexture(4, 19), [])
   const stoneNormal = useMemo(() => makeStoneNormalTexture(4, 19), [])
   const glass = useMemo(() => makeStainedGlassTexture(5), [])
+  const carpet = useMemo(() => makeCarpetTexture(1, 3), [])
   const { halfW, halfL, wallH, balconyY, balconyDepth } = HALL
 
   const cols = useMemo(() => columns(), [])
@@ -67,10 +69,18 @@ export function LibraryShell() {
   return (
     <group>
       {/* floor — wood grain + a normal map so plank seams and grain catch the
-          lantern light with real depth */}
+          lantern light with real depth; a roughness map mixes polished and
+          weathered boards so the speculars break up naturally. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[halfW * 2, halfL * 2]} />
-        <meshStandardMaterial map={wood} normalMap={woodNormal} roughness={0.7} metalness={0.04} />
+        <meshStandardMaterial map={wood} normalMap={woodNormal} roughnessMap={woodRough} roughness={0.85} metalness={0.04} />
+      </mesh>
+
+      {/* grand carpet runner down the central aisle — one draw, tiled along its
+          length. Sits a hair above the floor so it never z-fights the planks. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+        <planeGeometry args={[5.2, halfL * 2 - 3]} />
+        <meshStandardMaterial map={carpet} roughness={0.95} metalness={0} />
       </mesh>
 
       {/* ceiling + beams */}

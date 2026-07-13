@@ -289,6 +289,12 @@
   border-color: var(--gold-dark);
   box-shadow: 0 0 14px rgba(255, 206, 84, 0.4);
 }
+.set-row.disabled,
+.set-slider.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
 .settings-fs {
   width: 100%;
   margin-top: 8px;

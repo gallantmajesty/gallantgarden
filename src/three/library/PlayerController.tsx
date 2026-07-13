@@ -1,9 +1,9 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, Vector3 } from 'three'
-import { HALL, PLAYER_BOUNDS } from './layout'
+import { HALL } from './layout'
 import { buildCollision, rayHit } from './colliders'
-import { seatAnchors, readingCorners, GALLERY_FRONT_Z } from './furniture'
+import { seatAnchors, GALLERY_FRONT_Z } from './furniture'
 import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
@@ -11,6 +11,8 @@ import { setLocalState, getCineHostId, getCineHostCam, publishCineCam, publishCi
 import { useSeatFlow } from '../../store/seatFlow'
 import { EmoteLabel } from './EmoteLabel'
 import { useAvatar } from '../../avatar/store'
+import { useProfile } from '../../store/profile'
+import { PlayerNameTag3D } from './PlayerNameTag3D'
 
 // Seated camera pivot height above the seat base. Tuned to the chibi rig: the
 // seated head is ~1.2 tall, so the pivot sits around chest/eye level (~1.15) —
@@ -127,55 +129,39 @@ export function PlayerController() {
 
   const pickCine = () => {
     const rnd = (a: number, b: number) => a + Math.random() * (b - a)
-    const zoom = useSettings.getState().cinematicZoom
-    const fov = zoom ? rnd(48, 80) : CINE_FOV_BASE
+    const side = Math.random() < 0.5 ? -1 : 1
     const roll = Math.random()
-    // 1) Upper-floor balcony overlook — stand on a side gallery and look down/across
-    //    the nave so the tour actually shows the upper floor (its tables + railings).
-    if (roll < 0.3) {
-      const side = Math.random() < 0.5 ? -1 : 1
-      const x = side * (HALL.halfW - HALL.balconyDepth / 2 - 0.3)
-      const z = rnd(-HALL.halfL + 8, GALLERY_FRONT_Z - 4)
-      const pos = new Vector3(x, HALL.balconyY + 1.2, z)
-      const look = new Vector3(-side * rnd(0, 6), rnd(1.5, 5), rnd(-HALL.halfL + 8, HALL.halfL - 8))
-      return { pos, look, fov }
-    }
-    // 2) Upper-gallery stroll — roam along the upper floor itself (its railings /
-    //    shelves / open atrium), keeping the camera away from the upper seats.
+    // The tour lives on the UPPER FLOOR — the magical, meditative vantage points.
+    // We stand at a gallery rail and gaze across the Great Hall: the Knowledge
+    // Tree, the lantern glow, the opposite balcony. Waypoints are pulled well
+    // clear of any furniture (the reading tables are at x = ±13 on the ground
+    // floor and x = ±23.5 on the galleries) so the camera never dives into a
+    // desk or a chair.
     if (roll < 0.5) {
-      const side = Math.random() < 0.5 ? -1 : 1
-      const x = side * (HALL.halfW - HALL.balconyDepth / 2 - 0.4)
-      const z = rnd(-HALL.halfL + 6, GALLERY_FRONT_Z - 2)
-      const pos = new Vector3(x, HALL.balconyY + 1.5, z)
-      const look = new Vector3(side * rnd(2, 8), HALL.balconyY + rnd(0.5, 2), z + rnd(-6, 6))
-      return { pos, look, fov }
+      // Balcony overlook — gaze down/across the nave from the OUTER rail, well
+      // clear of the upper-floor tables that sit at x = ±23.5.
+      const x = side * (HALL.halfW - 1.5)
+      const z = rnd(-HALL.halfL + 6, GALLERY_FRONT_Z - 3)
+      const pos = new Vector3(x, HALL.balconyY + rnd(1.2, 2.4), z)
+      const look = new Vector3(-side * rnd(2, 12), rnd(2, 7), rnd(-HALL.halfL + 6, HALL.halfL - 6))
+      return { pos, look }
     }
-    // 3) Reading-corner / bench close-up (ground or upper) — benches are fine to
-    //    frame (the soft seating, not a seated study avatar).
-    if (roll < 0.72) {
-      const corners = readingCorners()
-      const c = corners[Math.floor(Math.random() * corners.length)]
-      const pos = new Vector3(c.pos[0] + rnd(-2, 2), c.pos[1] + 1.4, c.pos[2] + rnd(-2, 2))
-      const look = new Vector3(c.pos[0], c.pos[1] + 0.8, c.pos[2])
-      return { pos, look, fov }
+    if (roll < 0.78) {
+      // Upper-gallery stroll — roam the outer rail (x ≈ ±26.5), clear of tables.
+      const x = side * (HALL.halfW - 1.5)
+      const z = rnd(-HALL.halfL + 4, GALLERY_FRONT_Z)
+      const pos = new Vector3(x, HALL.balconyY + rnd(1.0, 1.8), z)
+      const look = new Vector3(side * rnd(4, 12), HALL.balconyY + rnd(0, 2.5), z + rnd(-10, 10))
+      return { pos, look }
     }
-    // 4) Free hall drift — frame the architecture (the golden tree, the nave, the
-    //    far shelves) and keep the camera away from seated study avatars so we never
-    //    catch someone's lower body. When we do glance at a seat, aim at head height.
-    const gallery = Math.random() < 0.4
-    const y = gallery ? HALL.balconyY + rnd(0.5, 3) : rnd(1.2, 6)
-    const x = rnd(PLAYER_BOUNDS.minX, PLAYER_BOUNDS.maxX)
-    const z = rnd(PLAYER_BOUNDS.minZ, PLAYER_BOUNDS.maxZ)
-    let look: Vector3
-    if (seats.length && Math.random() < 0.3) {
-      // Aim at head/shoulder height (never low) so a seated avatar isn't cropped.
-      const s = seats[Math.floor(Math.random() * seats.length)]
-      look = new Vector3(s.pos[0], s.pos[1] + 1.3, s.pos[2])
-    } else {
-      // The centrepiece Knowledge Tree or a point in the nave — pure architecture.
-      look = new Vector3(rnd(-6, 6), rnd(2.5, HALL.wallH * 0.7), rnd(-14, 14))
-    }
-    return { pos: new Vector3(x, y, z), look, fov }
+    // A gentle, pulled-back hall-level establishing shot, kept in the clear
+    // CENTRAL AISLE (|x| < 9 — the desk columns live only at x = ±13) so the
+    // camera never ends up inside a reading table.
+    const y = rnd(2.2, 4.5)
+    const x = rnd(-9, 9)
+    const z = rnd(-HALL.halfL * 0.35, HALL.halfL * 0.35)
+    const look = new Vector3(rnd(-5, 5), rnd(3, 8), rnd(-HALL.halfL + 4, HALL.halfL - 4))
+    return { pos: new Vector3(x, y, z), look }
   }
 
   const far = useSettings((s) => (s as any).drawDistance === 'ultra' ? 500 : (s as any).drawDistance === 'high' ? 300 : 150)
@@ -220,14 +206,7 @@ export function PlayerController() {
     }
     const keyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      // Universal cinematic tour — works whether seated or still choosing a seat.
-      // Gated by the Settings "Enable cinematic tour" switch (key 5).
-      if (e.key === '5') {
-        if (useSettings.getState().cinematicTour) {
-          useWorld.getState().setCinematic(!useWorld.getState().cinematic)
-        }
-        return
-      }
+      if (e.key === '5') return // cinematic toggle is owned by Explore's key handler
       if (useWorld.getState().seat == null) return
       if (useWorld.getState().cinematic) useWorld.getState().setCinematic(false)
       const n = parseInt(e.key, 10)
@@ -300,7 +279,7 @@ export function PlayerController() {
         c.to.copy(wp.pos)
         c.lookTo.copy(wp.look)
         c.fovFrom = cam.fov
-        c.fovTo = wp.fov
+        c.fovTo = cam.fov
         c.t = 0
         c.dur = 5 + Math.random() * 3
         c.dwell = 0
@@ -317,7 +296,7 @@ export function PlayerController() {
           c.t += dt / c.dur
           if (c.t >= 1) {
             c.t = 1
-            c.dwell = 1.2 + Math.random() * 1.6
+            c.dwell = 0.25 + Math.random() * 0.4
           }
           const e = smoothstep(c.t)
           const px = c.from.x + (c.to.x - c.from.x) * e
@@ -342,7 +321,7 @@ export function PlayerController() {
             c.to.copy(wp.pos)
             c.lookTo.copy(wp.look)
             c.fovFrom = cam.fov
-            c.fovTo = wp.fov
+            c.fovTo = cam.fov
             c.t = 0
             c.dur = 5 + Math.random() * 3
           }
@@ -482,7 +461,14 @@ export function PlayerController() {
 
   const avatarCfg = useAvatar((s) => s.config)
   const seatWorld = useWorld((s) => s.seat)
+  const cinematic = useWorld((s) => s.cinematic)
   const cameraModeR = useSettings((s) => s.cameraMode)
+
+  const displayName = useProfile((s) => s.displayName)
+  const username = useProfile((s) => s.username)
+  const rank = useProfile((s) => s.data.rank)
+  const country = useProfile((s) => s.data.country)
+  const localName = displayName || username || 'Explorer'
 
   return (
     <group ref={avatarRef}>
@@ -493,6 +479,7 @@ export function PlayerController() {
           clean. */}
       <group visible={seatWorld != null && cameraModeR !== 'first'}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
+        <PlayerNameTag3D name={localName} rank={rank} country={country} self headY={2.55} hidden={cinematic} />
       </group>
     </group>
   )

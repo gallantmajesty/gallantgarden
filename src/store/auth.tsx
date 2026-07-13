@@ -19,7 +19,7 @@ export interface AuthUser {
   isGuest?: boolean
 }
 
-export type OAuthProvider = 'google' | 'github' | 'microsoft'
+export type OAuthProvider = 'github'
 
 interface AuthContextValue {
   user: AuthUser | null

@@ -8,7 +8,20 @@ const WOOD_HI = '#52331a'
 const BOOK_COLORS = [
   '#7c2f2f', '#2f5c4a', '#34507a', '#8a6d2f', '#5a3a6e',
   '#a15a2a', '#386b6b', '#7a3050', '#506030', '#2f3a5c',
+  '#9c3b3b', '#274d6b', '#caa84a', '#3f7a55', '#6b3a7a',
 ]
+
+/** Apply a small brightness jitter to a hex colour so no two books on a shelf
+ *  look mechanically identical — the core of a "real library" shelf read. */
+function jitter(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  const f = 1 + (amt - 0.5) * 0.5
+  r = Math.max(0, Math.min(255, Math.round(r * f)))
+  g = Math.max(0, Math.min(255, Math.round(g * f)))
+  b = Math.max(0, Math.min(255, Math.round(b * f)))
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
 
 const LEVELS = [0.5, 1.55, 2.6, 3.65, 4.7].slice(0, 5)
 
@@ -63,8 +76,9 @@ export function Bookshelves() {
     return items
   }, [placements])
 
-  const books = useMemo<BoxItem[]>(() => {
+  const { books, bookFoils } = useMemo<{ books: BoxItem[]; bookFoils: BoxItem[] }>(() => {
     const items: BoxItem[] = []
+    const foils: BoxItem[] = []
     for (const p of placements) {
       const rand = rng(p.seed)
       for (const level of p.levels) {
@@ -72,28 +86,43 @@ export function Bookshelves() {
         while (lx < SHELF.w / 2 - 0.2) {
           const bw = 0.1 + rand() * 0.13
           const bh = 0.36 + rand() * 0.5
-          const lean = rand() < 0.07
+          const lean = rand() < 0.12
+          const baseColor = BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)]
           const [wx, wz] = toWorld(lx + bw / 2, SHELF.d / 2 - 0.18, p.rotY, p.pos[0], p.pos[2])
+          const rotY = p.rotY + (lean ? 0.18 : 0)
           items.push({
             pos: [wx, p.pos[1] + level + bh / 2, wz],
             size: [bw, bh, 0.32],
-            rotY: p.rotY + (lean ? 0.18 : 0),
-            color: BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)],
+            rotY,
+            color: jitter(baseColor, rand()),
           })
+          // gold foil title band on ~45% of books — a thin strip near the top
+          // of the spine, nudged outward so it sits on the visible face.
+          if (rand() < 0.45) {
+            const [fx, fz] = toWorld(lx + bw / 2, SHELF.d / 2 - 0.1, p.rotY, p.pos[0], p.pos[2])
+            foils.push({
+              pos: [fx, p.pos[1] + level + bh - 0.06, fz],
+              size: [bw * 0.82, 0.05, 0.34],
+              rotY,
+              color: rand() < 0.5 ? '#caa84a' : '#e7c45f',
+            })
+          }
           lx += bw + 0.015
         }
       }
     }
-    return items
+    return { books: items, bookFoils: foils }
   }, [placements])
 
   return (
     <group>
       {/* frames cast shadow (big silhouettes) — but as a single instanced draw it
-          stays cheap in the shadow pass too */}
+           stays cheap in the shadow pass too */}
       <InstancedBoxes items={frames} roughness={0.88} castShadow receiveShadow />
       {/* books are tiny: skip shadow-casting to keep the shadow pass light */}
       <InstancedBoxes items={books} roughness={0.6} />
+      {/* gold foil title bands — a touch of metallic sheen on the spines */}
+      <InstancedBoxes items={bookFoils} roughness={0.35} metalness={0.7} />
     </group>
   )
 }

@@ -2,22 +2,21 @@ import { useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { useBlueprint } from '../../store/blueprint'
 import { mediaBackgroundStyle, mediaImageStyle, noteSurfaceStyle } from '../../lib/blueprint/style'
-import type { BlueprintNode, Port } from '../../lib/blueprint/types'
+import type { BlueprintNode } from '../../lib/blueprint/types'
 import { RichText } from './RichText'
 
 interface NoteNodeProps {
   node: BlueprintNode
-  selected: boolean
-  dimmed: boolean
-  /** true while a string is being dragged from any node */
-  connecting?: boolean
-  /** true when THIS node is the card the dragged string would drop onto */
-  connectTarget?: boolean
-  onPortDown: (nodeId: string, port: Port, e: React.PointerEvent) => void
-  onAddConnected: (nodeId: string) => void
+  selected?: boolean
+  dimmed?: boolean
+  /** true when this node is the armed source of a pending thread */
+  connectSource?: boolean
+  onDoubleTap?: (nodeId: string) => void
+  /** start a drag-to-connect from this note's bottom port */
+  onPortDown?: (nodeId: string, e: React.PointerEvent) => void
 }
 
-export function NoteNode({ node, selected, dimmed, connecting, connectTarget, onPortDown, onAddConnected }: NoteNodeProps) {
+export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, onPortDown }: NoteNodeProps) {
   const zoom = useBlueprint((s) => s.doc.viewport.zoom)
   const snap = useBlueprint((s) => s.doc.snap)
   const grid = useBlueprint((s) => s.doc.grid)
@@ -28,6 +27,12 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
   const setNodeHtml = useBlueprint((s) => s.setNodeHtml)
   const pushHistory = useBlueprint((s) => s.pushHistory)
   const flush = useBlueprint((s) => s.flush)
+  // colour the bottom port with the active connection type
+  const activeYarnColor = useBlueprint((s) => s.activeYarnColor)
+  const activeTypeId = useBlueprint((s) => s.activeTypeId)
+  const connectionTypes = useBlueprint((s) => s.doc.connectionTypes)
+  const portColor =
+    activeYarnColor ?? connectionTypes.find((t) => t.id === activeTypeId)?.color ?? '#caa84a'
 
   const [editing, setEditing] = useState(false)
   const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number } | null>(null)
@@ -103,34 +108,20 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
   return (
     <div
       ref={rootRef}
-      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${editing ? 'editing' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connecting ? 'connecting' : ''} ${connectTarget ? 'drop-target' : ''}`}
+      data-node-id={node.id}
+      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${editing ? 'editing' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connectSource ? 'connect-source' : ''}`}
       style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
-  onPointerDown={onBodyPointerDown}
-  onPointerMove={onBodyPointerMove}
-  onPointerUp={onBodyPointerUp}
-  onPointerEnter={() => setHoverNode(node.id)}
-  onPointerLeave={() => setHoverNode(null)}
-  onDoubleClick={(e) => {
-    if (node.locked) return
-    e.stopPropagation()
-    if (!selected) select(node.id)
-    setEditing(true)
-  }}
+      onPointerDown={onBodyPointerDown}
+      onPointerMove={onBodyPointerMove}
+      onPointerUp={onBodyPointerUp}
+      onPointerEnter={() => setHoverNode(node.id)}
+      onPointerLeave={() => setHoverNode(null)}
+      onDoubleClick={(e) => {
+        if (editing || node.locked) return
+        e.stopPropagation()
+        onDoubleTap?.(node.id)
+      }}
     >
-      {/* 4-port connection handles — always visible on every side */}
-      {!node.locked && (['top', 'right', 'bottom', 'left'] as Port[]).map((port) => (
-        <span
-          key={port}
-          className={`bp-port bp-port-${port}`}
-          title={`Drag from ${port} to connect`}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            onPortDown(node.id, port, e)
-          }}
-        >
-          <span className="bp-port-dot" />
-        </span>
-      ))}
       <div className="bp-node-surface" style={surface}>
         {node.style.shape === 'folder' && <span className="bp-folder-tab" />}
         {bgMedia && <span className="bp-node-media-bg" style={mediaBackgroundStyle(media!)} aria-hidden />}
@@ -146,7 +137,13 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
           )}
         </div>
         {node.icon && <span className="bp-node-icon">{node.icon}</span>}
-        {node.locked && <span className="bp-node-lock" title="Locked">🔒</span>}
+        {node.locked && (
+          <span className="bp-node-lock" title="Locked" aria-label="Locked">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+              <path d="M12 2a4 4 0 0 0-4 4v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4zm-2 7V6a2 2 0 1 1 4 0v3h-4z" />
+            </svg>
+          </span>
+        )}
         {node.tags.length > 0 && (
           <div className="bp-node-tags">
             {node.tags.slice(0, 4).map((t) => (
@@ -155,6 +152,23 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
           </div>
         )}
       </div>
+
+      {/* edit button — double-click is reserved for connecting threads */}
+      {!editing && !node.locked && (
+        <button
+          type="button"
+          className="bp-node-edit"
+          title="Edit note"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!selected) select(node.id)
+            setEditing(true)
+          }}
+        >
+          ✎
+        </button>
+      )}
 
       {/* resize handle */}
       {selected && !node.locked && (
@@ -166,18 +180,17 @@ export function NoteNode({ node, selected, dimmed, connecting, connectTarget, on
         />
       )}
 
-      {/* plus button — appears on hover, creates a new note connected to this one */}
+      {/* single connection port — drag from here onto another note to link */}
       {!node.locked && (
-        <span
-          className="bp-add-btn"
-          title="Add connected note"
+        <div
+          className={`bp-node-port ${connectSource ? 'is-source' : ''}`}
+          title="Drag to another note to connect"
+          style={{ ['--port' as string]: portColor } as React.CSSProperties}
           onPointerDown={(e) => {
             e.stopPropagation()
-            onAddConnected(node.id)
+            onPortDown?.(node.id, e)
           }}
-        >
-          <span className="bp-add-icon">+</span>
-        </span>
+        />
       )}
     </div>
   )

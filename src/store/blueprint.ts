@@ -6,7 +6,6 @@ import {
   nowIso,
   uid,
   MAX_VERSIONS,
-  CONNECTION_PACKS,
   type BlueprintEdge,
   type BlueprintNode,
   type BoardDoc,
@@ -14,6 +13,7 @@ import {
   type ConnectionType,
   type NoteStyle,
   type Port,
+  type Pt,
   type YarnStyle,
 } from '../lib/blueprint/types'
 import {
@@ -46,6 +46,7 @@ interface BlueprintState {
   selectedEdgeId: string | null
   focus: FocusState
   hoverNodeId: string | null // node under the cursor — traces its investigation path
+  pendingFrom: string | null // armed source note id for an in-progress connection
   activeTypeId: string // connection type applied to newly-drawn strings
   activeYarnColor: string | null // yarn palette colour override (null = no override)
   activeYarnStyle: YarnStyle // yarn visual style applied to newly-drawn strings
@@ -79,7 +80,7 @@ interface BlueprintState {
   setLocked: (ids: string[], locked: boolean) => void
 
   // ---- edges ----
-  addEdge: (from: string, fromPort: Port, to: string, toPort: Port, typeId: string) => void
+  addEdge: (from: string, fromPort: Port, to: string, toPort: Port, typeId: string, fromPt?: Pt | null, toPt?: Pt | null) => void
   updateEdge: (id: string, patch: Partial<BlueprintEdge>) => void
   deleteEdge: (id: string) => void
 
@@ -87,7 +88,6 @@ interface BlueprintState {
   addConnectionType: (name: string) => string
   updateConnectionType: (id: string, patch: Partial<ConnectionType>) => void
   deleteConnectionType: (id: string) => void
-  applyConnectionPack: (packId: string) => void
 
   // ---- selection / focus / viewport ----
   select: (id: string | null, additive?: boolean) => void
@@ -96,6 +96,9 @@ interface BlueprintState {
   selectEdge: (id: string | null) => void
   setActiveType: (id: string) => void
   setFocus: (typeId: string | null) => void
+  setPendingFrom: (id: string | null) => void
+  /** cancel any in-progress / traced connection state */
+  cancelConnect: () => void
   setHoverNode: (id: string | null) => void
   setViewport: (v: { x: number; y: number; zoom: number }) => void
   toggleSnap: () => void
@@ -162,6 +165,7 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
   selectedEdgeId: null,
   focus: { typeId: null },
   hoverNodeId: null,
+  pendingFrom: null,
   activeTypeId: 'link',
   activeYarnColor: null,
   activeYarnStyle: 'solid',
@@ -357,7 +361,7 @@ newBoard: (title) => {
     },
 
     // ---------- edges ----------
-    addEdge: (from, fromPort, to, toPort, typeId) => {
+    addEdge: (from, fromPort, to, toPort, typeId, fromPt, toPt) => {
       if (from === to) return
       pushHistory()
       apply((d) => {
@@ -373,6 +377,8 @@ newBoard: (title) => {
     typeId,
     ...(st.activeYarnColor ? { yarnColor: st.activeYarnColor } : {}),
     ...(st.activeYarnStyle !== 'solid' ? { yarnStyle: st.activeYarnStyle } : {}),
+    ...(fromPt ? { fromPt } : {}),
+    ...(toPt ? { toPt } : {}),
   }
   return { ...d, edges: [...d.edges, edge] }
       })
@@ -423,19 +429,6 @@ newBoard: (title) => {
       }))
     },
 
-    applyConnectionPack: (packId) => {
-      const pack = CONNECTION_PACKS.find((p) => p.id === packId)
-      if (!pack) return
-      pushHistory()
-      apply((d) => {
-        const existing = new Set(d.connectionTypes.map((t) => t.name.toLowerCase()))
-        const added = pack.types
-          .filter((t) => !existing.has(t.name.toLowerCase()))
-          .map((t) => ({ ...t, id: uid('ct'), builtin: false }))
-        return { ...d, connectionTypes: [...d.connectionTypes, ...added] }
-      })
-    },
-
     // ---------- selection / focus / viewport ----------
     select: (id, additive) =>
       set((s) => {
@@ -456,6 +449,8 @@ newBoard: (title) => {
     selectEdge: (id) => set({ selectedEdgeId: id, selection: [] }),
     setActiveType: (id) => set({ activeTypeId: id }),
     setFocus: (typeId) => set((s) => ({ focus: { typeId: s.focus.typeId === typeId ? null : typeId } })),
+    setPendingFrom: (id) => set({ pendingFrom: id }),
+    cancelConnect: () => set({ pendingFrom: null, focus: { typeId: null } }),
     setHoverNode: (id) => set((s) => (s.hoverNodeId === id ? s : { hoverNodeId: id })),
 
   setViewport: (v) => applyLight((d) => ({ ...d, viewport: v })),

@@ -94,7 +94,7 @@ export function SearchPanel({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="bp-folderrow">
-        <button className="sf-btn secondary tiny" onClick={saveFolder}>★ Save as smart folder</button>
+        <button className="sf-btn secondary tiny" onClick={saveFolder}>Save as smart folder</button>
         {folders.map((f) => (
           <span key={f.name} className="bp-folder">
             <button onClick={() => applyFolder(f)}>{f.name}</button>

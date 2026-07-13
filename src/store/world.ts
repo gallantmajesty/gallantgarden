@@ -17,7 +17,13 @@ export const useWorld = create<WorldState>((set) => ({
   seat: null,
   near: null,
   cinematic: false,
-  sit: (id) => set({ seat: id, near: null, cinematic: false }),
+  sit: (id) => {
+    // Lock seat-changing for 10 min from now — see SEAT_LOCK_MS in seatFlow.
+    // Applies to the first sit and every re-sit, so the "change seat in MM:SS"
+    // timer next to Stand up is enforced, not decorative.
+    useSeatFlow.getState().lockSeat()
+    set({ seat: id, near: null, cinematic: false })
+  },
   stand: () => {
     useSeatFlow.getState().unlock()
     useSeatFlow.getState().clearSeat()

@@ -297,10 +297,20 @@ const MapPlan = memo(function MapPlan({ seats }: { seats: DisplaySeat[] }) {
           />
         ))}
         <g className="sso-plan-tree">
-          <circle cx={280} cy={460} r={30} className="sso-plan-tree-dais" />
-          <rect x={276.5} y={450} width={7} height={42} className="sso-plan-tree-trunk" />
-          <polygon points="280,406 314,452 246,452" className="sso-plan-tree-canopy" />
-          <polygon points="280,428 306,468 254,468" className="sso-plan-tree-canopy" />
+          {/* Stone dais */}
+          <ellipse cx={280} cy={468} rx={22} ry={6} className="sso-plan-tree-dais" />
+          <circle cx={280} cy={465} r={28} className="sso-plan-tree-dais-ring" />
+          {/* Trunk with root flares */}
+          <rect x={277} y={445} width={6} height={25} rx={1} className="sso-plan-tree-trunk" />
+          <path d="M277,468 Q272,472 268,470 Q274,469 277,466Z" className="sso-plan-tree-root" />
+          <path d="M283,468 Q288,472 292,470 Q286,469 283,466Z" className="sso-plan-tree-root" />
+          {/* Canopy — 4 layered polygon tiers, natural green */}
+          <polygon points="280,398 316,446 244,446" className="sso-plan-tree-canopy sso-plan-tree-canopy--1" />
+          <polygon points="280,412 310,452 250,452" className="sso-plan-tree-canopy sso-plan-tree-canopy--2" />
+          <polygon points="280,426 304,460 256,460" className="sso-plan-tree-canopy sso-plan-tree-canopy--3" />
+          <polygon points="280,438 298,466 262,466" className="sso-plan-tree-canopy sso-plan-tree-canopy--4" />
+          {/* Crown dot */}
+          <circle cx={280} cy={396} r={2.5} className="sso-plan-tree-crown" />
         </g>
         <circle cx={280} cy={908} r={9} className="sso-plan-entrance" />
       </g>
@@ -339,6 +349,8 @@ interface SeatDotProps {
 }
 
 const SeatDot = memo(function SeatDot({ seat, isOccupied, isSelected, onClick }: SeatDotProps) {
+  const occupant = isOccupied ? (useSeatFlow.getState().occupied[seat.id] ?? 'Student') : null
+
   return (
     <button
       className={`sso-seat ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
@@ -350,21 +362,18 @@ const SeatDot = memo(function SeatDot({ seat, isOccupied, isSelected, onClick }:
         if (!isOccupied) onClick()
       }}
       disabled={isOccupied}
-      title={isOccupied ? 'Occupied' : `Seat ${seat.id + 1}`}
+      title={isOccupied ? occupant : `Seat ${seat.id + 1}`}
     >
-      <span className="sso-seat-num">{seat.id + 1}</span>
+      {isOccupied ? (
+        <span className="sso-seat-occupant">{occupant}</span>
+      ) : (
+        <span className="sso-seat-num">{seat.id + 1}</span>
+      )}
       {!isOccupied && (
-        <div className="sso-seat-card">
-          <div className="sso-card-header">
-            <span className="sso-card-number">Seat {seat.id + 1}</span>
-            <span className={`sso-card-floor ${seat.meta.floor === 'Upper Gallery' ? 'upper' : ''}`}>
-              {seat.meta.floor}
-            </span>
-          </div>
-          <div className="sso-card-body">
-            <span className="sso-card-feature">{seat.meta.feature}</span>
-            <span className="sso-card-quiet">{seat.meta.quietness}</span>
-          </div>
+        <div className="sso-seat-hint">
+          <span className="sso-seat-hint-name">Seat {seat.id + 1}</span>
+          <span className="sso-seat-hint-feat">{seat.meta.feature}</span>
+          <span className="sso-seat-hint-quiet">{seat.meta.quietness}</span>
         </div>
       )}
     </button>

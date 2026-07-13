@@ -2,13 +2,21 @@
 import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
-import { EffectComposer, Vignette, N8AO, GodRays, Bloom } from '@react-three/postprocessing'
+import { EffectComposer, Vignette, N8AO, GodRays, Bloom, HueSaturation, BrightnessContrast } from '@react-three/postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
 import { HalfFloatType, Vector3 } from 'three'
+
+// DPR is held FIXED at the quality ceiling (see `dpr` state below). Live DPR
+// re-scaling (e.g. via a PerformanceMonitor) forces the WebGL drawing buffer to
+// reallocate every time it changes, which on integrated GPUs shows as a black
+// "blink" — and a hard enough spike can drop the GL context entirely (the
+// "totally blank, doesn't work" report). Adaptive resolution is handled once, at
+// realm entry, by the auto-quality step-up instead — a single, safe adjustment.
 import { useSettings } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
+import { settleRealmQuality } from '../realmQuality'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -93,10 +101,27 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const [dpr, setDpr] = useState(preset.dpr)
   useEffect(() => setDpr(preset.dpr), [preset.dpr])
 
+  // Pause the render loop entirely while the tab/canvas is hidden so we spend
+  // zero GPU/battery in the background. Visibility restores the original
+  // frameloop — the rendered look is identical (no quality/state change).
+  const [loop, setLoop] = useState<'always' | 'demand' | 'never'>(frameloop)
+  useEffect(() => {
+    const onVis = () => setLoop(document.hidden ? 'never' : frameloop)
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [frameloop])
+
+  // Once the scene is ready, settle the quality: step up from the Low opening
+  // preset (auto-detect) or restore the player's manual choice.
+  const handleReady = () => {
+    onReady?.()
+    settleRealmQuality()
+  }
+
   return (
     <>
     <Canvas
-      frameloop={frameloop}
+      frameloop={loop}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
@@ -133,9 +158,13 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
         </ToggleGroup>
       </SoftBoundary>
 
-      {/* warm interior fill so the hall is always cosily lit — the lanterns add
-          the real pools of golden light against the dark night outside */}
-      <ambientLight intensity={0.38} color="#ffd9a8" />
+      {/* Warm, cozy interior fill — the heart of the "magical library" feel.
+          A hemisphere light (cool sky / WARM ground) gives vertical surfaces
+          real form, and a generous warm ambient keeps the hall glowing golden
+          instead of going murky. The lanterns + jewelled glass add the real
+          pools of light against the night. Zero extra draw calls. */}
+      <hemisphereLight args={['#aebfe0', '#6b4a2a', 0.4]} />
+      <ambientLight intensity={0.46} color="#ffd9a8" />
 
       <ToggleGroup group="interior">
         <LibraryShell />
@@ -153,14 +182,16 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           zero full-screen passes. Gated by the same particle/detail budget so they
           shed on low-end settings and Performance Mode. */}
       <ToggleGroup group="particles">
-        {preset.particles && <Fireflies count={Math.round(12 + preset.dust * 0.8)} />}
+        {preset.particles && <Fireflies count={Math.round(8 + preset.dust * 0.6)} />}
         {preset.particles && <Aurora />}
         {preset.particles && (
           <SoftBoundary>
             <FantasyLayer />
           </SoftBoundary>
         )}
-        {preset.lodBias < 1 && <FloatingBooks count={preset.lodBias < 0.5 ? 8 : 5} />}
+        {/* FloatingBooks (transparent overdraw) is now high-tier only — it shed on
+            medium/low so the weakest GPUs skip the extra draw + fill cost. */}
+        {preset.lodBias < 0.5 && <FloatingBooks count={8} />}
         {preset.dust > 0 && (
           <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
         )}
@@ -183,7 +214,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           0 disables the composer's expensive MSAA pass. */}
       <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} />
     </Canvas>
-    <SceneReady onReady={onReady} />
+    <SceneReady onReady={handleReady} />
     </>
   )
 }
@@ -224,9 +255,24 @@ function PostEffects({
   // bloom pass can run if requested.
   if (!preset.bloom && !preset.ultra && !cinematic) return null
   const showBloom = cinematic && bloom
+  // Cinematic bloom is pushed hard (low threshold, high intensity) so the lanterns,
+  // the jewelled glass and the gold tree read as a glowing hall — this is the
+  // "mood" people expect from the tour, and it costs nothing outside cinematic.
   const bloomEl = showBloom ? (
-    <Bloom key="bloom" mipmapBlur intensity={0.9} luminanceThreshold={0.55} luminanceSmoothing={0.2} radius={0.7} />
+    <Bloom key="bloom" mipmapBlur intensity={0.95} luminanceThreshold={0.5} luminanceSmoothing={0.2} radius={0.7} />
   ) : null
+  // Filmic grade applied ONLY while the Cinematic Tour is running: a richer
+  // saturation + soft contrast lift + deeper vignette turn the same geometry into
+  // a "shot", not just a free-look. All three are cheap full-screen passes that
+  // only exist during the tour.
+  const cinematicGrade = cinematic
+    ? [
+        pt.vignette ? <Vignette key="vig" eskil={false} offset={0.14} darkness={0.55} /> : null,
+        <HueSaturation key="sat" saturation={0.16} />
+        ,
+        <BrightnessContrast key="bc" brightness={0.01} contrast={0.08} />,
+      ]
+    : [pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null]
   if (preset.ultra) {
     return (
       <EffectComposer key={`ultra-${composerKey}`} enableNormalPass={false} multisampling={2}>
@@ -243,10 +289,7 @@ function PostEffects({
   }
   return (
     <EffectComposer key={`bloom-${composerKey}`} enableNormalPass={false} multisampling={0}>
-      {[
-        bloomEl,
-        pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
-      ].filter(Boolean) as ReactElement[]}
+      {[bloomEl, ...cinematicGrade].filter(Boolean) as ReactElement[]}
     </EffectComposer>
   )
 }
@@ -589,12 +632,28 @@ function PerfLogger() {
  */
 function DisableFrustumCulling() {
   const scene = useThree((s) => s.scene)
-  useFrame(() => {
-    scene.traverse((o: Object3D) => {
-      const mesh = o as unknown as { isMesh?: boolean; frustumCulled?: boolean }
-      if (mesh.isMesh && mesh.frustumCulled) mesh.frustumCulled = false
-    })
-  })
+  useEffect(() => {
+    // Only the skinned avatar meshes have a bind-pose bounding sphere pinned at
+    // the origin, so they must never be frustum-culled (else they vanish at the
+    // behind/side seated presets 3/4). Every other mesh keeps its default
+    // culling, so off-screen geometry is still skipped instead of drawn.
+    //
+    // We no longer walk the ENTIRE scene graph every frame just to keep these
+    // unculled — that was a full-graph traversal 60×/sec. Instead we scan once
+    // on mount and re-scan on a 500 ms interval so late-loaded character models
+    // (whose real SkinnedMesh is created after the GLTF/avatar config loads)
+    // are still covered within half a second. Steady-state cost is ~2 scans/sec
+    // instead of 60, and the rendered look is unchanged.
+    const scan = () => {
+      scene.traverse((o: Object3D) => {
+        const mesh = o as unknown as { isSkinnedMesh?: boolean; frustumCulled?: boolean }
+        if (mesh.isSkinnedMesh && mesh.frustumCulled) mesh.frustumCulled = false
+      })
+    }
+    scan()
+    const iv = setInterval(scan, 500)
+    return () => clearInterval(iv)
+  }, [scene])
   return null
 }
 

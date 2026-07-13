@@ -6,6 +6,7 @@ import type { Locomotion } from '../../avatar/animation'
 import type { AvatarConfig } from '../../avatar/config'
 import type { Lod } from '../../avatar/AvatarAnimator'
 import { getTarget, useRealmNet } from '../../multiplayer/net'
+import { PlayerNameTag3D } from './PlayerNameTag3D'
 
 // Every OTHER player in the realm, rendered from the live roster. The set of
 // avatars only changes on join/leave (cheap React work); each avatar then drives
@@ -87,7 +88,7 @@ export function RemotePlayers() {
   return (
     <>
       {Object.values(roster).map((p) => (
-        <RemotePlayerAvatar key={p.id} id={p.id} config={p.avatar} visible={visibleIds.has(p.id)} />
+        <RemotePlayerAvatar key={p.id} id={p.id} p={p} config={p.avatar} visible={visibleIds.has(p.id)} />
       ))}
     </>
   )
@@ -98,7 +99,7 @@ export function RemotePlayers() {
 // feeling laggy. Higher = snappier but jerkier; lower = floatier.
 const CHASE = 12
 
-function RemotePlayerAvatar({ id, config, visible }: { id: string; config: AvatarConfig; visible: boolean }) {
+function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: string; name: string; country: string | null; rank: string; avatar: AvatarConfig }; config: AvatarConfig; visible: boolean }) {
   const group   = useRef<Group>(null)
   const camera  = useThree((s) => s.camera)
   // Locomotion fed to the shared avatar animator (same type the local player
@@ -110,6 +111,10 @@ function RemotePlayerAvatar({ id, config, visible }: { id: string; config: Avata
   const lodRef  = useRef<Lod>('near')
   // Last shadow state pushed onto the body, so we only traverse on a change.
   const shadowsOn = useRef<boolean | null>(null)
+  // Name tag visibility (hidden during the shared cinematic tour) — toggled via
+  // state so the <Html> overlay mounts/unmounts instead of just hiding.
+  const [tagShown, setTagShown] = useState(true)
+  const tagShownRef = useRef(true)
 
   useFrame((_, dtRaw) => {
     const g = group.current
@@ -125,6 +130,15 @@ function RemotePlayerAvatar({ id, config, visible }: { id: string; config: Avata
 
     const t = getTarget(id)
     if (!t) return
+
+    // Name tag follows the same cinematic-hide rule: show unless this player is
+    // on the tour (in which case everyone else sees their broadcast feed, not body).
+    const wantTag = !t.cinematic
+    if (wantTag !== tagShownRef.current) {
+      tagShownRef.current = wantTag
+      setTagShown(wantTag)
+    }
+
     // A player in the shared Cinematic Tour has their avatar hidden for everyone
     // else — their camera is broadcast as the tour feed, so showing their body
     // would have it flying through the shared shot.
@@ -182,6 +196,9 @@ function RemotePlayerAvatar({ id, config, visible }: { id: string; config: Avata
   return (
     <group ref={group}>
       <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
+      {tagShown && (
+        <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} />
+      )}
     </group>
   )
 }

@@ -33,6 +33,42 @@ const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
 
+  // Size the SVG to the actual content bounds (notes + edges + live preview)
+  // and translate paths so world coordinates still map 1:1. A plain 0×0 svg
+  // with overflow:visible is unreliable across browsers, and an enormous svg
+  // exceeds the browser's max SVG dimensions (renders nothing). This stays in
+  // a safe, content-fitting range while keeping world coords exact.
+  const bounds = useMemo(() => {
+    const xs: number[] = []
+    const ys: number[] = []
+    nodes.forEach((n) => { xs.push(n.x, n.x + n.w); ys.push(n.y, n.y + n.h) })
+    edges.forEach((e) => {
+      const a = byId.get(e.from)
+      const b = byId.get(e.to)
+      if (a) { xs.push(a.x, a.x + a.w); ys.push(a.y, a.y + a.h) }
+      if (b) { xs.push(b.x, b.x + b.w); ys.push(b.y, b.y + b.h) }
+    })
+    if (preview) {
+      xs.push(preview.to.x)
+      ys.push(preview.to.y)
+      xs.push(preview.from.x, preview.from.x + preview.from.w)
+      ys.push(preview.from.y, preview.from.y + preview.from.h)
+    }
+    if (xs.length === 0) return { minX: -50, minY: -50, w: 100, h: 100 }
+    const pad = 300
+    let minX = Math.min(...xs) - pad
+    let minY = Math.min(...ys) - pad
+    const maxX = Math.max(...xs) + pad
+    const maxY = Math.max(...ys) + pad
+    // keep within safe SVG dimensions
+    const MAX = 30000
+    let w = maxX - minX
+    let h = maxY - minY
+    if (w > MAX) { minX = (minX + maxX) / 2 - MAX / 2; w = MAX }
+    if (h > MAX) { minY = (minY + maxY) / 2 - MAX / 2; h = MAX }
+    return { minX, minY, w, h }
+  }, [nodes, edges, byId, preview])
+
   const traced = useMemo(() => {
     if (!hoverNodeId) return null
     const ids = new Set<string>([hoverNodeId])
@@ -96,13 +132,17 @@ const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   }, [edges, byId, pushHistory, addNode, deleteEdge, addEdge])
 
   return (
-    <svg className="bp-edges" width="0" height="0">
+    <svg
+      className="bp-edges"
+      style={{ left: bounds.minX, top: bounds.minY, width: bounds.w, height: bounds.h, overflow: 'visible', pointerEvents: 'none' }}
+    >
       <defs>
         <marker id="bp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,1 L8,5 L0,9 z" fill="context-stroke" />
         </marker>
       </defs>
 
+      <g transform={`translate(${-bounds.minX}, ${-bounds.minY})`}>
       {edges.map((edge) => {
         const a = byId.get(edge.from)
         const b = byId.get(edge.to)
@@ -247,6 +287,7 @@ const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     </g>
   )
 })()}
+      </g>
     </svg>
   )
 }

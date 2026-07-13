@@ -1,0 +1,194 @@
+.sh {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 45;
+  width: 340px;
+  max-width: calc(100vw - 28px);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(202, 168, 74, 0.16), rgba(202, 168, 74, 0) 60%),
+    linear-gradient(160deg, #1a2138, #0e1426);
+  border: 1px solid rgba(202, 168, 74, 0.45);
+  border-radius: 14px;
+  color: #e8eefc;
+  padding: 14px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), inset 0 0 50px rgba(202, 168, 74, 0.05);
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Cochin', Georgia, serif;
+  animation: sh-pop 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes sh-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sh__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sh__train b {
+  color: #ffe6c0;
+}
+.sh__train span {
+  color: #9fd8ff;
+  font-size: 12px;
+}
+.sh__status {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.sh__status--study {
+  background: rgba(95, 200, 120, 0.18);
+  color: #bfe6a0;
+}
+.sh__status--break {
+  background: rgba(202, 168, 74, 0.18);
+  color: #ffe6c0;
+}
+.sh__status--off {
+  background: rgba(220, 80, 80, 0.2);
+  color: #ffb0b0;
+}
+.sh__timer {
+  font-size: 30px;
+  font-weight: 800;
+  color: #ffe6c0;
+  margin: 10px 0 8px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.sh__timer-glyph {
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px rgba(202, 168, 74, 0.6));
+}
+.sh__timer small {
+  font-size: 12px;
+  color: #9fb0d0;
+  font-weight: 400;
+}
+/* potion-vial progress bar (magical) with a live % (modern) */
+.sh__bar {
+  position: relative;
+  height: 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(202, 168, 74, 0.4);
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.sh__bar-fill {
+  height: 100%;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #39c06a, #2f9e57);
+  box-shadow: 0 0 12px rgba(80, 220, 130, 0.6);
+  transition: width 0.4s linear;
+  position: relative;
+  overflow: hidden;
+}
+.sh__bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 55%, rgba(255, 255, 255, 0.55) 0 2px, transparent 3px),
+    radial-gradient(circle at 55% 40%, rgba(255, 255, 255, 0.4) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 82% 62%, rgba(255, 255, 255, 0.45) 0 1.5px, transparent 2.5px);
+  animation: sh-bubble 2.6s linear infinite;
+}
+@keyframes sh-bubble {
+  from { transform: translateX(0); }
+  to { transform: translateX(-26px); }
+}
+.sh__bar-pct {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 700;
+  color: #eafff0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.sh__stop {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 24px;
+  background: #9fd8ff;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  z-index: 3;
+  box-shadow: 0 0 6px rgba(159, 216, 255, 0.7);
+}
+.sh__xpline {
+  font-size: 11px;
+  color: #9fb0d0;
+  margin: 8px 0;
+}
+.sh__xpline b {
+  color: #ffe6c0;
+}
+.sh__chat {
+  border-top: 1px solid rgba(202, 168, 74, 0.2);
+  padding-top: 8px;
+}
+.sh__chat-log {
+  height: 96px;
+  overflow: auto;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sh__chat-empty {
+  color: #6b7a99;
+  font-style: italic;
+}
+.sh__msg b {
+  color: #9fd8ff;
+}
+.sh__chat-input {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sh__chat-input input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(202, 168, 74, 0.3);
+  border-radius: 8px;
+  color: #e8eefc;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.sh__chat-input button {
+  background: radial-gradient(circle at 50% 35%, #e8c66a, #a9852f 70%, #7a5d20);
+  color: #2a1c08;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Cochin', Georgia, serif;
+  box-shadow: 0 4px 12px rgba(202, 168, 74, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+.sh__chat-input button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(202, 168, 74, 0.55);
+}
+.sh__chat-input button:active {
+  transform: scale(0.96);
+}
+.sh__note {
+  font-size: 10px;
+  color: #6b7a99;
+  margin-top: 8px;
+  line-height: 1.4;
+}

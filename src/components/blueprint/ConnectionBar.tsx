@@ -1,23 +1,23 @@
 import { useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
-import { CONNECTION_PACKS, type LineStyle } from '../../lib/blueprint/types'
+import { type LineStyle } from '../../lib/blueprint/types'
 import { ColorRow, Segmented } from './controls'
 import { YarnPalette } from './YarnPalette'
 
 // The "case file" — the user's own relationship vocabulary. Clicking a thread
 // type makes it active for new strings AND traces it on the wall (its threads
-// stay lit, the rest fades). Everything here is user-defined; the manager adds,
-// recolours, re-icons, hides, or removes types, and can apply a starter pack.
+// stay lit, the rest fades). Every thread here is created by the user; the
+// manager adds, recolours, re-icons, hides, or removes types.
 export function ConnectionBar() {
   const types = useBlueprint((s) => s.doc.connectionTypes)
   const activeTypeId = useBlueprint((s) => s.activeTypeId)
   const focusTypeId = useBlueprint((s) => s.focus.typeId)
   const setActiveType = useBlueprint((s) => s.setActiveType)
   const setFocus = useBlueprint((s) => s.setFocus)
+  const cancelConnect = useBlueprint((s) => s.cancelConnect)
   const addConnectionType = useBlueprint((s) => s.addConnectionType)
   const updateConnectionType = useBlueprint((s) => s.updateConnectionType)
   const deleteConnectionType = useBlueprint((s) => s.deleteConnectionType)
-  const applyConnectionPack = useBlueprint((s) => s.applyConnectionPack)
   const [manage, setManage] = useState(false)
 
   function clickChip(id: string) {
@@ -29,7 +29,7 @@ export function ConnectionBar() {
 
   return (
     <div className="bp-connbar bp-surface">
-      <span className="bp-connbar-label">{focusTypeId ? '🔎 Tracing' : '🧵 Case file'}</span>
+      <span className="bp-connbar-label">{focusTypeId ? 'Tracing' : 'Case file'}</span>
       <div className="bp-connchips">
         {visible.map((t) => (
           <button
@@ -40,80 +40,97 @@ export function ConnectionBar() {
             title={focusTypeId === t.id ? 'Click to stop tracing' : `Draw + trace "${t.name}"`}
           >
             <span className="bp-connchip-dot" />
-            {t.icon && <span className="bp-connchip-icon">{t.icon}</span>}
-            {t.name}
+            <span className="bp-connchip-name">{t.name}</span>
+            {focusTypeId === t.id && (
+              <span
+                className="bp-connchip-x"
+                role="button"
+                aria-label="Cancel tracing"
+                title="Cancel"
+                onClick={(e) => { e.stopPropagation(); cancelConnect() }}
+              >
+                ×
+              </span>
+            )}
           </button>
         ))}
         {visible.length === 0 && <span className="bp-connbar-empty">No thread types yet — add one →</span>}
-</div>
-<YarnPalette compact />
-<button className="sf-btn tiny" onClick={() => setManage((m) => !m)}>Manage</button>
+      </div>
+
+      <YarnPalette compact />
+      <button className="sf-btn tiny bp-manage-btn" onClick={() => setManage((m) => !m)} aria-label="Manage threads">
+        Manage
+      </button>
 
       {manage && (
         <div className="bp-connmanage bp-surface">
           <div className="bp-panel-head">
             <strong>Your threads</strong>
-            <button className="bp-x" onClick={() => setManage(false)}>✕</button>
+            <span className="bp-connmanage-count">{types.length}</span>
+            <button className="bp-x" onClick={() => setManage(false)} aria-label="Close">✕</button>
           </div>
 
           <div className="bp-connmanage-list">
             {types.map((t) => (
-              <div key={t.id} className={`bp-connmanage-row ${t.hidden ? 'is-hidden' : ''}`}>
-                <input
-                  className="bp-text bp-connmanage-icon"
-                  value={t.icon ?? ''}
-                  maxLength={2}
-                  placeholder="•"
-                  onChange={(e) => updateConnectionType(t.id, { icon: e.target.value })}
-                  title="Icon"
-                />
-                <input className="bp-text" value={t.name} onChange={(e) => updateConnectionType(t.id, { name: e.target.value })} />
-                <ColorRow value={t.color} onChange={(v) => updateConnectionType(t.id, { color: v })} />
-                <button
-                  className="bp-x"
-                  title={t.hidden ? 'Show on wall' : 'Hide from wall'}
-                  onClick={() => updateConnectionType(t.id, { hidden: !t.hidden })}
-                >
-                  {t.hidden ? '🙈' : '👁'}
-                </button>
-                {types.length > 1 && (
-                  <button className="bp-x" title="Delete" onClick={() => deleteConnectionType(t.id)}>🗑</button>
-                )}
+              <div
+                key={t.id}
+                className={`bp-conncard ${t.hidden ? 'is-hidden' : ''} ${activeTypeId === t.id ? 'is-active' : ''}`}
+              >
+                <div className="bp-conncard-top">
+                  <label className="bp-conncard-swatch" style={{ ['--sw' as string]: t.color } as React.CSSProperties} title="Colour">
+                    <input type="color" value={toColorHex(t.color)} onChange={(e) => updateConnectionType(t.id, { color: e.target.value })} />
+                  </label>
+                  <input
+                    className="bp-text bp-conncard-icon"
+                    value={t.icon ?? ''}
+                    maxLength={2}
+                    placeholder="•"
+                    onChange={(e) => updateConnectionType(t.id, { icon: e.target.value })}
+                    title="Icon"
+                  />
+                  <input
+                    className="bp-text bp-conncard-name"
+                    value={t.name}
+                    placeholder="Thread name"
+                    onChange={(e) => updateConnectionType(t.id, { name: e.target.value })}
+                  />
+                  <div className="bp-conncard-actions">
+                    <button
+                      className="bp-ic"
+                      title={t.hidden ? 'Show on wall' : 'Hide from wall'}
+                      onClick={() => updateConnectionType(t.id, { hidden: !t.hidden })}
+                    >
+                      {t.hidden ? 'Show' : 'Hide'}
+                    </button>
+                    {types.length > 1 && (
+                      <button className="bp-ic bp-ic-danger" title="Delete" onClick={() => deleteConnectionType(t.id)}>✕</button>
+                    )}
+                  </div>
+                </div>
+                <div className="bp-conncard-foot">
+                  <Segmented<LineStyle>
+                    value={t.lineStyle}
+                    options={[{ label: 'Solid', value: 'solid' }, { label: 'Dashed', value: 'dashed' }, { label: 'Pulse', value: 'animated' }]}
+                    onChange={(v) => updateConnectionType(t.id, { lineStyle: v })}
+                  />
+                </div>
               </div>
             ))}
           </div>
 
-          {/* per-type line style for the active row's quick tuning */}
-          <div className="bp-connmanage-style">
-            {types.map((t) => (
-              <div key={t.id} className="bp-connmanage-stylerow">
-                <span className="bp-connmanage-stylename" style={{ color: t.color }}>{t.name}</span>
-                <Segmented<LineStyle>
-                  value={t.lineStyle}
-                  options={[{ label: 'Solid', value: 'solid' }, { label: 'Dashed', value: 'dashed' }, { label: 'Pulse', value: 'animated' }]}
-                  onChange={(v) => updateConnectionType(t.id, { lineStyle: v })}
-                />
-              </div>
-            ))}
-          </div>
-
-          <button className="sf-btn tiny bp-connmanage-add" onClick={() => { const id = addConnectionType('New thread'); setActiveType(id) }}>
-            + Add your own thread
+          <button
+            className="sf-btn tiny bp-connmanage-add"
+            onClick={() => { const id = addConnectionType('New thread'); setActiveType(id) }}
+          >
+            <span className="bp-plus">＋</span> Add your own thread
           </button>
-
-          <div className="bp-connpacks">
-            <div className="bp-connpacks-label">Starter packs</div>
-            <div className="bp-connpacks-grid">
-              {CONNECTION_PACKS.map((p) => (
-                <button key={p.id} className="bp-connpack" onClick={() => applyConnectionPack(p.id)} title={p.blurb}>
-                  <strong>{p.name}</strong>
-                  <span>{p.blurb}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>
   )
+}
+
+// <input type=color> needs a #rrggbb value; fall back for named/gradient colours.
+function toColorHex(v: string): string {
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#ffffff'
 }

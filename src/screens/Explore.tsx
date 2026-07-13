@@ -26,6 +26,7 @@ import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
 import { trainStationEnabled } from '../lib/realm'
+import { enterRealmLowFirst } from '../three/realmQuality'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
@@ -76,11 +77,31 @@ export function Explore({ defaultWorld }: ExploreProps) {
   // its sitting animation) stays visible behind a small chip rather than the full
   // Study Station panel. The player taps the chip to expand the desk when studying.
   const seat = useWorld((s) => s.seat)
+  const cinematic = useWorld((s) => s.cinematic)
   const wasSeated = useRef(false)
   useEffect(() => {
     if (seat != null && !wasSeated.current) useDesk.getState().setView('min')
     wasSeated.current = seat != null
   }, [seat])
+
+  // Keep the display awake while the Cinematic Tour runs, so it plays like a
+  // video and the monitor/screen doesn't sleep ("pc get off"). Released on exit
+  // or when the tab is hidden, and re-acquired whenever we return to the tab.
+  useEffect(() => {
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => void }> } }
+    if (!cinematic || !nav.wakeLock) return
+    let lock: { release: () => void } | null = null
+    const request = async () => {
+      try { lock = await nav.wakeLock.request('screen') } catch { /* denied / unsupported */ }
+    }
+    request()
+    const onVis = () => { if (document.visibilityState === 'visible') request() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      lock?.release()
+    }
+  }, [cinematic])
 
   // Fallback: if the scene never signals ready (WebGL init failure, asset load
   // error, etc.), force the veil away after 8 seconds so the user isn't stuck on
@@ -105,6 +126,12 @@ export function Explore({ defaultWorld }: ExploreProps) {
     if (useSettings.getState().cameraMode === 'first') set('cameraMode', 'third')
   }, [set])
 
+  // Realm-entry quality: open at Low for a fast settle, then auto-step up (or
+  // restore the manual choice) once the scene reports ready. See realmQuality.ts.
+  useEffect(() => {
+    enterRealmLowFirst()
+  }, [])
+
   // Experimental-realm route guard. If someone reaches a flagship route while it
   // is hidden (public build, no dev access) — e.g. a stale link or a manual
   // navigation — show an under-development screen instead of the scene. The scene
@@ -121,11 +148,11 @@ export function Explore({ defaultWorld }: ExploreProps) {
       ) : (
         <LibraryScene
           onReady={() => setReady(true)}
-          frameloop={seatFlowStage === 'selecting' ? 'never' : 'always'}
+          frameloop="always"
         />
       )}
       <PomodoroTicker />
-      <RealmConnection />
+      {!cinematic && <RealmConnection />}
 
       {!ready && <div className="explore-veil" />}
 
@@ -136,9 +163,13 @@ export function Explore({ defaultWorld }: ExploreProps) {
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
       {!isTrain && <CinematicEntry />}
 
-      {/* Every widget lives behind this gate — Tab (or Performance Mode) hides the
-          whole HUD so the world becomes the sole focus. */}
-      {!hidden && (
+      {/* Cinematic Tour (key 5) runs full-screen with no letterbox bars, so the
+          web viewport keeps its full height/width while the camera glides. */}
+
+      {/* Every widget lives behind this gate. Tab / Performance Mode hides the
+          whole HUD; while the Cinematic Tour (key 5) runs we ALSO hide everything
+          except the timer, so the glide is an unbroken full-screen "video". */}
+      {!hidden && !cinematic && (
         <>
           {/* top-left: clean realm identity + fps */}
           <div className="explore-topleft">
@@ -253,7 +284,30 @@ export function Explore({ defaultWorld }: ExploreProps) {
           its singleton engine keeps playing when the HUD is hidden; the widget
           itself hides on Tab/Performance Mode. Library realm only — never in the
           train realm, and (by design) never in study rooms. */}
-      {!isTrain && <MusicPlayer />}
+      {!isTrain && !cinematic && <MusicPlayer />}
+
+      {/* Bottom-right manual controls: keys 1-4 = seated camera presets,
+          5 = Cinematic Tour. Hidden while the tour runs (it's a hands-off
+          full-screen "video" — exit with key 5); during the tour only the
+          timer stays visible. */}
+      {!isTrain && !cinematic && (
+        <div className="cine-controls">
+          <span className="magic-hint">Press <b>5</b> to see the magic ✨</span>
+          <div className="cine-keyrow">
+            {['1', '2', '3', '4', '5'].map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`cine-key${k === '5' ? ' magic' : ''}`}
+                title={k === '5' ? 'Cinematic Tour (key 5)' : `Camera preset ${k}`}
+                onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }))}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -286,6 +340,15 @@ function useExploreShortcuts() {
     }
 
     const onKey = (e: KeyboardEvent) => {
+      // Cinematic Tour (key 5) — handled here at the DOM level so it works
+      // regardless of whether the 3D scene/PlayerController is mounted, and never
+      // collides with the seated "any key exits cinematic" rule below.
+      if (e.key === '5') {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+        e.preventDefault()
+        useWorld.getState().setCinematic(!useWorld.getState().cinematic)
+        return
+      }
       // Ctrl/Cmd+F → toggle Performance Mode (suppress the browser find bar)
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
         e.preventDefault()
@@ -359,7 +422,7 @@ function RealmConnection() {
 
   const roomKey = active ? roomKeyOf(active) : null
   const id = networkId(user?.id)
-  const name = username || displayName || user?.profile?.name || 'Explorer'
+  const name = displayName || username || user?.profile?.name || 'Explorer'
 
   // assign an instance → join its channel → heartbeat; leave + drop presence on exit
   useEffect(() => {
@@ -481,6 +544,8 @@ const CAM_MODES: { id: CameraMode; label: string }[] = [
 function CameraSwitch() {
   const mode = useSettings((s) => s.cameraMode)
   const set = useSettings((s) => s.set)
+  const cinematic = useWorld((s) => s.cinematic)
+  const setCine = useWorld((s) => s.setCinematic)
   return (
     <div className="explore-cam">
       {CAM_MODES.map((m) => (
@@ -493,6 +558,14 @@ function CameraSwitch() {
           {m.label}
         </button>
       ))}
+      <button
+        type="button"
+        className={`explore-cam-btn cine-btn ${cinematic ? 'on' : ''}`}
+        title="Cinematic Tour (key 5)"
+        onClick={() => setCine(!cinematic)}
+      >
+        Cinematic
+      </button>
       <FirstPersonHint />
     </div>
   )
@@ -621,7 +694,6 @@ function SeatedPanel() {
     const seats = useSeatFlow.getState().seats
     const occupied = useSeatFlow.getState().occupied
     if (isNaN(num) || num < 0 || num >= seats.length) return
-    if (!canChangeSeat) return
     if (occupied[num]) return
     useWorld.getState().stand()
     useSeatFlow.getState().pickSeat(num)
@@ -654,17 +726,16 @@ function SeatedPanel() {
             className="station-seat-input"
             type="number"
             min="0"
-            placeholder={canChangeSeat ? 'Seat #' : `${seatMm}:${seatSs}`}
+            placeholder="Seat #"
             value={seatInput}
             onChange={(e) => setSeatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
-            disabled={!canChangeSeat}
-            title={canChangeSeat ? 'Enter seat number to change' : `Change seat in ${seatMm}:${seatSs}`}
+            title={canChangeSeat ? 'Enter seat number to change' : `You sat ${seatMm}:${seatSs} ago — switch anytime`}
           />
           <button
-            className={`station-change-seat ${canChangeSeat && seatInput ? 'ready' : ''}`}
+            className={`station-change-seat ${seatInput ? 'ready' : ''}`}
             onClick={handleChangeSeatToNumber}
-            disabled={!canChangeSeat || !seatInput}
+            disabled={!seatInput}
           >
             ↕
           </button>
@@ -780,13 +851,12 @@ function SeatedPanel() {
             value={seatInput}
             onChange={(e) => setSeatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
-            disabled={!canChangeSeat}
-            title={canChangeSeat ? 'Enter seat number to change' : `Change seat in ${seatMm}:${seatSs}`}
+            title={canChangeSeat ? 'Enter seat number to change' : `You sat ${seatMm}:${seatSs} ago — switch anytime`}
           />
           <button
-            className={`station-footer-btn ${canChangeSeat && seatInput ? 'ready' : ''}`}
+            className={`station-footer-btn ${seatInput ? 'ready' : ''}`}
             onClick={handleChangeSeatToNumber}
-            disabled={!canChangeSeat || !seatInput}
+            disabled={!seatInput}
           >
             Go
           </button>
@@ -880,6 +950,11 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
 
         <div className="settings-body">
           <Section title="Graphics">
+            <Toggle
+              label="Automatic resolution (detect my device)"
+              value={s.autoQuality}
+              onChange={(v) => s.set('autoQuality', v)}
+            />
             <Seg<Quality>
               label="Overall quality"
               value={s.quality}
@@ -902,6 +977,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               min={0.5}
               max={1}
               step={0.05}
+              disabled={s.autoQuality}
               onChange={(v) => s.setQualityAxis('resolutionScale', v)}
             />
             <Slider

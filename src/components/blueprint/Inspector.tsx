@@ -13,8 +13,8 @@ const SHAPES: { value: Shape; label: string }[] = [
   { value: 'circle', label: 'Bubble' },
   { value: 'hexagon', label: 'Hex' },
 ]
-const ICONS = ['📌', '📋', '🔍', '⚠', '📍', '📎', '📄', '🧲', '🔦']
-const STICKERS = ['📌', '🔍', '⚠', '📄', '📍', '🧩', '📋']
+const ICONS = ['●', '▲', '■', '◆', '✦', '✚', '◉', '☰', '◈']
+const STICKERS = ['●', '▲', '■', '◆', '✦', '✚', '◉']
 const GRADIENTS = [
   'linear-gradient(135deg, #ffe27a, #ffb24d)',
   'linear-gradient(135deg, #a18cd1, #fbc2eb)',

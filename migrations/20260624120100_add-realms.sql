@@ -41,11 +41,11 @@ CREATE TABLE IF NOT EXISTS realms (
   owner_id      uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   world         text NOT NULL DEFAULT 'library',     -- library only for now
   visibility    text NOT NULL DEFAULT 'private',     -- 'public' | 'private' | 'friends'
-  player_limit  int  NOT NULL DEFAULT 50,
+  player_limit  int  NOT NULL DEFAULT 75,
   created_at    timestamptz NOT NULL DEFAULT now(),
   closed_at     timestamptz,                          -- set when the owner closes the realm
   CHECK (visibility IN ('public', 'private', 'friends')),
-  CHECK (player_limit BETWEEN 1 AND 50)
+  CHECK (player_limit BETWEEN 1 AND 75)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS realms_code_idx ON realms (lower(code));
 CREATE INDEX IF NOT EXISTS realms_discover_idx ON realms (visibility, closed_at);
@@ -93,7 +93,7 @@ DECLARE
   me     uuid := (SELECT auth.uid());
   nm     text := COALESCE(NULLIF(trim(p_name), ''), 'My Realm');
   vis    text := COALESCE(p_visibility, 'private');
-  lim    int  := COALESCE(p_limit, 50);
+  lim    int  := COALESCE(p_limit, 75);
   slug   text;
   code   text;
   tries  int := 0;
@@ -101,7 +101,7 @@ DECLARE
 BEGIN
   IF me IS NULL THEN RAISE EXCEPTION 'unauthenticated'; END IF;
   IF vis NOT IN ('public', 'private', 'friends') THEN vis := 'private'; END IF;
-  IF lim < 1 OR lim > 50 THEN lim := 50; END IF;
+  IF lim < 1 OR lim > 75 THEN lim := 75; END IF;
 
   -- name → url-safe slug, capped; fall back to 'realm' when the name is all symbols
   slug := regexp_replace(lower(left(nm, 24)), '[^a-z0-9]+', '-', 'g');
@@ -164,7 +164,7 @@ BEGIN
   UPDATE realms SET
     name         = COALESCE(NULLIF(trim(p_name), ''), name),
     visibility   = CASE WHEN p_visibility IN ('public','private','friends') THEN p_visibility ELSE visibility END,
-    player_limit = CASE WHEN p_limit BETWEEN 1 AND 50 THEN p_limit ELSE player_limit END
+    player_limit = CASE WHEN p_limit BETWEEN 1 AND 75 THEN p_limit ELSE player_limit END
     WHERE id = p_id
   RETURNING * INTO row;
   RETURN row;

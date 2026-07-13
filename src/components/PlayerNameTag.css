@@ -1,0 +1,148 @@
+/* Magical player name plate — tinted + glowing in the player's rank accent. */
+.pnt {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 13px 8px;
+  border-radius: 15px;
+  background:
+    radial-gradient(130% 150% at 50% -25%, color-mix(in srgb, var(--rank) 26%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(20, 16, 30, 0.84), rgba(9, 7, 16, 0.92));
+  border: 1px solid color-mix(in srgb, var(--rank) 55%, rgba(255, 255, 255, 0.14));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 0 18px color-mix(in srgb, var(--rank) 45%, transparent);
+  color: #f6efe2;
+  font-family: var(--sans, system-ui, sans-serif);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  backdrop-filter: blur(3px);
+  animation: pnt-glow 3.4s ease-in-out infinite;
+}
+
+@keyframes pnt-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      0 0 15px color-mix(in srgb, var(--rank) 35%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      0 0 28px color-mix(in srgb, var(--rank) 62%, transparent);
+  }
+}
+
+.pnt-self {
+  border-color: color-mix(in srgb, var(--rank) 72%, #ffffff);
+}
+
+.pnt-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pnt-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pnt-name {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-shadow:
+    0 0 9px color-mix(in srgb, var(--rank) 75%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.pnt-bottom {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pnt-rankname {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: color-mix(in srgb, var(--rank) 70%, #ffffff);
+  opacity: 0.94;
+}
+
+.pnt-flag {
+  border-radius: 2px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.45);
+}
+
+.pnt-rank {
+  display: inline-flex;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rank) 70%, transparent));
+}
+
+/* sweeping shine — the "gen shine impact" */
+.pnt-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 48%,
+    rgba(255, 255, 255, 0.05) 56%,
+    transparent 72%
+  );
+  transform: translateX(-120%);
+  animation: pnt-shine 4.6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes pnt-shine {
+  0% { transform: translateX(-120%); }
+  55%, 100% { transform: translateX(120%); }
+}
+
+/* arcane inner frame */
+.pnt-frame {
+  position: absolute;
+  inset: 4px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--rank) 42%, transparent);
+  opacity: 0.5;
+}
+
+/* floating sparkle at the crown */
+.pnt-spark {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: 12px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--rank) 55%, #ffffff);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--rank) 85%, transparent);
+  pointer-events: none;
+  animation: pnt-spark 2.8s ease-in-out infinite;
+}
+
+@keyframes pnt-spark {
+  0%, 100% { opacity: 0.35; transform: translateX(-50%) scale(0.85); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+}

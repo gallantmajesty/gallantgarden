@@ -69,7 +69,7 @@ DECLARE
   chosen  int;
 BEGIN
   IF me IS NULL THEN RAISE EXCEPTION 'unauthenticated'; END IF;
-  IF p_capacity IS NULL OR p_capacity < 1 THEN p_capacity := 50; END IF;
+  IF p_capacity IS NULL OR p_capacity < 1 THEN p_capacity := 75; END IF;
 
   WITH live AS (
     SELECT instance, count(*) AS c

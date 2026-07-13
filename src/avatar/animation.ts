@@ -45,20 +45,22 @@ export function idlePose(t: number): Pose {
   const sway = Math.sin(t * 0.55)
   const headDrift = Math.sin(t * 0.4 + 1)
   const microShift = Math.sin(t * 0.23 + 0.7)
+  // gentle "look around" so the avatar never reads as a frozen mannequin
+  const look = Math.sin(t * 0.3) * 0.18 + Math.sin(t * 0.17 + 2) * 0.08
   return {
-    chest: { x: 0.03 + breath * 0.015, z: microShift * 0.006 },
-    spine: { z: sway * 0.012 },
-    hips: { x: microShift * 0.01, z: -sway * 0.018, y: sway * 0.018 },
-    neck: { x: -0.02, y: headDrift * 0.05, z: microShift * 0.01 },
-    head: { y: headDrift * 0.045, x: breath * 0.01, z: microShift * 0.008 },
-    // arms hang naturally at the sides with slight forward carry and gentle outward
-    // splay — realistic human idle posture, not robotic or stiff
-    armUpperL: { x: 0.08 + breath * 0.008, z: -0.06 + sway * 0.008 + microShift * 0.01 },
-    armUpperR: { x: 0.08 + breath * 0.008, z: 0.06 - sway * 0.008 - microShift * 0.01 },
-    armLowerL: { x: 0.15 + microShift * 0.02, z: -0.04 },
-    armLowerR: { x: 0.15 - microShift * 0.02, z: 0.04 },
-    legUpperL: { x: microShift * 0.015 },
-    legUpperR: { x: -microShift * 0.015 },
+    chest: { x: 0.02 + 0.012 * breath, z: 0.02 * sway - look * 0.02, y: look * 0.04 },
+    spine: { z: 0.03 * sway },
+    hips: { x: 0.012 * sway, y: 0.008 * breath, z: -0.05 * sway },
+    neck: { x: -0.02, y: headDrift * 0.05 - look * 0.3, z: microShift * 0.01 },
+    head: { y: headDrift * 0.045 + look, x: breath * 0.01, z: microShift * 0.008 },
+    // arms hang naturally at the sides, slight forward carry (hands in front of
+    // the hips, never behind) + gentle outward splay — a plain, calm idle
+    armUpperL: { x: -0.06 + breath * 0.008, z: -0.07 + sway * 0.008 + microShift * 0.01 },
+    armUpperR: { x: -0.06 + breath * 0.008, z: 0.07 - sway * 0.008 - microShift * 0.01 },
+    armLowerL: { x: -0.14 + microShift * 0.02, z: -0.03 },
+    armLowerR: { x: -0.14 - microShift * 0.02, z: 0.03 },
+    legUpperL: { x: microShift * 0.015 + 0.004 * sway },
+    legUpperR: { x: -microShift * 0.015 - 0.004 * sway },
   }
 }
 

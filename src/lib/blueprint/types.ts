@@ -117,6 +117,10 @@ export interface BlueprintEdge {
   // yarn palette overrides (null = inherit from connection type's yarn settings, or fall back to above)
   yarnColor?: string | null
   yarnStyle?: YarnStyle | null
+  // free pin points (world space). When present they override the port anchors,
+  // so a thread can be pinned to any spot on the two notes — crime-board style.
+  fromPt?: Pt | null
+  toPt?: Pt | null
 }
 
 /** A reusable connection category (string colour, style, etc.). */
@@ -134,67 +138,6 @@ export interface ConnectionType {
   yarnColor?: string // override colour used when this type is drawn (null = use color)
   yarnStyle?: YarnStyle // additional per-type string style override
 }
-
-/** A named bundle of connection types a user can apply in one click. The board
- *  starts nearly empty so students define their own relationships; packs are an
- *  optional jump-start tuned to a field of study. */
-export interface ConnectionPack {
-  id: string
-  name: string
-  blurb: string
-  types: Omit<ConnectionType, 'id' | 'builtin'>[]
-}
-
-export const CONNECTION_PACKS: ConnectionPack[] = [
-  {
-    id: 'general',
-    name: 'General study',
-    blurb: 'Cause, evidence, contrast & examples — works for any subject.',
-    types: [
-      { name: 'Leads to', color: '#e0533d', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '➜' },
-      { name: 'Supports', color: '#46c08a', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.25, icon: '✓' },
-      { name: 'Contradicts', color: '#d64550', thickness: 2.5, lineStyle: 'dashed', curve: 'curved', glow: 0.35, icon: '✕' },
-      { name: 'Example of', color: '#e0a93d', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.25, icon: '★' },
-    ],
-  },
-  {
-    id: 'it',
-    name: 'IT / CS',
-    blurb: 'Frontend, backend, API, database, auth, deployment.',
-    types: [
-      { name: 'Frontend', color: '#4fb0e0', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '🖥' },
-      { name: 'Backend', color: '#9a6cff', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '⚙' },
-      { name: 'API', color: '#46d6a0', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '🔌' },
-      { name: 'Database', color: '#e0a93d', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '🗄' },
-      { name: 'Auth', color: '#e0533d', thickness: 2.5, lineStyle: 'dashed', curve: 'curved', glow: 0.3, icon: '🔐' },
-      { name: 'Deploy', color: '#8a93a6', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.25, icon: '🚀' },
-    ],
-  },
-  {
-    id: 'medicine',
-    name: 'Medicine',
-    blurb: 'Cause, symptom, diagnosis, treatment, complication.',
-    types: [
-      { name: 'Causes', color: '#e0533d', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.35, icon: '⚡' },
-      { name: 'Symptom', color: '#e0a93d', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.25, icon: '🌡' },
-      { name: 'Diagnosis', color: '#4fb0e0', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '🔬' },
-      { name: 'Treatment', color: '#46c08a', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '💊' },
-      { name: 'Complication', color: '#d64550', thickness: 2.5, lineStyle: 'dashed', curve: 'curved', glow: 0.35, icon: '⚠' },
-    ],
-  },
-  {
-    id: 'law',
-    name: 'Law',
-    blurb: 'Statute, precedent, applies-to, overrules, exception.',
-    types: [
-      { name: 'Statute', color: '#9a6cff', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '§' },
-      { name: 'Precedent', color: '#4fb0e0', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '⚖' },
-      { name: 'Applies to', color: '#46c08a', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.25, icon: '➜' },
-      { name: 'Overrules', color: '#d64550', thickness: 2.5, lineStyle: 'dashed', curve: 'curved', glow: 0.35, icon: '✕' },
-      { name: 'Exception', color: '#e0a93d', thickness: 2.5, lineStyle: 'dashed', curve: 'curved', glow: 0.3, icon: '⌇' },
-    ],
-  },
-]
 
 export interface Viewport {
   x: number
@@ -238,11 +181,10 @@ export interface BoardMeta {
 export const GRID = 24
 export const MAX_VERSIONS = 30
 
-/** New boards start with a single neutral "red yarn" link. Everything else is
- *  user-defined — students build their own relationship vocabulary, optionally
- *  jump-started from a CONNECTION_PACK. */
+/** New boards start with a single neutral "red yarn" link as a baseline so the
+ *  canvas can draw immediately; every other thread is created by the user. */
 export const BUILTIN_CONNECTION_TYPES: ConnectionType[] = [
-  { id: 'link', name: 'Link', color: '#c0392b', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '🧵', builtin: true },
+  { id: 'link', name: 'Link', color: '#c0392b', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '', builtin: true },
 ]
 
 export const FONT_OPTIONS: { label: string; value: string }[] = [

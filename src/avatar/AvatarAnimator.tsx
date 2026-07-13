@@ -197,12 +197,12 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
       b.t += fdt
       if (b.closing > 0) {
         b.closing -= fdt
-        // quick close then open: scale.y 0 (open) -> 1 (closed)
+        // quick close then open: scale 0 (open) -> 1 (closed)
         const closed = Math.sin((1 - Math.max(0, b.closing) / 0.14) * Math.PI)
-        lids.scale.y = Math.max(0, Math.min(1, closed))
-        if (b.closing <= 0) lids.scale.y = 0
+        lids.scale.setScalar(Math.max(0, Math.min(1, closed)))
+        if (b.closing <= 0) lids.scale.setScalar(0)
       } else {
-        lids.scale.y = 0
+        lids.scale.setScalar(0)
         if (b.t >= b.next) {
           b.t = 0
           b.closing = 0.14
@@ -210,7 +210,7 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
         }
       }
     } else if (lids) {
-      lids.scale.y = 0
+      lids.scale.setScalar(0)
     }
   })
 

@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
-import { screenToWorld, autoPorts } from '../../lib/blueprint/geom'
+import { autoPorts, screenToWorld } from '../../lib/blueprint/geom'
 import type { Pt } from '../../lib/blueprint/geom'
-import type { BlueprintNode, Port } from '../../lib/blueprint/types'
 
-import { N8nNoteNode } from './N8nNoteNode'
-import { N8nEdgesLayer } from './N8nEdgesLayer'
-
-interface Connecting {
-  from: BlueprintNode
-  fromPort: Port
-  to: Pt
-}
+import { NoteNode } from './NoteNode'
+import { EdgesLayer } from './EdgesLayer'
 
 const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3.0
@@ -22,18 +15,26 @@ export function Canvas() {
   const ref = useRef<HTMLDivElement>(null)
   const vp = useBlueprint((s) => s.doc.viewport)
   const nodes = useBlueprint((s) => s.doc.nodes)
-  
+
   const selection = useBlueprint((s) => s.selection)
   const focusTypeId = useBlueprint((s) => s.focus.typeId)
-  
+
   const setViewport = useBlueprint((s) => s.setViewport)
   const selectMany = useBlueprint((s) => s.selectMany)
   const clearSelection = useBlueprint((s) => s.clearSelection)
   const setFocus = useBlueprint((s) => s.setFocus)
   const addEdge = useBlueprint((s) => s.addEdge)
 
-  const [connecting, setConnecting] = useState<Connecting | null>(null)
-  
+  // Double-tap to connect: first tap pins the source, second tap finishes.
+  const pendingFrom = useBlueprint((s) => s.pendingFrom)
+  const setPendingFrom = useBlueprint((s) => s.setPendingFrom)
+  function arm(id: string | null) {
+    setPendingFrom(id)
+  }
+  const [cursor, setCursor] = useState<Pt | null>(null)
+  // note hovered by the bottom-center drag tool (preview source before arming)
+  const [dragSourceId, setDragSourceId] = useState<string | null>(null)
+
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const [spacePressed, setSpacePressed] = useState(false)
 
@@ -41,16 +42,18 @@ export function Canvas() {
   const marqueeRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const wheelTimeout = useRef<number>(0)
 
-  
-
   const isEmpty = nodes.length === 0
 
-  // Keyboard: Space for pan mode
+  // Keyboard: Space for pan mode, Escape cancels a pending connection
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.code === 'Space' && !e.repeat && document.activeElement === document.body) {
         e.preventDefault()
         setSpacePressed(true)
+      }
+      if (e.code === 'Escape') {
+        arm(null)
+        setCursor(null)
       }
     }
     function onKeyUp(e: KeyboardEvent) {
@@ -103,6 +106,12 @@ export function Canvas() {
   function onBgPointerDown(e: React.PointerEvent) {
     if (e.target !== e.currentTarget) return
 
+    // a click on empty canvas cancels any pending thread
+    if (e.button === 0) {
+      arm(null)
+      setCursor(null)
+    }
+
     const spacePan = spacePressed || e.button === 1 || e.button === 2 || (e as unknown as { getModifierState?: (k: string) => boolean }).getModifierState?.('Space')
 
     if (spacePan || e.button === 1) {
@@ -149,6 +158,12 @@ export function Canvas() {
       setMarquee(m)
       marqueeRef.current = m
     }
+    // while a thread is pending, track the cursor so its preview follows
+    if (pendingFrom) {
+      const rect = ref.current!.getBoundingClientRect()
+      const c = useBlueprint.getState().doc.viewport
+      setCursor(screenToWorld(e.clientX - rect.left, e.clientY - rect.top, c))
+    }
   }
 
   function onBgPointerUp(e: React.PointerEvent) {
@@ -169,59 +184,73 @@ export function Canvas() {
     try { (e.currentTarget as Element).releasePointerCapture(e.pointerId) } catch { /* ignore */ }
   }
 
-  function nodeAt(w: Pt, excludeId: string): BlueprintNode | null {
-    const list = useBlueprint.getState().doc.nodes
-    for (let i = list.length - 1; i >= 0; i--) {
-      const n = list[i]
-      if (n.id !== excludeId && w.x >= n.x && w.x <= n.x + n.w && w.y >= n.y && w.y <= n.y + n.h) return n
+  // Double-tap a note to arm it as a hub; keep double-tapping other notes
+  // to thread them all (each link uses the active type from the bar).
+  // Disarm by double-tapping the source again, clicking empty space, or Esc.
+  function handleDoubleTap(nodeId: string) {
+    if (pendingFrom == null) {
+      arm(nodeId)
+      return
     }
-    let best: BlueprintNode | null = null
-    let bestD = Infinity
-    const tol = 100
-    for (const n of list) {
-      if (n.id === excludeId) continue
-      const cx = Math.max(n.x, Math.min(w.x, n.x + n.w))
-      const cy = Math.max(n.y, Math.min(w.y, n.y + n.h))
-      const d = Math.hypot(w.x - cx, w.y - cy)
-      if (d < tol && d < bestD) { best = n; bestD = d }
+    if (pendingFrom === nodeId) {
+      arm(null)
+      setCursor(null)
+      return
     }
-    return best
+    const from = useBlueprint.getState().doc.nodes.find((n) => n.id === pendingFrom)
+    const to = useBlueprint.getState().doc.nodes.find((n) => n.id === nodeId)
+    const activeTypeId = useBlueprint.getState().activeTypeId || 'link'
+    if (from && to) {
+      const { fromPort, toPort } = autoPorts(from, to)
+      addEdge(from.id, fromPort, to.id, toPort, activeTypeId)
+    }
+    // stay armed so the hub can connect to many notes in a row
+    setCursor(null)
   }
 
-  function startConnect(nodeId: string, port: Port, e: React.PointerEvent) {
-    const from = useBlueprint.getState().doc.nodes.find((n) => n.id === nodeId)
-    if (!from) return
+  // Drag directly from a note's bottom port onto another note to link them
+  // (node-graph style, one-step). Arms this note as the source, tracks the
+  // cursor for the live preview, and draws the edge on release.
+  function onPortDown(nodeId: string, e: React.PointerEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    arm(nodeId)
     const rect = ref.current!.getBoundingClientRect()
-    const cur = useBlueprint.getState().doc.viewport
-    const to = screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cur)
-    setConnecting({ from, fromPort: port, to })
-
-    const handleMove = (ev: PointerEvent) => {
+    const move = (ev: PointerEvent) => {
       const c = useBlueprint.getState().doc.viewport
       const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
-      setConnecting((p) => (p ? { ...p, to: w } : p))
+      setCursor(w)
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)
+      const tid = (el?.closest('[data-node-id]') as HTMLElement | null)?.getAttribute('data-node-id') || null
+      setDragSourceId(tid && tid !== nodeId ? tid : null)
     }
-
-    const handleUp = (ev: PointerEvent) => {
-      window.removeEventListener('pointermove', handleMove)
-      window.removeEventListener('pointerup', handleUp)
-      const c = useBlueprint.getState().doc.viewport
-      const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
-      const target = nodeAt(w, nodeId)
-      const activeTypeId = useBlueprint.getState().activeTypeId
-      
-      if (target && target.id !== nodeId && activeTypeId) {
-        const { fromPort, toPort } = autoPorts(from, target)
-        addEdge(from.id, fromPort, target.id, toPort, activeTypeId)
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const st = useBlueprint.getState()
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)
+      const tid = (el?.closest('[data-node-id]') as HTMLElement | null)?.getAttribute('data-node-id') || null
+      const activeTypeId = st.activeTypeId || 'link'
+      if (tid && tid !== nodeId) {
+        const from = st.doc.nodes.find((n) => n.id === nodeId)
+        const to = st.doc.nodes.find((n) => n.id === tid)
+        if (from && to) {
+          const { fromPort, toPort } = autoPorts(from, to)
+          addEdge(from.id, fromPort, to.id, toPort, activeTypeId)
+        }
       }
-      setConnecting(null)
+      arm(null)
+      setCursor(null)
+      setDragSourceId(null)
     }
-
-    window.addEventListener('pointermove', handleMove)
-    window.addEventListener('pointerup', handleUp)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
   }
 
-  
+  const pendingNode = pendingFrom ? nodes.find((n) => n.id === pendingFrom) ?? null : null
+  const dragSourceNode = dragSourceId ? nodes.find((n) => n.id === dragSourceId) ?? null : null
+  const previewFrom = pendingNode ?? dragSourceNode
+  const preview = previewFrom && cursor ? { from: previewFrom, fromPort: 'right' as const, to: cursor } : null
 
   const gridStyle = useMemo(() => ({
     backgroundSize: `${vp.zoom * GRID_SIZE}px ${vp.zoom * GRID_SIZE}px`,
@@ -253,18 +282,18 @@ export function Canvas() {
         className="bp-world"
         style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }}
       >
-<N8nEdgesLayer preview={connecting ? { from: connecting.from, fromPort: connecting.fromPort, to: connecting.to } : null} />
-{nodes.map((n) => (
-<N8nNoteNode
-  key={n.id}
-  node={n}
-  selected={selection.includes(n.id)}
-  validInputs={new Set(nodes.filter((x) => x.id !== n.id).map((x) => x.id))}
-  dragSourceId={connecting?.from.id ?? null}
-  previewTo={connecting?.to}
-  onPortDown={startConnect}
-/>
-))}
+<EdgesLayer preview={preview} />
+  {nodes.map((n) => (
+    <NoteNode
+      key={n.id}
+      node={n}
+      selected={selection.includes(n.id)}
+      dimmed={false}
+      connectSource={pendingFrom === n.id}
+      onDoubleTap={handleDoubleTap}
+      onPortDown={onPortDown}
+    />
+  ))}
       </div>
 
       {/* Marquee selection */}
@@ -285,9 +314,10 @@ export function Canvas() {
   <div className="bp-empty-state">
     <div className="bp-empty-icon">📌</div>
     <h2>This board is clear</h2>
-    <p>Double-click to pin a note, or use the toolbar to add shapes and strings</p>
+    <p>Add a note or use the connection bar to link your ideas. Press Esc or click empty space to finish.</p>
   </div>
 )}
+
     </div>
   )
 }

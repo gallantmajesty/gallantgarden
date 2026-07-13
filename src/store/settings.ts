@@ -143,9 +143,9 @@ export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false)
     bloom: post !== 'off',
     fog: post !== 'off',
     // PERF: dust motes are large blended (transparent) sprites spanning the whole
-    // hall volume — pure overdraw. Capped low (24 at full detail) so they read as
+    // hall volume — pure overdraw. Capped low (16 at full detail) so they read as
     // atmosphere without dominating fill-rate.
-    dust: Math.round(24 * detail),
+    dust: Math.round(16 * detail),
     particles: post !== 'off' && detail > 0,
     rainScale: 0.3 + 0.7 * vd,
     rainDrops: Math.round(50 + 150 * vd),
@@ -160,11 +160,12 @@ export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false)
     treeLight: a.shadowQuality !== 'off' || post !== 'off',
     pillarDetail: lod < 0.5,
     windowDetail: lod < 0.75,
-    // dpr ceiling capped at 1.25: above ~1.25 the fill-bound scene gains
-    // almost nothing in sharpness while multiplying frame-buffer + bloom + shadow
-    // memory, which is what drives GPU context-loss (whole-screen black blink).
-    // The PerformanceMonitor still scales within this.
-    dpr: Math.min(1.25, Math.round(2 * a.resolutionScale * 100) / 100),
+    // dpr ceiling capped at 1.0: above ~1.0 the fill-bound scene gains almost
+    // nothing in sharpness while multiplying frame-buffer + bloom + shadow
+    // memory, which is the single biggest driver of GPU context-loss (the
+    // whole-screen black blink). A fixed DPR (no live re-scaling) removes the
+    // resize blink entirely; this ceiling just bounds the entry step-up.
+    dpr: Math.min(1.0, Math.round(2 * a.resolutionScale * 100) / 100),
     far: Math.round(700 + 700 * vd),
     anisotropy: ANISO_LEVEL[a.textureQuality],
     lodBias: lod,
@@ -202,6 +203,10 @@ interface SettingsState {
   postProcessing: PostQuality
   textureQuality: TextureQuality
   lodBias: number
+  /** When ON (default) the realm opens at Low quality for a fast settle, then
+   *  auto-detects the device and steps up to a fitting tier. Turn OFF to take
+   *  full manual control of the six quality axes. */
+  autoQuality: boolean
   /** Opt-in heavy post-FX (SSAO + DoF + god rays). Default off; separate from the
    *  six axes so toggling it never reshuffles the named-preset selector. */
   ultra: boolean
@@ -240,6 +245,9 @@ interface SettingsState {
   applyQualityPreset: (preset: QualityPresetName) => void
   /** Set one quality axis and flip `quality` to 'custom'. */
   setQualityAxis: <K extends keyof QualityAxes>(key: K, value: QualityAxes[K]) => void
+  /** Set all six quality axes at once (used to restore a manual choice) and flip
+   *  `quality` to 'custom'. */
+  setQualityAxes: (axes: QualityAxes) => void
   // cloud sync (per-user)
   hydrateFromCloud: (appSettings: unknown) => void
   bindCloud: (userId: string) => void
@@ -316,6 +324,7 @@ export const DEFAULT_AXES: QualityAxes = {
   // chief cause of the "blurry textures" report on the procedural floor/walls/glass.
   textureQuality: 'high',
   lodBias: 0,
+  autoQuality: true, // realms open Low then auto-step up by default
 }
 
 /** Apply the default axes to any settings saved before the axes existed (named
@@ -394,6 +403,11 @@ export const useSettings = create<SettingsState>((set, get) => {
     },
     setQualityAxis: (key, value) => {
       set({ [key]: value, quality: 'custom' } as Pick<SettingsState, typeof key | 'quality'>)
+      persist()
+    },
+
+    setQualityAxes: (axes) => {
+      set({ ...axes, quality: 'custom' })
       persist()
     },
 

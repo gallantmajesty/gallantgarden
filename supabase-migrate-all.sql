@@ -350,11 +350,11 @@ CREATE TABLE IF NOT EXISTS realms (
   owner_id      uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   world         text NOT NULL DEFAULT 'library',
   visibility    text NOT NULL DEFAULT 'private',
-  player_limit  int  NOT NULL DEFAULT 50,
+  player_limit  int  NOT NULL DEFAULT 75,
   created_at    timestamptz NOT NULL DEFAULT now(),
   closed_at     timestamptz,
   CHECK (visibility IN ('public', 'private', 'friends')),
-  CHECK (player_limit BETWEEN 1 AND 50)
+  CHECK (player_limit BETWEEN 1 AND 75)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS realms_code_idx ON realms (lower(code));
 CREATE INDEX IF NOT EXISTS realms_discover_idx ON realms (visibility, closed_at);
@@ -405,11 +405,11 @@ CREATE POLICY rp_select ON realm_presence FOR SELECT TO authenticated USING (aut
 GRANT SELECT ON realms, realm_members, realm_bans, realm_presence TO authenticated;
 
 CREATE OR REPLACE FUNCTION create_realm(p_name text, p_visibility text, p_limit int) RETURNS realms AS $$
-DECLARE me uuid := (SELECT auth.uid()); nm text := COALESCE(NULLIF(trim(p_name), ''), 'My Realm'); vis text := COALESCE(p_visibility, 'private'); lim int := COALESCE(p_limit, 50); slug text; code text; tries int := 0; row realms;
+DECLARE me uuid := (SELECT auth.uid()); nm text := COALESCE(NULLIF(trim(p_name), ''), 'My Realm'); vis text := COALESCE(p_visibility, 'private'); lim int := COALESCE(p_limit, 75); slug text; code text; tries int := 0; row realms;
 BEGIN
   IF me IS NULL THEN RAISE EXCEPTION 'unauthenticated'; END IF;
   IF vis NOT IN ('public', 'private', 'friends') THEN vis := 'private'; END IF;
-  IF lim < 1 OR lim > 50 THEN lim := 50; END IF;
+  IF lim < 1 OR lim > 75 THEN lim := 75; END IF;
   slug := regexp_replace(lower(left(nm, 24)), '[^a-z0-9]+', '-', 'g');
   slug := trim(both '-' from slug);
   IF slug = '' THEN slug := 'realm'; END IF;
@@ -449,7 +449,7 @@ BEGIN
   IF me IS NULL OR realm_owner(p_id) <> me THEN RAISE EXCEPTION 'not the owner'; END IF;
   UPDATE realms SET name = COALESCE(NULLIF(trim(p_name), ''), name),
     visibility = CASE WHEN p_visibility IN ('public','private','friends') THEN p_visibility ELSE visibility END,
-    player_limit = CASE WHEN p_limit BETWEEN 1 AND 50 THEN p_limit ELSE player_limit END
+    player_limit = CASE WHEN p_limit BETWEEN 1 AND 75 THEN p_limit ELSE player_limit END
   WHERE id = p_id RETURNING * INTO row;
   RETURN row;
 END;
@@ -534,7 +534,7 @@ CREATE OR REPLACE FUNCTION assign_realm_instance(p_room_key text, p_capacity int
 DECLARE me uuid := (SELECT auth.uid()); chosen int;
 BEGIN
   IF me IS NULL THEN RAISE EXCEPTION 'unauthenticated'; END IF;
-  IF p_capacity IS NULL OR p_capacity < 1 THEN p_capacity := 50; END IF;
+  IF p_capacity IS NULL OR p_capacity < 1 THEN p_capacity := 75; END IF;
   WITH live AS (SELECT instance, count(*) AS c FROM realm_presence WHERE room_key = p_room_key AND user_id <> me AND last_seen_at > now() - interval '30 seconds' GROUP BY instance),
   maxinst AS (SELECT COALESCE(MAX(instance), 0) AS m FROM live),
   candidates AS (SELECT gs AS instance FROM generate_series(1, (SELECT m FROM maxinst) + 1) AS gs)

@@ -19,21 +19,27 @@ export function CharacterAvatar({ config, locomotion, lod, preview }: CharacterA
   const nearLod = useRef<Lod>('near')
   const resolvedLod = lod ?? nearLod
 
+  // When no locomotion is supplied (editor preview, realm orb, profile portrait,
+  // shot harness idle) the avatar still needs a live animator so it idles with
+  // breathing / weight-shift / blink instead of freezing in its rest pose.
+  const idleLoco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
+  const resolvedLoco = locomotion ?? idleLoco
+
   const character = characterById(config.characterId || 'james')
-  
+
   return (
     <group scale={BASE_BODY.scale} position={[0, BASE_BODY.yOffset, 0]}>
       {character.id === 'samurai' ? (
-        <SamuraiAvatar 
-          config={config} 
-          locomotion={locomotion}
+        <SamuraiAvatar
+          config={config}
+          locomotion={resolvedLoco}
           lod={resolvedLod}
           preview={preview}
         />
       ) : (
         <>
           <AvatarRig ref={primaryRig} config={config} />
-          {locomotion && <AvatarAnimator rig={primaryRig} locomotion={locomotion} lod={resolvedLod} preview={preview} />}
+          <AvatarAnimator rig={primaryRig} locomotion={resolvedLoco} lod={resolvedLod} preview={preview} />
         </>
       )}
     </group>

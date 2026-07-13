@@ -4,8 +4,8 @@ import { useBlueprint } from '../../store/blueprint'
 import { defaultNoteStyle, type Shape } from '../../lib/blueprint/types'
 
 const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
-  { shape: 'sticky', label: '📒 Sticky', bg: '#262019' },
-  { shape: 'rounded', label: '🗂 Card', bg: 'var(--mg-panel,#ffffff)' },
+  { shape: 'sticky', label: 'Sticky', bg: '#262019' },
+  { shape: 'rounded', label: 'Card', bg: 'var(--mg-panel,#ffffff)' },
   { shape: 'circle', label: '◯ Bubble', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.1)' },
   { shape: 'hexagon', label: '⬢ Hex', bg: 'rgba(var(--mg-accent-rgb,91,124,250),0.12)' },
 ]
@@ -124,7 +124,7 @@ export function Toolbar({ onToggleSearch, onToggleAI, onExport }: ToolbarProps) 
             {versions.map((v) => (
               <div key={v.id} className="bp-menu-row">
                 <button className="bp-menu-item grow" onClick={() => { useBlueprint.getState().restoreVersion(v.id); setMenu(null) }}>{v.label}</button>
-                <button className="bp-x" onClick={() => useBlueprint.getState().deleteVersion(v.id)}>🗑</button>
+                <button className="bp-x" onClick={() => useBlueprint.getState().deleteVersion(v.id)}>✕</button>
               </div>
             ))}
           </Menu>
@@ -147,7 +147,7 @@ function TemplatesMenu({ onClose }: { onClose: () => void }) {
       {templates.map((t) => (
         <div key={t.id} className="bp-menu-row">
           <button className="bp-menu-item grow" onClick={() => { useBlueprint.getState().applyTemplate(t.id); onClose() }}>{t.title}</button>
-          <button className="bp-x" onClick={() => { useBlueprint.getState().deleteTemplate(t.id); force((n) => n + 1) }}>🗑</button>
+          <button className="bp-x" onClick={() => { useBlueprint.getState().deleteTemplate(t.id); force((n) => n + 1) }}>✕</button>
         </div>
       ))}
     </Menu>

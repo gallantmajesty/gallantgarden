@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D, type PointLight } from 'three'
+import { useFrame, useThree } from '@react-three/fiber'
+import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D, type PointLight, Vector3 } from 'three'
 import { HALL } from './layout'
 import { env } from './env'
 import { InstancedShape, type ShapeItem } from './Instanced'
@@ -51,8 +51,27 @@ export function Exterior({ count, mountains = 40, clouds = 9 }: { count: number;
     return out
   }, [count])
 
+  // Distance/visibility LOD: the exterior (forest, mountains, castle, clouds,
+  // river, ground) is ONLY visible through the two long window-walls (±X). The
+  // end walls are solid and the hall interior hides the rest, so whenever the
+  // camera looks away from ±X the whole exterior is off-screen. We flip the
+  // group's `visible` flag each frame (no React re-render) so all those instanced
+  // draws + the 12 forest point-lights are skipped while you study facing a wall —
+  // a large, invisible-to-the-user FPS win on integrated GPUs.
+  const groupRef = useRef<Group>(null)
+  const camera = useThree((s) => s.camera)
+  const _fwd = useRef(new Vector3())
+  useFrame(() => {
+    const g = groupRef.current
+    if (!g) return
+    camera.getWorldDirection(_fwd.current)
+    // looking toward a window wall when the forward vector's X component is
+    // meaningfully non-zero (≈ >14° off-axis). Below that you can't see outside.
+    g.visible = Math.abs(_fwd.current.x) > 0.25
+  })
+
   return (
-    <group>
+    <group ref={groupRef}>
       <Ground />
       <Mountains count={mountains} />
       <River />

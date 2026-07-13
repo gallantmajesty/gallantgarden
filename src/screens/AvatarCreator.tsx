@@ -7,13 +7,18 @@ import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
 import { useAvatar } from '../avatar/store'
+import { CHARACTERS, characterById } from '../avatar/characters'
+import { useProfile } from '../store/profile'
 import {
   type AvatarConfig,
   type StyleOption,
   type Swatch,
+  SKINS,
+  EYE_COLORS,
+  ACCESSORIES,
+  skinHex,
 } from '../avatar/config'
-import { CHARACTERS, characterById } from '../avatar/characters'
-import { useProfile } from '../store/profile'
+import { BigDiningTable } from '../avatar/Accessories'
 import './AvatarCreator.css'
 
 // Roblox-style customizer for the ONE base body, laid out like the product
@@ -45,6 +50,14 @@ export function AvatarCreator() {
     setSaving(false)
     navigate('/')
   }
+
+  // Mind-map style wizard: Characters → Outfit → Accessories.
+  const [step, setStep] = useState<'characters' | 'outfit' | 'accessories'>('characters')
+  const steps = ['characters', 'outfit', 'accessories'] as const
+  const stepIndex = steps.indexOf(step)
+  const goNext = () => { if (stepIndex < steps.length - 1) setStep(steps[stepIndex + 1]) }
+  const goBack = () => { if (stepIndex > 0) setStep(steps[stepIndex - 1]) }
+  const hasChar = !!config.characterId
 
   return (
     <div className="ac-root">
@@ -80,18 +93,28 @@ export function AvatarCreator() {
       <div className="ac-body">
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
-          <div className="ac-stage-name">{characterById(config.characterId || 'james').name}</div>
+          <div className="ac-stage-name">
+          {step === 'accessories' ? 'Accessory Studio' : characterById(config.characterId || 'james').name}
+        </div>
           <Suspense fallback={<div className="ac-stage-veil" />}>
-            <AvatarCanvas config={config} controlsRef={controls} />
+            <AvatarCanvas
+          config={config}
+          controlsRef={controls}
+          accessoryMode={step === 'accessories'}
+          accessory={config.accessories?.[0]}
+        />
           </Suspense>
         </section>
+
+        {/* ---- mind-map sidebar ---- */}
+        <MindMap step={step} onPick={(s) => setStep(s)} />
 
         {/* ---- right: light dock ---- */}
         <aside className="ac-dock">
           <div className="ac-dock-head">
             <div className="ac-dock-toggle">
               <button data-on>
-                <Glyph kind="sliders" /> Customize
+                <Glyph kind="sliders" /> {step === 'characters' ? 'Characters' : step === 'outfit' ? 'Outfit' : 'Accessories'}
               </button>
             </div>
             <button className="ac-dock-x" onClick={() => navigate('/')} aria-label="Close">
@@ -100,21 +123,55 @@ export function AvatarCreator() {
           </div>
 
           <div className="ac-dock-scroll">
-            <CharacterDisplayTab config={config} set={set} />
-            <BodyTab config={config} set={set} />
+            {step === 'characters' && <CharacterDisplayTab config={config} set={set} />}
+            {step === 'outfit' && <OutfitTab config={config} set={set} />}
+            {step === 'accessories' && <AccessoryTab config={config} set={set} />}
           </div>
 
           <div className="ac-dock-foot">
-            <button className="ac-save" onClick={onSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save Avatar'}
-            </button>
             <button className="ac-reset" onClick={() => reset()}>
               Reset
             </button>
+            <button className="ac-back" onClick={goBack} disabled={stepIndex === 0}>
+              ‹ Back
+            </button>
+            {step !== 'accessories' ? (
+              <button className="ac-next" onClick={goNext} disabled={step === 'characters' && !hasChar}>
+                Next ›
+              </button>
+            ) : (
+              <button className="ac-save" onClick={onSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save Avatar'}
+              </button>
+            )}
           </div>
         </aside>
       </div>
     </div>
+  )
+}
+
+/* ----------------------------------------------------------- mind-map sidebar */
+
+function MindMap({ step, onPick }: { step: 'characters' | 'outfit' | 'accessories'; onPick: (s: 'characters' | 'outfit' | 'accessories') => void }) {
+  const nodes: { id: 'characters' | 'outfit' | 'accessories'; label: string; ico: 'body' | 'top' | 'bag' }[] = [
+    { id: 'characters', label: 'Characters', ico: 'body' },
+    { id: 'outfit', label: 'Outfit', ico: 'top' },
+    { id: 'accessories', label: 'Accessories', ico: 'bag' },
+  ]
+  return (
+    <aside className="ac-mindmap">
+      <div className="ac-mm-title">Customize</div>
+      {nodes.map((n, i) => (
+        <div className="ac-mm-wrap" key={n.id}>
+          {i > 0 && <div className="ac-mm-line" />}
+          <button className={`ac-mm-node ${step === n.id ? 'on' : ''}`} onClick={() => onPick(n.id)}>
+            <span className="ac-mm-ico"><Glyph kind={n.ico} /></span>
+            <span className="ac-mm-label">{n.label}</span>
+          </button>
+        </div>
+      ))}
+    </aside>
   )
 }
 
@@ -169,6 +226,96 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
 
 function BodyTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
   return null
+}
+
+/* ------------------------------------------------------------------ colour picker */
+
+function ColorField({
+  label,
+  value,
+  fallback,
+  onChange,
+  onClear,
+}: {
+  label: string
+  value?: string
+  fallback: string
+  onChange: (hex: string) => void
+  onClear: () => void
+}) {
+  const v = value ?? fallback
+  return (
+    <Field label={label}>
+      <div className="ac-color-row">
+        <input type="color" className="ac-color" value={v} onChange={(e) => onChange(e.target.value)} />
+        <span className="ac-color-hex">{v.toUpperCase()}</span>
+        {value && (
+          <button className="ac-color-clear" onClick={onClear} title="Use default colour">
+            Reset
+          </button>
+        )}
+      </div>
+    </Field>
+  )
+}
+
+/* ------------------------------------------------------------------ outfit step */
+
+function OutfitTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
+  return (
+    <>
+      <SwatchField label="Skin Tone" swatches={SKINS} selected={config.skin} onPick={(id) => set({ skin: id })} />
+      <ColorField
+        label="Skin Colour"
+        value={config.skinColor}
+        fallback={skinHex(config.skin)}
+        onChange={(hex) => set({ skinColor: hex })}
+        onClear={() => set({ skinColor: undefined })}
+      />
+
+      <SwatchField label="Eye Colour" swatches={EYE_COLORS} selected={config.eyes} onPick={(id) => set({ eyes: id })} />
+
+      <p className="ac-foot-note">
+        Outfit, hairstyle and height come from the character you pick — humans keep their
+        default shoes, costume characters (Dino, Bunny) go barefoot. Next: add one accessory.
+      </p>
+    </>
+  )
+}
+
+/* -------------------------------------------------------------- accessories step */
+
+function AccessoryTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
+  const current = config.accessories?.[0] ?? null
+  const choose = (id: string) => set({ accessories: current === id ? [] : [id] })
+  return (
+    <div className="ac-field">
+      <span className="ac-field-label">Accessories <b>· pick one</b></span>
+      <p className="ac-foot-note">
+        Choose a single item — it appears on your studio dining table and travels with you into
+        the library hall.
+      </p>
+      <div className="ac-acc-grid">
+        {ACCESSORIES.map((a) => (
+          <button
+            key={a.id}
+            className="ac-acc-tile"
+            data-on={current === a.id}
+            onClick={() => choose(a.id)}
+          >
+            <span className="ac-acc-emoji">{a.icon}</span>
+            <span className="ac-acc-name">
+              {a.name}
+              <small>{a.blurb}</small>
+            </span>
+            {current === a.id && (
+              <span className="ac-acc-tick"><Glyph kind="check" /></span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /* ------------------------------------------------------------- control widgets */
@@ -259,14 +406,58 @@ function SwatchField({
 function AvatarCanvas({
   config,
   controlsRef,
+  accessoryMode,
+  accessory,
 }: {
   config: AvatarConfig
   controlsRef: React.RefObject<OrbitControlsImpl | null>
+  accessoryMode?: boolean
+  accessory?: string
 }) {
   // Wizard character renders as a transparent standalone shot — no pedestal, no
   // floor shadow, no environment light: a single warm top-down spotlight + a
   // faint rim light, orthographic front view, alpha channel on the canvas.
   const isWizard = config.characterId === 'wizard'
+
+  // Accessories step: show the studio dining table with the single chosen item.
+  // No character — just the accessory on the table.
+  if (accessoryMode) {
+    return (
+      <Canvas
+        shadows={false}
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 1.2, 3.6], fov: 42, near: 0.1, far: 50 }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
+      >
+        <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.8]} />
+        <directionalLight position={[3, 5, 2]} intensity={1.15} color="#ffecd0" />
+        <directionalLight position={[-2, 3, -1]} intensity={0.45} color="#ffb870" />
+        <pointLight position={[0, 1.6, 0.8]} intensity={0.5} color="#ff9040" distance={6} decay={2} />
+        <ambientLight intensity={0.28} color="#ffe8d0" />
+
+        <DustMotes count={50} />
+
+        <group position={[0, -0.9, 0]}>
+          <BigDiningTable accessory={accessory} />
+          <SoftShadow />
+        </group>
+
+        <OrbitControls
+          ref={controlsRef}
+          enablePan={false}
+          autoRotate={false}
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.8}
+          minDistance={2}
+          maxDistance={6}
+          minPolarAngle={0.4}
+          maxPolarAngle={Math.PI / 1.9}
+          target={[0, 0.15, 0]}
+        />
+      </Canvas>
+    )
+  }
 
   return (
     <Canvas

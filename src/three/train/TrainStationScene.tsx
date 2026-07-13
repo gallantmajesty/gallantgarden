@@ -1,11 +1,11 @@
 import { Component, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { PerformanceMonitor } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Texture } from 'three'
 
 import { useScenePreset } from '../../store/quality'
+import { settleRealmQuality } from '../realmQuality'
 import { useTrain } from '../../store/train'
 import { useAuth } from '../../store/auth'
 import { StationWorld } from './StationWorld'
@@ -13,7 +13,8 @@ import { TrainRide } from './TrainRide'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
-  static getDerivedStateFromError() {
+  static getDerivedStateFromError(err: unknown) {
+    console.error('[SoftBoundary]', err)
     return { failed: true }
   }
   render() {
@@ -23,9 +24,11 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean 
 
 export function TrainStationScene({ onReady }: { onReady?: () => void }) {
   const preset = useScenePreset()
-  const [dpr, setDpr] = useState(preset.dpr)
-  useEffect(() => setDpr(preset.dpr), [preset.dpr])
-  const dprFloor = 0.75
+
+  const handleReady = () => {
+    onReady?.()
+    settleRealmQuality()
+  }
 
   const phase = useTrain((s) => s.phase)
   const aboard = phase === 'traveling' || phase === 'arriving' || phase === 'arrived'
@@ -35,19 +38,12 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
       <TrainJourneyRuntime />
       <Canvas
         shadows={preset.shadows ? 'soft' : false}
-        dpr={dpr}
+        dpr={preset.dpr}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         camera={{ position: [0, 1.6, -34], fov: 72, near: 0.08, far: preset.far }}
       >
         <color attach="background" args={['#1a1209']} />
         <fog attach="fog" args={['#1a1209', 40, preset.far]} />
-        <PerformanceMonitor
-          bounds={(rate) => (rate > 90 ? [55, 90] : [35, 58])}
-          flipflops={1}
-          factor={1}
-          onChange={({ factor }) => setDpr(Math.round((dprFloor + (preset.dpr - dprFloor) * factor) * 100) / 100)}
-          onFallback={() => setDpr(dprFloor)}
-        />
 
         <QualitySync shadows={preset.shadows} />
         <TextureQualitySync anisotropy={preset.anisotropy} />
@@ -55,14 +51,12 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
         <SoftBoundary>
           <Suspense fallback={<TransitionBackdrop />}>
             {aboard ? <TrainRide preset={preset} /> : <StationWorld preset={preset} />}
-            <SceneReady onReady={onReady} />
+            <SceneReady onReady={handleReady} />
           </Suspense>
         </SoftBoundary>
 
         {preset.bloom && (
           <EffectComposer enableNormalPass={false} multisampling={0}>
-            {/* warm gas-lamp bloom: high threshold so only lanterns, signage and
-                window-glow blossom — the cosy terminus highlight, never a wash */}
             <Bloom luminanceThreshold={0.88} luminanceSmoothing={0.4} intensity={0.32} kernelSize={KernelSize.SMALL} mipmapBlur />
             <Vignette eskil={false} offset={0.2} darkness={0.62} />
           </EffectComposer>

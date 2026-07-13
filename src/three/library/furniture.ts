@@ -58,7 +58,7 @@ export function upperTables(): Placement[] {
   const x = HALL.halfW - HALL.balconyDepth / 2 - 0.5
   const zs = [-32, -14, 4] // staircases occupy z ≈ 21…34, so keep tables away from there
   const out: Placement[] = []
-  for (const sx of [-1, 1]) for (const z of zs) out.push({ pos: [sx * x, HALL.balconyY + 0.45, z], rotY: 0 })
+  for (const sx of [-1, 1]) for (const z of zs) out.push({ pos: [sx * x, HALL.balconyY + 0.25, z], rotY: 0 })
   return out
 }
 
@@ -74,8 +74,8 @@ export function readingCorners(): Placement[] {
     { pos: [x, 0, HALL.halfL - 5], rotY: -Math.PI / 2 },
     // upper viewing galleries overlooking the hall (kept clear of the open
     // near-end stairwell, z ≳ 22)
-    { pos: [-ux, HALL.balconyY, 12], rotY: -Math.PI / 2 },
-    { pos: [ux, HALL.balconyY, -8], rotY: Math.PI / 2 },
+    { pos: [-ux, HALL.balconyY + 0.5, 12], rotY: -Math.PI / 2 },
+    { pos: [ux, HALL.balconyY + 0.5, -8], rotY: Math.PI / 2 },
   ]
 }
 

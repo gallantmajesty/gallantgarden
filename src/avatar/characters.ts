@@ -29,6 +29,8 @@ export interface Character {
   bg?: string
   /** 'male' | 'female' — kept here so it's trivial to see/edit each character's gender */
   gender?: 'male' | 'female'
+  /** costume characters (dino, bunny…) render no shoes and no human face */
+  isAnimal?: boolean
 }
 
 /** Build a fixed procedural look for a character's fallback rig. */
@@ -136,6 +138,7 @@ export const CHARACTERS: Character[] = [
     rarity: 'Epic',
     color: '#6cbf4a',
     bg: '#eaf7dd',
+    isAnimal: true,
   },
   {
     id: 'rabbit',
@@ -153,6 +156,7 @@ export const CHARACTERS: Character[] = [
     rarity: 'Epic',
     color: '#f2a3c0',
     bg: '#fdeaf2',
+    isAnimal: true,
   },
 ]
 

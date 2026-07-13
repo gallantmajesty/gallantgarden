@@ -7,10 +7,13 @@
 import {
   BoxGeometry,
   BufferGeometry,
+  CanvasTexture,
   CapsuleGeometry,
   CylinderGeometry,
   Float32BufferAttribute,
   MeshStandardMaterial,
+  RepeatWrapping,
+  SRGBColorSpace,
   SphereGeometry,
   TorusGeometry,
 } from 'three'
@@ -43,6 +46,14 @@ export interface AvatarConfig {
   shoes: string // -> SHOES id
   // --- character selection ---
   characterId?: string
+  // --- FREE colour recolouring (Stumble Guys / FF style) ---
+  // When set, these hex overrides win over the item's baked colour / palette id.
+  topColor?: string
+  bottomColor?: string
+  hairColorHex?: string
+  skinColor?: string
+  // --- equipped accessories (ids from ACCESSORIES) ---
+  accessories?: string[]
 }
 
 /* ----------------------------------------------------------------- palettes */
@@ -171,6 +182,46 @@ export const SHOES: GarmentOption[] = [
   { id: 'whiteshoes', name: 'White Shoes', hex: '#FFFFFF' },
 ]
 
+/* ------------------------------------------------------------------ accessories */
+
+export type AccessoryId =
+  | 'laptop'
+  | 'gaming_laptop'
+  | 'phone'
+  | 'tablet'
+  | 'book'
+  | 'piano'
+  | 'mug'
+
+export interface AccessoryDef {
+  id: AccessoryId
+  name: string
+  /** emoji used as the picker thumbnail */
+  icon: string
+  /** base colour for the 3D model */
+  color: string
+  /** short blurb shown under the name */
+  blurb: string
+}
+
+// The accessory wardrobe. Each can be toggled from the Avatar Creator's
+// Accessories step and is rendered as a small 3D prop on the character's desk
+// (visible in the library study hall). `color` is only a starting tint — the
+// 3D model is built to read as a real object, not a flat chip.
+export const ACCESSORIES: AccessoryDef[] = [
+  { id: 'laptop', name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion' },
+  { id: 'gaming_laptop', name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig' },
+  { id: 'phone', name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand' },
+  { id: 'tablet', name: 'Tablet', icon: '📋', color: '#5b3a22', blurb: 'Notes & sketch' },
+  { id: 'book', name: 'Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook' },
+  { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax' },
+  { id: 'mug', name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip' },
+]
+
+export function accessoryById(id: string): AccessoryDef | undefined {
+  return ACCESSORIES.find((a) => a.id === id)
+}
+
 export const HEIGHT_MIN = 150
 export const HEIGHT_MAX = 195
 export const HEIGHT_REF = 170 // config height that maps to rig scale 1.0
@@ -244,6 +295,20 @@ export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined)
 
   // bottom: the removed `skirt` (and any unknown id) coerces to pants.
   if (!ALL_BOTTOM_IDS.has(merged.bottom)) merged.bottom = 'pants'
+
+  // free colours: keep valid-looking hex overrides, drop anything malformed.
+  const hexOk = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)
+  if (merged.topColor !== undefined && !hexOk(merged.topColor)) delete (merged as Partial<AvatarConfig>).topColor
+  if (merged.bottomColor !== undefined && !hexOk(merged.bottomColor)) delete (merged as Partial<AvatarConfig>).bottomColor
+  if (merged.hairColorHex !== undefined && !hexOk(merged.hairColorHex)) delete (merged as Partial<AvatarConfig>).hairColorHex
+  if (merged.skinColor !== undefined && !hexOk(merged.skinColor)) delete (merged as Partial<AvatarConfig>).skinColor
+
+  // accessories: keep only known ids.
+  if (Array.isArray(merged.accessories)) {
+    merged.accessories = merged.accessories.filter((a) => ACCESSORIES.some((d) => d.id === a))
+  } else {
+    merged.accessories = []
+  }
 
   return merged
 }
@@ -329,6 +394,175 @@ export function eyeMaterial(hex: string): MeshStandardMaterial {
     matCache.set(key, m)
   }
   return m
+}
+
+/* ------------------------------------------ procedural tactile textures */
+// Warm, hand-feel CanvasTextures so the accessories read as real materials
+// (wood grain, glazed ceramic, pebbled leather, fibrous paper) rather than flat
+// chips. Each kind is drawn once into a cached canvas; materials that use a kind
+// are cached by signature so avatars never allocate per-frame.
+
+type TexKind = 'wood' | 'ceramic' | 'leather' | 'paper'
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return function () {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function drawTex(kind: TexKind, size = 256): HTMLCanvasElement {
+  const cv = document.createElement('canvas')
+  cv.width = cv.height = size
+  const ctx = cv.getContext('2d')!
+  let seed = 1234567
+  for (let i = 0; i < kind.length; i++) seed = (seed * 31 + kind.charCodeAt(i)) >>> 0
+  const rnd = mulberry32(seed)
+
+  switch (kind) {
+    case 'wood': {
+      ctx.fillStyle = '#efe9dd'
+      ctx.fillRect(0, 0, size, size)
+      for (let i = 0; i < 80; i++) {
+        const x = rnd() * size
+        ctx.strokeStyle = `rgba(60,38,20,${0.06 + rnd() * 0.2})`
+        ctx.lineWidth = 0.4 + rnd() * 1.8
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        for (let y = 0; y <= size; y += 5) {
+          const wob = Math.sin(y * 0.035 + i) * 4 + Math.sin(y * 0.1 + i) * 2
+          ctx.lineTo(x + wob, y)
+        }
+        ctx.stroke()
+      }
+      for (let i = 0; i < 34; i++) {
+        const x = rnd() * size
+        ctx.strokeStyle = `rgba(255,240,210,${0.03 + rnd() * 0.08})`
+        ctx.lineWidth = 0.5 + rnd()
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        for (let y = 0; y <= size; y += 8) ctx.lineTo(x + Math.sin(y * 0.05 + i) * 3, y)
+        ctx.stroke()
+      }
+      for (let k = 0; k < 3; k++) {
+        const kx = rnd() * size
+        const ky = rnd() * size
+        const r = 3 + rnd() * 7
+        for (let rr = r; rr > 0; rr -= 1.6) {
+          ctx.strokeStyle = 'rgba(50,30,15,0.22)'
+          ctx.lineWidth = 0.8
+          ctx.beginPath()
+          ctx.ellipse(kx, ky, rr, rr * 1.4, rnd() * Math.PI, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+      }
+      break
+    }
+    case 'ceramic': {
+      ctx.fillStyle = '#f2f2f2'
+      ctx.fillRect(0, 0, size, size)
+      for (let i = 0; i < 46; i++) {
+        const x = rnd() * size
+        const y = rnd() * size
+        const r = 18 + rnd() * 70
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+        const dark = rnd() > 0.5
+        g.addColorStop(0, dark ? `rgba(60,40,25,${0.04 + rnd() * 0.05})` : `rgba(255,255,255,${0.05 + rnd() * 0.06})`)
+        g.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = g
+        ctx.beginPath()
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      for (let i = 0; i < 1800; i++) {
+        ctx.fillStyle = `rgba(40,25,15,${rnd() * 0.04})`
+        ctx.fillRect(rnd() * size, rnd() * size, 1, 1)
+      }
+      break
+    }
+    case 'leather': {
+      ctx.fillStyle = '#ece7dd'
+      ctx.fillRect(0, 0, size, size)
+      for (let i = 0; i < 1400; i++) {
+        const r = 0.6 + rnd() * 1.6
+        ctx.fillStyle = `rgba(50,32,18,${rnd() * 0.07})`
+        ctx.beginPath()
+        ctx.arc(rnd() * size, rnd() * size, r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      for (let i = 0; i < 16; i++) {
+        const x = rnd() * size
+        const y = rnd() * size
+        ctx.strokeStyle = `rgba(40,25,12,${0.05 + rnd() * 0.06})`
+        ctx.lineWidth = 0.6 + rnd()
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        for (let s = 0; s < 5; s++) ctx.lineTo(x + rnd() * size * 0.3, y + rnd() * size * 0.3)
+        ctx.stroke()
+      }
+      break
+    }
+    case 'paper': {
+      ctx.fillStyle = '#f6efe0'
+      ctx.fillRect(0, 0, size, size)
+      for (let i = 0; i < 2200; i++) {
+        ctx.fillStyle = `rgba(120,90,50,${rnd() * 0.05})`
+        ctx.fillRect(rnd() * size, rnd() * size, 1, 1)
+      }
+      for (let i = 0; i < 10; i++) {
+        const y = rnd() * size
+        ctx.strokeStyle = 'rgba(120,90,50,0.05)'
+        ctx.lineWidth = 0.6
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(size, y)
+        ctx.stroke()
+      }
+      break
+    }
+  }
+  return cv
+}
+
+const canvasCache = new Map<TexKind, HTMLCanvasElement>()
+function baseCanvas(kind: TexKind): HTMLCanvasElement {
+  let cv = canvasCache.get(kind)
+  if (!cv) {
+    cv = drawTex(kind)
+    canvasCache.set(kind, cv)
+  }
+  return cv
+}
+
+const texMatCache = new Map<string, MeshStandardMaterial>()
+
+/**
+ * A shared MeshStandardMaterial with a procedural `kind` texture (wood / ceramic
+ * / leather / paper) tinted by `hex`. Cached by signature so reusing the same
+ * material across many avatars costs a single instance. `rx`/`ry` set texture
+ * repeat so big surfaces don't look stretched.
+ */
+export function texturedMaterial(
+  hex: string,
+  kind: TexKind,
+  roughness = 0.85,
+  metalness = 0,
+  rx = 1,
+  ry = 1,
+): MeshStandardMaterial {
+  const key = `${hex}|${kind}|${roughness}|${metalness}|${rx}|${ry}`
+  let mat = texMatCache.get(key)
+  if (mat) return mat
+  const t = new CanvasTexture(baseCanvas(kind))
+  t.colorSpace = SRGBColorSpace
+  t.wrapS = t.wrapT = RepeatWrapping
+  t.repeat.set(rx, ry)
+  mat = new MeshStandardMaterial({ color: hex, map: t, roughness, metalness })
+  texMatCache.set(key, mat)
+  return mat
 }
 
 const geoCache = new Map<string, BufferGeometry>()

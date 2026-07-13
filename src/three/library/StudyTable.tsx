@@ -83,8 +83,8 @@ export function StudyTables() {
           const cx = tx + sx * (W / 2 + 0.5)
           const ccz = tz + cz
           const [srx, srz] = rot(0, 0, yaw)
-          seatBoxes.push({ pos: [cx + srx, ty + 0.47, ccz + srz], size: [0.64, 0.08, 0.58], rotY: yaw, color: CHAIR_WOOD })
-          cushions.push({ pos: [cx + srx, ty + 0.535, ccz + srz], scale: [0.3, 0.06, 0.27], rot: [0, yaw, 0], color: CLOTH })
+          seatBoxes.push({ pos: [cx + srx, ty + 0.43, ccz + srz], size: [0.64, 0.08, 0.58], rotY: yaw, color: CHAIR_WOOD })
+          cushions.push({ pos: [cx + srx, ty + 0.45, ccz + srz], scale: [0.3, 0.025, 0.27], rot: [0, yaw, 0], color: CLOTH })
           // tapered legs
           for (const [lx, lz] of [[-0.26, -0.23], [0.26, -0.23], [-0.26, 0.23], [0.26, 0.23]] as const) {
             const [rx, rz] = rot(lx, lz, yaw)
@@ -200,6 +200,7 @@ function DeskDressing({ tables, rich, full }: { tables: TableInfo[]; rich: boole
     const lampStems: ShapeItem[] = []
     const lampShades: ShapeItem[] = []
     const lampBulbs: ShapeItem[] = []
+    const lampGlows: ShapeItem[] = []
 
     const bookCovers: BoxItem[] = []
     const bookPages: BoxItem[] = []
@@ -239,6 +240,8 @@ function DeskDressing({ tables, rich, full }: { tables: TableInfo[]; rich: boole
       lampStems.push({ pos: [lx, ly + 0.2, lz] })
       lampShades.push({ pos: [lx, ly + 0.4, lz], rot: [Math.PI / 2, 0, 0] })
       lampBulbs.push({ pos: [lx, ly + 0.36, lz] })
+      // a soft warm pool the lamp casts on the desk (reads as glow under bloom)
+      lampGlows.push({ pos: [lx, ly + 0.005, lz], rot: [Math.PI / 2, 0, 0] })
 
       // ---- deterministic dressing rng (identical sequence to the old code so
       //      every book/prop lands in exactly the same spot). The full sequence
@@ -357,7 +360,7 @@ function DeskDressing({ tables, rich, full }: { tables: TableInfo[]; rich: boole
     }
 
     return {
-      lampBases, lampStems, lampShades, lampBulbs,
+      lampBases, lampStems, lampShades, lampBulbs, lampGlows,
       bookCovers, bookPages, bookSpines,
       bottleBodies, bottleWaters, bottleCorks, mugBodies, mugInners, mugHandles, openLeaves,
       plantBodies, plantRims, plantSoils, plantMounds, plantLeaves, plantBlossoms,
@@ -374,11 +377,15 @@ function DeskDressing({ tables, rich, full }: { tables: TableInfo[]; rich: boole
       <InstancedShape items={b.lampStems} color="#caa84a" metalness={0.7} roughness={0.3}>
         <cylinderGeometry args={[0.022, 0.028, 0.36, 10]} />
       </InstancedShape>
-      <InstancedShape items={b.lampShades} color="#1f6b3a" emissive="#2f8a52" emissiveIntensity={0.5} metalness={0.2} roughness={0.35} side={DoubleSide}>
+      <InstancedShape items={b.lampShades} color="#1f6b3a" emissive="#2f8a52" emissiveIntensity={0.8} metalness={0.2} roughness={0.35} side={DoubleSide}>
         <cylinderGeometry args={[0.14, 0.14, 0.42, 20, 1, true, 0, Math.PI]} />
       </InstancedShape>
-      <InstancedShape items={b.lampBulbs} color="#fff3d2" emissive="#ffcf8a" emissiveIntensity={2.4}>
+      <InstancedShape items={b.lampBulbs} color="#fff3d2" emissive="#ffcf8a" emissiveIntensity={3} >
         <sphereGeometry args={[0.06, 10, 10]} />
+      </InstancedShape>
+      {/* warm desk pool — additive-ish glow disc, sits flat on the table top */}
+      <InstancedShape items={b.lampGlows} color="#ffcf8a" emissive="#ffb863" emissiveIntensity={0.7} transparent opacity={0.45} depthWrite={false} side={DoubleSide}>
+        <circleGeometry args={[0.55, 22]} />
       </InstancedShape>
 
       {/* stacked books — per-instance colour/size */}

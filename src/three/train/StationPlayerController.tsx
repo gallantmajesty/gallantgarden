@@ -291,7 +291,7 @@ export function StationPlayerController() {
       av.visible = mode !== 'first' && !(hideAvatarWhenMovingCamera && isDragging)
       av.position.set(st.x, st.y, st.z)
       const prevYaw = av.rotation.y
-      const targetYaw = moving ? st.faceYaw : st.yaw
+      const targetYaw = st.yaw + Math.PI
       const dYaw = Math.atan2(Math.sin(targetYaw - prevYaw), Math.cos(targetYaw - prevYaw))
       av.rotation.y = prevYaw + dYaw * (1 - Math.pow(0.001, dt))
       const l = loco.current

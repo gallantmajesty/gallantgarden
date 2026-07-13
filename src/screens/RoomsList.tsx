@@ -56,6 +56,38 @@ export function RoomsList() {
         </div>
       </header>
 
+      {/* flagship rail realm — separate from the classic Train Station */}
+      {mode === null && (
+        <button
+          className="rooms__choice rooms__choice--trainx"
+          onClick={() => navigate('/trainx')}
+          style={{
+            width: '100%',
+            marginTop: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '16px 18px',
+            borderRadius: 14,
+            border: '1px solid rgba(202,168,74,0.5)',
+            background: 'linear-gradient(135deg, #1a2238, #0e1426)',
+            color: '#ffe6c0',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          <span style={{ fontSize: 26 }}>🚂</span>
+          <span style={{ textAlign: 'left' }}>
+            <b>TrainX — Booking Center &amp; Study Express</b>
+            <br />
+            <small style={{ color: '#9fb0d0', fontWeight: 400 }}>
+              Book a carriage, ride to your destination, study on the way. (New realm)
+            </small>
+          </span>
+          <span style={{ marginLeft: 'auto' }}>→</span>
+        </button>
+      )}
+
       {/* step 1 — pick International or Custom */}
       {mode === null && (
         <div className="rooms__choose">

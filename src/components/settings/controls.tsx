@@ -21,13 +21,15 @@ export function Toggle({
   label,
   value,
   onChange,
+  disabled,
 }: {
   label: string
   value: boolean
   onChange: (v: boolean) => void
+  disabled?: boolean
 }) {
   return (
-    <label className="set-row">
+    <label className={`set-row${disabled ? ' disabled' : ''}`}>
       <span>{label}</span>
       <button
         type="button"
@@ -35,6 +37,7 @@ export function Toggle({
         role="switch"
         aria-checked={value}
         aria-label={label}
+        disabled={disabled}
         onClick={() => onChange(!value)}
       >
         <span className="set-knob" />
@@ -51,6 +54,7 @@ export function Slider({
   max = 1,
   step = 0.01,
   display,
+  disabled,
 }: {
   label: string
   value: number
@@ -60,12 +64,13 @@ export function Slider({
   step?: number
   /** optional read-out shown in the value pill (e.g. "80%"); omit to hide it */
   display?: string
+  disabled?: boolean
 }) {
   // Fill the track up to the current value so the slider reads as a gauge, not a
   // bare line. Exposed as a CSS var the stylesheet paints into the track gradient.
   const pct = max > min ? Math.round(((value - min) / (max - min)) * 100) : 0
   return (
-    <div className="set-slider">
+    <div className={`set-slider${disabled ? ' disabled' : ''}`}>
       <div className="set-slider-head">
         <span>{label}</span>
         {display !== undefined && <span className="set-slider-val">{display}</span>}
@@ -78,6 +83,7 @@ export function Slider({
         step={step}
         value={value}
         aria-label={label}
+        disabled={disabled}
         style={{ ['--fill' as string]: `${pct}%` }}
         onChange={(e) => onChange(Number(e.target.value))}
       />
@@ -121,18 +127,20 @@ export function Seg<T extends string>({
   value,
   options,
   onChange,
+  disabled,
 }: {
   label: string
   value: string
   options: [T, string][]
   onChange: (v: T) => void
+  disabled?: boolean
 }) {
   return (
-    <label className="set-row col">
+    <label className={`set-row col${disabled ? ' disabled' : ''}`}>
       <span>{label}</span>
       <span className="set-seg">
         {options.map(([v, t]) => (
-          <button type="button" key={v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>
+          <button type="button" key={v} className={value === v ? 'on' : ''} disabled={disabled} onClick={() => onChange(v)}>
             {t}
           </button>
         ))}

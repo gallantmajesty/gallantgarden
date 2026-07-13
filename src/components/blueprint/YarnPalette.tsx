@@ -23,7 +23,7 @@ export function YarnPalette({ compact = false }: YarnPaletteProps) {
 
   return (
     <div className={'bp-yarnpalette ' + (compact ? 'compact' : '')}>
-      <span className="bp-yarnpalette-label" title="Active yarn colour">🧵</span>
+      <span className="bp-yarnpalette-label" title="Active yarn colour">Yarn</span>
       <div className="bp-yarnpalette-swatches">
         <button
           className={'bp-yarnswatch ' + (!activeYarnColor ? 'active' : '')}
@@ -57,7 +57,7 @@ export function YarnPalette({ compact = false }: YarnPaletteProps) {
       )}
       {!compact && (
         <label className="bp-yarnpalette-custom" title="Custom hex colour">
-          🎨
+          Custom
           <input
             type="color"
             value={currentColor}
