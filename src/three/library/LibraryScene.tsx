@@ -146,7 +146,14 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           // Force the EffectComposer(s) to remount so their render targets
           // (lost with the context) are recreated; otherwise the screen
           // stays black even after the context returns.
-          setComposerKey((k) => k + 1)
+          // Delay by 2 frames to let the GL context fully initialize before
+          // EffectComposer.addPass reads from it (prevents null.alpha crash).
+          let frames = 0
+          const rebuild = () => {
+            if (++frames >= 2) { setComposerKey((k) => k + 1); return }
+            requestAnimationFrame(rebuild)
+          }
+          requestAnimationFrame(rebuild)
         })
       }}
     >
@@ -260,6 +267,8 @@ function PostEffects({
   bloom: boolean
 }) {
   const pt = usePostToggleState()
+  const gl = useThree((s) => s.gl)
+  if (!gl) return null
   // Bloom lives ONLY during the Cinematic Tour (key 5), and only when the user's
   // Bloom setting is on. The rest of the time the composer is bloom-free, because
   // even a subtle always-on bloom used to cause the angle-specific black blink at
