@@ -244,3 +244,25 @@
 .wc-foot {
   padding: 16px 0 0;
 }
+
+/* ---- Mobile responsive (drawer is narrower on phones/tablets) ---- */
+@media (max-width: 768px) {
+  .wc-theme-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .wc-bg-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .wc-theme-card {
+    aspect-ratio: 3 / 3.4;
+  }
+  .wc-accents {
+    gap: 10px;
+  }
+  .wc-swatch {
+    width: 34px;
+    height: 34px;
+  }
+}

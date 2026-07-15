@@ -4,6 +4,7 @@ import { LibraryScene } from '../three/library/LibraryScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
+import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
 import {
   useSettings,
   MIN_BRIGHTNESS,
@@ -143,6 +144,8 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
   return (
     <div className="explore-root">
+      {/* Realm fullscreen enforcement — mobile/tablet only. Desktop is untouched. */}
+      <RealmFullscreenGate />
       {isTrain ? (
         <TrainStationScene onReady={() => setReady(true)} />
       ) : (

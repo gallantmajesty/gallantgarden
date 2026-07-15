@@ -6,6 +6,8 @@ import { TrainInterior } from '../three/trainx/TrainInterior'
 import { BookingUI } from '../components/trainx/BookingUI'
 import { StudyHUD } from '../components/trainx/StudyHUD'
 import { useTrainX } from '../store/trainx'
+import { TouchControls } from '../components/mobile/TouchControls'
+import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
 import '../components/trainx/BookingUI.css'
 import '../components/trainx/StudyHUD.css'
 
@@ -106,7 +108,7 @@ export default function TrainX() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#05070f' }}>
+    <div data-no-spark style={{ position: 'fixed', inset: 0, background: '#05070f' }}>
       <Canvas
         shadows
         camera={{ position: [0, 8, 26], fov: 50 }}
@@ -121,6 +123,15 @@ export default function TrainX() {
 
       <BookingUI onExit={() => navigate('/')} />
       {(phase === 'seated' || phase === 'arrived') && <StudyHUD />}
+
+      {/* Touch controls for the booking-hall free-roam (mobile/tablet only).
+          Renders nothing on desktop. */}
+      {phase !== 'seated' && phase !== 'arrived' && (
+        <TouchControls movement cameraToggle cinematic sit />
+      )}
+
+      {/* Realm fullscreen enforcement — mobile/tablet only. */}
+      <RealmFullscreenGate />
 
       <button
         onClick={() => navigate('/')}

@@ -32,7 +32,7 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
   const activeTypeId = useBlueprint((s) => s.activeTypeId)
   const connectionTypes = useBlueprint((s) => s.doc.connectionTypes)
   const portColor =
-    activeYarnColor ?? connectionTypes.find((t) => t.id === activeTypeId)?.color ?? '#caa84a'
+    activeYarnColor ?? connectionTypes.find((t) => t.id === activeTypeId)?.color ?? '#B79CFF'
 
   const [editing, setEditing] = useState(false)
   const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number } | null>(null)
@@ -123,12 +123,24 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
       }}
     >
       <div className="bp-node-surface" style={surface}>
-        {node.style.shape === 'folder' && <span className="bp-folder-tab" />}
         {bgMedia && <span className="bp-node-media-bg" style={mediaBackgroundStyle(media!)} aria-hidden />}
-        {node.sticker && <span className="bp-node-sticker">{node.sticker}</span>}
         {media?.url && media.place !== 'background' && (
           <img className="bp-node-media" src={media.url} alt="" draggable={false} style={mediaImageStyle(media)} />
         )}
+
+        {/* Header bar */}
+        <div className="bp-node-header">
+          <span className="bp-node-menu" title="Menu">☰</span>
+          <div className="bp-node-actions">
+            <button className="bp-node-action" title="More" onPointerDown={(e) => e.stopPropagation()}>⋯</button>
+            <button className="bp-node-action" title="Pin" onPointerDown={(e) => e.stopPropagation()}>📌</button>
+            {!node.locked && (
+              <button className="bp-node-action" title="Delete" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(node.id); /* trigger delete */ }}>✕</button>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
         <div className="bp-node-body">
           {editing ? (
             <RichText html={node.html} onChange={(html) => setNodeHtml(node.id, html)} autoFocus />
@@ -136,20 +148,24 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
             <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.html) }} />
           )}
         </div>
-        {node.icon && <span className="bp-node-icon">{node.icon}</span>}
+
+        {/* Bottom toolbar */}
+        {editing && (
+          <div className="bp-node-toolbar">
+            <button className="bp-toolbar-btn" title="Bold" onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold') }}><b>B</b></button>
+            <button className="bp-toolbar-btn" title="Italic" onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic') }}><i>I</i></button>
+            <button className="bp-toolbar-btn" title="Underline" onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline') }}><u>U</u></button>
+            <button className="bp-toolbar-btn" title="Strikethrough" onMouseDown={(e) => { e.preventDefault(); document.execCommand('strikethrough') }}><s>S</s></button>
+            <button className="bp-toolbar-btn" title="List" onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertUnorderedList') }}>≡</button>
+          </div>
+        )}
+
         {node.locked && (
           <span className="bp-node-lock" title="Locked" aria-label="Locked">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
               <path d="M12 2a4 4 0 0 0-4 4v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4zm-2 7V6a2 2 0 1 1 4 0v3h-4z" />
             </svg>
           </span>
-        )}
-        {node.tags.length > 0 && (
-          <div className="bp-node-tags">
-            {node.tags.slice(0, 4).map((t) => (
-              <span key={t} className="bp-node-tag">#{t}</span>
-            ))}
-          </div>
         )}
       </div>
 

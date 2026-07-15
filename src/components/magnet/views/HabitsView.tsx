@@ -10,8 +10,10 @@ const HABIT_ICONS = ['fire', 'book', 'brain', 'leaf', 'heart', 'spark', 'sun', '
 const HABIT_COLORS = ['#ff7a3d', '#46d6a0', '#6c8cff', '#ff6f9c', '#b76cff', '#4fd1e0', '#ffb454']
 const GRID_DAYS = 21
 
-function habitStreak(history: string[], now: Date): number {
-  const set = new Set(history)
+// A freeze (rest) day counts the same as a completed day for streak purposes,
+// so an intentional off-day never breaks a streak.
+function habitStreak(history: string[], freezeDays: string[], now: Date): number {
+  const set = new Set([...history, ...freezeDays])
   let streak = 0
   let cursor = set.has(dayKey(now)) ? now : addDays(now, -1)
   while (set.has(dayKey(cursor))) {
@@ -27,6 +29,7 @@ export function HabitsView() {
   const addHabit = useMagnet((s) => s.addHabit)
   const deleteHabit = useMagnet((s) => s.deleteHabit)
   const toggleHabitToday = useMagnet((s) => s.toggleHabitToday)
+  const toggleHabitFreeze = useMagnet((s) => s.toggleHabitFreeze)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [title, setTitle] = useState('')
@@ -79,8 +82,9 @@ export function HabitsView() {
               habit={h}
               gridDays={gridDays}
               today={tk}
-              streak={habitStreak(h.history, now)}
+              streak={habitStreak(h.history, h.freezeDays, now)}
               onToggleToday={() => toggleHabitToday(h.id)}
+              onFreeze={() => toggleHabitFreeze(h.id)}
               onDelete={() => deleteHabit(h.id)}
             />
           ))}
@@ -139,6 +143,7 @@ function HabitRow({
   today,
   streak,
   onToggleToday,
+  onFreeze,
   onDelete,
 }: {
   habit: Habit
@@ -146,10 +151,12 @@ function HabitRow({
   today: string
   streak: number
   onToggleToday: () => void
+  onFreeze: () => void
   onDelete: () => void
 }) {
   const { t } = useTranslation()
   const set = useMemo(() => new Set(habit.history), [habit.history])
+  const frozenToday = habit.freezeDays.includes(today)
   const doneToday = set.has(today)
   return (
     <Panel className="mg-habitrow" pad={false}>
@@ -173,14 +180,24 @@ function HabitRow({
           {gridDays.map((d) => (
             <span
               key={d}
-              className={`mg-habitcell ${set.has(d) ? 'filled' : ''} ${d === today ? 'today' : ''}`}
+              className={`mg-habitcell ${set.has(d) ? 'filled' : ''} ${habit.freezeDays.includes(d) ? 'frozen' : ''} ${d === today ? 'today' : ''}`}
               title={d}
             />
           ))}
         </div>
-        <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('habits.deleteHabit')}>
-          <Icon name="trash" size={15} />
-        </button>
+        <div className="mg-habitrow-actions">
+          <button
+            className={`mg-iconbtn ${frozenToday ? 'active' : ''}`}
+            onClick={onFreeze}
+            aria-label={t('habits.freezeDay')}
+            title={t('habits.freezeHint')}
+          >
+            <Icon name={frozenToday ? 'moon' : 'sun'} size={15} />
+          </button>
+          <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('habits.deleteHabit')}>
+            <Icon name="trash" size={15} />
+          </button>
+        </div>
       </div>
     </Panel>
   )

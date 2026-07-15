@@ -40,6 +40,12 @@ const PATHS: Record<string, string> = {
   pause: 'M8 5v14 M16 5v14',
   skip: 'M6 5l9 7-9 7z M18 5v14',
   note: 'M5 3h11l3 3v15H5z M9 8h6 M9 12h6 M9 16h4',
+  grid: 'M4 4h16v16H4z M4 10h16 M4 15h16 M10 4v16 M15 4v16',
+  grip: 'M9 6h.01 M15 6h.01 M9 12h.01 M15 12h.01 M9 18h.01 M15 18h.01',
+  lock: 'M6 11h12v9H6z M8 11V8a4 4 0 018 0v3',
+  link: 'M9 15l6-6 M10 7l1-1a4 4 0 016 6l-1 1 M14 17l-1 1a4 4 0 01-6-6l1-1',
+  download: 'M12 3v12 M7 11l5 5 5-5 M5 21h14',
+  upload: 'M12 21V9 M7 13l5-5 5 5 M5 3h14',
 }
 
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {

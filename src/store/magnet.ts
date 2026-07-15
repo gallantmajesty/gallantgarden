@@ -3,13 +3,15 @@ import {
   type MagnetData,
   type Task,
   type Goal,
+  type Project,
+  type Habit,
+  type TaskTemplate,
   type VisionCard,
   type Achievement,
   type Priority,
   type LifeArea,
   type Recurrence,
 } from '../lib/magnet/types'
-import { DEFAULT_THEME_ID, STARTER_THEME_IDS, THEMES } from '../lib/magnet/themes'
 import {
   XP_VALUES,
   awardLeaves,
@@ -17,6 +19,7 @@ import {
   syncXpToDb,
 } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
+import { pushMagnet, pullMagnet } from '../lib/magnet/sync'
 
 // ---- id + time helpers ------------------------------------------------------
 let counter = 0
@@ -30,6 +33,21 @@ function nowIso(): string {
 function todayKey(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function maxOrder(tasks: Task[]): number {
+  return tasks.reduce((m, t) => (t.order > m ? t.order : m), 0)
+}
+
+// Advance a yyyy-mm-dd date by the recurrence interval, returning a new
+// yyyy-mm-dd string. Falls back to today when the input is missing/invalid.
+function advanceDue(due: string | null, recurrence: Recurrence): string {
+  const base = due ? new Date(due + 'T00:00:00') : new Date()
+  if (Number.isNaN(base.getTime())) return todayKey()
+  if (recurrence === 'daily') base.setDate(base.getDate() + 1)
+  else if (recurrence === 'weekly') base.setDate(base.getDate() + 7)
+  else if (recurrence === 'monthly') base.setMonth(base.getMonth() + 1)
+  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`
 }
 
 // ---- persistence (per user) -------------------------------------------------
@@ -50,12 +68,9 @@ function emptyData(): MagnetData {
     achievements: [],
     brainDump: '',
     subjects: ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'History'],
+    templates: [],
     xp: 0,
     premiumXp: 0,
-    unlockedThemes: [...STARTER_THEME_IDS],
-    themeId: DEFAULT_THEME_ID,
-    accent: null,
-    particleDensity: 0.7,
     font: 'Inter',
     lastVisit: null,
     pomoBackfilled: false,
@@ -87,6 +102,19 @@ function backfillPomodoro(data: MagnetData): MagnetData {
   return { ...data, focus: [session, ...data.focus], pomoBackfilled: true }
 }
 
+// Legacy tasks created before manual ordering / dependencies existed have no
+// `order`/`blockedBy`/`templateId`. Give them sane defaults so the new sort and
+// UI never read undefined. Order preserves the stored array order (newest first
+// because new tasks are prepended) under the DESC sort used by TasksView.
+function backfillTasks(tasks: Task[]): Task[] {
+  return tasks.map((t, i) => ({
+    ...t,
+    order: typeof t.order === 'number' ? t.order : tasks.length - i,
+    blockedBy: Array.isArray(t.blockedBy) ? t.blockedBy : [],
+    templateId: t.templateId ?? null,
+  }))
+}
+
 function load(userId: string): MagnetData {
   try {
     const raw = localStorage.getItem(storageKey(userId))
@@ -98,11 +126,12 @@ function load(userId: string): MagnetData {
     // Personal Diary was removed for privacy: purge any previously-stored
     // journal entries so sensitive content never lingers in local storage.
     delete (merged as unknown as Record<string, unknown>).journal
-    // make sure starter themes are always owned
-    merged.unlockedThemes = Array.from(new Set([...STARTER_THEME_IDS, ...(parsed.unlockedThemes ?? [])]))
-    // if the saved active theme was retired (e.g. the old light themes), fall
-    // back to the default so the world never renders an unknown theme.
-    if (!THEMES.some((t) => t.id === merged.themeId)) merged.themeId = DEFAULT_THEME_ID
+    // backfill new per-task fields
+    merged.tasks = backfillTasks(merged.tasks ?? [])
+    merged.templates = merged.templates ?? []
+    merged.habits = (merged.habits ?? []).map((h) => ({ ...h, freezeDays: h.freezeDays ?? [] }))
+    merged.projects = (merged.projects ?? []).map((p) => ({ ...p, goalId: p.goalId ?? null }))
+    merged.goals = (merged.goals ?? []).map((g) => ({ ...g, projectId: g.projectId ?? null }))
     return merged
   } catch {
     return emptyData()
@@ -127,10 +156,22 @@ interface MagnetState {
   addSubtask: (taskId: string, title: string) => void
   toggleSubtask: (taskId: string, subId: string) => void
   removeSubtask: (taskId: string, subId: string) => void
+  // drag-and-drop: reorder the open tasks to match `orderedIds` (top-first)
+  reorderTasks: (orderedIds: string[]) => void
+  // dependencies: block `taskId` until `blockerId` is done (or unblock)
+  toggleBlockedBy: (taskId: string, blockerId: string) => void
+
+  // templates
+  addTemplate: (partial: Partial<TaskTemplate> & { title: string }) => void
+  deleteTemplate: (id: string) => void
+  createFromTemplate: (id: string) => void
 
   // projects
   addProject: (title: string, color: string, icon: string) => void
   deleteProject: (id: string) => void
+  // link a project to a goal (and clear any previous link on either side)
+  linkProjectGoal: (projectId: string, goalId: string) => void
+  unlinkProjectGoal: (projectId: string) => void
 
   // goals
   addGoal: (partial: Partial<Goal> & { title: string }) => void
@@ -143,6 +184,7 @@ interface MagnetState {
   addHabit: (title: string, icon: string, color: string) => void
   deleteHabit: (id: string) => void
   toggleHabitToday: (id: string) => void
+  toggleHabitFreeze: (id: string, date?: string) => void
 
   // ideas / vision / brain dump
   addIdea: (text: string) => void
@@ -167,10 +209,9 @@ interface MagnetState {
   addSubject: (name: string) => void
 
   // personalization
-  setTheme: (id: string) => void
-  setAccent: (hex: string | null) => void
-  setParticleDensity: (v: number) => void
   setFont: (font: string) => void
+  // replace the whole world (used by JSON backup restore)
+  importData: (next: MagnetData) => void
 }
 
 export const useMagnet = create<MagnetState>((set, get) => {
@@ -182,6 +223,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
     } catch {
       /* storage full / blocked — ignore */
     }
+    // Mirror to InsForge (debounced, best-effort) for cross-device sync.
+    pushMagnet(userId, data)
   }
 
   // Apply a data patch, persist, and return for chaining.
@@ -206,7 +249,6 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
     const xp = d.xp + result.leaves
     const premiumXp = d.premiumXp + result.goldenLeaves
-    let unlockedThemes = d.unlockedThemes
     let achievements = d.achievements
     let toastQueued: { title: string; body: string; icon: string } | null = null
 
@@ -233,34 +275,16 @@ export const useMagnet = create<MagnetState>((set, get) => {
       }
     }
 
-    // Check level-based theme unlocks
+    // Level-up celebration
     const totalXp = xp + premiumXp
     const level = Math.floor(Math.sqrt(totalXp / 100)) + 1
     const prevLevel = Math.floor(Math.sqrt((d.xp + d.premiumXp) / 100)) + 1
 
-    if (level > prevLevel) {
-      const newly = THEMES.filter(
-        (t) => t.unlockLevel > 0 && t.unlockLevel <= level && !unlockedThemes.includes(t.id),
-      )
-      if (newly.length > 0) {
-        unlockedThemes = [...unlockedThemes, ...newly.map((t) => t.id)]
-        const ach: Achievement[] = newly.map((t) => ({
-          id: uid('ach'),
-          title: `Unlocked: ${t.name}`,
-          detail: `Reached level ${level} and opened the ${t.name} theme.`,
-          icon: 'palette',
-          at: nowIso(),
-        }))
-        achievements = [...ach, ...achievements]
-      }
-      if (!toastQueued) {
-        toastQueued = {
-          title: `Level ${level}!`,
-          body: newly.length
-            ? `You unlocked ${newly.length} new theme${newly.length > 1 ? 's' : ''}.`
-            : 'Your universe keeps growing.',
-          icon: 'star',
-        }
+    if (level > prevLevel && !toastQueued) {
+      toastQueued = {
+        title: `Level ${level}!`,
+        body: 'Your universe keeps growing.',
+        icon: 'star',
       }
     }
 
@@ -270,7 +294,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
     const userId = get().userId
     if (userId) syncXpToDb(userId, xp, premiumXp)
 
-    return { ...d, xp, premiumXp, unlockedThemes, achievements }
+    return { ...d, xp, premiumXp, achievements }
   }
 
   return {
@@ -293,6 +317,23 @@ export const useMagnet = create<MagnetState>((set, get) => {
       } catch {
         /* ignore */
       }
+      // Fresh device? Pull the cloud copy (if any) so the world follows the user.
+      // An existing local world is never clobbered — last-writer-per-device wins.
+      const isEmpty =
+        data.tasks.length === 0 &&
+        data.projects.length === 0 &&
+        data.goals.length === 0 &&
+        data.habits.length === 0 &&
+        data.templates.length === 0
+      if (isEmpty) {
+        void pullMagnet(userId).then((remote) => {
+          if (remote && get().userId === userId) {
+            const merged = { ...backfillPomodoro(remote), lastVisit: nowIso() }
+            persist(merged)
+            set({ data: merged })
+          }
+        })
+      }
     },
 
     clearToast: () => set({ toast: null }),
@@ -311,10 +352,13 @@ export const useMagnet = create<MagnetState>((set, get) => {
           due: partial.due ?? null,
           estimateMin: partial.estimateMin ?? 0,
           recurring: (partial.recurring as Recurrence) ?? 'none',
-          subtasks: partial.subtasks ?? [],
+          subtasks: (partial.subtasks ?? []).map((s) => ({ ...s, done: false })),
           icon: partial.icon ?? 'check',
           color: partial.color ?? '',
           projectId: partial.projectId ?? null,
+          order: maxOrder(d.tasks) + 1,
+          blockedBy: partial.blockedBy ?? [],
+          templateId: partial.templateId ?? null,
           createdAt: nowIso(),
           completedAt: null,
         }
@@ -328,17 +372,53 @@ export const useMagnet = create<MagnetState>((set, get) => {
     updateTask: (id, patch) =>
       commit((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
 
-    toggleTask: (id) =>
+    toggleTask: (id) => {
+      const d0 = get().data
+      const task = d0.tasks.find((t) => t.id === id)
+      if (!task) return
+      // Dependency guard: an open task blocked by an unfinished task can't be
+      // completed. Surface a toast instead of silently failing.
+      if (!task.done && task.blockedBy.length > 0) {
+        const open = task.blockedBy
+          .map((b) => d0.tasks.find((t) => t.id === b))
+          .filter((b): b is Task => !!b && !b.done)
+        if (open.length > 0) {
+          set({
+            toast: {
+              title: 'Task is blocked',
+              body: `Finish "${open[0].title}"${open.length > 1 ? ` +${open.length - 1} more` : ''} first.`,
+              icon: 'lock',
+            },
+          })
+          return
+        }
+      }
       commit((d) => {
-        const task = d.tasks.find((t) => t.id === id)
-        if (!task) return d
         const nowDone = !task.done
-        const tasks = d.tasks.map((t) =>
+        let tasks = d.tasks.map((t) =>
           t.id === id ? { ...t, done: nowDone, completedAt: nowDone ? nowIso() : null } : t,
         )
+        // Recurring tasks: when completed, spawn the next occurrence automatically
+        // (with a fresh due date and reset subtasks) so the loop keeps running.
+        if (nowDone && task.recurring !== 'none') {
+          const nextDue = advanceDue(task.due, task.recurring)
+          const next: Task = {
+            ...task,
+            id: uid('task'),
+            done: false,
+            due: nextDue,
+            order: maxOrder(tasks) + 1,
+            blockedBy: [],
+            subtasks: task.subtasks.map((s) => ({ ...s, done: false })),
+            createdAt: nowIso(),
+            completedAt: null,
+          }
+          tasks = [next, ...tasks]
+        }
         // Tasks give no leaves — only study time earns currency.
         return { ...d, tasks }
-      }),
+      })
+    },
 
     deleteTask: (id) => commit((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) })),
 
@@ -373,18 +453,123 @@ export const useMagnet = create<MagnetState>((set, get) => {
         ),
       })),
 
+    // ---------- drag-and-drop reorder ----------
+    // `orderedIds` is the desired top-to-bottom order of the OPEN tasks being
+    // rearranged. We assign descending order values so the first id sorts to the
+    // top under the DESC sort; done tasks keep their existing order.
+    reorderTasks: (orderedIds) =>
+      commit((d) => {
+        const rank = new Map<string, number>()
+        orderedIds.forEach((id, i) => rank.set(id, orderedIds.length - i))
+        const tasks = d.tasks.map((t) => (rank.has(t.id) ? { ...t, order: rank.get(t.id)! } : t))
+        return { ...d, tasks }
+      }),
+
+    // ---------- dependencies ----------
+    toggleBlockedBy: (taskId, blockerId) =>
+      commit((d) => ({
+        ...d,
+        tasks: d.tasks.map((t) => {
+          if (t.id !== taskId) return t
+          const has = t.blockedBy.includes(blockerId)
+          return {
+            ...t,
+            blockedBy: has ? t.blockedBy.filter((b) => b !== blockerId) : [...t.blockedBy, blockerId],
+          }
+        }),
+      })),
+
+    // ---------- templates ----------
+    addTemplate: (partial) =>
+      commit((d) => ({
+        ...d,
+        templates: [
+          {
+            id: uid('tpl'),
+            title: partial.title,
+            notes: partial.notes ?? '',
+            priority: (partial.priority as Priority) ?? 'medium',
+            subject: partial.subject ?? '',
+            area: (partial.area as LifeArea) ?? 'academic',
+            estimateMin: partial.estimateMin ?? 0,
+            recurring: (partial.recurring as Recurrence) ?? 'none',
+            icon: partial.icon ?? 'check',
+            color: partial.color ?? '',
+            addToTasks: partial.addToTasks ?? true,
+            createdAt: nowIso(),
+          },
+          ...d.templates,
+        ],
+      })),
+
+    deleteTemplate: (id) =>
+      commit((d) => ({ ...d, templates: d.templates.filter((t) => t.id !== id) })),
+
+    createFromTemplate: (id) =>
+      commit((d) => {
+        const tpl = d.templates.find((t) => t.id === id)
+        if (!tpl) return d
+        const task: Task = {
+          id: uid('task'),
+          title: tpl.title,
+          notes: tpl.notes,
+          priority: tpl.priority,
+          subject: tpl.subject,
+          area: tpl.area,
+          done: false,
+          due: null,
+          estimateMin: tpl.estimateMin,
+          recurring: tpl.recurring,
+          subtasks: [],
+          icon: tpl.icon,
+          color: tpl.color,
+          projectId: null,
+          order: maxOrder(d.tasks) + 1,
+          blockedBy: [],
+          templateId: tpl.id,
+          createdAt: nowIso(),
+          completedAt: null,
+        }
+        let next = { ...d, tasks: [task, ...d.tasks] }
+        if (tpl.subject && !next.subjects.includes(tpl.subject)) {
+          next = { ...next, subjects: [...next.subjects, tpl.subject] }
+        }
+        return next
+      }),
+
     // ---------- projects ----------
     addProject: (title, color, icon) =>
       commit((d) => ({
         ...d,
-        projects: [...d.projects, { id: uid('proj'), title, color, icon, createdAt: nowIso() }],
+        projects: [...d.projects, { id: uid('proj'), title, color, icon, goalId: null, createdAt: nowIso() }],
       })),
 
     deleteProject: (id) =>
       commit((d) => ({
         ...d,
         projects: d.projects.filter((p) => p.id !== id),
+        goals: d.goals.map((g) => (g.projectId === id ? { ...g, projectId: null } : g)),
         tasks: d.tasks.map((t) => (t.projectId === id ? { ...t, projectId: null } : t)),
+      })),
+
+    // ---------- project <-> goal linking ----------
+    linkProjectGoal: (projectId, goalId) =>
+      commit((d) => ({
+        ...d,
+        // clear any previous link on this goal and on this project
+        goals: d.goals.map((g) =>
+          g.id === goalId ? { ...g, projectId } : g.projectId === projectId ? { ...g, projectId: null } : g,
+        ),
+        projects: d.projects.map((p) =>
+          p.id === projectId ? { ...p, goalId } : p.goalId === goalId ? { ...p, goalId: null } : p,
+        ),
+      })),
+
+    unlinkProjectGoal: (projectId) =>
+      commit((d) => ({
+        ...d,
+        goals: d.goals.map((g) => (g.projectId === projectId ? { ...g, projectId: null } : g)),
+        projects: d.projects.map((p) => (p.id === projectId ? { ...p, goalId: null } : p)),
       })),
 
     // ---------- goals ----------
@@ -399,6 +584,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
           target: partial.target ?? null,
           color: partial.color ?? '#9a6cff',
           milestones: partial.milestones ?? [],
+          projectId: partial.projectId ?? null,
           createdAt: nowIso(),
         }
         return { ...d, goals: [goal, ...d.goals] }
@@ -437,7 +623,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
     addHabit: (title, icon, color) =>
       commit((d) => ({
         ...d,
-        habits: [...d.habits, { id: uid('hab'), title, icon, color, history: [], createdAt: nowIso() }],
+        habits: [...d.habits, { id: uid('hab'), title, icon, color, history: [], freezeDays: [], createdAt: nowIso() }],
       })),
 
     deleteHabit: (id) => commit((d) => ({ ...d, habits: d.habits.filter((h) => h.id !== id) })),
@@ -451,6 +637,20 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const history = has ? habit.history.filter((x) => x !== key) : [...habit.history, key]
         const habits = d.habits.map((h) => (h.id === id ? { ...h, history } : h))
         // Habits give no leaves — only study time earns currency.
+        return { ...d, habits }
+      }),
+
+    // Rest day: mark/unmark a date as an intentional skip so the streak survives
+    // travel / scheduled off days. Toggling today also clears any completed entry.
+    toggleHabitFreeze: (id, date) =>
+      commit((d) => {
+        const key = date ?? todayKey()
+        const habit = d.habits.find((h) => h.id === id)
+        if (!habit) return d
+        const has = habit.freezeDays.includes(key)
+        const freezeDays = has ? habit.freezeDays.filter((x) => x !== key) : [...habit.freezeDays, key]
+        const history = has && habit.history.includes(key) ? habit.history : habit.history.filter((x) => x !== key)
+        const habits = d.habits.map((h) => (h.id === id ? { ...h, freezeDays, history } : h))
         return { ...d, habits }
       }),
 
@@ -513,9 +713,25 @@ export const useMagnet = create<MagnetState>((set, get) => {
       ),
 
     // ---------- personalization ----------
-    setTheme: (id) => commit((d) => (d.unlockedThemes.includes(id) ? { ...d, themeId: id } : d)),
-    setAccent: (hex) => commit((d) => ({ ...d, accent: hex })),
-    setParticleDensity: (v) => commit((d) => ({ ...d, particleDensity: Math.max(0, Math.min(1, v)) })),
+    importData: (next) =>
+      commit((d) => {
+        const merged: MagnetData = { ...emptyData(), ...next }
+        return {
+          ...d,
+          tasks: backfillTasks(merged.tasks),
+          templates: merged.templates ?? [],
+          projects: (merged.projects ?? []).map((p) => ({ ...p, goalId: p.goalId ?? null })),
+          goals: (merged.goals ?? []).map((g) => ({ ...g, projectId: g.projectId ?? null })),
+          habits: (merged.habits ?? []).map((h) => ({ ...h, freezeDays: h.freezeDays ?? [] })),
+          ideas: merged.ideas ?? [],
+          vision: merged.vision ?? [],
+          focus: merged.focus ?? [],
+          achievements: merged.achievements ?? [],
+          subjects: merged.subjects ?? d.subjects,
+          xp: merged.xp ?? 0,
+          premiumXp: merged.premiumXp ?? 0,
+        }
+      }),
     setFont: (font) => commit((d) => ({ ...d, font })),
   }
 })

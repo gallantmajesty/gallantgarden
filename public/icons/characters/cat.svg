@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <linearGradient id="catFur" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbe9dd"/>
+      <stop offset="100%" stop-color="#f2cdb6"/>
+    </linearGradient>
+    <linearGradient id="catDress" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbc2d6"/>
+      <stop offset="100%" stop-color="#f48fb0"/>
+    </linearGradient>
+    <linearGradient id="catPink" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f9a8c4"/>
+      <stop offset="100%" stop-color="#e2739e"/>
+    </linearGradient>
+    <linearGradient id="catGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a6e88f"/>
+      <stop offset="100%" stop-color="#5fc24a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- EARS (triangular, splayed, pink-lined) -->
+  <polygon points="58,54 94,64 74,12" fill="url(#catFur)"/>
+  <polygon points="67,52 88,60 75,22" fill="url(#catPink)"/>
+  <polygon points="142,54 106,64 126,12" fill="url(#catFur)"/>
+  <polygon points="133,52 112,60 125,22" fill="url(#catPink)"/>
+
+  <!-- HEAD -->
+  <ellipse cx="100" cy="92" rx="46" ry="44" fill="url(#catFur)"/>
+  <!-- cheek puffs (muzzle) -->
+  <ellipse cx="84" cy="108" rx="16" ry="13" fill="url(#catFur)"/>
+  <ellipse cx="116" cy="108" rx="16" ry="13" fill="url(#catFur)"/>
+
+  <!-- BIG SPARKLY EYES with lashes -->
+  <g>
+    <ellipse cx="80" cy="88" rx="16" ry="19" fill="#ffffff"/>
+    <ellipse cx="80" cy="88" rx="12" ry="15" fill="url(#catGreen)"/>
+    <circle cx="80" cy="89" r="8" fill="#2f2422"/>
+    <circle cx="76" cy="82" r="5" fill="#ffffff"/>
+    <circle cx="83" cy="94" r="2.4" fill="#ffffff"/>
+    <!-- upper lash + outer lashes -->
+    <path d="M64 80 Q80 66 96 80" stroke="#2f2422" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <line x1="96" y1="80" x2="108" y2="72" stroke="#2f2422" stroke-width="2.4" stroke-linecap="round"/>
+    <line x1="95" y1="86" x2="106" y2="84" stroke="#2f2422" stroke-width="2.4" stroke-linecap="round"/>
+  </g>
+  <g>
+    <ellipse cx="120" cy="88" rx="16" ry="19" fill="#ffffff"/>
+    <ellipse cx="120" cy="88" rx="12" ry="15" fill="url(#catGreen)"/>
+    <circle cx="120" cy="89" r="8" fill="#2f2422"/>
+    <circle cx="116" cy="82" r="5" fill="#ffffff"/>
+    <circle cx="123" cy="94" r="2.4" fill="#ffffff"/>
+    <path d="M104 80 Q120 66 136 80" stroke="#2f2422" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <line x1="104" y1="80" x2="92" y2="72" stroke="#2f2422" stroke-width="2.4" stroke-linecap="round"/>
+    <line x1="105" y1="86" x2="94" y2="84" stroke="#2f2422" stroke-width="2.4" stroke-linecap="round"/>
+  </g>
+
+  <!-- PINK NOSE + ω SMILE -->
+  <path d="M93 104 Q100 114 107 104 Q100 110 93 104 Z" fill="url(#catPink)"/>
+  <path d="M94 112 Q100 120 100 112" stroke="#2f2422" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <path d="M100 112 Q106 120 112 112" stroke="#2f2422" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+
+  <!-- ROSY CHEEKS -->
+  <ellipse cx="62" cy="102" rx="9" ry="6" fill="#f78fb0" opacity="0.7"/>
+  <ellipse cx="138" cy="102" rx="9" ry="6" fill="#f78fb0" opacity="0.7"/>
+
+  <!-- WHISKERS -->
+  <g stroke="#cfc3bb" stroke-width="1.6" stroke-linecap="round">
+    <line x1="56" y1="106" x2="16" y2="100"/>
+    <line x1="56" y1="112" x2="16" y2="114"/>
+    <line x1="144" y1="106" x2="184" y2="100"/>
+    <line x1="144" y1="112" x2="184" y2="114"/>
+  </g>
+
+  <!-- NECK -->
+  <rect x="90" y="132" width="20" height="12" rx="5" fill="url(#catFur)"/>
+
+  <!-- PINK BOW AT THE NECK -->
+  <polygon points="82,140 100,134 100,154" fill="url(#catPink)"/>
+  <polygon points="118,140 100,134 100,154" fill="url(#catPink)"/>
+  <circle cx="100" cy="144" r="7" fill="#f9a8c4"/>
+  <polygon points="94,152 100,148 97,172" fill="url(#catPink)"/>
+  <polygon points="106,152 100,148 103,172" fill="url(#catPink)"/>
+
+  <!-- PINK DRESS BODICE + PUFF SLEEVES -->
+  <rect x="52" y="146" width="96" height="40" rx="14" fill="url(#catDress)"/>
+  <circle cx="60" cy="158" r="14" fill="url(#catDress)"/>
+  <circle cx="140" cy="158" r="14" fill="url(#catDress)"/>
+  <!-- white ruffled neckline -->
+  <ellipse cx="100" cy="150" rx="30" ry="9" fill="#fff5fa"/>
+  <!-- chest bow -->
+  <circle cx="100" cy="172" r="6" fill="url(#catPink)"/>
+
+  <!-- FLARING SKIRT -->
+  <path d="M62 184 L138 184 L156 232 L44 232 Z" fill="url(#catDress)"/>
+  <!-- frilly white hem -->
+  <path d="M44 232 Q62 222 80 232 Q100 222 120 232 Q138 222 156 232 L156 240 L44 240 Z" fill="#fff5fa"/>
+
+  <!-- SHOULDERS/ARMS (fur) -->
+  <rect x="34" y="150" width="22" height="44" rx="11" fill="url(#catFur)"/>
+  <rect x="144" y="150" width="22" height="44" rx="11" fill="url(#catFur)"/>
+  <ellipse cx="45" cy="198" rx="9" ry="7" fill="#f2cdb6"/>
+  <ellipse cx="155" cy="198" rx="9" ry="7" fill="#f2cdb6"/>
+
+  <!-- LEGS (fur) peeking under the skirt -->
+  <rect x="66" y="232" width="26" height="22" rx="8" fill="url(#catFur)"/>
+  <rect x="108" y="232" width="26" height="22" rx="8" fill="url(#catFur)"/>
+  <ellipse cx="79" cy="254" rx="16" ry="6" fill="#f2cdb6"/>
+  <ellipse cx="121" cy="254" rx="16" ry="6" fill="#f2cdb6"/>
+
+  <!-- FLUFFY TAIL with pink tip (behind, lower right) -->
+  <path d="M150 210 Q184 200 176 168 Q172 150 158 156" stroke="url(#catFur)" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <circle cx="158" cy="156" r="9" fill="#f48fb0"/>
+</svg>

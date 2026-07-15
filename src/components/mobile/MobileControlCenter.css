@@ -1,0 +1,135 @@
+/* Global mobile/tablet Control Center — right-edge handle + slide-in drawer.
+   Desktop is unaffected (the component returns null there). */
+
+.mcc-handle {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 9500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 7px;
+  border: none;
+  border-radius: 14px 0 0 14px;
+  color: #f3e7cf;
+  background: linear-gradient(180deg, rgba(58, 42, 23, 0.92), rgba(40, 30, 18, 0.92));
+  border: 1px solid rgba(233, 211, 160, 0.25);
+  border-right: none;
+  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.mcc-handle-label {
+  writing-mode: vertical-rl;
+  font-family: var(--display, 'Baloo 2', sans-serif);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.mcc-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(8, 10, 6, 0.5);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mcc-drawer {
+  position: relative;
+  width: min(420px, 92vw);
+  height: 100%;
+  background: linear-gradient(180deg, #1c140c, #140e08);
+  color: #f3e7cf;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.45);
+  border-left: 3px solid rgba(202, 168, 74, 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: mcc-slide 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+@keyframes mcc-slide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mcc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 8px;
+}
+
+.mcc-head h2 {
+  font-family: var(--display, 'Baloo 2', sans-serif);
+  font-size: 22px;
+  margin: 0;
+  color: #ffe6b0;
+}
+
+.mcc-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(233, 211, 160, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e9d3a0;
+  font-size: 16px;
+}
+
+.mcc-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px 14px 10px;
+  border-bottom: 1px solid rgba(202, 168, 74, 0.25);
+}
+
+.mcc-tab {
+  flex: 1;
+  padding: 9px 6px;
+  border-radius: 11px;
+  font-family: var(--display, 'Baloo 2', sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  color: rgba(236, 220, 192, 0.6);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.mcc-tab.on {
+  color: #23180c;
+  background: linear-gradient(180deg, var(--accent, #ffce54), var(--accent-dark, #e6a817));
+  border-color: var(--accent-dark, #e6a817);
+}
+
+.mcc-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 18px calc(24px + env(safe-area-inset-bottom, 0));
+  -webkit-overflow-scrolling: touch;
+}
+
+.mcc-look {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* The reused settings primitives already have their own styling; just give the
+   sections a little breathing room inside the drawer. */
+.mcc-drawer .settings-section,
+.mcc-drawer .wc-section {
+  margin-bottom: 4px;
+}

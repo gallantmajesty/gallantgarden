@@ -1,0 +1,78 @@
+/* Realm fullscreen gate — mobile/tablet only. Mirrors the app's dark/gold
+   aesthetic. Desktop never sees this. */
+
+.rfs-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #07100b;
+  text-align: center;
+}
+
+.rfs-card {
+  max-width: 420px;
+  padding: 34px 28px 28px;
+  border-radius: 26px;
+  background: rgba(16, 22, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 22px 40px rgba(0, 0, 0, 0.6);
+  animation: pop-in 0.45s ease both;
+}
+
+.rfs-logo {
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(107, 191, 79, 0.4));
+  margin-bottom: 16px;
+}
+
+.rfs-card h1 {
+  font-family: var(--display, 'Baloo 2', sans-serif);
+  font-size: 24px;
+  color: #fff;
+  margin: 0 0 10px;
+}
+
+.rfs-card p {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+  line-height: 1.55;
+  font-family: var(--sans);
+  margin: 0 0 22px;
+}
+
+.rfs-enter {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  font-family: var(--display, system-ui), sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--grass, #6bbf4f), var(--grass-dark, #4e9a36));
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 0 var(--grass-dark, #3f7f2c), 0 10px 18px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.rfs-enter:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 var(--grass-dark, #3f7f2c), 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.rfs-skip {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--sans);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

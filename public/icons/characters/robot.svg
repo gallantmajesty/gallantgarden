@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a3d44"/>
+      <stop offset="100%" stop-color="#1c1e22"/>
+    </linearGradient>
+    <linearGradient id="blackGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#222228"/>
+      <stop offset="100%" stop-color="#0a0a0d"/>
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#5cb8ff"/>
+      <stop offset="100%" stop-color="#1e6bff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ANTENNA -->
+  <rect x="97" y="20" width="6" height="18" rx="3" fill="#3a3d44"/>
+  <circle cx="100" cy="16" r="7" fill="url(#blueGrad)"/>
+
+  <!-- HELMET / HEAD (black) -->
+  <rect x="58" y="40" width="84" height="78" rx="22" fill="url(#blackGrad)"/>
+  <!-- METAL SIDE PANELS -->
+  <rect x="62" y="56" width="10" height="48" rx="5" fill="url(#metalGrad)"/>
+  <rect x="128" y="56" width="10" height="48" rx="5" fill="url(#metalGrad)"/>
+
+  <!-- GLOWING BLUE VISOR -->
+  <rect x="70" y="74" width="60" height="20" rx="10" fill="url(#blueGrad)"/>
+  <!-- EYE DOTS -->
+  <circle cx="86" cy="84" r="5" fill="#dff3ff"/>
+  <circle cx="114" cy="84" r="5" fill="#dff3ff"/>
+
+  <!-- NECK COLLAR -->
+  <rect x="86" y="118" width="28" height="14" rx="5" fill="url(#metalGrad)"/>
+
+  <!-- TORSO (black outfit) -->
+  <rect x="50" y="128" width="100" height="74" rx="14" fill="url(#blackGrad)"/>
+  <!-- BLUE SCI-FI LINES -->
+  <rect x="96" y="134" width="8" height="40" rx="4" fill="url(#blueGrad)"/>
+  <path d="M58 150 L96 162" stroke="url(#blueGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M142 150 L104 162" stroke="url(#blueGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- GLOWING CHEST CORE -->
+  <circle cx="100" cy="180" r="13" fill="url(#blueGrad)"/>
+  <circle cx="100" cy="180" r="6" fill="#dff3ff"/>
+
+  <!-- SHOULDERS -->
+  <ellipse cx="58" cy="138" rx="16" ry="11" fill="url(#metalGrad)"/>
+  <ellipse cx="142" cy="138" rx="16" ry="11" fill="url(#metalGrad)"/>
+
+  <!-- ARMS (black) -->
+  <rect x="24" y="132" width="28" height="60" rx="14" fill="url(#blackGrad)"/>
+  <rect x="148" y="132" width="28" height="60" rx="14" fill="url(#blackGrad)"/>
+  <!-- ARM BLUE LINE -->
+  <rect x="36" y="146" width="6" height="34" rx="3" fill="url(#blueGrad)"/>
+  <rect x="158" y="146" width="6" height="34" rx="3" fill="url(#blueGrad)"/>
+  <!-- BLOCK HANDS -->
+  <rect x="30" y="190" width="18" height="14" rx="4" fill="url(#metalGrad)"/>
+  <rect x="152" y="190" width="18" height="14" rx="4" fill="url(#metalGrad)"/>
+
+  <!-- LEGS (black) -->
+  <rect x="54" y="200" width="38" height="44" rx="10" fill="url(#blackGrad)"/>
+  <rect x="108" y="200" width="38" height="44" rx="10" fill="url(#blackGrad)"/>
+  <!-- CALF BLUE LINE -->
+  <rect x="71" y="208" width="6" height="30" rx="3" fill="url(#blueGrad)"/>
+  <rect x="123" y="208" width="6" height="30" rx="3" fill="url(#blueGrad)"/>
+
+  <!-- BOOTS (metal) with glowing sole -->
+  <rect x="48" y="242" width="46" height="16" rx="6" fill="url(#metalGrad)"/>
+  <rect x="106" y="242" width="46" height="16" rx="6" fill="url(#metalGrad)"/>
+  <rect x="50" y="252" width="42" height="6" rx="3" fill="url(#blueGrad)"/>
+  <rect x="108" y="252" width="42" height="6" rx="3" fill="url(#blueGrad)"/>
+</svg>

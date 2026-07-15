@@ -183,9 +183,7 @@ export const MAX_VERSIONS = 30
 
 /** New boards start with a single neutral "red yarn" link as a baseline so the
  *  canvas can draw immediately; every other thread is created by the user. */
-export const BUILTIN_CONNECTION_TYPES: ConnectionType[] = [
-  { id: 'link', name: 'Link', color: '#c0392b', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, icon: '', builtin: true },
-]
+export const BUILTIN_CONNECTION_TYPES: ConnectionType[] = []
 
 export const FONT_OPTIONS: { label: string; value: string }[] = [
   { label: 'Inter', value: "'Inter', system-ui, sans-serif" },
@@ -200,22 +198,22 @@ export const FONT_OPTIONS: { label: string; value: string }[] = [
  *  world is active (Forest greens, Ocean blues, …) instead of a fixed palette. */
 export function defaultNoteStyle(): NoteStyle {
   return {
-    shape: 'sticky',
+    shape: 'rounded',
     bgKind: 'solid',
-    bgColor: '#262019', // warm dark paper, light ink — reads clean on the wall
-    gradient: 'linear-gradient(135deg, #2c261d, #1e1a14)',
-    borderColor: 'rgba(255,245,225,0.14)',
-    borderWidth: 1,
-    radius: 6,
+    bgColor: '#23272F',
+    gradient: 'linear-gradient(135deg, #23272F, #2C313A)',
+    borderColor: '#353B45',
+    borderWidth: 1.5,
+    radius: 20,
     shadow: 0.55,
     glow: 0,
     opacity: 1,
     font: FONT_OPTIONS[0].value,
     fontSize: 16,
     fontWeight: 500,
-    textColor: '#f2ece0',
+    textColor: '#E8EBF0',
     align: 'left',
-    lineHeight: 1.45,
+    lineHeight: 1.5,
     underline: false,
   }
 }
@@ -231,36 +229,27 @@ export interface NotePreset {
 }
 
 export const NOTE_PRESETS: NotePreset[] = [
-  {
-    id: 'evidence',
-    name: 'Evidence',
-    swatch: '#262019',
-    patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#262019', borderColor: 'rgba(255,245,225,0.14)', borderWidth: 1, radius: 6, shadow: 0.55, glow: 0, textColor: '#f2ece0' },
-  },
-  {
-    id: 'redthread',
-    name: 'Suspect',
-    swatch: 'linear-gradient(135deg,#fff1ef,#ffd9d2)',
-    patch: { shape: 'sticky', bgKind: 'solid', bgColor: '#fff1ef', borderColor: '#c0392b', borderWidth: 2, radius: 6, shadow: 0.5, glow: 0.2, textColor: '#3a1714' },
-  },
-  {
-    id: 'theme',
-    name: 'Theme',
-    swatch: 'rgba(var(--mg-accent-rgb,91,124,250),0.4)',
-    patch: { shape: 'rounded', bgKind: 'theme', borderColor: 'var(--mg-border, rgba(20,30,60,0.14))', borderWidth: 1, radius: 14, shadow: 0.4, glow: 0.2, textColor: 'var(--mg-text, #1c2333)' },
-  },
+  { id: 'idea', name: 'Idea', swatch: '#3D3520', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#3D3520', borderColor: '#4A4030', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'question', name: 'Question', swatch: '#3D2530', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#3D2530', borderColor: '#4A3040', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'important', name: 'Important', swatch: '#3D3020', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#3D3020', borderColor: '#4A3D30', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'api', name: 'API', swatch: '#1E3530', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#1E3530', borderColor: '#2A4540', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'backend', name: 'Backend', swatch: '#2A2540', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#2A2540', borderColor: '#353050', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'frontend', name: 'Frontend', swatch: '#1E2A3D', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#1E2A3D', borderColor: '#2A3550', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'database', name: 'Database', swatch: '#3D3020', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#3D3020', borderColor: '#4A3D30', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'success', name: 'Success', swatch: '#1E3020', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#1E3020', borderColor: '#2A4030', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+  { id: 'architecture', name: 'Architecture', swatch: '#2A2540', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#2A2540', borderColor: '#353050', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
 ]
 
 // ── Yarn palette ──────────────────────────────────────────────────────────────
 // Colours styled after real investigation-board string.
 export const YARN_COLORS: { name: string; hex: string }[] = [
-  { name: 'Evidence Red', hex: '#B22222' },
-  { name: 'Police Blue', hex: '#1F5AA6' },
-  { name: 'Forest Green', hex: '#2E8B57' },
-  { name: 'Amber',       hex: '#D4A017' },
-  { name: 'Royal Purple',hex: '#6A3D9A' },
-  { name: 'Ivory',       hex: '#F2F2F2' },
-  { name: 'Charcoal',    hex: '#2B2B2B' },
+  { name: 'Espresso', hex: '#281C12' },
+  { name: 'Lavender', hex: '#C9B6FF' },
+  { name: 'Sky',     hex: '#A8E7FF' },
+  { name: 'Mint',    hex: '#B8F4D7' },
+  { name: 'Peach',   hex: '#FFD3C8' },
+  { name: 'Butter',  hex: '#FFF1A8' },
+  { name: 'Rose',    hex: '#FFB4C8' },
 ]
 
 // String visual styles you can apply per thread-type (and per-edge via EdgeInspector).
@@ -346,7 +335,8 @@ export function resolveEdgeStyle(
   edge: BlueprintEdge,
   type: ConnectionType | undefined,
 ): ResolvedEdgeStyle {
-  const t = type ?? BUILTIN_CONNECTION_TYPES[0]
+  const fallback: ConnectionType = { id: 'fallback', name: 'Link', color: '#281C12', thickness: 2.5, lineStyle: 'solid', curve: 'curved', glow: 0.3, builtin: false }
+  const t = type ?? fallback
   return {
     color: edge.yarnColor ?? type?.yarnColor ?? edge.color ?? t.color,
     thickness: edge.thickness ?? t.thickness,

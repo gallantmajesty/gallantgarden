@@ -6,6 +6,7 @@ import './Landing.css'
 
 const Antigravity = lazy(() => import('./Antigravity'))
 const ScrollVelocity = lazy(() => import('./ScrollVelocity'))
+const Snowfall = lazy(() => import('../../components/Snowfall'))
 
 /* ═══ Scroll reveal hook ═══ */
 function useScrollReveal() {
@@ -43,6 +44,31 @@ function useScrollSpy() {
     return () => observer.disconnect()
   }, [])
   return activeSection
+}
+
+/* ═══ Scroll fade hook — returns 0..1 opacity based on scroll past hero ═══ */
+function useScrollFade() {
+  const [opacity, setOpacity] = useState(1)
+  useEffect(() => {
+    function onScroll() {
+      const hero = document.getElementById('hero')
+      if (!hero) return
+      const rect = hero.getBoundingClientRect()
+      const fadeStart = 0
+      const fadeEnd = -rect.height * 0.6
+      if (rect.bottom <= fadeStart) {
+        setOpacity(0)
+      } else if (rect.bottom <= -fadeEnd) {
+        setOpacity(Math.max(0, rect.bottom / (-fadeEnd)))
+      } else {
+        setOpacity(1)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  return opacity
 }
 
 /* ═══ Performance utilities ═══ */
@@ -1170,6 +1196,7 @@ export function Landing() {
   const [activePin, setActivePin] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const activeSection = useScrollSpy()
+  const snowfallOpacity = useScrollFade()
 
   const toggleFaq = useCallback((index: number) => {
     setFaqOpen(prev => prev === index ? null : index)
@@ -1292,6 +1319,21 @@ export function Landing() {
 
       {/* ═══ SCENE 1 — HERO ═══ */}
       <section className="fl-scene fl-scene--hero" id="hero">
+        <Suspense fallback={null}>
+          <Snowfall
+            count={120}
+            speedMin={0.4}
+            speedMax={1.8}
+            sizeMin={1}
+            sizeMax={3.5}
+            opacityMin={20}
+            opacityMax={70}
+            wind={-0.3}
+            windVariation={0.6}
+            color="#ffffff"
+            style={{ opacity: snowfallOpacity, transition: 'opacity 0.1s linear', zIndex: 2 }}
+          />
+        </Suspense>
         <div className="fl-world-fog" />
         <div className="fl-fg-branch fl-fg-branch--left" />
         <div className="fl-fg-branch fl-fg-branch--right" />
@@ -1970,7 +2012,6 @@ export function Landing() {
             <span className="fl-btn__inner">Enter Focus Lily <span className="fl-btn__arrow">&rarr;</span></span>
             <span className="fl-btn__shimmer" />
           </button>
-          <p className="fl-farewell__note">Free to use. No credit card required.</p>
         </div>
       </section>
 

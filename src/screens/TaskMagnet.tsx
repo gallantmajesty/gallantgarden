@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useMagnet } from '../store/magnet'
-import { getTheme } from '../lib/magnet/themes'
 import { levelProgress } from '../lib/magnet/types'
-import { ThemeBackdrop } from '../components/magnet/ThemeBackdrop'
 import { Icon } from '../components/magnet/Icon'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { Dashboard } from '../components/magnet/views/Dashboard'
@@ -15,17 +13,34 @@ import { AnalyticsView } from '../components/magnet/views/AnalyticsView'
 import { GoalsView } from '../components/magnet/views/GoalsView'
 import { HabitsView } from '../components/magnet/views/HabitsView'
 import { SanctuaryView } from '../components/magnet/views/SanctuaryView'
-import { ThemesView } from '../components/magnet/views/ThemesView'
+import { SheetView } from '../components/magnet/views/SheetView'
+import { CalendarView } from '../components/magnet/views/CalendarView'
+
 import './TaskMagnet.css'
+
+// Single, fixed professional palette: coffee brown surfaces, yellow primary
+// accent and purple secondary accent. No per-user theming.
+const MG_PALETTE = {
+  bg: '#1c1611',
+  panel: '#271f17',
+  panelSoft: '#322619',
+  border: 'rgba(255, 240, 220, 0.10)',
+  text: '#f4ece1',
+  textSoft: '#b6a48d',
+  accent: '#d8a657',
+  accent2: '#9b6dff',
+  shadow: 'rgba(0, 0, 0, 0.35)',
+}
 
 export type MagnetView =
   | 'dashboard'
   | 'tasks'
+  | 'sheet'
   | 'analytics'
   | 'goals'
   | 'habits'
   | 'sanctuary'
-  | 'themes'
+  | 'calendar'
 
 export function TaskMagnet() {
   const { t } = useTranslation()
@@ -39,6 +54,8 @@ export function TaskMagnet() {
 
   const [view, setView] = useState<MagnetView>('dashboard')
   const [navOpen, setNavOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [prefillDue, setPrefillDue] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.id) hydrate(user.id)
@@ -50,11 +67,34 @@ export function TaskMagnet() {
     return () => clearTimeout(timer)
   }, [toast, clearToast])
 
-  const theme = getTheme(data.themeId)
-  const accent = data.accent ?? theme.vars.accent
+  // Keyboard shortcuts: 1-8 switch views, Esc closes overlays, ? shows help.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement
+      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || (el as HTMLElement).isContentEditable)
+      if (e.key === 'Escape') {
+        setNavOpen(false)
+        setHelpOpen(false)
+        return
+      }
+      if (typing) return
+      if (e.key === '?') {
+        setHelpOpen((h) => !h)
+        return
+      }
+      const n = Number(e.key)
+      if (n >= 1 && n <= NAV.length) {
+        setView(NAV[n - 1].key)
+        setNavOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
+  // Fixed professional palette — no per-user theming.
   const rootStyle = useMemo(() => {
-    const v = theme.vars
+    const v = MG_PALETTE
     return {
       ['--mg-bg' as string]: v.bg,
       ['--mg-panel']: v.panel,
@@ -62,12 +102,14 @@ export function TaskMagnet() {
       ['--mg-border']: v.border,
       ['--mg-text']: v.text,
       ['--mg-text-soft']: v.textSoft,
-      ['--mg-accent']: accent,
-      ['--mg-accent2']: data.accent ?? v.accent2,
+      ['--mg-accent']: v.accent,
+      ['--mg-accent2']: v.accent2,
       ['--mg-shadow']: v.shadow,
+      ['--accent' as string]: v.accent,
+      ['--accent2' as string]: v.accent2,
       fontFamily: data.font === 'Inter' ? 'var(--sans)' : `${data.font}, var(--sans)`,
     } as React.CSSProperties
-  }, [theme, accent, data.accent, data.font])
+  }, [data.font])
 
   const NAV: { key: MagnetView; label: string; icon: string; png?: PngIconName }[] = [
     { key: 'dashboard', label: t('taskMagnet.navDashboard'), icon: 'home' },
@@ -76,7 +118,8 @@ export function TaskMagnet() {
     { key: 'goals', label: t('taskMagnet.navGoals'), icon: 'target', png: 'goals' },
     { key: 'habits', label: t('taskMagnet.navHabits'), icon: 'fire', png: 'habits' },
     { key: 'sanctuary', label: t('taskMagnet.navSanctuary'), icon: 'vault', png: 'achievements' },
-    { key: 'themes', label: t('taskMagnet.navThemes'), icon: 'palette', png: 'settings' },
+    { key: 'calendar', label: t('taskMagnet.navCalendar'), icon: 'calendar' },
+    { key: 'sheet', label: t('taskMagnet.navSheet'), icon: 'grid' },
   ]
 
   const profileName = useProfile((s) => s.displayName)
@@ -89,16 +132,14 @@ export function TaskMagnet() {
 
   if (!ready) {
     return (
-      <div className="mg-root mg-loading" style={rootStyle}>
-        <ThemeBackdrop theme={theme} density={data.particleDensity} accent={data.accent} />
+      <div className="mg-root mg-loading dark" style={rootStyle}>
         <div className="mg-loading-card">{t('taskMagnet.openingWorld')}</div>
       </div>
     )
   }
 
   return (
-    <div className={`mg-root ${theme.dark ? 'dark' : 'light'}`} style={rootStyle}>
-      <ThemeBackdrop theme={theme} density={data.particleDensity} accent={data.accent} />
+    <div className="mg-root dark" style={rootStyle}>
 
       <aside className={`mg-sidebar ${navOpen ? 'open' : ''}`}>
         <button className="mg-back" onClick={() => navigate('/')}>
@@ -107,11 +148,11 @@ export function TaskMagnet() {
 
         <div className="mg-brand">
           <span className="mg-brand-orb">
-            <Icon name="spark" size={20} />
+            <img className="mg-brand-logo-img" src="/icons/focus-lily-logo.png" alt="FocusLily" />
           </span>
           <div>
             <strong>{t('taskMagnet.brand')}</strong>
-            <small>{theme.name}</small>
+            <small>Task Magnet</small>
           </div>
         </div>
 
@@ -163,12 +204,22 @@ export function TaskMagnet() {
 
         <div className="mg-content">
           {view === 'dashboard' && <Dashboard name={displayName} onNavigate={setView} />}
-          {view === 'tasks' && <TasksView />}
+          {view === 'tasks' && (
+            <TasksView prefillDue={prefillDue} onPrefillDue={() => setPrefillDue(null)} />
+          )}
+          {view === 'sheet' && <SheetView />}
           {view === 'analytics' && <AnalyticsView />}
           {view === 'goals' && <GoalsView />}
           {view === 'habits' && <HabitsView />}
           {view === 'sanctuary' && <SanctuaryView />}
-          {view === 'themes' && <ThemesView />}
+          {view === 'calendar' && (
+            <CalendarView
+              onAddTask={(date) => {
+                setPrefillDue(date)
+                setView('tasks')
+              }}
+            />
+          )}
         </div>
       </main>
 
@@ -180,6 +231,24 @@ export function TaskMagnet() {
           <div>
             <strong>{toast.title}</strong>
             <p>{toast.body}</p>
+          </div>
+        </div>
+      )}
+
+      {helpOpen && (
+        <div className="mg-modal-overlay" onClick={() => setHelpOpen(false)}>
+          <div className="mg-modal" style={{ width: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="mg-modal-head">
+              <h2>Keyboard shortcuts</h2>
+              <button className="mg-modal-close" onClick={() => setHelpOpen(false)} aria-label="Close">
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+            <div className="mg-modal-body mg-help">
+              <div><kbd>1</kbd>–<kbd>9</kbd><span>Switch view</span></div>
+              <div><kbd>?</kbd><span>Toggle this help</span></div>
+              <div><kbd>Esc</kbd><span>Close menus / dialogs</span></div>
+            </div>
           </div>
         </div>
       )}

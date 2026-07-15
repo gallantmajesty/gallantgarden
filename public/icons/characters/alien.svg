@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <linearGradient id="alienSkin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7fe06a"/>
+      <stop offset="100%" stop-color="#3fae3f"/>
+    </linearGradient>
+    <linearGradient id="alienDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1c2a20"/>
+      <stop offset="100%" stop-color="#0a130c"/>
+    </linearGradient>
+    <linearGradient id="alienGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a6ffb0"/>
+      <stop offset="100%" stop-color="#4dff66"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ANTENNAE -->
+  <rect x="84" y="14" width="5" height="34" rx="2.5" fill="#3a6b3a" transform="rotate(-12 86 30)"/>
+  <rect x="111" y="14" width="5" height="34" rx="2.5" fill="#3a6b3a" transform="rotate(12 113 30)"/>
+  <circle cx="80" cy="14" r="8" fill="url(#alienGlow)"/>
+  <circle cx="120" cy="14" r="8" fill="url(#alienGlow)"/>
+
+  <!-- ELONGATED GREEN HEAD -->
+  <ellipse cx="100" cy="86" rx="44" ry="56" fill="url(#alienSkin)"/>
+  <!-- chin taper -->
+  <path d="M76 120 Q100 158 124 120 Z" fill="url(#alienSkin)"/>
+
+  <!-- BIG BLACK ALMOND EYES -->
+  <ellipse cx="80" cy="92" rx="16" ry="30" fill="#0a0a0c"/>
+  <ellipse cx="120" cy="92" rx="16" ry="30" fill="#0a0a0c"/>
+  <!-- glowing pupil slits -->
+  <ellipse cx="80" cy="92" rx="5" ry="16" fill="url(#alienGlow)"/>
+  <ellipse cx="120" cy="92" rx="5" ry="16" fill="url(#alienGlow)"/>
+
+  <!-- NECK -->
+  <rect x="90" y="138" width="20" height="14" rx="5" fill="url(#alienSkin)"/>
+
+  <!-- DARK JUMPSUIT TORSO -->
+  <rect x="52" y="150" width="96" height="76" rx="14" fill="url(#alienDark)"/>
+  <!-- GLOWING GREEN CHEST EMBLEM -->
+  <circle cx="100" cy="188" r="13" fill="url(#alienGlow)"/>
+  <circle cx="100" cy="188" r="6" fill="#0a130c"/>
+
+  <!-- SHOULDERS -->
+  <ellipse cx="60" cy="160" rx="15" ry="10" fill="#2a3a2c"/>
+  <ellipse cx="140" cy="160" rx="15" ry="10" fill="#2a3a2c"/>
+
+  <!-- ARMS (green skin) -->
+  <rect x="26" y="156" width="26" height="58" rx="13" fill="url(#alienSkin)"/>
+  <rect x="148" y="156" width="26" height="58" rx="13" fill="url(#alienSkin)"/>
+  <!-- three-fingered hands -->
+  <g fill="url(#alienSkin)">
+    <rect x="28" y="208" width="5" height="16" rx="2.5"/>
+    <rect x="36" y="210" width="5" height="16" rx="2.5"/>
+    <rect x="44" y="208" width="5" height="16" rx="2.5"/>
+    <rect x="151" y="208" width="5" height="16" rx="2.5"/>
+    <rect x="159" y="210" width="5" height="16" rx="2.5"/>
+    <rect x="167" y="208" width="5" height="16" rx="2.5"/>
+  </g>
+
+  <!-- LEGS (green skin) -->
+  <rect x="54" y="222" width="38" height="36" rx="9" fill="url(#alienSkin)"/>
+  <rect x="108" y="222" width="38" height="36" rx="9" fill="url(#alienSkin)"/>
+
+  <!-- SLIM FEET -->
+  <rect x="50" y="252" width="42" height="8" rx="4" fill="#2a3a2c"/>
+  <rect x="108" y="252" width="42" height="8" rx="4" fill="#2a3a2c"/>
+</svg>

@@ -8,16 +8,17 @@ import { ThemeBackdrop } from '../components/magnet/ThemeBackdrop'
 import { Canvas } from '../components/blueprint/Canvas'
 import { Toolbar } from '../components/blueprint/Toolbar'
 import { Inspector } from '../components/blueprint/Inspector'
-import { ConnectionBar } from '../components/blueprint/ConnectionBar'
 import { SearchPanel } from '../components/blueprint/SearchPanel'
 import { AIPanel } from '../components/blueprint/AIPanel'
+import { BlueprintSidebar } from '../components/blueprint/BlueprintSidebar'
 import '../screens/TaskMagnet.css'
 import './Blueprint.css'
+import './Blueprint.dark.css'
 import './N8nOverlay.css'
 
 function hexToRgb(hex: string): string {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim())
-  if (!m) return '138,108,255'
+  if (!m) return '40,28,18'
   return `${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)}`
 }
 
@@ -32,6 +33,8 @@ export function Blueprint() {
 
   const [panel, setPanel] = useState<null | 'search' | 'ai'>(null)
   const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [uiDark, setUiDark] = useState(true)
 
   useEffect(() => {
     if (user?.id) {
@@ -41,7 +44,7 @@ export function Blueprint() {
   }, [user?.id, hydrate, hydrateMagnet, magnetReady])
 
   const theme = getTheme(mdata.themeId)
-  const accent = mdata.accent ?? theme.vars.accent
+  const accent = mdata.accent ?? '#281C12'
 
   const rootStyle = useMemo(() => {
     const v = theme.vars
@@ -82,8 +85,13 @@ export function Blueprint() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  function onExport() {
-    void exportBoardPng(useBlueprint.getState().doc, hexToRgb(accent))
+  async function onExport() {
+    try {
+      await exportBoardPng(useBlueprint.getState().doc, hexToRgb(accent))
+    } catch (err) {
+      console.error('Export failed:', err)
+      alert('Export failed. Try adding at least one note, or exporting again.')
+    }
   }
 
   if (!ready) {
@@ -96,32 +104,37 @@ export function Blueprint() {
   }
 
   return (
-    <div className={`bp-root ${theme.dark ? 'dark' : 'light'}`} style={rootStyle}>
+    <div className={`bp-root ${uiDark ? 'dark' : ''} ${theme.dark ? 'dark' : 'light'}`} style={rootStyle}>
       <ThemeBackdrop theme={theme} density={mdata.particleDensity} accent={mdata.accent} />
 
-      <Toolbar
-        onToggleSearch={() => setPanel((p) => (p === 'search' ? null : 'search'))}
-        onToggleAI={() => setPanel((p) => (p === 'ai' ? null : 'ai'))}
+      <BlueprintSidebar
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen((o) => !o)}
         onExport={onExport}
+        onToggleSearch={() => setPanel((p) => (p === 'search' ? null : 'search'))}
+        dark={uiDark}
+        onToggleDark={() => setUiDark((d) => !d)}
       />
 
-      <button
-        className={`bp-inspector-toggle ${inspectorOpen ? 'open' : 'closed'}`}
-        onClick={() => setInspectorOpen((o) => !o)}
-        title={inspectorOpen ? 'Hide panel' : 'Show panel'}
-      >
-        {inspectorOpen ? '⟩' : '⟨'}
-      </button>
-      <aside className={`bp-inspector bp-surface ${inspectorOpen ? '' : 'collapsed'}`}>
-        <Inspector />
-      </aside>
+      <div className="bp-main">
+        <Toolbar />
 
-      <Canvas />
+        <Canvas />
 
-      <ConnectionBar />
+        <button
+          className={`bp-inspector-toggle ${inspectorOpen ? 'open' : 'closed'}`}
+          onClick={() => setInspectorOpen((o) => !o)}
+          title={inspectorOpen ? 'Hide panel' : 'Show panel'}
+        >
+          {inspectorOpen ? '⟩' : '⟨'}
+        </button>
+        <aside className={`bp-inspector bp-surface ${inspectorOpen ? '' : 'collapsed'}`}>
+          <Inspector />
+        </aside>
 
-      {panel === 'search' && <SearchPanel onClose={() => setPanel(null)} />}
-      {panel === 'ai' && <AIPanel onClose={() => setPanel(null)} />}
+        {panel === 'search' && <SearchPanel onClose={() => setPanel(null)} />}
+        {panel === 'ai' && <AIPanel onClose={() => setPanel(null)} />}
+      </div>
     </div>
   )
 }

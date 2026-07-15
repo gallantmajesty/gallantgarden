@@ -28,6 +28,13 @@ export interface Task {
   icon: string
   color: string
   projectId: string | null
+  // Manual ordering: tasks are displayed in this array order (open first, then
+  // done). Assigned when created; changed by drag-and-drop reordering.
+  order: number
+  // Dependency support: task IDs this task is blocked by. A blocked task cannot
+  // be completed until every blocker is done.
+  blockedBy: string[]
+  templateId: string | null // set when this task was created from a template
   createdAt: string // ISO timestamp
   completedAt: string | null
 }
@@ -37,6 +44,25 @@ export interface Project {
   title: string
   color: string
   icon: string
+  goalId: string | null // optional link to a Goal this project serves
+  createdAt: string
+}
+
+// A reusable task blueprint. Creating tasks from a template removes the
+// repetition of typing the same "Review lecture notes", "Problem set for X", etc.
+export interface TaskTemplate {
+  id: string
+  title: string
+  notes: string
+  priority: Priority
+  subject: string
+  area: LifeArea
+  estimateMin: number
+  recurring: Recurrence
+  icon: string
+  color: string
+  // Whether to drop this template straight into the "open tasks" list on create.
+  addToTasks: boolean
   createdAt: string
 }
 
@@ -57,6 +83,7 @@ export interface Goal {
   target: string | null // target date (yyyy-mm-dd)
   color: string
   milestones: Milestone[]
+  projectId: string | null // optional link to a Project working toward this goal
   createdAt: string
 }
 
@@ -66,6 +93,9 @@ export interface Habit {
   icon: string
   color: string
   history: string[] // yyyy-mm-dd dates the habit was completed
+  // Rest days: yyyy-mm-dd dates the habit is intentionally skipped (no streak
+  // break). Lets users keep a streak alive on travel days / scheduled off days.
+  freezeDays: string[]
   createdAt: string
 }
 
@@ -112,15 +142,14 @@ export interface MagnetData {
   brainDump: string
   subjects: string[]
 
+  // reusable task blueprints (see TaskTemplate)
+  templates: TaskTemplate[]
+
   // progression / connection to Focus Lily
   xp: number
   premiumXp: number // golden leaves — premium XP from high-commitment achievements
-  unlockedThemes: string[]
 
   // personalization
-  themeId: string
-  accent: string | null // overrides theme accent when set
-  particleDensity: number // 0..1
   font: string
 
   lastVisit: string | null // ISO timestamp of previous visit

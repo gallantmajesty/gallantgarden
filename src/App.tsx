@@ -9,6 +9,8 @@ import { applyWebTheme } from './lib/webThemes'
 import { WebBackground } from './components/WebBackground'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
+import { MobileControlCenter } from './components/mobile/MobileControlCenter'
+import GlobalClickSpark from './components/GlobalClickSpark'
 import { LibraryScene } from './three/library/LibraryScene'
 import { AuthScreen } from './screens/AuthScreen'
 import { Onboarding } from './screens/Onboarding'
@@ -75,16 +77,19 @@ export default function App() {
   // Show landing immediately — don't wait for auth to resolve.
   // But if auth is still loading, hold off — a logged-in user should land
   // straight in the Lobby without a flash of the Landing page.
-  if (isPublic && !user && !loading) {
+   if (isPublic && !user && !loading) {
     return (
-      <ErrorBoundary resetKeys={[location.pathname]}>
-        <Suspense fallback={null}>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/about" element={<About />} />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
+      <>
+        <ErrorBoundary resetKeys={[location.pathname]}>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/about" element={<About />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+        <GlobalClickSpark />
+      </>
     )
   }
 
@@ -103,6 +108,8 @@ export default function App() {
           <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Lobby />} />
+              {/* Global mobile/tablet Control Center — exposes the whole-app
+                  settings from any screen. Renders null on desktop. */}
               <Route path="/blueprint" element={<Blueprint />} />
               <Route path="/realm" element={<Realm />} />
               <Route path="/realm/explore" element={<Explore />} />
@@ -125,6 +132,11 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
       )}
+      {/* Global mobile/tablet Control Center — exposes the whole-app settings
+          from any screen. Renders null on desktop, so the desktop UI is
+          completely untouched. */}
+      {user && <MobileControlCenter />}
+      <GlobalClickSpark />
     </>
   )
 }

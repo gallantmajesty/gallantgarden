@@ -5,6 +5,7 @@ import type { Pt } from '../../lib/blueprint/geom'
 
 import { NoteNode } from './NoteNode'
 import { EdgesLayer } from './EdgesLayer'
+import { MiniMap } from './MiniMap'
 
 const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3.0
@@ -273,8 +274,8 @@ export function Canvas() {
 <div className="bp-grid" style={{
   ...gridStyle,
   backgroundColor: 'transparent',
-  backgroundImage:
-    'radial-gradient(circle, rgba(255,245,225,0.06) 1px, transparent 1px)',
+    backgroundImage:
+    'radial-gradient(circle, rgba(35,37,47,0.05) 1px, transparent 1px)',
 }} />
 
 {/* World container */}
@@ -317,6 +318,9 @@ export function Canvas() {
     <p>Add a note or use the connection bar to link your ideas. Press Esc or click empty space to finish.</p>
   </div>
 )}
+
+      {/* Minimap */}
+      <MiniMap />
 
     </div>
   )

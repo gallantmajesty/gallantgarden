@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#11131f"/>
+  <g>
+    <!-- wings -->
+    <path d="M14 30 Q4 24 8 38 Q14 34 16 40 Q12 32 22 36 Z" fill="#fbf7ee"/>
+    <path d="M50 30 Q60 24 56 38 Q50 34 48 40 Q52 32 42 36 Z" fill="#fbf7ee"/>
+    <!-- robe body -->
+    <path d="M32 24 L22 52 Q32 58 42 52 Z" fill="#f6f1e6"/>
+    <!-- head -->
+    <circle cx="32" cy="20" r="9" fill="#f3e6d8"/>
+    <!-- halo -->
+    <ellipse cx="32" cy="9" rx="11" ry="3.4" fill="none" stroke="#e8c878" stroke-width="2.6"/>
+    <ellipse cx="32" cy="9" rx="11" ry="3.4" fill="none" stroke="#ffe9a8" stroke-width="1.2"/>
+    <!-- circlet -->
+    <path d="M24 17 Q32 21 40 17" stroke="#e8c878" stroke-width="1.6" fill="none"/>
+    <!-- serene eyes -->
+    <path d="M26 21 q3 2 6 0" stroke="#5a4a55" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <path d="M32 21 q3 2 6 0" stroke="#5a4a55" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <!-- smile -->
+    <path d="M28 26 q4 3 8 0" stroke="#5a4a55" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

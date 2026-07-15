@@ -159,10 +159,11 @@ const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
         const onCluster = !traced || (traced.has(edge.from) && traced.has(edge.to))
         const focusOk = !focusTypeId || edge.typeId === focusTypeId
+        const activeOk = !activeTypeId || edge.typeId === activeTypeId
         const isSel = edge.id === selectedEdgeId
         const isHovered = edge.id === hoveredEdgeId
-        const lit = onCluster && focusOk && (!!traced || !!focusTypeId)
-        const dimmed = (traced && !onCluster) || (focusTypeId && !focusOk)
+        const lit = onCluster && focusOk && activeOk && (!!traced || !!focusTypeId || !!activeTypeId)
+        const dimmed = (traced && !onCluster) || (focusTypeId && !focusOk) || (activeTypeId && !activeOk)
         const energetic = isSel || lit
 
         const dash = (st.lineStyle === 'dashed' || st.lineStyle === 'dotted') ? '8 7' : undefined
@@ -216,7 +217,7 @@ const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
               <path
                 className="bp-edge-flow"
                 d={d}
-                stroke="rgba(255,255,255,0.9)"
+                stroke="currentColor"
                 strokeWidth={Math.max(1.4, coreWidth - 0.6)}
                 fill="none"
                 strokeLinecap="round"

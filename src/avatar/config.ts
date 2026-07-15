@@ -9,6 +9,8 @@ import {
   BufferGeometry,
   CanvasTexture,
   CapsuleGeometry,
+  CircleGeometry,
+  Color,
   CylinderGeometry,
   Float32BufferAttribute,
   MeshStandardMaterial,
@@ -188,7 +190,6 @@ export type AccessoryId =
   | 'laptop'
   | 'gaming_laptop'
   | 'phone'
-  | 'tablet'
   | 'book'
   | 'piano'
   | 'mug'
@@ -212,7 +213,6 @@ export const ACCESSORIES: AccessoryDef[] = [
   { id: 'laptop', name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion' },
   { id: 'gaming_laptop', name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig' },
   { id: 'phone', name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand' },
-  { id: 'tablet', name: 'Tablet', icon: '📋', color: '#5b3a22', blurb: 'Notes & sketch' },
   { id: 'book', name: 'Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook' },
   { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax' },
   { id: 'mug', name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip' },
@@ -352,6 +352,23 @@ export function sharedMaterial(hex: string, roughness = 0.85, metalness = 0): Me
   let m = matCache.get(key)
   if (!m) {
     m = new MeshStandardMaterial({ color: hex, roughness, metalness, flatShading: false })
+    matCache.set(key, m)
+  }
+  return m
+}
+
+/** Emissive (self-lit) material for glowing sci-fi accents — used by the Robot. */
+export function glowMaterial(hex: string, intensity = 2.5): MeshStandardMaterial {
+  const key = `glow|${hex}|${intensity}`
+  let m = matCache.get(key)
+  if (!m) {
+    m = new MeshStandardMaterial({
+      color: hex,
+      roughness: 0.3,
+      metalness: 0,
+      emissive: new Color(hex),
+      emissiveIntensity: intensity,
+    })
     matCache.set(key, m)
   }
   return m
@@ -590,6 +607,13 @@ export function capsuleGeo(radius: number, length: number): BufferGeometry {
 export function sphereGeo(radius: number): BufferGeometry {
   const key = `sph:${radius}`
   return cachedGeo(key, () => new SphereGeometry(radius, 48, 36))
+}
+
+/** A flat 2D disc in the XY plane (faces +Z) — used for painted-on cat eyes
+ *  that sit flush on the face with no 3D bulge. */
+export function circleGeo(radius: number, seg = 48): BufferGeometry {
+  const key = `cir:${radius}:${seg}`
+  return cachedGeo(key, () => new CircleGeometry(radius, seg))
 }
 
 /** High-resolution sphere for detailed features (eyes, nose, etc.) */
