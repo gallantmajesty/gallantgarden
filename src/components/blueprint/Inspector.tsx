@@ -18,7 +18,6 @@ const PATTERNS: { value: NotePattern; label: string; icon: string }[] = [
   { value: 'grid', label: 'Grid', icon: '⊞⊞' },
   { value: 'plaid', label: 'Plaid', icon: '╬╬' },
 ]
-const BG_SWATCHES = ['#FFFFFF', '#FFF5B8', '#EAF4FF', '#DDF8F0', '#FFE9F1', '#F1ECFF']
 
 type InspectorTab = 'style' | 'properties' | 'connections'
 
@@ -90,21 +89,6 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
                   <span className="bp-preset-name">{p.name}</span>
                 </button>
               ))}
-            </div>
-          </Section>
-
-          {/* BACKGROUND */}
-          <Section title="Background">
-            <div className="bp-bg-swatches">
-              {BG_SWATCHES.map((c) => (
-                <button key={c} className={`bp-bg-swatch ${st.bgColor === c ? 'on' : ''}`}
-                  style={{ background: c }}
-                  onClick={() => updateNodeStyle(nodeId, { bgColor: c })} />
-              ))}
-              <button className="bp-bg-swatch bp-bg-swatch-add" onClick={() => {
-                const c = prompt('Color hex?', st.bgColor)
-                if (c) updateNodeStyle(nodeId, { bgColor: c })
-              }}>+</button>
             </div>
           </Section>
 
@@ -244,40 +228,12 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
             </div>
           </Section>
 
-          {/* PADDING */}
-          <Section title="Padding">
-            <div className="bp-padding-row">
-              <span className="bp-padding-val">{st.borderRadius ?? st.radius}px</span>
-              <input type="range" className="bp-slider-input" min={8} max={32} value={st.radius}
-                onChange={(e) => updateNodeStyle(nodeId, { radius: Number(e.target.value) })} />
-              <span className="bp-padding-val">10 px</span>
-            </div>
-          </Section>
-
-          {/* ROUNDING */}
-          <Section title="Rounding">
-            <div className="bp-padding-row">
-              <span className="bp-padding-val">{st.radius}px</span>
-              <input type="range" className="bp-slider-input" min={0} max={40} value={st.radius}
-                onChange={(e) => updateNodeStyle(nodeId, { radius: Number(e.target.value) })} />
-              <span className="bp-padding-val">{st.radius} px</span>
-            </div>
-          </Section>
         </div>
       )}
 
       {tab === 'properties' && (
         <div className="bp-inspector-scroll">
           <NodeActions nodeId={nodeId} />
-          <Section title="Content" divider={false}>
-            <Field label="Label">
-              <input className="bp-text" value={node.label ?? ''} onChange={(e) => updateNode(nodeId, { label: e.target.value })} />
-            </Field>
-            <Field label="Tags (comma separated)">
-              <input className="bp-text" value={node.tags.join(', ')}
-                onChange={(e) => updateNode(nodeId, { tags: e.target.value.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean) })} />
-            </Field>
-          </Section>
           <Section title="Image">
             <Field label="URL">
               <input className="bp-text" placeholder="https://…" value={node.media?.url ?? ''}
