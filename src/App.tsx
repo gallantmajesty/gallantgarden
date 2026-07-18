@@ -18,6 +18,8 @@ import { Landing } from './screens/public/Landing'
 import { useLobbyReady } from './hooks/useLobbyReady'
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
 const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
+const NotesHub = lazy(() => import('./screens/NotesHub').then(m => ({ default: m.NotesHub })))
+const NotesEditor = lazy(() => import('./screens/NotesEditor').then(m => ({ default: m.NotesEditor })))
 const Explore = lazy(() => import('./screens/Explore').then(m => ({ default: m.Explore })))
 const StudyRoom = lazy(() => import('./screens/StudyRoom').then(m => ({ default: m.StudyRoom })))
 const RoomsList = lazy(() => import('./screens/RoomsList').then(m => ({ default: m.RoomsList })))
@@ -111,6 +113,8 @@ export default function App() {
               {/* Global mobile/tablet Control Center — exposes the whole-app
                   settings from any screen. Renders null on desktop. */}
               <Route path="/blueprint" element={<Blueprint />} />
+              <Route path="/notes" element={<NotesHub />} />
+              <Route path="/notes/doc" element={<NotesEditor />} />
               <Route path="/realm" element={<Realm />} />
               <Route path="/realm/explore" element={<Explore />} />
               <Route path="/realm/:code" element={<RealmInvite />} />

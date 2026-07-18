@@ -1,0 +1,90 @@
+/* ---- Notes Hub ---- */
+.notes-hub {
+  min-height: 100vh;
+  background: radial-gradient(1200px 600px at 50% -10%, #2a2140, #15101f 60%);
+  color: #f3eefb;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.notes-hub-head { text-align: center; max-width: 640px; }
+.notes-hub-back {
+  background: transparent; border: none; color: #b98cff; cursor: pointer;
+  font: 600 14px var(--bp-sans, sans-serif); margin-bottom: 12px;
+}
+.notes-hub-head h1 { font: 800 40px var(--bp-sans, sans-serif); margin: 0 0 8px; }
+.notes-hub-head p { color: #c9bfe0; margin: 0 0 36px; }
+
+.notes-hub-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(260px, 360px)); gap: 22px;
+}
+.notes-hub-card {
+  text-align: left; cursor: pointer;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(185,140,255,0.25);
+  border-radius: 20px; padding: 26px;
+  color: #f3eefb; transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.notes-hub-card:hover { transform: translateY(-4px); border-color: #b98cff; background: rgba(185,140,255,0.1); }
+.notes-hub-card-icon { font-size: 34px; }
+.notes-hub-card h2 { font: 700 22px var(--bp-sans, sans-serif); margin: 0; }
+.notes-hub-card p { color: #c9bfe0; font: 400 14px/1.5 var(--bp-sans, sans-serif); margin: 0; }
+.notes-hub-go { color: #b98cff; font: 600 14px var(--bp-sans, sans-serif); margin-top: 4px; }
+
+@media (max-width: 720px) {
+  .notes-hub-grid { grid-template-columns: 1fr; }
+}
+
+/* ---- Notes Editor (Word-like) ---- */
+.notes-editor {
+  min-height: 100vh; background: #efeae2; color: #221a12;
+  display: flex; flex-direction: column;
+}
+.notes-editor-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 16px; background: #fbf8f2; border-bottom: 1px solid #e2d9c8;
+  position: sticky; top: 0; z-index: 20;
+}
+.notes-toolbar, .notes-aesthetic { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nt-btn {
+  min-width: 34px; height: 32px; border-radius: 8px; border: 1px solid #d8cdb8;
+  background: #fff; color: #221a12; cursor: pointer; font: 600 13px var(--bp-sans, sans-serif);
+}
+.nt-btn:hover { background: #f1ead8; border-color: #b98cff; }
+.nt-sep { width: 1px; height: 22px; background: #d8cdb8; margin: 0 2px; }
+.nt-color { width: 32px; height: 32px; border: 1px solid #d8cdb8; border-radius: 8px; background: #fff; cursor: pointer; padding: 2px; }
+.notes-aesthetic { margin-left: auto; position: relative; }
+.notes-aesthetic .sf-btn.on { background: #b98cff; color: #fff; }
+.notes-sticker-picker {
+  position: absolute; top: 40px; right: 0; z-index: 30;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  background: #fff; border: 1px solid #d8cdb8; border-radius: 12px; padding: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+.notes-sticker-picker button { font-size: 20px; background: transparent; border: none; cursor: pointer; border-radius: 8px; padding: 4px; }
+.notes-sticker-picker button:hover { background: #f1ead8; }
+
+.notes-page-wrap { flex: 1; overflow: auto; padding: 32px 16px; display: flex; justify-content: center; }
+.notes-page {
+  position: relative; width: min(820px, 100%); min-height: 1040px;
+  background: #fffdf8; border-radius: 14px; box-shadow: 0 20px 60px rgba(60,40,20,0.18);
+  padding: 56px 64px;
+}
+.notes-doc { outline: none; min-height: 920px; font: 400 16px/1.7 var(--bp-sans, Georgia, serif); color: #221a12; }
+.notes-doc h1 { font: 800 30px var(--bp-sans, sans-serif); margin: 0 0 12px; }
+.notes-doc h2 { font: 700 22px var(--bp-sans, sans-serif); margin: 18px 0 8px; }
+.notes-doc p { margin: 0 0 12px; }
+.notes-doc ul, .notes-doc ol { margin: 0 0 12px; padding-left: 24px; }
+.notes-doc a { color: #7a52d6; }
+
+.notes-paint {
+  position: absolute; left: 0; top: 0; pointer-events: auto; cursor: crosshair;
+  border-radius: 14px;
+}
+.notes-sticker {
+  position: absolute; font-size: 30px; cursor: grab; user-select: none;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); touch-action: none;
+}
+.notes-sticker:active { cursor: grabbing; }
