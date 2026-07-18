@@ -99,8 +99,10 @@ export function noteSurfaceStyle(style: NoteStyle, opts?: { forExport?: boolean 
   const shadow = style.shadow > 0 ? `0 ${3 + style.shadow * 10}px ${8 + style.shadow * 24}px rgba(20,30,60,${0.08 + style.shadow * 0.22})` : ''
   const boxShadow = [glow, shadow].filter(Boolean).join(', ') || 'none'
 
+  const hasPattern = style.pattern && style.pattern !== 'none'
+  const hasPaper = style.bgKind === 'paper'
+
   const base: CSSProperties = {
-    background: noteBackground(style),
     border: `${style.borderWidth}px solid ${style.borderColor}`,
     borderRadius: shapeRadius(style),
     clipPath: shapeClip(style.shape),
@@ -115,20 +117,20 @@ export function noteSurfaceStyle(style: NoteStyle, opts?: { forExport?: boolean 
     textDecoration: style.underline ? 'underline' : 'none',
   }
 
-  if (style.bgKind === 'paper') {
-    base.backgroundImage = PAPER_TEXTURE
-  }
-  if (style.pattern && style.pattern !== 'none') {
+  if (hasPattern) {
     const pat = patternImage(style.pattern, style.patternOpacity ?? 0.15)
+    const grad = noteBackground(style)
+    base.backgroundImage = pat ? `${pat}, ${grad}` : grad
     const patSize = patternSize(style.pattern)
     const patPos = patternPosition(style.pattern)
-    if (pat) {
-      const existing = base.backgroundImage ? `${base.backgroundImage}, ` : ''
-      base.backgroundImage = `${existing}${pat}`
-      if (patSize) base.backgroundSize = patSize
-      if (patPos) base.backgroundPosition = patPos
-      base.backgroundRepeat = 'repeat'
-    }
+    if (patSize) base.backgroundSize = patSize
+    if (patPos) base.backgroundPosition = patPos
+    if (pat) base.backgroundRepeat = 'repeat'
+  } else if (hasPaper) {
+    base.background = style.bgColor
+    base.backgroundImage = PAPER_TEXTURE
+  } else {
+    base.background = noteBackground(style)
   }
   if (style.bgKind === 'glass' && !opts?.forExport) {
     base.backdropFilter = 'blur(8px) saturate(120%)'
