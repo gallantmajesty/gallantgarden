@@ -45,6 +45,19 @@ export function Canvas() {
 
   const isEmpty = nodes.length === 0
 
+  // Memoize selection set for O(1) lookups
+  const selectionSet = useMemo(() => new Set(selection), [selection])
+
+  // Memoize visible nodes (viewport culling) — only render nodes within viewport + buffer
+  const visibleNodes = useMemo(() => {
+    const buf = 200
+    const x0 = -vp.x / vp.zoom - buf
+    const y0 = -vp.y / vp.zoom - buf
+    const x1 = x0 + window.innerWidth / vp.zoom + buf * 2
+    const y1 = y0 + window.innerHeight / vp.zoom + buf * 2
+    return nodes.filter(n => n.x + n.w >= x0 && n.x <= x1 && n.y + n.h >= y0 && n.y <= y1)
+  }, [nodes, vp.x, vp.y, vp.zoom])
+
   // Keyboard: Space for pan mode, Escape cancels a pending connection
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -145,6 +158,8 @@ export function Canvas() {
     }
   }
 
+  const cursorThrottle = useRef<number>(0)
+
   function onBgPointerMove(e: React.PointerEvent) {
     if (pan.current) {
       const p = pan.current
@@ -159,8 +174,11 @@ export function Canvas() {
       setMarquee(m)
       marqueeRef.current = m
     }
-    // while a thread is pending, track the cursor so its preview follows
+    // while a thread is pending, track the cursor so its preview follows (throttled)
     if (pendingFrom) {
+      const now = performance.now()
+      if (now - cursorThrottle.current < 16) return
+      cursorThrottle.current = now
       const rect = ref.current!.getBoundingClientRect()
       const c = useBlueprint.getState().doc.viewport
       setCursor(screenToWorld(e.clientX - rect.left, e.clientY - rect.top, c))
@@ -283,12 +301,12 @@ export function Canvas() {
         className="bp-world"
         style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }}
       >
-<EdgesLayer preview={preview} />
-  {nodes.map((n) => (
+        <EdgesLayer preview={preview} />
+  {visibleNodes.map((n) => (
     <NoteNode
       key={n.id}
       node={n}
-      selected={selection.includes(n.id)}
+      selected={selectionSet.has(n.id)}
       dimmed={false}
       connectSource={pendingFrom === n.id}
       onDoubleTap={handleDoubleTap}

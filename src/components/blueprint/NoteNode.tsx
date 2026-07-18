@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { useBlueprint } from '../../store/blueprint'
 import { mediaBackgroundStyle, mediaImageStyle, noteSurfaceStyle } from '../../lib/blueprint/style'
@@ -16,23 +16,10 @@ interface NoteNodeProps {
   onPortDown?: (nodeId: string, e: React.PointerEvent) => void
 }
 
-export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, onPortDown }: NoteNodeProps) {
+export const NoteNode = memo(function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, onPortDown }: NoteNodeProps) {
   const zoom = useBlueprint((s) => s.doc.viewport.zoom)
-  const snap = useBlueprint((s) => s.doc.snap)
-  const grid = useBlueprint((s) => s.doc.grid)
   const select = useBlueprint((s) => s.select)
   const setHoverNode = useBlueprint((s) => s.setHoverNode)
-  const moveBy = useBlueprint((s) => s.moveBy)
-  const setNodeRect = useBlueprint((s) => s.setNodeRect)
-  const setNodeHtml = useBlueprint((s) => s.setNodeHtml)
-  const pushHistory = useBlueprint((s) => s.pushHistory)
-  const flush = useBlueprint((s) => s.flush)
-  // colour the bottom port with the active connection type
-  const activeYarnColor = useBlueprint((s) => s.activeYarnColor)
-  const activeTypeId = useBlueprint((s) => s.activeTypeId)
-  const connectionTypes = useBlueprint((s) => s.doc.connectionTypes)
-  const portColor =
-    activeYarnColor ?? connectionTypes.find((t) => t.id === activeTypeId)?.color ?? '#B79CFF'
 
   const [editing, setEditing] = useState(false)
   const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number } | null>(null)
@@ -43,13 +30,13 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
     if (editing || node.locked) return
     if (e.button !== 0) return
     e.stopPropagation()
-    const state = useBlueprint.getState()
-    const isSel = state.selection.includes(node.id)
-    if (!isSel) select(node.id, e.shiftKey)
+    const st = useBlueprint.getState()
+    const isSel = st.selection.includes(node.id)
+    if (!isSel) st.select(node.id, e.shiftKey)
     const set = useBlueprint.getState().selection.includes(node.id)
       ? useBlueprint.getState().selection
       : [node.id]
-    pushHistory()
+    st.pushHistory()
     drag.current = { set: [...set], lastX: e.clientX, lastY: e.clientY, ax: 0, ay: 0 }
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
@@ -61,19 +48,19 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
     const dy = (e.clientY - d.lastY) / zoom
     d.lastX = e.clientX
     d.lastY = e.clientY
-    moveBy(d.set, dx, dy)
+    useBlueprint.getState().moveBy(d.set, dx, dy)
   }
 
   function onBodyPointerUp(e: React.PointerEvent) {
     if (!drag.current) return
     drag.current = null
-    if (snap) {
-      // snap the dragged node's top-left to the grid
-      const sx = Math.round(node.x / grid) * grid
-      const sy = Math.round(node.y / grid) * grid
-      setNodeRect(node.id, { x: sx, y: sy })
+    const st = useBlueprint.getState()
+    if (st.doc.snap) {
+      const sx = Math.round(node.x / st.doc.grid) * st.doc.grid
+      const sy = Math.round(node.y / st.doc.grid) * st.doc.grid
+      st.setNodeRect(node.id, { x: sx, y: sy })
     }
-    flush()
+    st.flush()
     try {
       ;(e.target as Element).releasePointerCapture(e.pointerId)
     } catch {
@@ -84,7 +71,7 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
   function onResizeDown(e: React.PointerEvent) {
     e.stopPropagation()
     if (node.locked) return
-    pushHistory()
+    useBlueprint.getState().pushHistory()
     resize.current = { x: e.clientX, y: e.clientY, w: node.w, h: node.h }
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
@@ -93,17 +80,19 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
     if (!r) return
     const w = Math.max(120, r.w + (e.clientX - r.x) / zoom)
     const h = Math.max(70, r.h + (e.clientY - r.y) / zoom)
-    setNodeRect(node.id, { w, h })
+    useBlueprint.getState().setNodeRect(node.id, { w, h })
   }
   function onResizeUp() {
     if (!resize.current) return
     resize.current = null
-    flush()
+    useBlueprint.getState().flush()
   }
 
   const surface = noteSurfaceStyle(node.style)
   const media = node.media
   const bgMedia = media?.url && media.place === 'background'
+  const st = useBlueprint.getState()
+  const portColor = st.activeYarnColor ?? st.doc.connectionTypes.find((t) => t.id === st.activeTypeId)?.color ?? '#B79CFF'
 
   return (
     <div
@@ -142,7 +131,7 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
         {/* Content */}
         <div className="bp-node-body">
           {editing ? (
-            <RichText html={node.html} onChange={(html) => setNodeHtml(node.id, html)} autoFocus />
+            <RichText html={node.html} onChange={(html) => useBlueprint.getState().setNodeHtml(node.id, html)} autoFocus />
           ) : (
             <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.html) }} />
           )}
@@ -224,4 +213,4 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
       )}
     </div>
   )
-}
+})
