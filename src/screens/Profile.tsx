@@ -12,12 +12,12 @@ import {
   getFollowerIds,
   getFollowingIds,
   getMutualIds,
-  getPublicProfileByUsername,
 } from '../lib/social'
 import { buildProfileStats, loadStudyCounts, type StudyCounts } from '../lib/stats'
 import { BANNERS, getBanner } from '../lib/banners'
-import { checkUsername } from '../lib/usernames'
+import { checkDisplayName } from '../lib/displayName'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
+import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import {
   loadLayout,
   saveLayout,
@@ -39,11 +39,11 @@ import { studyGoalLabel } from '../lib/studyGoals'
 import './Profile.css'
 
 // The customizable "study base" profile. One component serves both the editable
-// own profile (/profile) and read-only public profiles (/u/:username).
+// own profile (/profile) and read-only public profiles (/u/:playerId).
 
 interface ProfileView {
   id: string
-  username: string | null
+  playerId: number | null
   displayName: string
   avatarUrl: string | null
   country: string | null
@@ -52,29 +52,34 @@ interface ProfileView {
 }
 
 export function Profile() {
-  const { username: routeUsername } = useParams<{ username: string }>()
+  const { playerId: routePlayerId } = useParams<{ playerId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
 
   // own-profile store slices
-  const ownUsername = useProfile((s) => s.username)
+  const ownPlayerId = useProfile((s) => s.playerId)
   const ownDisplayName = useProfile((s) => s.displayName)
   const ownAvatarUrl = useProfile((s) => s.avatarUrl)
   const ownPub = useProfile((s) => s.pub)
   const ownCountry = useProfile((s) => s.data.country)
   const ownRank = useProfile((s) => s.data.rank)
 
-  const isOwnRoute = !routeUsername || routeUsername.toLowerCase() === (ownUsername ?? '').toLowerCase()
+  const isOwnRoute = !routePlayerId || Number(routePlayerId) === ownPlayerId
 
   const [remote, setRemote] = useState<PublicProfile | null>(null)
   const [notFound, setNotFound] = useState(false)
 
-  // Load a remote profile when viewing someone else's /u/:username. State is
+  // Load a remote profile when viewing someone else's /u/:playerId. State is
   // only set inside the async callback (no synchronous setState in the effect).
   useEffect(() => {
-    if (isOwnRoute || !routeUsername) return
+    if (isOwnRoute || !routePlayerId) return
     let cancelled = false
-    void getPublicProfileByUsername(routeUsername).then((p) => {
+    const pid = Number(routePlayerId)
+    if (!Number.isFinite(pid)) {
+      setNotFound(true)
+      return
+    }
+    void getPublicProfileByPlayerId(pid).then((p) => {
       if (cancelled) return
       setRemote(p)
       setNotFound(!p)
@@ -82,7 +87,7 @@ export function Profile() {
     return () => {
       cancelled = true
     }
-  }, [isOwnRoute, routeUsername])
+  }, [isOwnRoute, routePlayerId])
 
   const isOwn = isOwnRoute
   const view: ProfileView | null = useMemo(() => {
@@ -90,7 +95,7 @@ export function Profile() {
       if (!user) return null
       return {
         id: user.id,
-        username: ownUsername,
+        playerId: ownPlayerId,
         displayName: ownDisplayName,
         avatarUrl: ownAvatarUrl,
         country: ownCountry,
@@ -98,12 +103,12 @@ export function Profile() {
         pub: ownPub,
       }
     }
-    // only trust `remote` once it matches the username in the URL (avoids a
+    // only trust `remote` once it matches the Player ID in the URL (avoids a
     // flash of the previous profile while navigating between public pages)
-    if (remote && remote.username?.toLowerCase() === routeUsername?.toLowerCase()) {
+    if (remote && remote.player_id != null && remote.player_id === Number(routePlayerId)) {
       return {
         id: remote.id,
-        username: remote.username,
+        playerId: remote.player_id,
         displayName: remote.display_name,
         avatarUrl: remote.avatar_url,
         country: remote.country,
@@ -112,7 +117,7 @@ export function Profile() {
       }
     }
     return null
-  }, [isOwn, user, ownUsername, ownDisplayName, ownAvatarUrl, ownCountry, ownRank, ownPub, remote, routeUsername])
+  }, [isOwn, user, ownPlayerId, ownDisplayName, ownAvatarUrl, ownCountry, ownRank, ownPub, remote, routePlayerId])
 
   if (notFound) {
     return (
@@ -120,7 +125,7 @@ export function Profile() {
         <TopBar onBack={() => navigate('/')} />
         <div className="pf-notfound sf-panel">
           <h2>Explorer not found</h2>
-          <p>There's no profile with that username yet.</p>
+          <p>There's no profile with that Player ID yet.</p>
           <button className="sf-btn" onClick={() => navigate('/')}>
             Back to Lobby
           </button>
@@ -144,7 +149,7 @@ export function Profile() {
 function TopBar({ onBack, right }: { onBack: () => void; right?: React.ReactNode }) {
   return (
     <div className="pf-topbar">
-      <button className="sf-btn ghost pf-back" onClick={onBack}>
+      <button className="sf-btn water pf-back" onClick={onBack}>
         <Icon name="back" size={18} /> Lobby
       </button>
       {right && <div className="pf-topbar-right">{right}</div>}
@@ -221,7 +226,7 @@ function ProfileBody({
         onBack={onBack}
         right={
           isOwn ? (
-            <button className="sf-btn ghost pf-signout" onClick={signOut}>
+            <button className="sf-btn water pf-signout" onClick={signOut}>
               <Icon name="back" size={16} /> Sign Out
             </button>
           ) : undefined
@@ -268,7 +273,13 @@ function ProfileBody({
                     {view.displayName}
                     {view.country && <Flag code={view.country} className="pf-flag" />}
                   </h1>
-                  <div className="pf-handle">{view.username ? `@${view.username}` : 'no username yet'}</div>
+                  <div className="pf-handle">
+                    {view.playerId != null ? (
+                      <>Player ID <span className="pf-playerid">#{view.playerId}</span></>
+                    ) : (
+                      'no Player ID yet'
+                    )}
+                  </div>
                 </>
               )}
 
@@ -306,7 +317,7 @@ function ProfileBody({
                   <FollowButton targetId={view.id} />
                 </>
               )}
-              <ShareButton username={view.username} />
+              <ShareButton playerId={view.playerId} />
             </div>
           </div>
         </header>
@@ -380,11 +391,11 @@ function ProfileBody({
 
 /* ------------------------------------------------------------- share button */
 
-function ShareButton({ username }: { username: string | null }) {
+function ShareButton({ playerId }: { playerId: number | null }) {
   const [copied, setCopied] = useState(false)
-  if (!username) return null
+  if (playerId == null) return null
   async function copy() {
-    const url = `${window.location.origin}/u/${username}`
+    const url = `${window.location.origin}/u/${playerId}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
@@ -394,7 +405,7 @@ function ShareButton({ username }: { username: string | null }) {
     }
   }
   return (
-    <button className="sf-btn ghost pf-share" onClick={copy} title="Copy profile link">
+    <button className="sf-btn water pf-share" onClick={copy} title="Copy profile link">
       <Icon name="people" size={16} /> {copied ? 'Copied!' : 'Share'}
     </button>
   )
@@ -404,36 +415,29 @@ function ShareButton({ username }: { username: string | null }) {
 
 function IdentityEditor({ view }: { view: ProfileView }) {
   const setDisplayName = useProfile((s) => s.setDisplayName)
-  const setUsername = useProfile((s) => s.setUsername)
+  const canChange = useProfile((s) => s.canChangeDisplayName())
+  const changesUsed = useProfile((s) => s.displayNameChanges)
   const [name, setName] = useState(view.displayName)
-  const [handle, setHandle] = useState(view.username ?? '')
-  const [check, setCheck] = useState<{ ok: boolean; error?: string; checking?: boolean }>({ ok: true })
-  const debounce = useRef<number | null>(null)
-
-  function onHandle(v: string) {
-    const next = v.toLowerCase().replace(/[^a-z0-9_]/g, '')
-    setHandle(next)
-    if (debounce.current) window.clearTimeout(debounce.current)
-    if (next === (view.username ?? '')) {
-      setCheck({ ok: true })
-      return
-    }
-    setCheck({ ok: false, checking: true })
-    debounce.current = window.setTimeout(async () => {
-      const res = await checkUsername(next, view.id)
-      setCheck({ ok: res.ok, error: res.error })
-    }, 400)
-  }
+  const [status, setStatus] = useState<{ ok: boolean; error?: string; saving?: boolean }>({ ok: true })
 
   async function saveName() {
-    if (name.trim() && name.trim() !== view.displayName) await setDisplayName(name)
-  }
-  async function saveHandle() {
-    if (check.ok && handle && handle !== view.username) {
-      const ok = await setUsername(handle)
-      if (!ok) setCheck({ ok: false, error: 'That username is taken' })
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === view.displayName) return
+    const check = checkDisplayName(trimmed)
+    if (!check.ok) {
+      setStatus({ ok: false, error: check.error })
+      return
     }
+    if (!canChange) {
+      setStatus({ ok: false, error: 'Name changes used up — buy a Name Card to change again' })
+      return
+    }
+    setStatus({ ok: true, saving: true })
+    const ok = await setDisplayName(trimmed)
+    setStatus(ok ? { ok: true } : { ok: false, error: 'Could not save — try again' })
   }
+
+  const remaining = Math.max(0, DISPLAY_NAME_CHANGES_MAX - changesUsed)
 
   return (
     <div className="pf-id-edit">
@@ -442,22 +446,16 @@ function IdentityEditor({ view }: { view: ProfileView }) {
         value={name}
         maxLength={40}
         placeholder="Display name"
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => {
+          setName(e.target.value)
+          if (!status.ok) setStatus({ ok: true })
+        }}
         onBlur={saveName}
       />
-      <div className="pf-handle-edit">
-        <span className="pf-at">@</span>
-        <input
-          className="sf-input pf-handle-input"
-          value={handle}
-          maxLength={20}
-          placeholder="username"
-          onChange={(e) => onHandle(e.target.value)}
-          onBlur={saveHandle}
-        />
-        <span className={`pf-handle-status ${check.ok ? 'ok' : 'bad'}`}>
-          {check.checking ? '…' : check.ok ? '✓' : check.error}
-        </span>
+      <div className={`pf-name-status ${status.ok ? 'ok' : 'bad'}`}>
+        {status.saving ? 'Saving…' : status.ok
+          ? `Display name · ${remaining} free change${remaining === 1 ? '' : 's'} left`
+          : status.error}
       </div>
     </div>
   )

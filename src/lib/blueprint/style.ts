@@ -2,7 +2,7 @@
 // PNG exporter so an exported board looks exactly like the editor.
 
 import type { CSSProperties } from 'react'
-import type { NoteMedia, NoteStyle, Shape } from './types'
+import type { NoteMedia, NotePattern, NoteStyle, Shape } from './types'
 
 const HEXAGON = 'polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0% 50%)'
 const BOOKMARK = 'polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%)'
@@ -54,6 +54,42 @@ export const PAPER_TEXTURE =
   'repeating-linear-gradient(0deg, transparent, transparent 22px, rgba(0,0,0,0.05) 23px), ' +
   'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%)'
 
+/** Generate a repeating CSS pattern image string for the given pattern type. */
+function patternImage(pattern: NotePattern, opacity: number): string | undefined {
+  const c = `rgba(0,0,0,${opacity})`
+  switch (pattern) {
+    case 'dots':
+      return `radial-gradient(circle, ${c} 1.2px, transparent 1.2px)`
+    case 'gingham':
+      return `linear-gradient(45deg, ${c} 25%, transparent 25%, transparent 75%, ${c} 75%), linear-gradient(45deg, ${c} 25%, transparent 25%, transparent 75%, ${c} 75%)`
+    case 'stripes':
+      return `repeating-linear-gradient(45deg, ${c} 0px, ${c} 1px, transparent 1px, transparent 8px)`
+    case 'grid':
+      return `linear-gradient(${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px)`
+    case 'plaid':
+      return `linear-gradient(0deg, ${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,${opacity * 0.5}) 2px, transparent 2px), linear-gradient(90deg, rgba(0,0,0,${opacity * 0.5}) 2px, transparent 2px)`
+    default:
+      return undefined
+  }
+}
+
+function patternSize(pattern: NotePattern): string | undefined {
+  switch (pattern) {
+    case 'dots': return '14px 14px'
+    case 'gingham': return '16px 16px'
+    case 'stripes': return undefined
+    case 'grid': return '20px 20px'
+    case 'plaid': return '24px 24px, 24px 24px, 12px 12px, 12px 12px'
+    default: return undefined
+  }
+}
+
+function patternPosition(pattern: NotePattern): string | undefined {
+  if (pattern === 'gingham') return '0 0, 8px 8px'
+  if (pattern === 'plaid') return '0 0, 0 0, 4px 4px, 4px 4px'
+  return undefined
+}
+
 /**
  * Full surface style for a note. `forExport` swaps backdrop-blur effects (which
  * can't rasterise) for an opaque approximation.
@@ -81,6 +117,18 @@ export function noteSurfaceStyle(style: NoteStyle, opts?: { forExport?: boolean 
 
   if (style.bgKind === 'paper') {
     base.backgroundImage = PAPER_TEXTURE
+  }
+  if (style.pattern && style.pattern !== 'none') {
+    const pat = patternImage(style.pattern, style.patternOpacity ?? 0.15)
+    const patSize = patternSize(style.pattern)
+    const patPos = patternPosition(style.pattern)
+    if (pat) {
+      const existing = base.backgroundImage ? `${base.backgroundImage}, ` : ''
+      base.backgroundImage = `${existing}${pat}`
+      if (patSize) base.backgroundSize = patSize
+      if (patPos) base.backgroundPosition = patPos
+      base.backgroundRepeat = 'repeat'
+    }
   }
   if (style.bgKind === 'glass' && !opts?.forExport) {
     base.backdropFilter = 'blur(8px) saturate(120%)'

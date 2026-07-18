@@ -87,7 +87,7 @@ export function GoalsView() {
         subtitle={t('goals.subtitle')}
         action={
           <div className="mg-view-actions">
-            <button className="mg-btn ghost" onClick={() => setProjOpen(true)}>
+            <button className="mg-btn glass" onClick={() => setProjOpen(true)}>
               <Icon name="flag" size={16} /> {t('goals.linkProject')}
             </button>
             <button className="mg-btn primary" onClick={() => setModalOpen(true)}>
@@ -212,7 +212,7 @@ export function GoalsView() {
             </div>
           </Field>
           <div className="mg-form-actions">
-            <button type="button" className="mg-btn ghost" onClick={() => setModalOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setModalOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">
@@ -244,7 +244,7 @@ export function GoalsView() {
             </div>
           </Field>
           <div className="mg-form-actions">
-            <button type="button" className="mg-btn ghost" onClick={() => setProjOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setProjOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">

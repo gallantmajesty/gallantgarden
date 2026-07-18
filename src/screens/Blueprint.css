@@ -696,33 +696,48 @@
   box-shadow: 1px 0 6px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   z-index: 50;
   transition: width 0.2s ease, min-width 0.2s ease;
   position: relative;
 }
+.bp-sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
 .bp-sidebar.collapsed {
-  width: 44px;
-  min-width: 44px;
+  width: 6px;
+  min-width: 6px;
+  border-right: none;
+  box-shadow: none;
 }
 .bp-sidebar-toggle {
   position: absolute;
-  top: 16px;
-  right: -14px;
-  width: 28px;
-  height: 28px;
+  top: 50%;
+  z-index: 51;
+  width: 22px;
+  height: 48px;
+  transform: translateY(-50%);
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  background: #FFFFFF;
-  border: 1px solid #D8DCE2;
-  color: #4A5060;
+  font: 600 14px var(--bp-sans);
+  color: var(--bp-text);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--bp-border);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  box-shadow: 2px 2px 10px var(--bp-shadow);
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  z-index: 51;
-  transition: all 0.15s ease;
+  transition: left 0.2s ease, background 0.15s;
 }
-.bp-sidebar-toggle:hover { background: #F0F2F5; color: #1E2430; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.bp-sidebar:not(.collapsed) .bp-sidebar-toggle {
+  left: calc(100% - 1px);
+}
+.bp-sidebar.collapsed .bp-sidebar-toggle {
+  left: 6px;
+}
+.bp-sidebar-toggle:hover { background: #FFFFFF; }
 
 /* Branding */
 .bp-sidebar-brand {
@@ -1235,6 +1250,44 @@
 .thumb-sticky { border-radius: 2px 2px 7px 2px; }
 .thumb-card { border-radius: 3px; height: 18px; }
 .thumb-circle { border-radius: 50%; width: 22px; }
+
+/* Pattern row */
+.bp-pattern-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.bp-pattern-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; border-radius: 8px; background: #FFFFFF; border: 1px solid #D8DCE2; color: var(--bp-text-soft); cursor: pointer; transition: all 0.12s ease; min-width: 46px; }
+.bp-pattern-btn.on { border-color: var(--bp-accent); background: #F5F0EB; color: var(--bp-text); }
+.bp-pattern-btn:hover { border-color: #C0C4CC; }
+.bp-pattern-icon { font-size: 12px; line-height: 1; letter-spacing: -1px; }
+.bp-pattern-label { font: 500 9px var(--bp-sans); white-space: nowrap; }
+.bp-pattern-opacity { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.bp-pattern-opacity input[type="range"] { flex: 1; height: 4px; }
+
+/* Sticker overlay on notes */
+.bp-node-sticker {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18));
+  object-fit: contain;
+}
+.bp-node-sticker--top-left { top: -12px; left: -12px; }
+.bp-node-sticker--top-right { top: -12px; right: -12px; }
+.bp-node-sticker--bottom-left { bottom: -12px; left: -12px; }
+.bp-node-sticker--bottom-right { bottom: -12px; right: -12px; }
+
+/* Sticker picker in inspector */
+.bp-sticker-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.bp-sticker-thumb {
+  width: 42px; height: 42px; border-radius: 8px; border: 2px solid var(--bp-border);
+  background: #F5F5F5; cursor: pointer; overflow: hidden; transition: border-color 0.12s;
+  display: grid; place-items: center; padding: 4px;
+}
+.bp-sticker-thumb:hover { border-color: var(--bp-accent); }
+.bp-sticker-thumb.on { border-color: var(--bp-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bp-accent) 30%, transparent); }
+.bp-sticker-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.bp-sticker-controls { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.bp-sticker-controls select, .bp-sticker-controls input { font-size: 12px; }
+.bp-sticker-url-input { width: 100%; margin-top: 6px; }
+.bp-sticker-preview { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .thumb-hexagon { clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0% 50%); width: 24px; }
 .thumb-folder { border-radius: 0 4px 4px 4px; position: relative; }
 .thumb-folder::before { content: ''; position: absolute; top: -4px; left: 0; width: 11px; height: 4px; background: currentColor; border-radius: 3px 3px 0 0; }

@@ -177,17 +177,17 @@ export function Lobby() {
             style={{ ['--xp' as string]: rankAccent, ['--pct' as string]: xpPct }}
           >
             <span className="lobby-xp__medal">
-              <RankBadge rankId={rank} size={32} />
+              <RankBadge rankId={rank} size={36} />
             </span>
             <span className="lobby-xp__name">{displayName}</span>
           </button>
-          <button className="sf-btn ghost lobby-iconbtn" onClick={() => setPanel('interact')}>
+          <button className="sf-btn lobby-iconbtn" onClick={() => setPanel('interact')}>
             <Glyph name="people" />{t('lobby.interact')}
             {incomingCount > 0 && <span className="lobby-dot" />}
           </button>
         </div>
         <div className="lobby-bottomleft">
-          <button className="lobby-exit sf-btn ghost" onClick={() => { signOut(); navigate('/') }}>Exit</button>
+          <button className="lobby-exit sf-btn water" onClick={() => { signOut(); navigate('/') }}>Exit</button>
         </div>
         <div className="lobby-topright">
           <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>

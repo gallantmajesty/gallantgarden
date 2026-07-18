@@ -130,12 +130,11 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
 
         {/* Header bar */}
         <div className="bp-node-header">
-          <span className="bp-node-menu" title="Menu">☰</span>
+          <button className="bp-node-menu" title="Menu" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(node.id) }}>☰</button>
           <div className="bp-node-actions">
-            <button className="bp-node-action" title="More" onPointerDown={(e) => e.stopPropagation()}>⋯</button>
-            <button className="bp-node-action" title="Pin" onPointerDown={(e) => e.stopPropagation()}>📌</button>
+            <button className="bp-node-action" title="Lock" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); useBlueprint.getState().setLocked([node.id], !node.locked) }}>{node.locked ? '🔒' : '🔓'}</button>
             {!node.locked && (
-              <button className="bp-node-action" title="Delete" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(node.id); /* trigger delete */ }}>✕</button>
+              <button className="bp-node-action" title="Delete" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); useBlueprint.getState().deleteNodes([node.id]) }}>✕</button>
             )}
           </div>
         </div>
@@ -166,6 +165,21 @@ export function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, o
               <path d="M12 2a4 4 0 0 0-4 4v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4zm-2 7V6a2 2 0 1 1 4 0v3h-4z" />
             </svg>
           </span>
+        )}
+
+        {/* Sticker overlay */}
+        {node.style.stickerUrl && (
+          <img
+            className={`bp-node-sticker bp-node-sticker--${node.style.stickerPos}`}
+            src={node.style.stickerUrl}
+            alt=""
+            draggable={false}
+            style={{
+              width: node.style.stickerSize,
+              height: node.style.stickerSize,
+              transform: `rotate(${node.style.stickerRotation}deg)`,
+            }}
+          />
         )}
       </div>
 

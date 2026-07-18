@@ -129,3 +129,12 @@
 /* Inspector toggle */
 .bp-root.dark .bp-inspector-toggle { background: #2C313A; border-color: #353B45; color: #C2C9D4; }
 .bp-root.dark .bp-inspector-toggle:hover { background: #353C47; color: #E8EBF0; }
+
+/* Sidebar toggle */
+.bp-root.dark .bp-sidebar-toggle { background: #2C313A; border-color: #353B45; color: #C2C9D4; }
+.bp-root.dark .bp-sidebar-toggle:hover { background: #353C47; color: #E8EBF0; }
+
+/* Pattern buttons */
+.bp-root.dark .bp-pattern-btn { background: #2C313A; border-color: #353B45; color: #9AA3B0; }
+.bp-root.dark .bp-pattern-btn.on { background: #23272F; border-color: var(--bp-accent); color: #E8EBF0; }
+.bp-root.dark .bp-pattern-btn:hover { background: #353C47; color: #E8EBF0; }

@@ -97,7 +97,7 @@ export function ReturnToStudy({ onReturn }: ReturnToStudyProps) {
             </svg>
             {t('games.session.returnToStudy')}
           </button>
-          <button className="sf-btn ghost" onClick={() => navigate('/games')}>
+          <button className="sf-btn water" onClick={() => navigate('/games')}>
             {t('games.lavaPad.backToGames')}
           </button>
         </div>

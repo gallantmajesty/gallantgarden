@@ -307,7 +307,7 @@ useEffect(() => {
                 {t('games.lavaPad.playAgain')}
               </button>
               <button
-                className="sf-btn secondary"
+                className="sf-btn water"
                 onClick={() => navigate('/games')}
                 aria-label={t('games.lavaPad.backToGames')}
               >
@@ -321,7 +321,7 @@ useEffect(() => {
       {/* Exit button during game */}
       {phase === 'playing' && (
         <button
-          className="lava-pad-exit-btn sf-btn ghost"
+          className="lava-pad-exit-btn sf-btn water"
           onClick={() => navigate('/games')}
           aria-label={t('games.lavaPad.leaveGame')}
         >

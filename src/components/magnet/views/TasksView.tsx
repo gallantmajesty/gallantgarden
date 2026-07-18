@@ -217,7 +217,7 @@ export function TasksView({
         action={
           <div className="mg-view-actions">
             <button
-              className={`mg-btn ghost small ${manual ? 'active' : ''}`}
+              className={`mg-btn glass small ${manual ? 'active' : ''}`}
               onClick={() => setManual((m) => !m)}
               title={t('tasks.sortManual')}
             >
@@ -244,7 +244,7 @@ export function TasksView({
           {pomo.mode === 'idle' ? t('tasks.startFocus') : pomo.running ? t('explore.pause') : t('explore.start')}
         </button>
         {pomo.mode !== 'idle' && (
-          <button className="mg-btn ghost small" onClick={pomo.reset}>
+          <button className="mg-btn glass small" onClick={pomo.reset}>
             {t('explore.reset')}
           </button>
         )}
@@ -584,7 +584,7 @@ export function TasksView({
           <div className="mg-form-actions">
             <button
               type="button"
-              className="mg-btn ghost"
+              className="mg-btn glass"
               onClick={() => {
                 if (draft.title.trim()) {
                   addTemplate({
@@ -601,7 +601,7 @@ export function TasksView({
             >
               <Icon name="bulb" size={14} /> {t('tasks.saveTemplate')}
             </button>
-            <button type="button" className="mg-btn ghost" onClick={() => setModalOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setModalOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">
@@ -644,7 +644,7 @@ export function TasksView({
             {t('tasks.addToTasks')}
           </label>
           <div className="mg-form-actions">
-            <button type="button" className="mg-btn ghost" onClick={() => setTplOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setTplOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">

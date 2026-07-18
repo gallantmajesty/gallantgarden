@@ -119,7 +119,7 @@ export function SanctuaryView() {
           <h3>
             <Icon name="star" size={17} />{t('sanctuary.visionBoard')}
           </h3>
-          <button className="mg-btn ghost small" onClick={() => setVisionOpen(true)}>
+          <button className="mg-btn small" onClick={() => setVisionOpen(true)}>
             <Icon name="plus" size={14} />{t('common.add')}
           </button>
         </div>
@@ -204,7 +204,7 @@ export function SanctuaryView() {
             </div>
           </Field>
           <div className="mg-form-actions">
-            <button type="button" className="mg-btn ghost" onClick={() => setVisionOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setVisionOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">

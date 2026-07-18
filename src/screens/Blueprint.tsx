@@ -85,6 +85,11 @@ export function Blueprint() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const selection = useBlueprint((s) => s.selection)
+  useEffect(() => {
+    if (selection.length > 0) setInspectorOpen(true)
+  }, [selection])
+
   async function onExport() {
     try {
       await exportBoardPng(useBlueprint.getState().doc, hexToRgb(accent))

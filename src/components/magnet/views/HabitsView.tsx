@@ -124,7 +124,7 @@ export function HabitsView() {
             </div>
           </Field>
           <div className="mg-form-actions">
-            <button type="button" className="mg-btn ghost" onClick={() => setModalOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setModalOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">

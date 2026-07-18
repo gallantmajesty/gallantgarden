@@ -81,7 +81,7 @@ export function Journal({ onClose }: { onClose: () => void }) {
 
       <div className="train-journal-foot">
         <span>Auto-saves every 30s</span>
-        <button className="sf-btn ghost sm" onClick={save}>Save now</button>
+        <button className="sf-btn water sm" onClick={save}>Save now</button>
       </div>
     </div>
   )

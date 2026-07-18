@@ -665,11 +665,22 @@
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-.mg-btn.ghost {
-  background: var(--mg-panel-soft);
-  border: 1px solid var(--mg-border);
-  color: var(--mg-text);
-  box-shadow: none;
+.mg-btn.glass {
+  background: var(--glass-fill);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  color: var(--on-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 3px 8px rgba(0, 0, 0, 0.12);
+}
+.mg-btn.glass:hover {
+  background: var(--glass-fill-strong);
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 5px 12px rgba(0, 0, 0, 0.18);
 }
 .mg-btn.small { padding: 6px 11px; font-size: 13px; }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { uploadMedia } from '../../lib/blueprint/sync'
-import { FONT_OPTIONS, YARN_STYLE_META, type Shape, type TextAlign } from '../../lib/blueprint/types'
+import { FONT_OPTIONS, YARN_STYLE_META, NOTE_CUTE_PRESETS, type NotePattern, type Shape, type TextAlign } from '../../lib/blueprint/types'
 import { Field, Select, Slider } from './controls'
 
 const SHAPES: { value: Shape; label: string }[] = [
@@ -9,6 +9,14 @@ const SHAPES: { value: Shape; label: string }[] = [
   { value: 'rounded', label: 'Rounded' },
   { value: 'circle', label: 'Circle' },
   { value: 'hexagon', label: 'Hex' },
+]
+const PATTERNS: { value: NotePattern; label: string; icon: string }[] = [
+  { value: 'none', label: 'None', icon: '—' },
+  { value: 'dots', label: 'Dots', icon: '●●●' },
+  { value: 'gingham', label: 'Gingham', icon: '▦▦' },
+  { value: 'stripes', label: 'Stripes', icon: '╱╱╱' },
+  { value: 'grid', label: 'Grid', icon: '⊞⊞' },
+  { value: 'plaid', label: 'Plaid', icon: '╬╬' },
 ]
 const BG_SWATCHES = ['#FFFFFF', '#FFF5B8', '#EAF4FF', '#DDF8F0', '#FFE9F1', '#F1ECFF']
 
@@ -72,6 +80,19 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
             </div>
           </Section>
 
+          {/* CUTE PRESETS */}
+          <Section title="Cute Gradients">
+            <div className="bp-preset-grid">
+              {NOTE_CUTE_PRESETS.map((p) => (
+                <button key={p.id} className="bp-preset" title={p.name}
+                  onClick={() => updateNodeStyle(nodeId, p.patch as any)}>
+                  <span className="bp-preset-swatch" style={{ background: p.swatch }} />
+                  <span className="bp-preset-name">{p.name}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+
           {/* BACKGROUND */}
           <Section title="Background">
             <div className="bp-bg-swatches">
@@ -85,6 +106,66 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
                 if (c) updateNodeStyle(nodeId, { bgColor: c })
               }}>+</button>
             </div>
+          </Section>
+
+          {/* PATTERN */}
+          <Section title="Pattern">
+            <div className="bp-pattern-row">
+              {PATTERNS.map((p) => (
+                <button key={p.value} className={`bp-pattern-btn ${st.pattern === p.value ? 'on' : ''}`}
+                  onClick={() => updateNodeStyle(nodeId, { pattern: p.value })}>
+                  <span className="bp-pattern-icon">{p.icon}</span>
+                  <span className="bp-pattern-label">{p.label}</span>
+                </button>
+              ))}
+            </div>
+            {st.pattern !== 'none' && (
+              <div className="bp-pattern-opacity">
+                <span className="bp-field-label">Opacity</span>
+                <input type="range" min={0.04} max={0.5} step={0.02} value={st.patternOpacity ?? 0.15}
+                  onChange={(e) => updateNodeStyle(nodeId, { patternOpacity: Number(e.target.value) })} />
+              </div>
+            )}
+          </Section>
+
+          {/* STICKER */}
+          <Section title="Sticker">
+            {st.stickerUrl && (
+              <div className="bp-sticker-preview">
+                <img src={st.stickerUrl} alt="Sticker" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 6, background: '#F0F0F0', padding: 4 }} />
+                <button className="sf-btn secondary tiny" onClick={() => updateNodeStyle(nodeId, { stickerUrl: '' })}>Remove</button>
+              </div>
+            )}
+            <div className="bp-sticker-controls">
+              <label className="sf-btn secondary tiny" style={{ cursor: 'pointer' }}>
+                Upload
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                  const file = e.target.files?.[0]; if (!file) return
+                  const url = await uploadMedia(file)
+                  if (url) updateNodeStyle(nodeId, { stickerUrl: url })
+                  e.target.value = ''
+                }} />
+              </label>
+              <select className="bp-text" value={st.stickerPos}
+                onChange={(e) => updateNodeStyle(nodeId, { stickerPos: e.target.value })}>
+                <option value="top-left">Top Left</option>
+                <option value="top-right">Top Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-right">Bottom Right</option>
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="bp-field-label">Size</span>
+                <input type="range" min={24} max={120} step={2} value={st.stickerSize}
+                  onChange={(e) => updateNodeStyle(nodeId, { stickerSize: Number(e.target.value) })} style={{ width: 70 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="bp-field-label">Rotate</span>
+                <input type="range" min={-45} max={45} step={1} value={st.stickerRotation}
+                  onChange={(e) => updateNodeStyle(nodeId, { stickerRotation: Number(e.target.value) })} style={{ width: 70 }} />
+              </div>
+            </div>
+            <input className="bp-text bp-sticker-url-input" placeholder="Or paste image URL..."
+              value={st.stickerUrl} onChange={(e) => updateNodeStyle(nodeId, { stickerUrl: e.target.value })} />
           </Section>
 
           {/* BORDER */}

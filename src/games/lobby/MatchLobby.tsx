@@ -107,7 +107,7 @@ export function MatchLobby({ onStartMatch, onBack }: MatchLobbyProps) {
           >
             {isReady ? t('games.lobby.notReady') : t('games.lobby.ready')}
           </button>
-          <button className="sf-btn ghost" onClick={() => leaveRoom()}>
+          <button className="sf-btn water" onClick={() => leaveRoom()}>
             {t('games.lobby.leave')}
           </button>
         </div>

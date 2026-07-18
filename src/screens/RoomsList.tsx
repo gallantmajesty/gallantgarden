@@ -44,7 +44,7 @@ export function RoomsList() {
   return (
     <div className="rooms">
       <header className="rooms__head">
-        <button className="rooms__back sf-btn ghost" onClick={() => (mode ? setMode(null) : navigate('/'))}>
+        <button className="rooms__back sf-btn water" onClick={() => (mode ? setMode(null) : navigate('/'))}>
           ← {mode ? t('roomsList.options') : t('common.lobby')}
         </button>
         <div className="rooms__title">

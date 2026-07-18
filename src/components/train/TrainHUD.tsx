@@ -249,7 +249,7 @@ function BoardingCard() {
         </div>
 
         <footer className="train-card-foot">
-          <button className="sf-btn ghost" onClick={() => useTrain.getState().cancelBoarding()}>
+          <button className="sf-btn water" onClick={() => useTrain.getState().cancelBoarding()}>
             Step back
           </button>
           <button
@@ -364,7 +364,7 @@ function JourneyDock() {
         <div className="train-dock-confirm">
           <span>Leave now? You'll forfeit this journey's reward.</span>
           <div className="train-dock-confirm-btns">
-            <button className="sf-btn ghost sm" onClick={() => setConfirmLeave(false)}>
+            <button className="sf-btn water sm" onClick={() => setConfirmLeave(false)}>
               Stay
             </button>
             <button

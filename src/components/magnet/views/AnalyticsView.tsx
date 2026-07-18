@@ -357,7 +357,7 @@ export function AnalyticsView() {
             </datalist>
           </Field>
           <div className="mg-form-actions">
-            <button type="button" className="mg-btn ghost" onClick={() => setFocusOpen(false)}>
+            <button type="button" className="mg-btn glass" onClick={() => setFocusOpen(false)}>
               Cancel
             </button>
             <button type="submit" className="mg-btn primary">

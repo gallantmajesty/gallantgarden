@@ -22,7 +22,7 @@ export function Realm() {
   return (
     <div className="realm-root">
       <div className="realm-topleft">
-        <button className="sf-btn ghost" onClick={() => (mode === 'choose' ? navigate('/') : setMode(mode === 'global' ? 'choose' : 'global'))}>
+        <button className="sf-btn water" onClick={() => (mode === 'choose' ? navigate('/') : setMode(mode === 'global' ? 'choose' : 'global'))}>
           ‹ {mode === 'choose' ? 'Lobby' : mode === 'global' ? 'Realm' : 'Global Realm'}
         </button>
       </div>
@@ -552,7 +552,7 @@ function InviteCard({ realm, onEnter, onBack }: { realm: DbRealm; onEnter: () =>
       </div>
 
       <div className="realm-create">
-        <button className="sf-btn ghost" onClick={onBack}>
+        <button className="sf-btn water" onClick={onBack}>
           ‹ Back
         </button>
         <button className="sf-btn water" onClick={onEnter}>

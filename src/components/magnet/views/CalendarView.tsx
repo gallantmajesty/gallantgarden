@@ -154,7 +154,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
                 {t('calendar.week')}
               </button>
             </div>
-            <button className="mg-btn ghost" onClick={goToday}>
+            <button className="mg-btn glass" onClick={goToday}>
               {t('calendar.today')}
             </button>
           </div>
@@ -205,7 +205,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
               )}
             </h3>
             {onAddTask && (
-              <button className="mg-btn ghost small" onClick={() => onAddTask(selected)}>
+              <button className="mg-btn small" onClick={() => onAddTask(selected)}>
                 <Icon name="plus" size={14} /> {t('calendar.addTask')}
               </button>
             )}

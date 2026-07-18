@@ -33,6 +33,8 @@ export type Shape =
 
 export type BgKind = 'solid' | 'gradient' | 'glass' | 'paper' | 'theme'
 export type TextAlign = 'left' | 'center' | 'right'
+export type NotePattern = 'none' | 'dots' | 'gingham' | 'stripes' | 'grid' | 'plaid'
+export type StickerPos = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 /** Everything that controls how a single note *looks*. */
 export interface NoteStyle {
@@ -40,12 +42,19 @@ export interface NoteStyle {
   bgKind: BgKind
   bgColor: string // solid fill / paper tint
   gradient: string // full CSS gradient (used when bgKind === 'gradient')
+  pattern: NotePattern
+  patternOpacity: number // 0..1 overlay opacity
   borderColor: string
   borderWidth: number // px
   radius: number // px (ignored by circle/hexagon)
   shadow: number // 0..1 drop-shadow intensity
   glow: number // 0..1 accent glow intensity
   opacity: number // 0..1
+  // sticker
+  stickerUrl: string // image URL (empty = no sticker)
+  stickerPos: StickerPos
+  stickerSize: number // px
+  stickerRotation: number // degrees
   // text
   font: string // css font-family stack key
   fontSize: number // px
@@ -202,6 +211,12 @@ export function defaultNoteStyle(): NoteStyle {
     bgKind: 'solid',
     bgColor: '#23272F',
     gradient: 'linear-gradient(135deg, #23272F, #2C313A)',
+    pattern: 'none',
+    patternOpacity: 0.18,
+    stickerUrl: '',
+    stickerPos: 'top-right',
+    stickerSize: 56,
+    stickerRotation: 0,
     borderColor: '#353B45',
     borderWidth: 1.5,
     radius: 20,
@@ -238,6 +253,22 @@ export const NOTE_PRESETS: NotePreset[] = [
   { id: 'database', name: 'Database', swatch: '#3D3020', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#3D3020', borderColor: '#4A3D30', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
   { id: 'success', name: 'Success', swatch: '#1E3020', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#1E3020', borderColor: '#2A4030', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
   { id: 'architecture', name: 'Architecture', swatch: '#2A2540', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#2A2540', borderColor: '#353050', borderWidth: 1, radius: 20, shadow: 0.35, glow: 0, textColor: '#E8EBF0' } },
+]
+
+/** Cute / Korean-aegyo gradient looks — soft pastel washes with stationery patterns. */
+export const NOTE_CUTE_PRESETS: NotePreset[] = [
+  { id: 'sakura', name: 'Sakura', swatch: 'linear-gradient(135deg,#FFE3F1,#FFB6D5)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#FFE3F1,#FFB6D5)', pattern: 'dots', patternOpacity: 0.15, borderColor: '#FFB0D0', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.1, textColor: '#8A3050' } },
+  { id: 'matcha', name: 'Matcha', swatch: 'linear-gradient(135deg,#E4F5DE,#AAD9A8)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#E4F5DE,#B8E6B0)', pattern: 'gingham', patternOpacity: 0.14, borderColor: '#9DD89A', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.08, textColor: '#2E5A2C' } },
+  { id: 'lavender', name: 'Lavender', swatch: 'linear-gradient(135deg,#F0E8FF,#CDB4FF)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#F0E8FF,#CDB4FF)', pattern: 'stripes', patternOpacity: 0.12, borderColor: '#C0A8F0', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.12, textColor: '#4A2A72' } },
+  { id: 'peach', name: 'Peach', swatch: 'linear-gradient(135deg,#FFEAD9,#FFC09E)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#FFEAD9,#FFC09E)', pattern: 'dots', patternOpacity: 0.15, borderColor: '#FFB088', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.08, textColor: '#7A3A22' } },
+  { id: 'blueberry', name: 'Blueberry', swatch: 'linear-gradient(135deg,#E2E6FF,#B3BCFF)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#E2E6FF,#B3BCFF)', pattern: 'grid', patternOpacity: 0.1, borderColor: '#A0ACF0', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.1, textColor: '#2E3A72' } },
+  { id: 'bubblegum', name: 'Bubblegum', swatch: 'linear-gradient(135deg,#FFE0F8,#EFA8FF)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#FFE0F8,#EFA8FF)', pattern: 'plaid', patternOpacity: 0.12, borderColor: '#E098F0', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.15, textColor: '#5E2A66' } },
+  { id: 'mint', name: 'Mint', swatch: 'linear-gradient(135deg,#DEFBF5,#A2EBDD)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#DEFBF5,#A2EBDD)', pattern: 'gingham', patternOpacity: 0.14, borderColor: '#88DBC8', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.08, textColor: '#1E5A4A' } },
+  { id: 'lemon', name: 'Lemon', swatch: 'linear-gradient(135deg,#FFFAD9,#FFE894)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#FFFAD9,#FFE894)', pattern: 'dots', patternOpacity: 0.15, borderColor: '#F0D878', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.06, textColor: '#6A541A' } },
+  { id: 'milktea', name: 'Milk Tea', swatch: 'linear-gradient(135deg,#F3E6D6,#D9B894)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#F3E6D6,#D9B894)', pattern: 'stripes', patternOpacity: 0.12, borderColor: '#C9A880', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.06, textColor: '#5A3A22' } },
+  { id: 'coral', name: 'Coral', swatch: 'linear-gradient(135deg,#FFE6E0,#FFB3A2)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#FFE6E0,#FFB3A2)', pattern: 'grid', patternOpacity: 0.1, borderColor: '#FFA090', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.08, textColor: '#7A3222' } },
+  { id: 'sky', name: 'Sky', swatch: 'linear-gradient(135deg,#DEF4FF,#AEDDFF)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#DEF4FF,#AEDDFF)', pattern: 'dots', patternOpacity: 0.14, borderColor: '#98CCF0', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.08, textColor: '#1E4A66' } },
+  { id: 'cotton', name: 'Cotton', swatch: 'linear-gradient(135deg,#FAF8FF,#E3DEFF)', patch: { shape: 'rounded', bgKind: 'gradient', gradient: 'linear-gradient(135deg,#FAF8FF,#E3DEFF)', pattern: 'plaid', patternOpacity: 0.1, borderColor: '#D0CAF0', borderWidth: 2, radius: 18, shadow: 0.35, glow: 0.06, textColor: '#3A3466' } },
 ]
 
 // ── Yarn palette ──────────────────────────────────────────────────────────────

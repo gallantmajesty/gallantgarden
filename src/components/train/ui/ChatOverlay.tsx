@@ -138,7 +138,7 @@ export function ChatOverlay() {
             placeholder="Type a message..."
             maxLength={100}
           />
-          <button className="sf-btn ghost sm" onClick={() => send()}>Send</button>
+          <button className="sf-btn water sm" onClick={() => send()}>Send</button>
         </div>
       )}
 

@@ -35,13 +35,13 @@ export function BlueprintSidebar({ open, onToggle, onExport, onToggleSearch, dar
 
   return (
     <aside className={`bp-sidebar ${open ? 'open' : 'collapsed'}`}>
-      {/* Toggle button */}
+      {/* Toggle button — always visible, outside scroll area */}
       <button className="bp-sidebar-toggle" onClick={onToggle} title={open ? 'Collapse sidebar' : 'Expand sidebar'}>
         {open ? <PanelLeftClose size={16} strokeWidth={2} /> : <PanelLeftOpen size={16} strokeWidth={2} />}
       </button>
 
       {open && (
-        <>
+        <div className="bp-sidebar-scroll">
           {/* Branding */}
           <div className="bp-sidebar-brand">
             <span className="bp-sidebar-logo">🌸</span>
@@ -147,7 +147,7 @@ export function BlueprintSidebar({ open, onToggle, onExport, onToggleSearch, dar
             {dark ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}
             <span>{dark ? 'Light mode' : 'Dark mode'}</span>
           </button>
-        </>
+        </div>
       )}
     </aside>
   )

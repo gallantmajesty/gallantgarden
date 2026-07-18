@@ -68,7 +68,9 @@ export async function exportBoardPng(doc: BoardDoc, accentRgb = '138,108,255'): 
           media = `<img src="${escapeHtml(m.url)}" style="width:100%;max-height:60%;object-fit:${fit};border-radius:${m.radius ?? 8}px;display:block;margin-bottom:6px;${op}${rot}position:relative"/>`
         }
       }
-      const sticker = n.sticker ? `<div style="position:relative;font-size:34px;line-height:1">${escapeHtml(n.sticker)}</div>` : ''
+      const sticker = n.style.stickerUrl
+        ? `<img src="${escapeHtml(n.style.stickerUrl)}" style="position:absolute;${n.style.stickerPos?.includes('top') ? 'top:-12px' : 'bottom:-12px'};${n.style.stickerPos?.includes('right') ? 'right:-12px' : 'left:-12px'};width:${n.style.stickerSize ?? 56}px;height:${n.style.stickerSize ?? 56}px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18));transform:rotate(${n.style.stickerRotation ?? 0}deg);z-index:10;pointer-events:none" alt="" />`
+        : ''
       const icon = n.icon ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;z-index:1">${escapeHtml(n.icon)}</div>` : ''
       return `<foreignObject x="${n.x - b.x}" y="${n.y - b.y}" width="${n.w}" height="${n.h}">
         <div xmlns="http://www.w3.org/1999/xhtml" style="${surfaceCss}${paper};position:relative">

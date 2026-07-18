@@ -80,25 +80,30 @@
 }
 
 .lobby-exit {
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--glass-fill);
   backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   color: var(--on-glass);
-  box-shadow: var(--glass-shadow);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 4px 10px rgba(0, 0, 0, 0.15);
   transition: all 0.15s ease;
 }
 .lobby-exit:hover {
-  filter: brightness(1.1);
+  background: var(--glass-fill-strong);
+  filter: brightness(1.08);
   transform: translateY(-1px);
-  box-shadow: var(--glass-shadow-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 6px 14px rgba(0, 0, 0, 0.2);
 }
 .lobby-exit:active {
   transform: translateY(1px);
-  box-shadow: var(--glass-shadow);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .lobby-iconbtn {
