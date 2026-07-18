@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Plus, Shapes, Undo2, Redo2,
-  Minus, ChevronDown,
+  Minus, ChevronDown, Sparkles,
 } from 'lucide-react'
 import { useBlueprint } from '../../store/blueprint'
 import { defaultNoteStyle, type Shape } from '../../lib/blueprint/types'
@@ -13,9 +13,11 @@ const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
   { shape: 'hexagon', label: 'Hex', bg: '#2C313A' },
 ]
 
-interface ToolbarProps {}
+interface ToolbarProps {
+  onJarvis?: () => void
+}
 
-export function Toolbar(_props: ToolbarProps) {
+export function Toolbar({ onJarvis }: ToolbarProps) {
   const zoom = useBlueprint((s) => s.viewport.zoom)
   const addNode = useBlueprint((s) => s.addNode)
   const undo = useBlueprint((s) => s.undo)
@@ -49,6 +51,11 @@ export function Toolbar(_props: ToolbarProps) {
       {/* Floating center toolbar — canvas tools */}
       <header className="bp-toolbar bp-surface">
         <button className="sf-btn tiny bp-add-note" onClick={() => addNode()}><Plus size={16} strokeWidth={2.4} /> Note</button>
+        {onJarvis && (
+          <button className="sf-btn tiny bp-jarvis-btn" onClick={onJarvis} title="Jarvis · AI Assistant">
+            <Sparkles size={16} strokeWidth={2.4} /> Jarvis
+          </button>
+        )}
         <div className="bp-rel">
           <button className="sf-btn secondary tiny" onClick={() => toggle('shapes')}><Shapes size={16} strokeWidth={2} /> Shape <ChevronDown size={14} strokeWidth={2} /></button>
           {menu === 'shapes' && (

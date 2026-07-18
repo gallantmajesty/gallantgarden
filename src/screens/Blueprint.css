@@ -1945,3 +1945,25 @@ label.sf-btn.bp-upload::after { display: none; }
   .bp-topbar-right { gap: 4px; }
   .bp-topbar-right .sf-btn { font-size: 12px; padding: 0 10px; min-height: 36px; }
 }
+
+/* ---- Jarvis AI panel ---- */
+.bp-jarvis-prompt { display: flex; flex-direction: column; gap: 8px; }
+.bp-jarvis-input { width: 100%; resize: vertical; font: 400 13px var(--bp-sans); padding: 9px 11px; border-radius: 12px; border: 1px solid var(--bp-border); background: #FFFFFF; color: var(--bp-text); }
+.bp-jarvis-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.bp-jarvis-wide { width: 100%; margin-top: 6px; }
+.bp-jarvis-note { font: 400 12px var(--bp-sans); color: var(--bp-text-soft); background: var(--surface-2); border: 1px solid var(--bp-border); border-radius: 10px; padding: 9px 11px; line-height: 1.5; }
+.bp-jarvis-err { font: 500 12px var(--bp-sans); color: #d98a4a; }
+.bp-quiz { display: flex; flex-direction: column; gap: 6px; }
+.bp-quiz-card { border: 1px solid var(--bp-border); border-radius: 10px; padding: 8px 10px; background: #FFFFFF; }
+.bp-quiz-card summary { cursor: pointer; font: 600 12px var(--bp-sans); color: var(--bp-text); }
+.bp-quiz-card p { margin: 6px 0 0; font: 400 12px var(--bp-sans); color: var(--bp-text-soft); line-height: 1.5; }
+.bp-jarvis-btn { background: linear-gradient(135deg, #8b6fff, #b98cff) !important; color: #fff !important; border: none !important; }
+
+/* ---- Jarvis settings (Explore settings panel) ---- */
+.jarvis-settings { display: flex; flex-direction: column; gap: 10px; }
+.jarvis-settings .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.jarvis-settings .settings-row label { font: 500 12px var(--bp-sans); color: var(--bp-text-soft); }
+.jarvis-settings .settings-row select,
+.jarvis-settings .settings-row input { flex: 1; max-width: 220px; }
+.settings-hint { font: 400 11px var(--bp-sans); color: var(--bp-text-soft); line-height: 1.5; margin: 0 0 4px; }
+.settings-saved { font: 500 11px var(--bp-sans); color: #4caf7d; margin-left: 8px; }
