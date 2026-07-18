@@ -72,6 +72,7 @@ export function PlayerController() {
 
   const camPos = useRef(new Vector3())
   const camTarget = useRef(new Vector3())
+  const camLookTmp = useRef(new Vector3())
   const targetYaw = useRef(0)
   const targetPitch = useRef(0)
   const safeDistRef = useRef(THIRD_DIST)
@@ -441,7 +442,8 @@ export function PlayerController() {
         camPos.current.z = MathUtils.clamp(camPos.current.z, -HALL.halfL + 0.6, HALL.halfL - 0.6)
         camPos.current.y = MathUtils.clamp(camPos.current.y, seat.pos[1] + 0.2, HALL.wallH - 0.5)
         cam.position.copy(camPos.current)
-        camTarget.current.lerp(new Vector3(seat.pos[0], eyeY - 0.1, seat.pos[2]), a)
+        camLookTmp.current.set(seat.pos[0], eyeY - 0.1, seat.pos[2])
+        camTarget.current.lerp(camLookTmp.current, a)
         cam.lookAt(camTarget.current)
         setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false })
       }
@@ -465,10 +467,9 @@ export function PlayerController() {
   const cameraModeR = useSettings((s) => s.cameraMode)
 
   const displayName = useProfile((s) => s.displayName)
-  const username = useProfile((s) => s.username)
   const rank = useProfile((s) => s.data.rank)
   const country = useProfile((s) => s.data.country)
-  const localName = displayName || username || 'Explorer'
+  const localName = displayName || 'Explorer'
 
   return (
     <group ref={avatarRef}>

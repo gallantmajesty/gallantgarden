@@ -112,26 +112,14 @@ export function AvatarRig({
   const angelWing = sharedMaterial('#fbf7ee', 0.7)
   const angelWingShade = sharedMaterial('#e9e0cf', 0.7)
 
-  // Cat: a cute cat-girl mascot — soft cream fur, a pink bow at the throat, big
-  // sparkly green eyes and no human face/hair/shoes. Reads as a cuddly kitten.
-  const isCat = config.characterId === 'cat'
-  const catFur = sharedMaterial('#f7e1d2', 0.62)
-  const catBelly = sharedMaterial('#fdeee6', 0.72)
-  const catDark = sharedMaterial('#e7b9a0', 0.6)
-  const catPink = sharedMaterial('#f48fb0', 0.55)
-  const catNose = sharedMaterial('#e2739e', 0.5)
-  const catGreen = sharedMaterial('#8fdc72', 0.35)
-  const catDress = sharedMaterial('#f7a8c4', 0.62)
-  const catWhite = sharedMaterial('#fff5fa', 0.7)
-
-  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel || isCat
+  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel
   const bunFur = sharedMaterial('#f8f5f0', 0.75)
   const bunPink = sharedMaterial('#f2a3c0', 0.6)
   const bunInner = sharedMaterial('#f6c2d6', 0.6)
   const bunGreen = sharedMaterial('#7cc47b', 0.6)
   const bunNose = sharedMaterial('#e488a6', 0.5)
 
-  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : isCat ? catFur : skinMaterial(config.skinColor ?? skinHex(config.skin))
+  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : skinMaterial(config.skinColor ?? skinHex(config.skin))
   const hairM = hairMaterial(config.hairColorHex ?? hairHex(config.hairColor))
   const eyeCol = eyeHex(config.eyes)
 
@@ -149,8 +137,8 @@ export function AvatarRig({
     skin.bumpMap = skinTex
     skin.bumpScale = 0.025
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isCat ? catFur : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isCat ? catFur : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
   const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
 
@@ -214,7 +202,7 @@ export function AvatarRig({
 
           <group ref={bind('chest')} position={[0, P.spineLen, 0]}>
             {/* Costume characters (dino/rabbit/robot/pig/angel/cat) have no clothing overlays. */}
-            {!isDino && !isRabbit && !isRobot && !isPig && !isAngel && !isCat && <Top config={config} P={P} topM={topM} skin={skin} />}
+            {!isDino && !isRabbit && !isRobot && !isPig && !isAngel && <Top config={config} P={P} topM={topM} skin={skin} />}
 
             {/* Robot sci-fi accents: glowing chest core + blue accent lines. */}
             {isRobot && (
@@ -238,21 +226,8 @@ export function AvatarRig({
               </group>
             )}
 
-            {/* Cat: a cute pink dress bodice with a ruffled neckline + puff sleeves. */}
-            {isCat && (
-              <group>
-                {/* pink fitted bodice — slightly bigger so it's clearly a dress */}
-                <mesh geometry={sphereGeo(1)} material={catDress} scale={[P.chestW * 1.05, P.chestLen * 0.72, P.torsoD * 1.08]} position={[0, P.chestLen * 0.45, 0]} castShadow />
-                {/* white ruffled neckline */}
-                <mesh geometry={torusGeo(P.chestW * 0.62, P.chestW * 0.18, 10, 28)} material={catWhite} position={[0, P.chestLen * 0.9, P.torsoD * 0.1]} rotation={[Math.PI / 2, 0, 0]} />
-                {/* puff sleeves — bigger for a cute look */}
-                {[-1, 1].map((sx) => (
-                  <mesh key={`ps${sx}`} geometry={sphereGeo(1)} material={catDress} scale={[P.shoulderW * 0.65, P.shoulderW * 0.65, P.torsoD * 0.6]} position={[sx * P.shoulderW * 0.92, P.chestLen * 0.72, 0]} castShadow />
-                ))}
-                {/* little bow on the chest */}
-                <mesh geometry={sphereGeo(1)} material={catPink} scale={[P.chestW * 0.14, P.chestLen * 0.12, P.torsoD * 0.06]} position={[0, P.chestLen * 0.5, P.torsoD * 1.0]} />
-              </group>
-            )}
+            {/* seamless body for animal mascots — torso + limbs render in their
+                suit colour; heads and feet stay skin. No discs/plates. */}
 
             <group ref={bind('neck')} position={[0, P.chestLen * 0.86, 0]}>
               {/* Collar — plugs the open torso top in the garment colour so the
@@ -269,7 +244,6 @@ export function AvatarRig({
                 [P.neckR * 1.1, P.chestLen * 0.2 + P.neckLen * 1.4],
               ])} material={skin} castShadow />
               {/* Cat: a cute pink bow worn at the throat */}
-              {isCat && <CatBow P={P} pink={catPink} />}
               <group ref={bind('head')} position={[0, P.neckLen, 0]}>
                 {isDino ? (
                   <DinoHead P={P} main={dinoMain} belly={dinoBelly} spike={dinoDark} />
@@ -283,8 +257,6 @@ export function AvatarRig({
                   <PigHead P={P} main={pigMain} belly={pigBelly} nose={pigNose} dark={pigDark} />
                 ) : isAngel ? (
                   <AngelHead P={P} skin={angelSkin} gold={angelGold} glow={glowGold} />
-                ) : isCat ? (
-                  <CatHead P={P} fur={catFur} belly={catBelly} dark={catDark} pink={catPink} nose={catNose} />
                 ) : (
                   <>
                     <Head P={P} skin={skin} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} characterId={config.characterId ?? 'james'} eyeHexVal={eyeCol} />
@@ -348,20 +320,6 @@ export function AvatarRig({
           </group>
         )}
 
-        {/* Cat: a big fluffy tail with a pink tip, curving up behind */}
-        {isCat && (
-          <group position={[0, 0.02, -P.torsoD * 0.55]} rotation={[0.7, 0, 0]}>
-            {/* thick tapering tail shaft */}
-            <mesh geometry={taperGeo(P.hipBoneW * 0.3, P.hipBoneW * 0.15, P.upperLeg * 1.35)} material={catFur} position={[0, -P.upperLeg * 0.6, 0]} castShadow />
-            {/* fluffy tip sphere */}
-            <mesh geometry={sphereGeo(1)} material={catFur} scale={[P.hipBoneW * 0.45, P.hipBoneW * 0.45, P.hipBoneW * 0.45]} position={[0, -P.upperLeg * 1.2, 0]} castShadow />
-            {/* pink tip accent */}
-            <mesh geometry={sphereGeo(1)} material={catPink} scale={[P.hipBoneW * 0.32, P.hipBoneW * 0.32, P.hipBoneW * 0.32]} position={[0, -P.upperLeg * 1.35, 0]} />
-            {/* extra fur puff in the middle for fluffiness */}
-            <mesh geometry={sphereGeo(1)} material={catFur} scale={[P.hipBoneW * 0.38, P.hipBoneW * 0.38, P.hipBoneW * 0.38]} position={[0, -P.upperLeg * 0.95, 0]} castShadow />
-          </group>
-        )}
-
         {/* Angel costume — flared white robe with gold trim + two big feathered
             wings fanned out to the sides. The glowing halo floats above the head
             (drawn in AngelHead). The Top overlay is skipped (costume path). */}
@@ -393,7 +351,7 @@ export function AvatarRig({
         )}
 
         {/* Frock skirt — short A-line, after legs before arms */}
-        {config.top === 'frock' && !isCat && (() => {
+        {config.top === 'frock' && (() => {
           const skirtLen = P.upperLeg * 0.7
           const pinkMat = new MeshStandardMaterial({ color: '#d4a0b8', roughness: 0.75, metalness: 0, side: 2 })
           const blackMat = new MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.8, metalness: 0, side: 2 })
@@ -416,32 +374,9 @@ export function AvatarRig({
         })()}
 
         {/* Cat dress — short A-line pink skirt with a frilly white hem + waist bow */}
-        {isCat && (() => {
-          const skirtLen = P.upperLeg * 0.85
-          return (
-            <group ref={skirtRef} position={[0, 0.01, 0]}>
-              <mesh geometry={latheGeo([
-                [P.waistW * 1.02, 0],
-                [P.hipBoneW * 1.06, -skirtLen * 0.18],
-                [P.hipBoneW * 1.16, -skirtLen * 0.45],
-                [P.hipBoneW * 1.32, -skirtLen * 0.75],
-                [P.hipBoneW * 1.6, -skirtLen],
-              ])} material={catDress} castShadow />
-              {/* frilly white hem */}
-              <mesh geometry={latheGeo([
-                [P.hipBoneW * 1.6, -skirtLen],
-                [P.hipBoneW * 1.65, -skirtLen * 1.02],
-                [P.hipBoneW * 1.55, -skirtLen * 1.05],
-              ])} material={catWhite} />
-              {/* little bow at the front of the waist */}
-              <mesh geometry={sphereGeo(1)} material={catPink} scale={[P.hipBoneW * 0.22, P.hipBoneW * 0.17, P.torsoD * 0.14]} position={[0, -skirtLen * 0.08, P.hipBoneW * 1.58]} />
-            </group>
-          )
-        })()}
-
         {/* Sarafan long A-line skirt — flows to the ankles with an embroidered,
              gold-and-white folk hem over the red wool */}
-        {config.top === 'sarafan' && !isCat && (() => {
+        {config.top === 'sarafan' && (() => {
           const skirtLen = P.upperLeg * 1.7
           const redMat = new MeshStandardMaterial({ color: topHex(config.top), roughness: 0.85, metalness: 0, side: 2 })
           const goldMat = new MeshStandardMaterial({ color: '#D4AF37', roughness: 0.4, metalness: 0.2, side: 2 })
@@ -998,12 +933,13 @@ function PigHead({ P, main, belly, nose, dark }: { P: Proportions; main: Mat; be
       <mesh geometry={torusGeo(r * 0.12, r * 0.04, 6, 12)} material={dark}
         position={[0, r * 1.02, 0]} rotation={[Math.PI / 2, 0, 0]} />
 
-      {/* big friendly eyes with catchlights */}
+      {/* big friendly eyes with catchlights — flattened discs seated slightly
+          inside the head so they read as on the face, not bulging out */}
       {[-1, 1].map((sx) => (
-        <group key={`eye${sx}`} position={[sx * r * 0.38, r * 0.18, r * 0.82]}>
-          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.22, r * 0.26, r * 0.18]} />
-          <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.11, r * 0.14, r * 0.11]} position={[0, 0, r * 0.12]} />
-          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.05, r * 0.05, r * 0.03]} position={[sx * -r * 0.04, r * 0.07, r * 0.2]} />
+        <group key={`eye${sx}`} position={[sx * r * 0.38, r * 0.18, r * 0.88]}>
+          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.22, r * 0.26, r * 0.1]} />
+          <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.11, r * 0.14, r * 0.07]} position={[0, 0, r * 0.07]} />
+          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.05, r * 0.05, r * 0.03]} position={[sx * -r * 0.04, r * 0.07, r * 0.11]} />
         </group>
       ))}
 
@@ -1111,104 +1047,6 @@ function AngelWing({ P, mat, shade }: { P: Proportions; mat: Mat; shade: Mat }) 
     )
   }
   return <group>{feats}</group>
-}
-
-/* ================================================ CAT HEAD ================================================ */
-
-/** Cute cat-girl mascot head: a round furry face, two triangular ears with pink
- *  inner lining, big sparkly green eyes with vertical slit pupils, a tiny pink
- *  nose, whiskers, rosy cheeks and soft cheek fluff. No human face. */
-function CatHead({ P, fur, belly, dark, pink, nose }: { P: Proportions; fur: Mat; belly: Mat; dark: Mat; pink: Mat; nose: Mat }) {
-  const r = P.headR
-  const cy = r * 0.92
-  const black = sharedMaterial('#2f2422', 0.25, 0.2)
-  const white = sharedMaterial('#ffffff', 0.25)
-  const green = sharedMaterial('#8fdc72', 0.35)
-  const blush = sharedMaterial('#f78fb0', 0.45)
-
-  return (
-    <group position={[0, cy, 0]}>
-      {/* round furry head, slightly wider than tall */}
-      <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 1.0, r * 0.96, r * 1.0]} castShadow />
-
-      {/* two rounded cheek puffs that form the muzzle */}
-      {[-1, 1].map((sx) => (
-        <mesh key={`mu${sx}`} geometry={sphereGeo(1)} material={fur} scale={[r * 0.34, r * 0.28, r * 0.32]} position={[sx * r * 0.22, -r * 0.2, r * 0.62]} />
-      ))}
-
-      {/* big, realistic cat ears — flattened triangular flaps splayed outward,
-          with a prominent pink inner lining */}
-      {[-1, 1].map((sx) => (
-        <group key={`ear${sx}`} position={[sx * r * 0.48, r * 1.08, -r * 0.06]} rotation={[-0.18, 0, sx * 0.35]}>
-          {/* outer ear — big flattened cone, pointed tip */}
-          <mesh geometry={taperGeo(r * 0.001, r * 0.5, r * 0.85)} material={fur} scale={[1, 1, 0.34]} castShadow />
-          {/* inner pink ear */}
-          <mesh geometry={taperGeo(r * 0.001, r * 0.32, r * 0.66)} material={pink} scale={[1, 1, 0.26]} position={[0, -r * 0.03, r * 0.07]} />
-        </group>
-      ))}
-
-      {/* cute cat eyes — flat discs painted on the face (no 3D bulge) with
-          big green irises and vertical slit pupils */}
-      {[-1, 1].map((sx) => (
-        <group key={`eye${sx}`} position={[sx * r * 0.32, r * 0.04, r * 0.93]} rotation={[0.22, 0, 0]}>
-          {/* white rim */}
-          <mesh geometry={circleGeo(r)} material={white} scale={[r * 0.18, r * 0.24, 1]} />
-          {/* big green iris */}
-          <mesh geometry={circleGeo(r)} material={green} scale={[r * 0.155, r * 0.21, 1]} position={[0, 0, r * 0.003]} />
-          {/* vertical cat-slit pupil */}
-          <mesh geometry={circleGeo(r)} material={black} scale={[r * 0.045, r * 0.15, 1]} position={[0, 0, r * 0.006]} />
-          {/* catchlights */}
-          <mesh geometry={circleGeo(r * 0.07)} material={white} position={[sx * -r * 0.05, r * 0.08, r * 0.009]} />
-          <mesh geometry={circleGeo(r * 0.03)} material={white} position={[sx * r * 0.045, -r * 0.04, r * 0.009]} />
-          {/* thin upper lash line */}
-          <mesh geometry={boxGeo(r * 0.38, r * 0.02, r * 0.004)} material={black} position={[0, r * 0.22, r * 0.006]} />
-        </group>
-      ))}
-
-      {/* tiny pink nose */}
-      <mesh geometry={sphereGeo(1)} material={nose} scale={[r * 0.1, r * 0.08, r * 0.06]} position={[0, -r * 0.12, r * 1.02]} />
-      {/* philtrum */}
-      <mesh geometry={boxGeo(r * 0.018, r * 0.08, r * 0.02)} material={black} position={[0, -r * 0.2, r * 1.0]} />
-      {/* cat "ω" smile */}
-      <mesh geometry={torusGeo(r * 0.06, r * 0.018, 6, 14)} material={black} position={[-r * 0.05, -r * 0.24, r * 0.98]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.7, 1]} />
-      <mesh geometry={torusGeo(r * 0.06, r * 0.018, 6, 14)} material={black} position={[r * 0.05, -r * 0.24, r * 0.98]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.7, 1]} />
-
-      {/* rosy cheeks */}
-      {[-1, 1].map((sx) => (
-        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.15, r * 0.1, r * 0.06]} position={[sx * r * 0.52, -r * 0.06, r * 0.82]} />
-      ))}
-
-      {/* whiskers — fine and delicate */}
-      {[-1, 1].map((sx) => (
-        <group key={`wk${sx}`}>
-          {[0.1, 0.0, -0.1].map((wy, i) => (
-            <mesh key={i} geometry={boxGeo(r * 0.55, r * 0.006, r * 0.006)} material={black} position={[sx * r * 0.72, -r * 0.12 + wy * r, r * 0.88]} rotation={[0, 0, sx * (0.16 - i * 0.14)]} />
-          ))}
-        </group>
-      ))}
-    </group>
-  )
-}
-
-/* ================================================ CAT BOW ================================================ */
-
-/** A cute pink bow worn at the throat — two rounded loops, a centre knot and two
- *  dangling ribbon tails. Rendered in the neck group so it sits on the neck. */
-function CatBow({ P, pink }: { P: Proportions; pink: Mat }) {
-  const nr = P.neckR
-  return (
-    <group position={[0, P.chestLen * 0.2 + P.neckLen * 0.45, P.neckR * 1.55]}>
-      {/* left loop */}
-      <mesh geometry={sphereGeo(1)} material={pink} scale={[nr * 1.0, nr * 0.72, nr * 0.2]} position={[-nr * 0.85, 0, 0]} rotation={[0, 0, 0.18]} />
-      {/* right loop */}
-      <mesh geometry={sphereGeo(1)} material={pink} scale={[nr * 1.0, nr * 0.72, nr * 0.2]} position={[nr * 0.85, 0, 0]} rotation={[0, 0, -0.18]} />
-      {/* centre knot */}
-      <mesh geometry={sphereGeo(1)} material={pink} scale={[nr * 0.42, nr * 0.42, nr * 0.42]} />
-      {/* ribbon tails */}
-      <mesh geometry={taperGeo(nr * 0.18, nr * 0.02, nr * 0.9)} material={pink} position={[-nr * 0.32, -nr * 0.85, 0]} rotation={[0, 0, 0.25]} />
-      <mesh geometry={taperGeo(nr * 0.18, nr * 0.02, nr * 0.9)} material={pink} position={[nr * 0.32, -nr * 0.85, 0]} rotation={[0, 0, -0.25]} />
-    </group>
-  )
 }
 
 /* ================================================ BLUE CAP ================================================ */
@@ -1457,7 +1295,6 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
   const lower: BoneName = side === 'L' ? 'legLowerL' : 'legLowerR'
   const foot: BoneName = side === 'L' ? 'footL' : 'footR'
   const isDino = config.characterId === 'dino'
-  const isCat = config.characterId === 'cat'
   const calfMat = config.bottom === 'shorts' ? skin : botM
   const legMat = config.top === 'frock' ? skin : botM
 
@@ -1521,16 +1358,6 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               {/* three small toe bumps */}
               {[-P.ankleR * 0.3, 0, P.ankleR * 0.3].map((tx, i) => (
                 <mesh key={i} geometry={sphereGeo(1)} material={skin} scale={[P.ankleR * 0.22, P.ankleR * 0.2, P.ankleR * 0.28]} position={[tx, -P.ankleR * 0.35, P.ankleR * 1.2]} castShadow />
-              ))}
-            </group>
-          )}
-
-          {/* Cat: a rounded fur paw with little pink toe beans at the front. */}
-          {isCat && (
-            <group>
-              <mesh geometry={sphereGeo(1)} material={skin} scale={[P.ankleR * 1.1, P.ankleR * 0.55, P.ankleR * 1.7]} position={[0, -P.ankleR * 0.3, P.footLen * 0.2]} castShadow />
-              {[-P.ankleR * 0.32, 0, P.ankleR * 0.32].map((tx, i) => (
-                <mesh key={i} geometry={sphereGeo(1)} material={sharedMaterial('#f48fb0', 0.55)} scale={[P.ankleR * 0.22, P.ankleR * 0.18, P.ankleR * 0.2]} position={[tx, -P.ankleR * 0.3, P.ankleR * 1.35]} castShadow />
               ))}
             </group>
           )}

@@ -15,7 +15,8 @@ import {
   parseProfilePublic,
   type ProfilePublic,
 } from '../lib/types'
-import { normalizeUsername } from '../lib/usernames'
+import { checkDailyLogin } from '../lib/xpEngine'
+import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 
 // Per-user public/onboarding profile state. Distinct from `useSettings` (UI
 // prefs): this holds identity-ish fields set during onboarding — country (the
@@ -34,10 +35,12 @@ interface ProfileState {
   onboarded: boolean
 
   // ---- public/social profile (mirrors the profiles columns + jsonb blob) ----
-  /** globally-unique handle; null until claimed */
-  username: string | null
+  /** unique numeric Player ID (assigned at signup, permanent). */
+  playerId: number | null
   /** display name (also the auth profile name); NOT unique */
   displayName: string
+  /** how many times the display name has been changed (capped at MAX). */
+  displayNameChanges: number
   /** optional uploaded profile-picture URL */
   avatarUrl: string | null
   /** the intentionally-public profile blob */
@@ -53,10 +56,12 @@ interface ProfileState {
   hydrate: (userId: string) => Promise<void>
   /** Persist a completed onboarding document (jsonb + country/rank columns). */
   complete: (data: Omit<OnboardingData, 'completed'>) => Promise<boolean>
-  /** Claim/replace the globally-unique username (caller pre-validates). */
-  setUsername: (username: string) => Promise<boolean>
-  /** Update the (non-unique) display name. */
+  /** Assign the unique numeric Player ID (called once at signup). */
+  setPlayerId: (playerId: number) => Promise<boolean>
+  /** Update the (non-unique) display name. Enforces the free-change limit. */
   setDisplayName: (name: string) => Promise<boolean>
+  /** Can the user still change their display name for free? */
+  canChangeDisplayName: () => boolean
   /** Merge-patch the public profile blob and persist it. */
   savePublic: (patch: Partial<ProfilePublic>) => Promise<boolean>
   /** Set the uploaded profile-picture URL (or null to clear). */
@@ -74,8 +79,9 @@ export const useProfile = create<ProfileState>((set, get) => ({
   ready: false,
   data: { ...EMPTY_ONBOARDING },
   onboarded: false,
-  username: null,
+  playerId: null,
   displayName: 'Explorer',
+  displayNameChanges: 0,
   avatarUrl: null,
   pub: { ...EMPTY_PROFILE_PUBLIC },
   xp: 0,
@@ -89,8 +95,9 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const data = parseOnboarding(settings.onboarding)
 
     // Read the public/social columns straight from the owner's own profile row.
-    let username: string | null = null
+    let playerId: number | null = null
     let displayName = 'Explorer'
+    let displayNameChanges = 0
     let avatarUrl: string | null = null
     let pub = { ...EMPTY_PROFILE_PUBLIC }
     let xp = 0
@@ -98,13 +105,14 @@ export const useProfile = create<ProfileState>((set, get) => ({
     try {
       const { data: row } = await insforge
         .from('profiles')
-        .select('username, display_name, avatar_url, public_profile, xp, premium_xp')
+        .select('player_id, display_name_changes, display_name, avatar_url, public_profile, xp, premium_xp')
         .eq('id', userId)
         .maybeSingle()
       if (row) {
         const r = row as Record<string, unknown>
-        username = (r.username as string | null) ?? null
+        playerId = (r.player_id as number | null) ?? null
         displayName = (r.display_name as string) || 'Explorer'
+        displayNameChanges = (r.display_name_changes as number) ?? 0
         avatarUrl = (r.avatar_url as string | null) ?? null
         pub = parseProfilePublic(r.public_profile)
         xp = (r.xp as number) ?? 0
@@ -114,7 +122,20 @@ export const useProfile = create<ProfileState>((set, get) => ({
       /* offline / columns missing — fall back to empties */
     }
 
-    set({ userId, data, onboarded: data.completed, ready: true, username, displayName, avatarUrl, pub, xp, premiumXp })
+    set({ userId, data, onboarded: data.completed, ready: true, playerId, displayName, displayNameChanges, avatarUrl, pub, xp, premiumXp })
+
+    // Award daily login golden leaves (first open of the day)
+    try {
+      const loginResult = checkDailyLogin(xp, premiumXp, data.rank || 'bronze-1')
+      if (loginResult.goldenLeaves > 0) {
+        const newXp = xp
+        const newPremiumXp = premiumXp + loginResult.goldenLeaves
+        set({ premiumXp: newPremiumXp })
+        // Sync to DB
+        const { insforge: ins } = await import('../lib/insforge')
+        await ins.from('profiles').upsert([{ id: userId, premium_xp: newPremiumXp }], { onConflict: 'id' })
+      }
+    } catch { /* ignore — login bonus is best-effort */ }
   },
 
   complete: async (partial) => {
@@ -141,27 +162,31 @@ export const useProfile = create<ProfileState>((set, get) => ({
     return ok
   },
 
-  setUsername: async (raw) => {
+  setPlayerId: async (playerId) => {
     const userId = get().userId
     if (!userId) return false
-    const username = normalizeUsername(raw)
     const { error } = await insforge
       .from('profiles')
-      .upsert([{ id: userId, username }], { onConflict: 'id' })
-    if (error) return false // likely a unique-violation race — caller re-checks
-    set({ username })
+      .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
+    if (error) return false
+    set({ playerId })
     return true
   },
+
+  canChangeDisplayName: () => get().displayNameChanges < DISPLAY_NAME_CHANGES_MAX,
 
   setDisplayName: async (raw) => {
     const userId = get().userId
     const name = raw.trim().slice(0, 40)
     if (!userId || !name) return false
+    // Enforce the free-change limit (a paid name card would lift this later).
+    const changes = get().displayNameChanges
+    if (changes >= DISPLAY_NAME_CHANGES_MAX) return false
     const { error } = await insforge
       .from('profiles')
-      .upsert([{ id: userId, display_name: name }], { onConflict: 'id' })
+      .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
     if (error) return false
-    set({ displayName: name })
+    set({ displayName: name, displayNameChanges: changes + 1 })
     return true
   },
 
@@ -225,8 +250,9 @@ export const useProfile = create<ProfileState>((set, get) => ({
       ready: false,
       data: { ...EMPTY_ONBOARDING },
       onboarded: false,
-      username: null,
+      playerId: null,
       displayName: 'Explorer',
+      displayNameChanges: 0,
       avatarUrl: null,
       pub: { ...EMPTY_PROFILE_PUBLIC },
       xp: 0,

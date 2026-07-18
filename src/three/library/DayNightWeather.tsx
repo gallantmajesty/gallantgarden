@@ -24,6 +24,7 @@ const cHorizon = new Color()
 const cNightTop = new Color('#172a4d')
 const cNightHor = new Color('#4a3522')
 const tmp = new Color()
+const tmpSunPos = new Vector3()
 
 /**
  * Night-only atmosphere. The sky dome is permanently dark, stars and moon are
@@ -70,9 +71,14 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
     const dt = Math.min(dtRaw, 0.05)
     const s = useSettings.getState()
 
-    // ---- NIGHT ONLY: time is frozen, dayFactor always 0 ----
+    // ---- time is frozen, dayFactor always 0 (the realm is lit by lanterns) ----
+    // `nightMode` OFF = current daytime atmosphere (untouched). ON = the richer
+    // Harry-Potter night. Either way dayFactor stays 0 so all the existing
+    // night-glow formulas (lanterns, glass, town, tree) read at full strength.
     env.t = 0.0
     env.dayFactor = 0.0
+
+    const night = s.nightMode
 
     // moon sits high in the sky — a cool silver disc
     sunDir.set(0.3, 0.65, 0.2).normalize()
@@ -100,9 +106,17 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
     env.rain += (env.rainTarget - env.rain) * Math.min(1, dt * 0.4)
     env.fog += (env.fogTarget - env.fog) * Math.min(1, dt * 0.4)
 
-    // ---- sky colours: always night ----
-    cTop.copy(cNightTop)
-    cHorizon.copy(cNightHor)
+    // ---- sky colours ----
+    if (night) {
+      // richer, deeper Harry-Potter night: near-black-blue vault, warm hearth
+      // horizon glow so the hall's lantern light reads against it.
+      cTop.set('#070b1a')
+      cHorizon.set('#3a2a18')
+    } else {
+      // current daytime atmosphere — unchanged
+      cTop.copy(cNightTop)
+      cHorizon.copy(cNightHor)
+    }
     // grey out with fog
     tmp.set('#1a1e2a')
     cHorizon.lerp(tmp, env.fog * 0.5)
@@ -112,14 +126,13 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
 
     // ---- lights: faint cool moonlight + warm interior fill ----
     if (dir.current) {
-      // moonlight — very faint, cool blue-white
-      // Only update position if it actually changed to reduce unnecessary calculations
-      const newPos = new Vector3(sunDir.x * 120, sunDir.y * 120, sunDir.z * 120)
-      if (!dir.current.position.equals(newPos)) {
-        dir.current.position.copy(newPos)
+      tmpSunPos.set(sunDir.x * 120, sunDir.y * 120, sunDir.z * 120)
+      if (!dir.current.position.equals(tmpSunPos)) {
+        dir.current.position.copy(tmpSunPos)
       }
-      dir.current.intensity = 0.12 * (1 - env.fog * 0.55)
-      dir.current.color.set('#b0c4de')
+      // at night the moon is a touch brighter/silver; daytime keeps the current value
+      dir.current.intensity = night ? 0.18 * (1 - env.fog * 0.55) : 0.12 * (1 - env.fog * 0.55)
+      dir.current.color.set(night ? '#cdd9f0' : '#b0c4de')
     }
     if (hemi.current) {
       // dark cool sky fill — the hall is lit by lanterns, not the sky

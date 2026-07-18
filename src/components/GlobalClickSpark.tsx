@@ -42,6 +42,8 @@ const GlobalClickSpark = ({
 }: GlobalClickSparkProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const sparksRef = useRef<Spark[]>([])
+  const rafRef = useRef<number | null>(null)
+  const startLoopRef = useRef<() => void>(() => {})
 
   // Keep the canvas matched to the viewport.
   useEffect(() => {
@@ -72,13 +74,14 @@ const GlobalClickSpark = ({
     [easing],
   )
 
-  // Animation loop — redraws every active spark until it expires.
+  // Animation loop — redraws every active spark until it expires, then stops.
+  // The loop only runs while sparks are alive; when the last one expires it
+  // cancels itself so the canvas isn't cleared/repainted every idle frame.
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    let animationId = 0
     const draw = (timestamp: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       sparksRef.current = sparksRef.current.filter((spark) => {
@@ -100,10 +103,23 @@ const GlobalClickSpark = ({
         ctx.stroke()
         return true
       })
-      animationId = requestAnimationFrame(draw)
+      if (sparksRef.current.length > 0) {
+        rafRef.current = requestAnimationFrame(draw)
+      } else {
+        rafRef.current = null
+      }
     }
-    animationId = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(animationId)
+    startLoopRef.current = () => {
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(draw)
+      }
+    }
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
   }, [sparkColor, sparkSize, sparkRadius, sparkCount, duration, easeFunc, extraScale])
 
   // Spawn sparks on every document click that isn't inside an excluded area.
@@ -119,6 +135,7 @@ const GlobalClickSpark = ({
         startTime: now,
       }))
       sparksRef.current.push(...newSparks)
+      startLoopRef.current()
     }
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)

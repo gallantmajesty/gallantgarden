@@ -11,7 +11,7 @@ import { parseProfilePublic, type PublicProfile, type StudyStatus } from './type
 function mapPublic(row: Record<string, unknown>): PublicProfile {
   return {
     id: String(row.id),
-    username: (row.username as string | null) ?? null,
+    player_id: (row.player_id as number | null) ?? null,
     display_name: (row.display_name as string) || 'Explorer',
     avatar: (row.avatar as PublicProfile['avatar']) ?? ({} as PublicProfile['avatar']),
     avatar_url: (row.avatar_url as string | null) ?? null,
@@ -28,7 +28,7 @@ function mapPublic(row: Record<string, unknown>): PublicProfile {
 // PostgREST tolerates selecting them once present; before that, callers should
 // have the migration applied (see migrations/*_add-chat-system.sql).
 const PUBLIC_COLS =
-  'id, username, display_name, avatar, avatar_url, country, rank, public_profile, created_at, last_seen_at, study_status'
+  'id, player_id, display_name, avatar, avatar_url, country, rank, public_profile, created_at, last_seen_at, study_status'
 
 // ---------------------------------------------------------------- follow edges
 
@@ -109,12 +109,12 @@ export async function getProfilesByIds(ids: string[]): Promise<PublicProfile[]> 
   return (data as Record<string, unknown>[]).map(mapPublic)
 }
 
-/** Fetch one public profile by username (the /u/:username route). */
-export async function getPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
+/** Fetch one public profile by Player ID (the /u/:playerId route). */
+export async function getPublicProfileByPlayerId(playerId: number): Promise<PublicProfile | null> {
   const { data, error } = await insforge
     .from('public_profiles')
     .select(PUBLIC_COLS)
-    .eq('username', username.toLowerCase())
+    .eq('player_id', playerId)
     .maybeSingle()
   if (error || !data) return null
   return mapPublic(data as Record<string, unknown>)
@@ -131,9 +131,21 @@ export async function getPublicProfileById(id: string): Promise<PublicProfile | 
   return mapPublic(data as Record<string, unknown>)
 }
 
-/** Search users by username or display name (friend search). */
+/** Search users by Player ID (exact) or display name (friend search). A pure
+ *  numeric query matches the unique Player ID; otherwise it does a name search. */
 export async function searchUsers(query: string, limit = 20): Promise<PublicProfile[]> {
   const q = query.trim()
+  if (q.length < 1) return []
+
+  // Pure numeric → exact Player ID lookup (the Free Fire–style share code).
+  if (/^\d+$/.test(q)) {
+    const pid = Number(q)
+    if (pid > 0 && pid <= Number.MAX_SAFE_INTEGER) {
+      const byId = await getPublicProfileByPlayerId(pid)
+      return byId ? [byId] : []
+    }
+  }
+
   if (q.length < 2) return []
   // Sanitize for PostgREST: strip all non-alphanumeric chars except spaces
   const safe = q.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50)
@@ -142,7 +154,7 @@ export async function searchUsers(query: string, limit = 20): Promise<PublicProf
   const { data, error } = await insforge
     .from('public_profiles')
     .select(PUBLIC_COLS)
-    .or(`username.ilike.${like},display_name.ilike.${like}`)
+    .ilike('display_name', like)
     .limit(Math.min(limit, 50))
   if (error || !data) return []
   return (data as Record<string, unknown>[]).map(mapPublic)

@@ -1,5 +1,5 @@
 import { insforge } from './insforge'
-import { rankForTotalXp } from './ranks'
+import { rankForTotalXp, RANKS } from './ranks'
 
 // Profile statistics. We surface REAL numbers wherever a data source exists
 // (focus sessions + minutes from the pomodoro store, notes/trees from the DB,
@@ -56,7 +56,7 @@ export interface StatsInput {
 export function buildProfileStats(i: StatsInput): StatCard[] {
   const totalXp = i.xp
   const rankObj = rankForTotalXp(totalXp)
-  const rankIdx = Math.max(0, ['brown-leaf', 'yellow-leaf', 'green-leaf', 'bronze-leaf', 'silver-leaf', 'golden-leaf', 'red-flower', 'fire-flower', 'platinum-bunch', 'forest-guardian'].indexOf(rankObj.id))
+  const rankIdx = Math.max(0, RANKS.findIndex((r) => r.id === rankObj.id))
   return [
     {
       id: 'study-hours',

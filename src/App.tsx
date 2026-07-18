@@ -120,7 +120,7 @@ export default function App() {
 <Route path="/room/:id" element={<StudyRoom />} />
               <Route path="/magnet" element={<TaskMagnet />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/u/:username" element={<Profile />} />
+              <Route path="/u/:playerId" element={<Profile />} />
               <Route path="/avatar" element={<AvatarCreator />} />
               <Route path="/character-select" element={<CharacterSelection />} />
               <Route path="/games" element={<Games />} />

@@ -417,7 +417,7 @@ function realmChannel(a: ActiveRealm, instance: number): string {
 function RealmConnection() {
   const active = useRealm((s) => s.active)
   const { user } = useAuth()
-  const username = useProfile((s) => s.username)
+  const playerId = useProfile((s) => s.playerId)
   const displayName = useProfile((s) => s.displayName)
   const country = useProfile((s) => s.data.country)
   const rank = useProfile((s) => s.data.rank)
@@ -425,7 +425,7 @@ function RealmConnection() {
 
   const roomKey = active ? roomKeyOf(active) : null
   const id = networkId(user?.id)
-  const name = displayName || username || user?.profile?.name || 'Explorer'
+  const name = displayName || user?.profile?.name || 'Explorer'
 
   // assign an instance → join its channel → heartbeat; leave + drop presence on exit
   useEffect(() => {
@@ -480,7 +480,7 @@ function RoomRoster() {
   const { user } = useAuth()
   const country = useProfile((s) => s.data.country)
   const rank = useProfile((s) => s.data.rank)
-  const username = useProfile((s) => s.username)
+  const playerId = useProfile((s) => s.playerId)
   const displayName = useProfile((s) => s.displayName)
   const realm = useRealm((s) => s.active)
   const roster = useRealmNet((s) => s.roster)
@@ -489,12 +489,13 @@ function RoomRoster() {
   if (!realm) return null
 
   const self: PublicPlayer = {
-    username: username || displayName || user?.profile?.name || 'You',
+    name: displayName || user?.profile?.name || 'You',
+    playerId,
     country,
     rank,
   }
   const others: PublicPlayer[] = Object.values(roster).map((p) => ({
-    username: p.name,
+    name: p.name,
     country: p.country,
     rank: p.rank,
   }))
@@ -514,7 +515,7 @@ function RoomRoster() {
             <span className="room-roster-you">You</span>
           </div>
           {others.map((p: PublicPlayer, i: number) => (
-            <div key={`${p.username}-${i}`} className="room-roster-row">
+            <div key={`${p.name}-${i}`} className="room-roster-row">
               <PublicPlayerTag player={p} size="sm" />
             </div>
           ))}
@@ -1055,8 +1056,16 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               here. The underlying master/rain settings still exist in the store. */}
 
           {/* The "World" section (weather / day-night / time speed) was removed —
-              the realm's atmosphere is now fixed for everyone (auto weather +
-              day-night), so there is nothing per-user to tune here. */}
+               the realm's atmosphere is now fixed for everyone (auto weather +
+               day-night), so there is nothing per-user to tune here. */}
+
+          <Section title="Atmosphere">
+            <Toggle
+              label="Night mode (Harry Potter night)"
+              value={s.nightMode}
+              onChange={(v) => s.set('nightMode', v)}
+            />
+          </Section>
 
           <Section title="View & Accessibility">
             <Seg<CameraMode>

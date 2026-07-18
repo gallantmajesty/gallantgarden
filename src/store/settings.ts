@@ -223,6 +223,7 @@ interface SettingsState {
   cinematicTour: boolean // master switch for the Cinematic Tour (key 5)
   cinematicZoom: boolean // let the cinematic camera dolly-zoom between waypoints
   bloom: boolean // bloom effect (only ever shows during the cinematic tour)
+  nightMode: boolean // instant day/night mood switch for the library realm
   // lobby
   waitForLobbyReady: boolean // keep intro veil until lobby icons are loaded
   // audio (0..1)
@@ -354,6 +355,7 @@ const DEFAULTS: SettingsData = {
   cinematicTour: true,
   cinematicZoom: true,
   bloom: true,
+  nightMode: false, // default OFF = current daytime look, untouched
   waitForLobbyReady: true,
   master: 0.8,
   ambientVol: 0.6,

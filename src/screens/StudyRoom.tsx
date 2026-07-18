@@ -39,7 +39,7 @@ export function StudyRoom() {
       channelFor(id),
       {
         name: myName,
-        rank: myRank || 'brown-leaf',
+        rank: myRank || 'bronze-1',
         country: myCountry ?? null,
         avatarUrl: avatarUrl ?? null,
         status: 'studying',

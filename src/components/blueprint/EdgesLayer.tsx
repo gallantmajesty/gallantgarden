@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { anchorToward, autoPorts, smoothPath, smoothPoint, type Pt } from '../../lib/blueprint/geom'
 import { resolveEdgeStyle, type BlueprintNode } from '../../lib/blueprint/types'
@@ -13,7 +13,7 @@ interface EdgesLayerProps {
   preview: ConnectingPreview | null
 }
 
-export function EdgesLayer({ preview }: EdgesLayerProps) {
+export const EdgesLayer = memo(function EdgesLayer({ preview }: EdgesLayerProps) {
   const nodes = useBlueprint((s) => s.doc.nodes)
   const edges = useBlueprint((s) => s.doc.edges)
   const types = useBlueprint((s) => s.doc.connectionTypes)
@@ -291,4 +291,4 @@ const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
       </g>
     </svg>
   )
-}
+})

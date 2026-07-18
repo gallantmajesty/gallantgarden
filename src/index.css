@@ -283,17 +283,22 @@ button {
     0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* ghost — warm brown coffee glassmorphism */
+/* ghost — parchment brown coffee, same surface as secondary but slightly muted */
 .sf-btn.ghost {
-  color: var(--on-glass);
-  background: linear-gradient(135deg, rgba(120,80,40,0.32), rgba(90,60,30,0.42));
-  border: 1px solid rgba(180,130,60,0.18);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  color: var(--surface-ink);
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--surface-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 6px 14px rgba(0, 0, 0, 0.16),
+    0 1px 3px rgba(0, 0, 0, 0.12);
+  text-shadow: none;
 }
 .sf-btn.ghost:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.24);
+  background: linear-gradient(180deg, var(--surface-hover), var(--surface));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .sf-btn:disabled {

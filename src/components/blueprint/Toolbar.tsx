@@ -16,7 +16,7 @@ const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
 interface ToolbarProps {}
 
 export function Toolbar(_props: ToolbarProps) {
-  const zoom = useBlueprint((s) => s.doc.viewport.zoom)
+  const zoom = useBlueprint((s) => s.viewport.zoom)
   const addNode = useBlueprint((s) => s.addNode)
   const undo = useBlueprint((s) => s.undo)
   const redo = useBlueprint((s) => s.redo)
@@ -26,7 +26,7 @@ export function Toolbar(_props: ToolbarProps) {
   const toggle = (m: typeof menu) => setMenu((cur) => (cur === m ? null : m))
 
   function zoomBy(factor: number) {
-    const vp = useBlueprint.getState().doc.viewport
+    const vp = useBlueprint.getState().viewport
     const z = Math.min(2.6, Math.max(0.2, vp.zoom * factor))
     const cx = window.innerWidth / 2
     const cy = window.innerHeight / 2

@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { memo, useRef, useCallback } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { nodesBounds } from '../../lib/blueprint/geom'
 
@@ -6,9 +6,9 @@ const W = 200
 const H = 132
 
 // Interactive minimap — click/drag to pan, scroll to zoom, touch two-finger to pan.
-export function MiniMap() {
+export const MiniMap = memo(function MiniMap() {
   const nodes = useBlueprint((s) => s.doc.nodes)
-  const vp = useBlueprint((s) => s.doc.viewport)
+  const vp = useBlueprint((s) => s.viewport)
   const setViewport = useBlueprint((s) => s.setViewport)
   const dragRef = useRef(false)
 
@@ -88,4 +88,4 @@ export function MiniMap() {
       <div className="bp-minimap-label">{Math.round(vp.zoom * 100)}%</div>
     </div>
   )
-}
+})

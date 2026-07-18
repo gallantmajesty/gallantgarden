@@ -7,6 +7,7 @@ import { makeCarpetTexture, makePlasterTexture, makeStainedGlassTexture, makeSto
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { env } from './env'
 import { useScenePreset } from '../../store/quality'
+import { useSettings } from '../../store/settings'
 
 const STONE = '#9c8158' // warmer honey-stone (was a washed-out cream)
 const STONE_DARK = '#6f5a39'
@@ -171,9 +172,14 @@ function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Tex
   const glassMat = useRef<MeshStandardMaterial>(null)
 
   // make the stained glass read as a lit lantern wall after dark: subtle wash by
-  // day, a strong warm glow at night so the hall is bathed in jewelled light.
+  // day, a soft glow at night. The glass is rendered semi-transparent in BOTH
+  // modes (user wants the wall see-through), so the whole hall reads airy.
   useFrame(() => {
-    if (glassMat.current) glassMat.current.emissiveIntensity = 0.45 + (1 - env.dayFactor) * 2.8
+    if (glassMat.current) {
+      const night = useSettings.getState().nightMode
+      const nightTerm = night ? 0.6 : 2.8
+      glassMat.current.emissiveIntensity = 0.45 + (1 - env.dayFactor) * nightTerm
+    }
   })
   const zs = useMemo(() => windowZs(), [])
   const step = windowStep()
@@ -250,7 +256,7 @@ function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Tex
           Opaque restores depth occlusion (geometry behind the glass is rejected
           before shading) while the colour + emissive map keep the jewelled look
           identical. DoubleSide stays so the one batch faces both window walls. */}
-      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} roughness={0.4} metalness={0.1} side={DoubleSide}>
+      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} roughness={0.4} metalness={0.1} side={DoubleSide} transparent opacity={0.6} depthWrite={false}>
         <planeGeometry args={[step - 0.7, h]} />
       </InstancedShape>
 
@@ -363,58 +369,131 @@ function Staircases({ stairs, wood }: { stairs: StairData[]; wood: Texture }) {
   )
 }
 
-/** Every carved pillar in the hall, rendered as a few instanced batches: stepped
- *  plinth, gently tapered fluted shaft, a band of softly glowing runes at eye
- *  level, and a flared capital under the balcony. One draw per distinct part
- *  across all columns instead of ~12 meshes per pillar. */
+/**
+ * Every pillar in the hall, built as ancient weathered STONE — not smooth
+ * cylinders. The shaft is a stack of instanced ashlar/rock blocks clustered
+ * around the axis with per-block jitter (offset, scale, tilt, tone) so the
+ * silhouette is irregular, chunky and rocky. A darker rocky core sits behind the
+ * blocks so no gaps show through. Around it: a stepped worn plinth, carved
+ * relief rings, a warm amber glyph band, a flared rocky capital with volutes,
+ * plus cracks and moss for age. Everything is instanced — the whole hall of
+ * pillars collapses to a handful of draw calls.
+ */
 function Pillars({ cols, h, stoneNormal }: { cols: [number, number, number][]; h: number; stoneNormal: Texture }) {
   const shaftH = h - 1.6
   const ROT_X: [number, number, number] = [Math.PI / 2, 0, 0]
+  // ancient palette — warm weathered brown stone, dark worn base, mossy green, amber
+  const STONE_ANC = '#8a7350'
+  const STONE_ANC_DARK = '#5e4a30'
+  const MOSS = '#566233'
+  const CRACK = '#2c261d'
+  const GLYPH = '#c9a24a'
 
-  const { boxes, astragals, runeAccents } = useMemo(() => {
+  // stable per-(pillar,block) pseudo-random so the rock layout never shifts
+  const rnd = (seed: number) => {
+    let s = (seed * 2654435761) >>> 0
+    return () => {
+      s = (s * 1664525 + 1013904223) >>> 0
+      return s / 0xffffffff
+    }
+  }
+
+  const { boxes, astragals, reliefRings, glyphAccents, cracks, moss, shafts } = useMemo(() => {
     const boxes: BoxItem[] = []
     const astragals: ShapeItem[] = []
-    const runeAccents: ShapeItem[] = []
-    for (const [x, , z] of cols) {
-      // plinth (base + cap) and capital abacus — all boxes
-      boxes.push({ pos: [x, 0.3, z], size: [1.7, 0.6, 1.7], color: STONE_DARK })
-      boxes.push({ pos: [x, 0.75, z], size: [1.4, 0.3, 1.4], color: STONE })
-      boxes.push({ pos: [x, h - 0.2, z], size: [1.5, 0.4, 1.5], color: STONE_DARK })
-      // base & neck astragal rings
-      astragals.push({ pos: [x, 1.4, z], rot: ROT_X })
-      astragals.push({ pos: [x, h - 1.9, z], rot: ROT_X })
-      // magical accent rings framing the runes
-      runeAccents.push({ pos: [x, 4.25, z], rot: ROT_X })
-      runeAccents.push({ pos: [x, 4.95, z], rot: ROT_X })
-    }
-    return { boxes, astragals, runeAccents }
-  }, [cols, h])
+    const reliefRings: ShapeItem[] = []
+    const glyphAccents: ShapeItem[] = []
+    const cracks: BoxItem[] = []
+    const moss: BoxItem[] = []
+    const shafts: ShapeItem[] = []
 
-  const shafts = useMemo<ShapeItem[]>(() => cols.map(([x, , z]) => ({ pos: [x, 0.9 + shaftH / 2, z] })), [cols, shaftH])
-  const capitals = useMemo<ShapeItem[]>(() => cols.map(([x, , z]) => ({ pos: [x, h - 0.7, z] })), [cols, h])
-  const runeBands = useMemo<ShapeItem[]>(() => cols.map(([x, , z]) => ({ pos: [x, 4.6, z] })), [cols])
+    const shaftBottom = 0.95
+    // stop the shaft below the capital so it never grows up into the big
+    // hanging lantern that sits near the top of the pillar
+    const shaftTop = h - 2.6
+
+    cols.forEach(([x, , z], i) => {
+      const r = rnd(i * 131 + 17)
+      // stepped, worn plinth (base plinth + cap slab)
+      boxes.push({ pos: [x, 0.28, z], size: [1.95, 0.56, 1.95], color: STONE_ANC_DARK })
+      boxes.push({ pos: [x, 0.7, z], size: [1.55, 0.34, 1.55], color: STONE_ANC })
+      // capital abacus slab under the balcony
+      boxes.push({ pos: [x, h - 0.22, z], size: [1.7, 0.44, 1.7], color: STONE_ANC_DARK })
+      // worn, mossy plinth base — green patches clinging to the stone
+      moss.push({ pos: [x - 0.7, 0.35, z - 0.7], size: [0.5, 0.18, 0.5], color: MOSS })
+      moss.push({ pos: [x + 0.65, 0.3, z + 0.6], size: [0.45, 0.14, 0.45], color: MOSS })
+
+      // plain fluted stone shaft — no rocky blocks
+      shafts.push({ pos: [x, (shaftBottom + shaftTop) / 2, z] })
+
+      // base & neck astragal moldings
+      astragals.push({ pos: [x, 1.45, z], rot: ROT_X })
+      astragals.push({ pos: [x, h - 2.0, z], rot: ROT_X })
+      // carved meander-style relief rings down the shaft (ancient temple feel)
+      reliefRings.push({ pos: [x, shaftH * 0.34 + 0.95, z], rot: ROT_X })
+      reliefRings.push({ pos: [x, shaftH * 0.62 + 0.95, z], rot: ROT_X })
+      // warm amber glyph band (carved symbols, faintly glowing — ancient, not sci-fi)
+      glyphAccents.push({ pos: [x, 4.25, z], rot: ROT_X })
+      glyphAccents.push({ pos: [x, 4.95, z], rot: ROT_X })
+      // cracks — thin dark fissures climbing the weathered shaft
+      const a1 = rnd(i * 7 + 3)() * Math.PI * 2
+      const a2 = rnd(i * 7 + 11)() * Math.PI * 2
+      cracks.push({
+        pos: [x + Math.cos(a1) * 0.62, shaftH * 0.5 + 0.95, z + Math.sin(a1) * 0.62],
+        size: [0.04, shaftH * 0.55, 0.04],
+        rotY: -a1,
+        color: CRACK,
+      })
+      cracks.push({
+        pos: [x + Math.cos(a2) * 0.6, shaftH * 0.28 + 0.95, z + Math.sin(a2) * 0.6],
+        size: [0.035, shaftH * 0.32, 0.035],
+        rotY: -a2,
+        color: CRACK,
+      })
+    })
+    return { boxes, astragals, reliefRings, glyphAccents, cracks, moss, shafts }
+  }, [cols, h, shaftH])
+
+  const capitals = useMemo<ShapeItem[]>(() => cols.map(([x, , z]) => ({ pos: [x, h - 0.85, z] })), [cols, h])
+  const volutes = useMemo<ShapeItem[]>(() => cols.flatMap(([x, , z]) => [
+    { pos: [x - 0.62, h - 0.55, z], rot: [0, 0, Math.PI / 2] as [number, number, number] },
+    { pos: [x + 0.62, h - 0.55, z], rot: [0, 0, Math.PI / 2] as [number, number, number] },
+  ]), [cols, h])
+  const glyphBands = useMemo<ShapeItem[]>(() => cols.map(([x, , z]) => ({ pos: [x, 4.6, z] })), [cols])
 
   return (
     <group>
-      <InstancedBoxes items={boxes} roughness={0.9} castShadow receiveShadow />
-      {/* fluted shaft — stone normal map for carved surface depth */}
-      <InstancedShape items={shafts} color={STONE} normalMap={stoneNormal} roughness={0.8} castShadow receiveShadow>
-        <cylinderGeometry args={[0.52, 0.66, shaftH, 24, 1]} />
+      <InstancedBoxes items={boxes} roughness={0.92} castShadow receiveShadow />
+      {/* mossy, weathered plinth patches */}
+      <InstancedBoxes items={moss} roughness={1} metalness={0} />
+      {/* cracks in the aged stone */}
+      <InstancedBoxes items={cracks} roughness={1} />
+      {/* plain fluted stone shaft — weathered stone normal map for carved depth */}
+      <InstancedShape items={shafts} color={STONE_ANC} normalMap={stoneNormal} roughness={0.85} castShadow receiveShadow>
+        <cylinderGeometry args={[0.5, 0.62, shaftH - 0.2, 24, 1]} />
       </InstancedShape>
       {/* flared capital */}
-      <InstancedShape items={capitals} color={STONE} roughness={0.85} castShadow>
-        <cylinderGeometry args={[0.78, 0.5, 0.8, 24]} />
+      <InstancedShape items={capitals} color={STONE_ANC} normalMap={stoneNormal} roughness={0.88} castShadow>
+        <cylinderGeometry args={[0.82, 0.5, 0.9, 24]} />
+      </InstancedShape>
+      {/* ionic-style volutes (scrolls) at the capital corners */}
+      <InstancedShape items={volutes} color={STONE_ANC_DARK} roughness={0.85}>
+        <torusGeometry args={[0.22, 0.08, 8, 16]} />
       </InstancedShape>
       {/* carved astragal moldings */}
-      <InstancedShape items={astragals} color={STONE_DARK} roughness={0.85}>
+      <InstancedShape items={astragals} color={STONE_ANC_DARK} roughness={0.88}>
         <torusGeometry args={[0.66, 0.09, 8, 24]} />
       </InstancedShape>
-      {/* glowing rune band at eye level */}
-      <InstancedShape items={runeBands} color="#5a4a8a" emissive="#8a6cff" emissiveIntensity={0.85} roughness={0.5} side={DoubleSide}>
+      {/* carved meander relief rings down the shaft */}
+      <InstancedShape items={reliefRings} color={STONE_ANC_DARK} roughness={0.9}>
+        <torusGeometry args={[0.64, 0.07, 8, 24]} />
+      </InstancedShape>
+      {/* warm amber glyph band — ancient carved symbols, faint glow */}
+      <InstancedShape items={glyphBands} color="#3a2e16" emissive={GLYPH} emissiveIntensity={0.55} roughness={0.6} side={DoubleSide}>
         <cylinderGeometry args={[0.6, 0.6, 0.7, 24, 1, true]} />
       </InstancedShape>
-      {/* magical accent rings framing the runes */}
-      <InstancedShape items={runeAccents} color="#caa84a" metalness={0.6} roughness={0.35} emissive="#3a2c10" emissiveIntensity={0.4}>
+      {/* amber accent rings framing the glyph band */}
+      <InstancedShape items={glyphAccents} color={GLYPH} metalness={0.5} roughness={0.45} emissive="#3a2c10" emissiveIntensity={0.35}>
         <torusGeometry args={[0.61, 0.05, 8, 24]} />
       </InstancedShape>
     </group>

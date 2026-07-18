@@ -27,7 +27,7 @@ function saveFolders(boardId: string, f: SmartFolder[]) {
 }
 
 export function centerOnNode(node: BlueprintNode) {
-  const vp = useBlueprint.getState().doc.viewport
+  const vp = useBlueprint.getState().viewport
   const cx = node.x + node.w / 2
   const cy = node.y + node.h / 2
   useBlueprint.getState().setViewport({ ...vp, x: window.innerWidth / 2 - cx * vp.zoom, y: window.innerHeight / 2 - cy * vp.zoom })

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
+import { Component, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { EffectComposer, Vignette, N8AO, GodRays, Bloom, HueSaturation, BrightnessContrast } from '@react-three/postprocessing'
@@ -25,7 +25,9 @@ import { StudyTables } from './StudyTable'
 import { Decor } from './Decor'
 import { Lanterns } from './Lanterns'
 import { KnowledgeTree } from './KnowledgeTree'
+import { NightMagic } from './NightMagic'
 import { Fireflies } from './Fireflies'
+import { FlyingCandles } from './FlyingCandles'
 import { Aurora } from './Aurora'
 import { FloatingBooks } from './FloatingBooks'
 import { FantasyLayer } from './FantasyLayer'
@@ -61,6 +63,27 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean;
 }
 
 /**
+ * Error boundary for use *inside* the R3F <Canvas> (the WebGL reconciler), where
+ * only THREE objects are valid — a DOM <div> here throws "Div is not part of the
+ * THREE namespace". If a child (e.g. the post-processing composer, after a GL
+ * context loss) throws, we render `null` instead of a DOM node, so the scene
+ * keeps running without post-FX rather than crashing the whole canvas.
+ */
+class CanvasBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
+  state = { failed: false, msg: '' }
+  static getDerivedStateFromError(error: Error) {
+    return { failed: true, msg: error?.message ?? 'Unknown error' }
+  }
+  componentDidCatch(error: Error) {
+    console.error('[LibraryScene] post-processing disabled after error:', error)
+  }
+  render() {
+    if (this.state.failed) return null
+    return this.props.children
+  }
+}
+
+/**
  * The International Realm great library. Composes the architecture, centrepiece
  * tree, furniture, exterior world, day/night + weather, player controller and
  * post-processing — scaling all of it to the chosen graphics quality.
@@ -76,6 +99,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   // angle-specific black blink at seated presets 3/4.
   const cinematic = useWorld((s) => s.cinematic)
   const bloomOn = useSettings((s) => s.bloom)
+  const nightMode = useSettings((s) => s.nightMode)
 
   // During seat selection the 2D overlay covers the scene — skip heavy
   // subsystems (post-processing, shadows, exterior, particles) so the GPU
@@ -103,9 +127,15 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const [composerKey, setComposerKey] = useState(0)
 
   // Runtime device-pixel-ratio. Fixed at the quality ceiling — no dynamic
-  // scaling to avoid the single-frame black blink that DPR resizes cause.
-  const [dpr, setDpr] = useState(preset.dpr)
-  useEffect(() => setDpr(preset.dpr), [preset.dpr])
+  // scaling. Re-allocating the WebGL drawing buffer (what a live DPR change
+  // does) is a multi-frame GPU stall on integrated GPUs and can drop the GL
+  // context — an attempted "adaptive" DPR stepper made FPS *worse* (9–10) and
+  // must never run, so DPR stays fixed here. Kept at full ceiling for a crisp
+  // (UHD-sharp) image; the night FPS win comes from skipping the exterior,
+  // cutting real lights and dropping the heavy particle/overdraw effects.
+  const targetDpr = preset.dpr
+  const [dpr, setDpr] = useState(targetDpr)
+  useEffect(() => setDpr(targetDpr), [targetDpr])
 
   // Pause the render loop entirely while the tab/canvas is hidden so we spend
   // zero GPU/battery in the background. Visibility restores the original
@@ -140,17 +170,24 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           // restore; we just must not let the browser abandon the context.
           e.preventDefault()
           console.warn('[LibraryScene] WebGL context lost — will restore')
+          // Drop the resolution hard on a context loss: a re-overloaded GPU is
+          // what dropped the context in the first place. Stepping down to 0.4
+          // gives the restore headroom so it doesn't immediately spike again and
+          // loop the black-screen blink. The user's look is unchanged — only the
+          // shaded pixel count drops further.
+          setDpr(0.4)
         })
         canvas.addEventListener('webglcontextrestored', () => {
           console.warn('[LibraryScene] WebGL context restored — rebuilding postprocessing')
           // Force the EffectComposer(s) to remount so their render targets
           // (lost with the context) are recreated; otherwise the screen
           // stays black even after the context returns.
-          // Delay by 2 frames to let the GL context fully initialize before
-          // EffectComposer.addPass reads from it (prevents null.alpha crash).
+          // Delay by several frames to let the GL context fully initialize
+          // before EffectComposer.addPass reads from it (prevents the
+          // "null (reading 'alpha')" crash when a render target is still null).
           let frames = 0
           const rebuild = () => {
-            if (++frames >= 2) { setComposerKey((k) => k + 1); return }
+            if (++frames >= 6) { setComposerKey((k) => k + 1); return }
             requestAnimationFrame(rebuild)
           }
           requestAnimationFrame(rebuild)
@@ -159,7 +196,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
     >
       <color attach="background" args={['#0c0a0a']} />
       <SystemToggles />
-      <ShadowManager enabled={preset.shadows && !selecting} refreshInterval={8} />
+      <ShadowManager enabled={preset.shadows && !selecting} cinematic={cinematic} refreshInterval={8} />
       <TextureQualitySync anisotropy={preset.anisotropy} />
 
       {!selecting && (
@@ -168,7 +205,10 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           <DayNightWeather fog={preset.fog} rainScale={preset.rainScale} shadowMap={preset.shadowMap} rainDrops={preset.rainDrops} sunRef={sunRef} onSunReady={() => setSunReady(true)} />
         </ToggleGroup>
         <ToggleGroup group="exterior">
-          <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />
+          {/* At NIGHT the exterior (forest, mountains, castle, clouds) is invisible
+              through the windows and just costs draw calls + real-light shadows, so
+              we skip it entirely. The bright daytime scene is untouched. */}
+          {!nightMode && <Exterior count={preset.forest} mountains={preset.mountains} clouds={preset.clouds} />}
         </ToggleGroup>
       </SoftBoundary>
       )}
@@ -177,9 +217,12 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           A hemisphere light (cool sky / WARM ground) gives vertical surfaces
           real form, and a generous warm ambient keeps the hall glowing golden
           instead of going murky. The lanterns + jewelled glass add the real
-          pools of light against the night. Zero extra draw calls. */}
-      <hemisphereLight args={['#aebfe0', '#6b4a2a', 0.4]} />
-      <ambientLight intensity={0.46} color="#ffd9a8" />
+          pools of light against the night. Zero extra draw calls.
+          At NIGHT the interior fill is dimmed way down so the hall reads dark
+          and is lit only by lanterns + floating candles (textures stay visible,
+          just less washed-out). Daytime is untouched. */}
+      <hemisphereLight args={['#aebfe0', '#6b4a2a', nightMode ? 0.12 : 0.4]} />
+      <ambientLight intensity={nightMode ? 0.16 : 0.46} color="#ffd9a8" />
 
       <ToggleGroup group="interior">
         <LibraryShell />
@@ -193,24 +236,34 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
         <Lanterns />
       </ToggleGroup>
 
+      {/* Harry-Potter night magic — only mounted when night mode is on (enchanted
+          ceiling, glowing floor rune ring, moving portraits). Zero cost by day. */}
+      <NightMagic />
+
       {/* Magical layer — all instanced/particle/shader, zero extra real lights and
           zero full-screen passes. Gated by the same particle/detail budget so they
-          shed on low-end settings and Performance Mode. */}
+          shed on low-end settings and Performance Mode.
+          At NIGHT we drop the extra particle/overdraw effects (Fireflies, Aurora,
+          FantasyLayer, FloatingBooks, Sparkles) so the FPS freed by skipping the
+          exterior + cutting real lights isn't eaten by transparent-glass overdraw.
+          The signature floating candles stay. Daytime is unchanged & full. */}
       {!selecting && (
       <ToggleGroup group="particles">
-        {preset.particles && <Fireflies count={Math.round(8 + preset.dust * 0.6)} />}
-        {preset.particles && <Aurora />}
-        {preset.particles && (
+        {!nightMode && preset.particles && <Fireflies count={Math.round(8 + preset.dust * 0.6)} />}
+        {!nightMode && preset.particles && (
           <SoftBoundary>
             <FantasyLayer />
           </SoftBoundary>
         )}
         {/* FloatingBooks (transparent overdraw) is now high-tier only — it shed on
             medium/low so the weakest GPUs skip the extra draw + fill cost. */}
-        {preset.lodBias < 0.5 && <FloatingBooks count={8} />}
-        {preset.dust > 0 && (
+        {!nightMode && preset.lodBias < 0.5 && <FloatingBooks count={8} />}
+        {!nightMode && preset.dust > 0 && (
           <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
         )}
+        {/* tiny enchanted candles drifting upward — only at night, so the daytime
+            look is never touched. This is the signature night atmosphere. */}
+        {nightMode && <FlyingCandles count={preset.particles ? 70 : 40} night={nightMode} />}
       </ToggleGroup>
       )}
 
@@ -231,7 +284,11 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
 
       {/* Standard post tier (default): cheap mipmap bloom + vignette. multisampling
           0 disables the composer's expensive MSAA pass. */}
-      {!selecting && <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} />}
+      {!selecting && (
+        <CanvasBoundary>
+          <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} nightMode={nightMode} />
+        </CanvasBoundary>
+      )}
     </Canvas>
     <SceneReady onReady={handleReady} />
     </>
@@ -249,14 +306,30 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
 function usePostToggleState() {
   const [s, setS] = useState({ ..._postToggles })
   useEffect(() => {
-    const iv = setInterval(() => setS({ ..._postToggles }), 100)
+    // Poll the debug kill-switch globals, but ONLY re-render when a value has
+    // actually changed. Previously this pushed a fresh object every 100ms, which
+    // re-rendered PostEffects 10x/sec and — because the composer's passes were
+    // rebuilt as new element objects each render — forced EffectComposer to tear
+    // down and reallocate its GPU render targets 10x/sec (the cinematic hang).
+    const iv = setInterval(() => {
+      setS((prev) => {
+        if (
+          prev.vignette === _postToggles.vignette &&
+          prev.godrays === _postToggles.godrays &&
+          prev.n8ao === _postToggles.n8ao
+        ) {
+          return prev // no change → same reference → no re-render
+        }
+        return { ..._postToggles }
+      })
+    }, 100)
     return () => clearInterval(iv)
   }, [])
   return s
 }
 
 function PostEffects({
-  preset, composerKey, sunReady, sunVisible, sunRef, cinematic, bloom,
+  preset, composerKey, sunReady, sunVisible, sunRef, cinematic, bloom, nightMode,
 }: {
   preset: ReturnType<typeof useScenePreset>
   composerKey: number
@@ -265,52 +338,62 @@ function PostEffects({
   sunRef: React.MutableRefObject<Mesh | null>
   cinematic: boolean
   bloom: boolean
+  nightMode: boolean
 }) {
   const pt = usePostToggleState()
   const gl = useThree((s) => s.gl)
+
+  // Night mode gets an automatic cinematic bloom + grade (the Harry-Potter
+  // glowing-hall look) so the emissive lanterns / candles / runes glow. Daytime
+  // is unchanged — bloom only during the Cinematic Tour there.
+  const nightCine = nightMode
+  const showBloom = (cinematic && bloom) || nightCine
+  const ultraPasses = useMemo(() => {
+    return [
+      pt.n8ao ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes /> : null,
+      sunReady && sunVisible && pt.godrays ? (
+        <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
+      ) : null,
+      pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
+      showBloom ? <Bloom key="bloom" mipmapBlur intensity={nightCine ? 1.15 : 0.95} luminanceThreshold={nightCine ? 0.4 : 0.5} luminanceSmoothing={0.25} radius={0.6} /> : null,
+    ].filter(Boolean) as ReactElement[]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pt.n8ao, pt.godrays, pt.vignette, sunReady, sunVisible, showBloom, nightCine])
+
+  const bloomPasses = useMemo(() => {
+    const bloomEl = showBloom ? (
+      <Bloom key="bloom" mipmapBlur intensity={nightCine ? 1.15 : 0.95} luminanceThreshold={nightCine ? 0.4 : 0.5} luminanceSmoothing={0.25} radius={0.6} />
+    ) : null
+    // Filmic grade: during the Cinematic Tour AND at night (the HP glow) we add a
+    // richer saturation + soft contrast lift + deeper vignette. Cheap full-screen
+    // passes that only exist when wanted.
+    const grade =
+      cinematic || nightCine
+        ? [
+            pt.vignette ? <Vignette key="vig" eskil={false} offset={nightCine ? 0.2 : 0.14} darkness={nightCine ? 0.95 : 0.55} /> : null,
+            <HueSaturation key="sat" saturation={nightCine ? 0.22 : 0.16} />,
+            <BrightnessContrast key="bc" brightness={0.01} contrast={nightCine ? 0.12 : 0.08} />,
+          ]
+        : [pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null]
+    return [bloomEl, ...grade].filter(Boolean) as ReactElement[]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBloom, cinematic, nightCine, pt.vignette])
+
   if (!gl) return null
-  // Bloom lives ONLY during the Cinematic Tour (key 5), and only when the user's
-  // Bloom setting is on. The rest of the time the composer is bloom-free, because
-  // even a subtle always-on bloom used to cause the angle-specific black blink at
-  // seated presets 3/4. We still mount the composer when cinematic is on so the
-  // bloom pass can run if requested.
-  if (!preset.bloom && !preset.ultra && !cinematic) return null
-  const showBloom = cinematic && bloom
-  // Cinematic bloom is pushed hard (low threshold, high intensity) so the lanterns,
-  // the jewelled glass and the gold tree read as a glowing hall — this is the
-  // "mood" people expect from the tour, and it costs nothing outside cinematic.
-  const bloomEl = showBloom ? (
-    <Bloom key="bloom" mipmapBlur intensity={0.95} luminanceThreshold={0.5} luminanceSmoothing={0.2} radius={0.7} />
-  ) : null
-  // Filmic grade applied ONLY while the Cinematic Tour is running: a richer
-  // saturation + soft contrast lift + deeper vignette turn the same geometry into
-  // a "shot", not just a free-look. All three are cheap full-screen passes that
-  // only exist during the tour.
-  const cinematicGrade = cinematic
-    ? [
-        pt.vignette ? <Vignette key="vig" eskil={false} offset={0.14} darkness={0.55} /> : null,
-        <HueSaturation key="sat" saturation={0.16} />
-        ,
-        <BrightnessContrast key="bc" brightness={0.01} contrast={0.08} />,
-      ]
-    : [pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null]
+  // Bloom is mounted during the Cinematic Tour, in Ultra mode, or at NIGHT (for
+  // the cinematic glow). Otherwise the composer is bloom-free.
+  if (!preset.bloom && !preset.ultra && !cinematic && !nightMode) return null
+
   if (preset.ultra) {
     return (
       <EffectComposer key={`ultra-${composerKey}`} enableNormalPass={false} multisampling={2}>
-        {[
-          pt.n8ao ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes /> : null,
-          sunReady && sunVisible && pt.godrays ? (
-            <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
-          ) : null,
-          pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
-          bloomEl,
-        ].filter(Boolean) as ReactElement[]}
+        {ultraPasses}
       </EffectComposer>
     )
   }
   return (
     <EffectComposer key={`bloom-${composerKey}`} enableNormalPass={false} multisampling={0}>
-      {[bloomEl, ...cinematicGrade].filter(Boolean) as ReactElement[]}
+      {bloomPasses}
     </EffectComposer>
   )
 }
@@ -329,12 +412,18 @@ function PostEffects({
  * autoUpdate is left at its default (true) and needsUpdate is not touched so
  * the renderer simply skips the shadow pass.
  */
-function ShadowManager({ enabled, refreshInterval = 300 }: { enabled: boolean; refreshInterval?: number }) {
+function ShadowManager({ enabled, cinematic, refreshInterval = 300 }: { enabled: boolean; cinematic: boolean; refreshInterval?: number }) {
   const gl = useThree((s) => s.gl)
   const camera = useThree((s) => s.camera)
   const frame = useRef(0)
   const lastCam = useRef(new Vector3())
   const prevShould = useRef<boolean | null>(null)
+  // During the Cinematic Tour the camera flies constantly, which would force a
+  // full ~48-caster shadow-map rebuild every frame — a major, sustained stall.
+  // The tour is a soft, moving "shot", so frozen shadows are imperceptible; we
+  // simply stop refreshing while cinematic is on. (enabled still gates shadows
+  // entirely when the user has them off.)
+  const freeze = cinematic
 
   useEffect(() => {
     if (enabled) {
@@ -376,7 +465,7 @@ function ShadowManager({ enabled, refreshInterval = 300 }: { enabled: boolean; r
     // as a "whole-screen blink". A rare safety refresh keeps things correct
     // if something animated ever changes the lighting.
     const moved = lastCam.current.distanceToSquared(camera.position) > 1e-4
-    if (moved) {
+    if (moved && !freeze) {
       gl.shadowMap.needsUpdate = true
       lastCam.current.copy(camera.position)
     }

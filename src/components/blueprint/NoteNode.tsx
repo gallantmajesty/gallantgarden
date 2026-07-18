@@ -7,6 +7,8 @@ import { RichText } from './RichText'
 
 interface NoteNodeProps {
   node: BlueprintNode
+  /** current viewport zoom — passed from Canvas so this node never subscribes to viewport */
+  zoom: number
   selected?: boolean
   dimmed?: boolean
   /** true when this node is the armed source of a pending thread */
@@ -16,8 +18,7 @@ interface NoteNodeProps {
   onPortDown?: (nodeId: string, e: React.PointerEvent) => void
 }
 
-export const NoteNode = memo(function NoteNode({ node, selected, dimmed, connectSource, onDoubleTap, onPortDown }: NoteNodeProps) {
-  const zoom = useBlueprint((s) => s.doc.viewport.zoom)
+export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, connectSource, onDoubleTap, onPortDown }: NoteNodeProps) {
   const select = useBlueprint((s) => s.select)
   const setHoverNode = useBlueprint((s) => s.setHoverNode)
 

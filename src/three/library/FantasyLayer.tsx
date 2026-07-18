@@ -6,6 +6,7 @@ import {
 } from 'three'
 import { HALL, WINDOW, windowStep, windowZs } from './layout'
 import { env } from './env'
+import { useSettings } from '../../store/settings'
 
 /**
  * The "Fantasy first" magical layer — purely additive / emissive, zero extra
@@ -120,8 +121,12 @@ function RuneCircle({
   useFrame((state) => {
     const t = state.clock.elapsedTime
     const pulse = 0.85 + Math.sin(t * 0.7 + x * 0.3 + z * 0.3) * 0.15
-    if (matRef.current) matRef.current.emissiveIntensity = (0.8 + (1 - env.dayFactor) * 0.7) * pulse
-    if (haloRef.current) haloRef.current.opacity = (0.22 + (1 - env.dayFactor) * 0.3) * pulse
+    const night = useSettings.getState().nightMode
+    // at night the floor runes stay subtle so the glow is local to the lanterns,
+    // not a bright ring washing the whole floor
+    const nightMul = night ? 0.25 : 1
+    if (matRef.current) matRef.current.emissiveIntensity = (0.8 + (1 - env.dayFactor) * 0.7) * pulse * nightMul
+    if (haloRef.current) haloRef.current.opacity = (0.22 + (1 - env.dayFactor) * 0.3) * pulse * nightMul
   })
 
   return (

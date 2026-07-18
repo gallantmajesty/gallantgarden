@@ -32,6 +32,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ppt-id {
+  font-family: var(--display, inherit);
+  font-weight: 800;
+  font-size: 0.82em;
+  color: color-mix(in srgb, var(--accent, #ffce54) 85%, #fff 0%);
+  opacity: 0.9;
+  letter-spacing: 0.3px;
+}
 .ppt-sm .ppt-name {
   font-size: 13px;
 }

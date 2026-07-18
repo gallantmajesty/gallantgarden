@@ -17,6 +17,9 @@ import {
   awardLeaves,
   awardGoldenLeaves,
   syncXpToDb,
+  awardDailyTaskCompletion,
+  awardBlueprint,
+  awardWeeklyWarrior,
 } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
 import { pushMagnet, pullMagnet } from '../lib/magnet/sync'
@@ -415,6 +418,25 @@ export const useMagnet = create<MagnetState>((set, get) => {
           }
           tasks = [next, ...tasks]
         }
+
+        // Daily task completion bonus: check if all due-today tasks are now done
+        if (nowDone) {
+          const today = todayKey()
+          const dueToday = tasks.filter((t) => t.due === today || (!t.due && !t.done))
+          const allDailyDone = dueToday.length > 0 && dueToday.every((t) => t.done)
+          if (allDailyDone) {
+            const currentRank = rankForTotalXp(d.xp + d.premiumXp)
+            const result = awardDailyTaskCompletion(d.xp, d.premiumXp, currentRank.id)
+            if (result.goldenLeaves > 0) {
+              const newXp = d.xp
+              const newPremiumXp = d.premiumXp + result.goldenLeaves
+              const userId = get().userId
+              if (userId) syncXpToDb(userId, newXp, newPremiumXp)
+              return { ...d, tasks, xp: newXp, premiumXp: newPremiumXp }
+            }
+          }
+        }
+
         // Tasks give no leaves — only study time earns currency.
         return { ...d, tasks }
       })

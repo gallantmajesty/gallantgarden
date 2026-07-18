@@ -9,6 +9,8 @@ import { useMagnet } from '../store/magnet'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
 import { globalRunOnce, userRunOnce } from './runOnce'
+import { awardFocusSessionBonuses } from './xpEngine'
+import { rankForTotalXp } from './ranks'
 
 /**
  * App initialization orchestrator. Centralises the "run once" wiring so the UI
@@ -87,11 +89,45 @@ function bindFocusPresence(): void {
 
 // Bridge the focus timer into Task Magnet analytics: every completed study block
 // becomes a dated, subject-tagged focus session (and earns world-growing XP).
-// Registering the sink is idempotent — setPomodoroFocusSink simply overwrites.
+// Also tracks tab visibility and awards focus quality bonuses.
+let focusTabAlwaysVisible = true
+let focusVisibilityHandler: (() => void) | null = null
+
 function bindFocusLogging(): void {
   setPomodoroFocusSink((minutes, subject) => {
     useMagnet.getState().logFocus(minutes, subject)
+
+    // Award focus session quality bonuses
+    try {
+      const { xp, premiumXp, data } = useProfile.getState()
+      const isLibrary = false // Pomodoro is not library-specific
+      const currentRank = rankForTotalXp(xp + premiumXp)
+      const { result } = awardFocusSessionBonuses(
+        xp, premiumXp, minutes, focusTabAlwaysVisible, isLibrary, 'pomodoro', currentRank.id,
+      )
+      if (result.goldenLeaves > 0) {
+        const newPremiumXp = premiumXp + result.goldenLeaves
+        useProfile.setState({ premiumXp: newPremiumXp })
+        const userId = useProfile.getState().userId
+        if (userId) {
+          import('./insforge').then(({ insforge }) =>
+            insforge.from('profiles').upsert([{ id: userId, premium_xp: newPremiumXp }], { onConflict: 'id' })
+          ).catch(() => {})
+        }
+      }
+    } catch { /* ignore — bonus is best-effort */ }
+
+    // Reset tab visibility tracking for next session
+    focusTabAlwaysVisible = true
   })
+
+  // Track tab visibility during focus sessions
+  if (!focusVisibilityHandler) {
+    focusVisibilityHandler = () => {
+      if (document.hidden) focusTabAlwaysVisible = false
+    }
+    document.addEventListener('visibilitychange', focusVisibilityHandler)
+  }
 }
 
 /** Tear down per-user state on sign-out so the next user starts clean. */
@@ -99,6 +135,11 @@ export function runUserTeardown(): void {
   unbindFocus?.()
   unbindFocus = null
   setPomodoroFocusSink(null)
+  if (focusVisibilityHandler) {
+    document.removeEventListener('visibilitychange', focusVisibilityHandler)
+    focusVisibilityHandler = null
+  }
+  focusTabAlwaysVisible = true
   useSettings.getState().unbindCloud()
   useProfile.getState().reset()
   useSocial.getState().reset()

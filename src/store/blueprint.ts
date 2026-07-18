@@ -28,6 +28,9 @@ import {
   saveTemplateLocal,
   writeBoardLocal,
 } from '../lib/blueprint/sync'
+import { awardBlueprint } from '../lib/xpEngine'
+import { rankForTotalXp } from '../lib/ranks'
+import { useProfile } from './profile'
 
 const clone = <T,>(v: T): T => structuredClone(v)
 
@@ -40,6 +43,9 @@ interface BlueprintState {
   ready: boolean
   boards: BoardMeta[]
   doc: BoardDoc
+  // viewport lives OUTSIDE `doc` so high-frequency pan/zoom never replaces the
+  // whole board object (which would re-render every node/edge subscriber).
+  viewport: Viewport
 
   // selection / focus
   selection: string[] // node ids
@@ -127,8 +133,10 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
   function persistNow(doc: BoardDoc) {
     const uidv = get().userId
     if (!uidv) return
-    writeBoardLocal(uidv, doc)
-    queueCloudPush(uidv, doc)
+    // keep the saved doc's viewport in sync with the live (separate) viewport
+    const saved: BoardDoc = doc.viewport === get().viewport ? doc : { ...doc, viewport: get().viewport }
+    writeBoardLocal(uidv, saved)
+    queueCloudPush(uidv, saved)
   }
 
   // Apply a mutation, stamp updatedAt, persist immediately. For discrete edits.
@@ -161,6 +169,7 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
   ready: false,
   boards: [],
   doc: makeBoard(),
+  viewport: { x: 0, y: 0, zoom: 1 },
   selection: [],
   selectedEdgeId: null,
   focus: { typeId: null },
@@ -183,7 +192,7 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
         doc = makeBoard('My First Board')
         writeBoardLocal(userId, doc)
       }
-      set({ userId, doc, boards: listBoardsLocal(userId), ready: true, past: [], future: [] })
+      set({ userId, doc, viewport: doc.viewport, boards: listBoardsLocal(userId), ready: true, past: [], future: [] })
       queueCloudPush(userId, doc)
       // then reconcile with the cloud in the background
       try {
@@ -192,8 +201,9 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
         const refreshed = readBoardLocal(userId, get().doc.id)
         set({
           boards: merged,
-          doc: refreshed && refreshed.updatedAt > get().doc.updatedAt ? refreshed : get().doc,
-        })
+        doc: refreshed && refreshed.updatedAt > get().doc.updatedAt ? refreshed : get().doc,
+        viewport: (refreshed && refreshed.updatedAt > get().doc.updatedAt ? refreshed : get().doc).viewport,
+      })
       } catch {
         /* offline — local is fine */
       }
@@ -208,6 +218,7 @@ newBoard: (title) => {
   }
   set({
     doc,
+    viewport: doc.viewport,
     boards: uidv ? listBoardsLocal(uidv) : get().boards,
     selection: [],
     selectedEdgeId: null,
@@ -217,6 +228,19 @@ newBoard: (title) => {
     past: [],
     future: [],
   })
+
+  // Blueprint creation bonus (first ever + daily master)
+  try {
+    const { xp, premiumXp } = useProfile.getState()
+    const currentRank = rankForTotalXp(xp + premiumXp)
+    const result = awardBlueprint(xp, premiumXp, currentRank.id)
+    if (result.goldenLeaves > 0) {
+      useProfile.setState({ premiumXp: premiumXp + result.goldenLeaves })
+      import('../lib/insforge').then(({ insforge }) =>
+        insforge.from('profiles').upsert([{ id: uidv, premium_xp: premiumXp + result.goldenLeaves }], { onConflict: 'id' })
+      ).catch(() => {})
+    }
+  } catch { /* ignore — bonus is best-effort */ }
 },
 
   loadBoard: (id) => {
@@ -226,6 +250,7 @@ newBoard: (title) => {
     if (!doc) return
     set({
       doc,
+      viewport: doc.viewport,
       boards: listBoardsLocal(uidv),
       selection: [],
       selectedEdgeId: null,
@@ -251,7 +276,7 @@ newBoard: (title) => {
           writeBoardLocal(uidv, doc)
           queueCloudPush(uidv, doc)
         }
-  set({ doc, boards: listBoardsLocal(uidv), selection: [], selectedEdgeId: null, focus: { typeId: null }, activeYarnColor: null, activeYarnStyle: 'solid' })
+  set({ doc, viewport: doc.viewport, boards: listBoardsLocal(uidv), selection: [], selectedEdgeId: null, focus: { typeId: null }, activeYarnColor: null, activeYarnStyle: 'solid' })
   } else {
         set({ boards })
       }
@@ -265,7 +290,7 @@ newBoard: (title) => {
 
     // ---------- nodes ----------
     addNode: (partial) => {
-      const vp = get().doc.viewport
+      const vp = get().viewport
       // spawn near the centre of the current view
       const cx = (-vp.x + window.innerWidth / 2) / vp.zoom
       const cy = (-vp.y + window.innerHeight / 2) / vp.zoom
@@ -453,7 +478,15 @@ newBoard: (title) => {
     cancelConnect: () => set({ pendingFrom: null, focus: { typeId: null } }),
     setHoverNode: (id) => set((s) => (s.hoverNodeId === id ? s : { hoverNodeId: id })),
 
-  setViewport: (v) => applyLight((d) => ({ ...d, viewport: v })),
+  setViewport: (v) => {
+    set({ viewport: v })
+    // persist the new viewport (debounced) so a pan/zoom-only session survives reload
+    if (lightTimer) clearTimeout(lightTimer)
+    lightTimer = setTimeout(() => {
+      const doc = get().doc
+      persistNow(doc.viewport === v ? doc : { ...doc, viewport: v })
+    }, 300)
+  },
   toggleSnap: () => apply((d) => ({ ...d, snap: !d.snap })),
 
   // ---- yarn palette ----
@@ -513,7 +546,7 @@ newBoard: (title) => {
         if (!s.past.length) return s
         const prev = s.past[s.past.length - 1]
         persistNow(prev)
-        return { doc: prev, past: s.past.slice(0, -1), future: [clone(s.doc), ...s.future].slice(0, 50) }
+        return { doc: prev, viewport: prev.viewport, past: s.past.slice(0, -1), future: [clone(s.doc), ...s.future].slice(0, 50) }
       }),
 
     redo: () =>
@@ -521,7 +554,7 @@ newBoard: (title) => {
         if (!s.future.length) return s
         const next = s.future[0]
         persistNow(next)
-        return { doc: next, future: s.future.slice(1), past: [...s.past, clone(s.doc)].slice(-50) }
+        return { doc: next, viewport: next.viewport, future: s.future.slice(1), past: [...s.past, clone(s.doc)].slice(-50) }
       }),
 
     // ---------- versions ----------
@@ -569,7 +602,7 @@ newBoard: (title) => {
       })
       writeBoardLocal(uidv, doc)
       queueCloudPush(uidv, doc)
-      set({ doc, boards: listBoardsLocal(uidv), selection: [], selectedEdgeId: null, past: [], future: [] })
+      set({ doc, viewport: doc.viewport, boards: listBoardsLocal(uidv), selection: [], selectedEdgeId: null, past: [], future: [] })
     },
 
     deleteTemplate: (id) => {

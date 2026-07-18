@@ -20,7 +20,6 @@
   opacity: 0;
   transform: scale(1.04); /* gentle ken-burns settle as it fades in */
   transition: opacity 1s ease, transform 6s ease-out;
-  will-change: opacity, transform;
   user-select: none;
   -webkit-user-drag: none;
 }

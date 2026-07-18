@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, type BufferAttribute, type BufferGeometry, CanvasTexture, Color, type Group, type InstancedMesh, Object3D, type PointLight } from 'three'
 import { env } from './env'
 import { useScenePreset } from '../../store/quality'
+import { useSettings } from '../../store/settings'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -59,14 +60,24 @@ export function KnowledgeTree() {
     })
   }, [])
 
+  const lastTreeIntensity = useRef(-1)
   useFrame((state) => {
     if (sway.current) {
       const t = state.clock.elapsedTime
       sway.current.rotation.z = Math.sin(t * 0.25) * 0.012
       sway.current.rotation.x = Math.cos(t * 0.21) * 0.012
     }
-    // warm the dais glow up after dark so the centrepiece reads as a soft beacon
-    if (treeLight.current) treeLight.current.intensity = 2.8 + (1 - env.dayFactor) * 4.2
+    // warm the dais glow up after dark so the centrepiece reads as a soft beacon.
+    // Kept SUBTLE at night (nightMode) so it doesn't overpower the lanterns; the
+    // daytime look is untouched.
+    if (treeLight.current) {
+      const base = 2.8 + (1 - env.dayFactor) * 4.2
+      const next = useSettings.getState().nightMode ? base * 0.45 : base
+      if (Math.abs(next - lastTreeIntensity.current) > 0.01) {
+        treeLight.current.intensity = next
+        lastTreeIntensity.current = next
+      }
+    }
   })
 
   return (

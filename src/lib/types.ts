@@ -8,8 +8,12 @@ export type { AvatarConfig } from '../avatar/config'
 export interface Profile {
   id: string
   display_name: string
-  /** globally-unique handle (lowercase). Null until the user claims one. */
-  username: string | null
+  /** unique numeric Player ID (Free Fire–style). Assigned at signup, permanent,
+   *  used for sharing/links/search in place of the old text username. */
+  player_id: number | null
+  /** how many times the (non-unique) display name has been changed. Capped at
+   *  DISPLAY_NAME_CHANGES_MAX; further changes require a paid name card. */
+  display_name_changes: number
   /** rank id (mirror of settings.onboarding.rank), promoted to a column so the
    *  public view can expose it. */
   rank: string | null
@@ -24,6 +28,10 @@ export interface Profile {
   created_at: string
   updated_at: string
 }
+
+/** Max free display-name changes in a lifetime. Beyond this a paid name card
+ *  (added later) is required. Mirrors the product spec. */
+export const DISPLAY_NAME_CHANGES_MAX = 2
 
 /** A single off-platform link shown on a profile. */
 export interface SocialLink {
@@ -98,7 +106,8 @@ export function parseProfilePublic(raw: unknown): ProfilePublic {
  *  NEVER contains age, email, or the private settings jsonb. */
 export interface PublicProfile {
   id: string
-  username: string | null
+  /** unique numeric Player ID — the shareable, searchable identity key. */
+  player_id: number | null
   display_name: string
   avatar: import('../avatar/config').AvatarConfig
   avatar_url: string | null

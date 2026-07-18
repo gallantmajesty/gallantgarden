@@ -455,3 +455,60 @@ export function makeStoneNormalTexture(repeat = 4, seed = 19): CanvasTexture {
   }
   return heightToNormal(c, 1.6, repeat)
 }
+
+/**
+ * A rougher, chunkier normal map for the ancient pillar SHAFTS — bigger, harder
+ * rocky bumps and a few deep fissures so the columns read as weathered stone
+ * rather than smooth plaster. Stronger height→normal strength than the wall map.
+ */
+export function makeRockNormalTexture(repeat = 3, seed = 41): CanvasTexture {
+  const N = 256
+  const c = canvas(N)
+  const ctx = c.getContext('2d')!
+  const rand = rng(seed)
+  ctx.fillStyle = '#808080'
+  ctx.fillRect(0, 0, N, N)
+  // broad rocky lumps
+  for (let i = 0; i < 420; i++) {
+    const x = rand() * N
+    const y = rand() * N
+    const r = 4 + rand() * 16
+    const up = rand() > 0.45
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    const lvl = up ? 225 : 40
+    g.addColorStop(0, `rgba(${lvl},${lvl},${lvl},0.55)`)
+    g.addColorStop(1, 'rgba(128,128,128,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  // horizontal bedding / strata lines (ancient cut-stone courses)
+  for (let i = 0; i < 26; i++) {
+    const y = rand() * N
+    ctx.strokeStyle = `rgba(${rand() > 0.5 ? 235 : 25},${rand() > 0.5 ? 235 : 25},${rand() > 0.5 ? 235 : 25},0.18)`
+    ctx.lineWidth = 1 + rand() * 2
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(N, y + (rand() - 0.5) * 4)
+    ctx.stroke()
+  }
+  // a few deep cracks
+  for (let i = 0; i < 14; i++) {
+    const x = rand() * N
+    const y = rand() * N
+    ctx.strokeStyle = 'rgba(20,20,20,0.5)'
+    ctx.lineWidth = 1 + rand() * 2
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    let cx = x
+    let cy = y
+    for (let s = 0; s < 5; s++) {
+      cx += (rand() - 0.5) * 28
+      cy += (rand() - 0.5) * 28
+      ctx.lineTo(cx, cy)
+    }
+    ctx.stroke()
+  }
+  return heightToNormal(c, 4.2, repeat)
+}

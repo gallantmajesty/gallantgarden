@@ -73,9 +73,9 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
   }, [tab, meId, following, followers])
 
   function go(u: PublicProfile) {
-    if (!u.username) return
+    if (u.player_id == null) return
     onClose()
-    navigate(`/u/${u.username}`)
+    navigate(`/u/${u.player_id}`)
   }
 
   const TABS: [Tab, string][] = [
@@ -97,7 +97,7 @@ export function FriendsPanel({ onClose }: { onClose: () => void }) {
               <RankBadge rankId={u.rank} size={16} />
               {u.country && <Flag code={u.country} className="fp-row-flag" />}
             </span>
-            {u.username && <span className="fp-row-handle">@{u.username}</span>}
+            {u.player_id != null && <span className="fp-row-handle">Player ID #{u.player_id}</span>}
           </span>
         </button>
         {action}

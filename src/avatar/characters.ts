@@ -235,25 +235,6 @@ export const CHARACTERS: Character[] = [
     special: true,
     isAnimal: true,
   },
-  {
-    id: 'cat',
-    name: 'Mochi',
-    gender: 'female',
-    model: 'cat.glb',
-    scale: 1,
-    yOffset: 0,
-    fallback: look('female', {
-      skin: 'light', hair: 'none', hairColor: 'black', eyes: 'green',
-      top: 'frock', bottom: 'leggings', shoes: 'sneakers',
-    }),
-    description: 'A cute cat-girl mascot with a pink bow at her neck, big sparkly green eyes and the softest cream fur',
-    icon: '/icons/characters/cat.svg',
-    rarity: 'Legendary',
-    color: '#f48fb0',
-    bg: '#fff0f5',
-    special: true,
-    isAnimal: true,
-  },
 ]
 
 // Remove gender-based filtering - all characters are available together

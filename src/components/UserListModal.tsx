@@ -47,9 +47,9 @@ function UserList({ load, onClose }: { load: () => Promise<PublicProfile[]>; onC
   }, [])
 
   function go(u: PublicProfile) {
-    if (!u.username) return
+    if (u.player_id == null) return
     onClose()
-    navigate(`/u/${u.username}`)
+    navigate(`/u/${u.player_id}`)
   }
 
   if (users === null) return <p className="ulm-empty">Loading…</p>
@@ -66,7 +66,7 @@ function UserList({ load, onClose }: { load: () => Promise<PublicProfile[]>; onC
                 <RankBadge rankId={u.rank} size={16} className="ulm-row-rank" />
                 {u.country && <Flag code={u.country} className="ulm-row-flag" />}
               </span>
-              {u.username && <span className="ulm-row-handle">@{u.username}</span>}
+              {u.player_id != null && <span className="ulm-row-handle">Player ID #{u.player_id}</span>}
             </span>
           </button>
           <FollowButton targetId={u.id} className="ulm-row-follow" />

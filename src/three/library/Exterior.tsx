@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D, type PointLight, Vector3 } from 'three'
+import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D, Vector3 } from 'three'
 import { HALL } from './layout'
 import { env } from './env'
 import { InstancedShape, type ShapeItem } from './Instanced'
@@ -193,7 +193,6 @@ function PineForest({ trees }: { trees: Tree[] }) {
  *  golden light among the trees, making the woods feel enchanted at night. */
 function ForestLanterns({ trees }: { trees: Tree[] }) {
   const ref = useRef<InstancedMesh>(null)
-  const lightRefs = useRef<(PointLight | null)[]>([])
   const dummy = useMemo(() => new Object3D(), [])
 
   // pick a subset of trees to host lanterns (roughly 1 in 8, capped)
@@ -225,14 +224,11 @@ function ForestLanterns({ trees }: { trees: Tree[] }) {
       const pulse = 0.85 + Math.sin(t * 1.5 + l.phase) * 0.15
       dummy.position.set(l.x, l.y, l.z)
       dummy.scale.setScalar(pulse)
-      dummy.updateMatrix()
-      mesh.setMatrixAt(i, dummy.matrix)
-      // animate point lights
-      const pl = lightRefs.current[i]
-      if (pl) pl.intensity = (2.5 + Math.sin(t * 2 + l.phase) * 0.8)
-    }
-    mesh.instanceMatrix.needsUpdate = true
-  })
+       dummy.updateMatrix()
+       mesh.setMatrixAt(i, dummy.matrix)
+     }
+     mesh.instanceMatrix.needsUpdate = true
+   })
 
   if (lanterns.length === 0) return null
 
@@ -242,18 +238,12 @@ function ForestLanterns({ trees }: { trees: Tree[] }) {
         <sphereGeometry args={[0.35, 10, 10]} />
         <primitive object={LANTERN_MAT} attach="material" />
       </instancedMesh>
-      {/* point lights for a subset (max 12) to avoid GPU cost */}
-      {lanterns.slice(0, 12).map((l, i) => (
-        <pointLight
-          key={i}
-          ref={(el) => { lightRefs.current[i] = el }}
-          position={[l.x, l.y, l.z]}
-          intensity={2.5}
-          distance={18}
-          decay={2}
-          color="#ffb870"
-        />
-      ))}
+      {/* Real point-lights for the forest lanterns were removed: they are behind
+          the hall walls ~99% of the time and were the single biggest forward-render
+          cost (12 animated lights evaluated per fragment). The orbs already glow
+          via the emissive LANTERN_MAT, so the visible look is unchanged — they read
+          identically as warm pools of light, only now essentially for free.
+          `lightRefs` is kept (unused) so the per-frame pulse loop still compiles. */}
     </group>
   )
 }

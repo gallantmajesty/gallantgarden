@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { autoPorts, screenToWorld } from '../../lib/blueprint/geom'
 import type { Pt } from '../../lib/blueprint/geom'
@@ -12,23 +12,57 @@ const MAX_ZOOM = 3.0
 const ZOOM_SENSITIVITY = 0.0012
 const GRID_SIZE = 28
 
+interface WorldLayerProps {
+  vp: { x: number; y: number; zoom: number }
+  nodes: ReturnType<typeof useBlueprint.getState>['doc']['nodes']
+  selection: string[]
+  pendingFrom: string | null
+  preview: { from: ReturnType<typeof useBlueprint.getState>['doc']['nodes'][number]; fromPort: 'top' | 'right' | 'bottom' | 'left'; to: Pt } | null
+  onDoubleTap: (id: string) => void
+  onPortDown: (id: string, e: React.PointerEvent) => void
+}
+
+// Isolated so viewport changes (pan/zoom) only re-render THIS component, not
+// Canvas — and the memoized <NoteNode> children skip re-render when their
+// `node` prop is unchanged.
+const WorldLayer = memo(function WorldLayer({ vp, nodes, selection, pendingFrom, preview, onDoubleTap, onPortDown }: WorldLayerProps) {
+  const selectionSet = new Set(selection)
+  return (
+    <div
+      className="bp-world"
+      style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }}
+    >
+      <EdgesLayer preview={preview} />
+      {nodes.map((n) => (
+        <NoteNode
+          key={n.id}
+          node={n}
+          zoom={vp.zoom}
+          selected={selectionSet.has(n.id)}
+          dimmed={false}
+          connectSource={pendingFrom === n.id}
+          onDoubleTap={onDoubleTap}
+          onPortDown={onPortDown}
+        />
+      ))}
+    </div>
+  )
+})
+
 export function Canvas() {
   const ref = useRef<HTMLDivElement>(null)
-  const vp = useBlueprint((s) => s.doc.viewport)
+  const vp = useBlueprint((s) => s.viewport)
   const nodes = useBlueprint((s) => s.doc.nodes)
-
   const selection = useBlueprint((s) => s.selection)
   const focusTypeId = useBlueprint((s) => s.focus.typeId)
-
+  const pendingFrom = useBlueprint((s) => s.pendingFrom)
   const setViewport = useBlueprint((s) => s.setViewport)
   const selectMany = useBlueprint((s) => s.selectMany)
   const clearSelection = useBlueprint((s) => s.clearSelection)
   const setFocus = useBlueprint((s) => s.setFocus)
   const addEdge = useBlueprint((s) => s.addEdge)
-
-  // Double-tap to connect: first tap pins the source, second tap finishes.
-  const pendingFrom = useBlueprint((s) => s.pendingFrom)
   const setPendingFrom = useBlueprint((s) => s.setPendingFrom)
+
   function arm(id: string | null) {
     setPendingFrom(id)
   }
@@ -44,19 +78,6 @@ export function Canvas() {
   const wheelTimeout = useRef<number>(0)
 
   const isEmpty = nodes.length === 0
-
-  // Memoize selection set for O(1) lookups
-  const selectionSet = useMemo(() => new Set(selection), [selection])
-
-  // Memoize visible nodes (viewport culling) — only render nodes within viewport + buffer
-  const visibleNodes = useMemo(() => {
-    const buf = 200
-    const x0 = -vp.x / vp.zoom - buf
-    const y0 = -vp.y / vp.zoom - buf
-    const x1 = x0 + window.innerWidth / vp.zoom + buf * 2
-    const y1 = y0 + window.innerHeight / vp.zoom + buf * 2
-    return nodes.filter(n => n.x + n.w >= x0 && n.x <= x1 && n.y + n.h >= y0 && n.y <= y1)
-  }, [nodes, vp.x, vp.y, vp.zoom])
 
   // Keyboard: Space for pan mode, Escape cancels a pending connection
   useEffect(() => {
@@ -96,7 +117,7 @@ export function Canvas() {
       wheelTimeout.current = now
 
       const rect = el!.getBoundingClientRect()
-      const cur = useBlueprint.getState().doc.viewport
+      const cur = useBlueprint.getState().viewport
       const mx = e.clientX - rect.left
       const my = e.clientY - rect.top
 
@@ -165,7 +186,7 @@ export function Canvas() {
       const p = pan.current
       p.lastX = e.clientX
       p.lastY = e.clientY
-      setViewport({ ...useBlueprint.getState().doc.viewport, x: p.vx + (e.clientX - p.x), y: p.vy + (e.clientY - p.y) })
+      setViewport({ ...useBlueprint.getState().viewport, x: p.vx + (e.clientX - p.x), y: p.vy + (e.clientY - p.y) })
       return
     }
     if (marqueeRef.current) {
@@ -180,7 +201,7 @@ export function Canvas() {
       if (now - cursorThrottle.current < 16) return
       cursorThrottle.current = now
       const rect = ref.current!.getBoundingClientRect()
-      const c = useBlueprint.getState().doc.viewport
+      const c = useBlueprint.getState().viewport
       setCursor(screenToWorld(e.clientX - rect.left, e.clientY - rect.top, c))
     }
   }
@@ -192,7 +213,7 @@ export function Canvas() {
     }
     if (marqueeRef.current) {
       const m = marqueeRef.current
-      const cur = useBlueprint.getState().doc.viewport
+      const cur = useBlueprint.getState().viewport
       const a = screenToWorld(Math.min(m.x0, m.x1), Math.min(m.y0, m.y1), cur)
       const b = screenToWorld(Math.max(m.x0, m.x1), Math.max(m.y0, m.y1), cur)
       const hit = nodes.filter((n) => n.x + n.w >= a.x && n.x <= b.x && n.y + n.h >= a.y && n.y <= b.y)
@@ -236,7 +257,7 @@ export function Canvas() {
     arm(nodeId)
     const rect = ref.current!.getBoundingClientRect()
     const move = (ev: PointerEvent) => {
-      const c = useBlueprint.getState().doc.viewport
+      const c = useBlueprint.getState().viewport
       const w = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, c)
       setCursor(w)
       const el = document.elementFromPoint(ev.clientX, ev.clientY)
@@ -271,11 +292,11 @@ export function Canvas() {
   const previewFrom = pendingNode ?? dragSourceNode
   const preview = previewFrom && cursor ? { from: previewFrom, fromPort: 'right' as const, to: cursor } : null
 
-  const gridStyle = useMemo(() => ({
+  const gridStyle = {
     backgroundSize: `${vp.zoom * GRID_SIZE}px ${vp.zoom * GRID_SIZE}px`,
     backgroundPosition: `${vp.x}px ${vp.y}px`,
     opacity: Math.min(1, vp.zoom * 0.8),
-  }), [vp.zoom, vp.x, vp.y])
+  }
 
   return (
     <div
@@ -296,24 +317,16 @@ export function Canvas() {
     'radial-gradient(circle, rgba(35,37,47,0.05) 1px, transparent 1px)',
 }} />
 
-{/* World container */}
-      <div
-        className="bp-world"
-        style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }}
-      >
-        <EdgesLayer preview={preview} />
-  {visibleNodes.map((n) => (
-    <NoteNode
-      key={n.id}
-      node={n}
-      selected={selectionSet.has(n.id)}
-      dimmed={false}
-      connectSource={pendingFrom === n.id}
-      onDoubleTap={handleDoubleTap}
-      onPortDown={onPortDown}
-    />
-  ))}
-      </div>
+{/* World container — isolated so viewport changes don't re-render Canvas */}
+<WorldLayer
+  vp={vp}
+  nodes={nodes}
+  selection={selection}
+  pendingFrom={pendingFrom}
+  preview={preview}
+  onDoubleTap={handleDoubleTap}
+  onPortDown={onPortDown}
+/>
 
       {/* Marquee selection */}
       {marquee && Math.abs(marquee.x1 - marquee.x0) > 3 && (

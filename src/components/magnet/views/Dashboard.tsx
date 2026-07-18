@@ -23,6 +23,10 @@ import {
   type HeatCell,
 } from '../premium'
 import '../premium.css'
+import { awardWeeklyWarrior } from '../../../lib/xpEngine'
+import { rankForTotalXp } from '../../../lib/ranks'
+import { useProfile } from '../../../store/profile'
+import { syncXpToDb } from '../../../lib/xpEngine'
 
 // The emotional "home" of the world — redone in the calm, story-telling Korean
 // minimal style: a big hero that answers "how is my life today?", a performance
@@ -73,6 +77,20 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
   const s30 = useMemo(() => computeStats(data, now, 30), [data, now])
   const s7 = useMemo(() => computeStats(data, now, 7), [data, now])
   const streak = useMemo(() => computeStreak(data, now), [data, now])
+
+  // Weekly warrior: check if 5+ days studied this week
+  useEffect(() => {
+    if (streak < 5) return
+    const { xp, premiumXp, data: profileData } = useProfile.getState()
+    const currentRank = rankForTotalXp(xp + premiumXp)
+    const result = awardWeeklyWarrior(xp, premiumXp, streak, currentRank.id)
+    if (result.goldenLeaves > 0) {
+      const newPremiumXp = premiumXp + result.goldenLeaves
+      useProfile.setState({ premiumXp: newPremiumXp })
+      const userId = useProfile.getState().userId
+      if (userId) syncXpToDb(userId, xp, newPremiumXp)
+    }
+  }, [streak])
   const insights = useMemo(() => generateInsights(data, now, 30), [data, now])
   const trends = useMemo(() => windowTrends(data, now, 30), [data, now])
   const score = useMemo(() => focusScore(data, now), [data, now])

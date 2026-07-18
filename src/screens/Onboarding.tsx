@@ -5,7 +5,7 @@ import { useProfile } from '../store/profile'
 import { COUNTRIES } from '../lib/countries'
 import { REFERRAL_OPTIONS, type ReferralOption } from '../lib/onboarding'
 import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
-import { generateRandomUsername } from '../lib/usernames'
+import { generatePlayerId } from '../lib/playerId'
 import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
 import { CountryGlobe } from '../components/CountryGlobe'
@@ -21,7 +21,7 @@ export function Onboarding() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const complete = useProfile((s) => s.complete)
-  const setUsername = useProfile((s) => s.setUsername)
+  const setPlayerId = useProfile((s) => s.setPlayerId)
 
   const [step, setStep] = useState<StepId>(0)
   const [fullName, setFullName] = useState('')
@@ -59,14 +59,13 @@ export function Onboarding() {
   async function finish() {
     setSaving(true)
     setError(null)
-    // Auto-generate a random unique username (hidden from user).
-    const autoUsername = await generateRandomUsername()
-    const claimed = await setUsername(autoUsername)
-    if (!claimed) {
-      // Extremely unlikely — retry with a new random name.
-      const retry = await generateRandomUsername()
-      const claimed2 = await setUsername(retry)
-      if (!claimed2) {
+    // Assign a unique numeric Player ID (the shareable, searchable identity key).
+    const pid = generatePlayerId()
+    const idOk = await setPlayerId(pid)
+    if (!idOk) {
+      // Extremely unlikely collision — retry once with a fresh ID.
+      const retry = await setPlayerId(generatePlayerId())
+      if (!retry) {
         setSaving(false)
         setError(t('onboarding.saveError'))
         return
