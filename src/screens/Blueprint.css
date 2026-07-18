@@ -1797,7 +1797,17 @@
   z-index: 34;
   border-radius: 12px;
   overflow: hidden;
-  cursor: pointer;
+  cursor: crosshair;
+  user-select: none;
+}
+.bp-minimap-label {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font: 600 10px var(--bp-sans);
+  color: var(--bp-text-soft);
+  pointer-events: none;
+  opacity: 0.7;
 }
 .bp-mini-node { fill: color-mix(in srgb, var(--bp-accent) 55%, #9aa2af); }
 .bp-mini-view { fill: color-mix(in srgb, var(--bp-accent) 12%, transparent); stroke: var(--bp-accent); stroke-width: 1.5; }
