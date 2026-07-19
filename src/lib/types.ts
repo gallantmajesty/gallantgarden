@@ -54,6 +54,8 @@ export interface ProfilePublic {
   /** vertical focus of the banner image, as object-position Y % (0–100). */
   bannerPos: number
   socialLinks: SocialLink[]
+  /** total likes received on this profile (public counter). */
+  likes: number
 }
 
 export const EMPTY_PROFILE_PUBLIC: ProfilePublic = {
@@ -65,6 +67,7 @@ export const EMPTY_PROFILE_PUBLIC: ProfilePublic = {
   bannerImage: null,
   bannerPos: 50,
   socialLinks: [],
+  likes: 0,
 }
 
 /** Parse a raw `public_profile` jsonb value into a well-formed ProfilePublic. */
@@ -99,6 +102,7 @@ export function parseProfilePublic(raw: unknown): ProfilePublic {
     bannerImage: str(o.bannerImage) || null,
     bannerPos: Math.min(100, Math.max(0, num(o.bannerPos, 50))),
     socialLinks: links,
+    likes: num(o.likes, 0),
   }
 }
 

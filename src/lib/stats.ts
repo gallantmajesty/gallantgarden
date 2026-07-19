@@ -7,6 +7,26 @@ import { rankForTotalXp, RANKS } from './ranks'
 // not-yet-tracked metrics with state:'soon' so the dashboard stays honest
 // instead of showing fabricated figures.
 
+/** Derive a player level from total XP. Every 1000 XP = 1 level. */
+export function levelForXp(totalXp: number): number {
+  return Math.max(1, Math.floor(totalXp / 1000) + 1)
+}
+
+/** XP progress within the current level (0..1). */
+export function levelProgress(totalXp: number): { level: number; intoLevel: number; needed: number; pct: number } {
+  const level = levelForXp(totalXp)
+  const baseXp = (level - 1) * 1000
+  const intoLevel = totalXp - baseXp
+  const needed = 1000
+  return { level, intoLevel, needed, pct: Math.min(1, intoLevel / needed) }
+}
+
+/** Format a likes count for display (e.g. 1200 → "1.2k"). */
+export function formatLikes(n: number): string {
+  if (n < 1000) return String(n)
+  return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+}
+
 export interface StatCard {
   id: string
   label: string
