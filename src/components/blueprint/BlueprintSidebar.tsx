@@ -6,7 +6,7 @@ import {
   Search, History, Download, Lock, FileText, Sun, Moon,
 } from 'lucide-react'
 
-const BOARD_COLORS = ['#281C12', '#8B7DFF', '#62D7B5', '#FFD86E', '#FF9CAB', '#A8E7FF', '#C4B5FD']
+const BOARD_COLORS = ['#5C3D1A', '#8B6914', '#D4A843', '#6B4423', '#A0522D', '#8B4513', '#CD853F']
 
 interface SidebarProps {
   open: boolean
@@ -44,8 +44,19 @@ export function BlueprintSidebar({ open, onToggle, onExport, onToggleSearch, dar
         <div className="bp-sidebar-scroll">
           {/* Branding */}
           <div className="bp-sidebar-brand">
-            <span className="bp-sidebar-logo">🌸</span>
-            <span className="bp-sidebar-brand-name">FocusLily</span>
+            <div className="bp-sidebar-logo-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="url(#logo-grad)" stroke="#8B6914" strokeWidth="0.5"/>
+                <defs>
+                  <linearGradient id="logo-grad" x1="2" y1="2" x2="22" y2="22">
+                    <stop offset="0%" stopColor="#D4A843"/>
+                    <stop offset="50%" stopColor="#8B6914"/>
+                    <stop offset="100%" stopColor="#5C4A1A"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <span className="bp-sidebar-brand-name">Blueprints</span>
           </div>
 
           {/* Back to lobby */}

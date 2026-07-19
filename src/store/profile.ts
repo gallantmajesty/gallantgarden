@@ -28,6 +28,8 @@ import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 
 interface ProfileState {
   userId: string | null
+  /** true when the current session is a guest (no Supabase auth) */
+  isGuest: boolean
   /** false until we've hydrated from the cloud for the current user */
   ready: boolean
   data: OnboardingData
@@ -53,7 +55,7 @@ interface ProfileState {
   premiumXp: number
 
   /** Load onboarding data for a user from the (already-fetched) profile cache. */
-  hydrate: (userId: string, fallbackName?: string) => Promise<void>
+  hydrate: (userId: string, fallbackName?: string, isGuest?: boolean) => Promise<void>
   /** Persist a completed onboarding document (jsonb + country/rank columns). */
   complete: (data: Omit<OnboardingData, 'completed'>) => Promise<boolean>
   /** Assign the unique numeric Player ID (called once at signup). */
@@ -76,6 +78,7 @@ interface ProfileState {
 
 export const useProfile = create<ProfileState>((set, get) => ({
   userId: null,
+  isGuest: false,
   ready: false,
   data: { ...EMPTY_ONBOARDING },
   onboarded: false,
@@ -87,7 +90,28 @@ export const useProfile = create<ProfileState>((set, get) => ({
   xp: 0,
   premiumXp: 0,
 
-  hydrate: async (userId, fallbackName) => {
+  hydrate: async (userId, fallbackName, isGuest = false) => {
+    // Guests have no real Supabase session — skip all DB reads.
+    if (isGuest) {
+      const guestName = fallbackName || 'Guest'
+      const guestPlayerId = Math.floor(100000000 + Math.random() * 900000000)
+      set({
+        userId,
+        isGuest: true,
+        data: { ...EMPTY_ONBOARDING },
+        onboarded: false,
+        ready: true,
+        playerId: guestPlayerId,
+        displayName: guestName,
+        displayNameChanges: 0,
+        avatarUrl: null,
+        pub: { ...EMPTY_PROFILE_PUBLIC },
+        xp: 0,
+        premiumXp: 0,
+      })
+      return
+    }
+
     // runUserInit calls loadProfileSettings() before this, so the cache is
     // usually warm; fall back to a load if not (e.g. hydrate called standalone).
     let settings = getCachedProfileSettings(userId)
@@ -148,6 +172,12 @@ export const useProfile = create<ProfileState>((set, get) => ({
     if (!userId) return false
     const data: OnboardingData = { ...partial, completed: true }
 
+    // Guests: just set local state
+    if (get().isGuest) {
+      set({ data, onboarded: true })
+      return true
+    }
+
     // 1. canonical app-side document in settings jsonb
     const ok = await patchProfileSettings(userId, { onboarding: data })
 
@@ -170,6 +200,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   setPlayerId: async (playerId) => {
     const userId = get().userId
     if (!userId) return false
+    if (get().isGuest) { set({ playerId }); return true }
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
@@ -184,9 +215,9 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     const name = raw.trim().slice(0, 40)
     if (!userId || !name) return false
-    // Enforce the free-change limit (a paid name card would lift this later).
     const changes = get().displayNameChanges
     if (changes >= DISPLAY_NAME_CHANGES_MAX) return false
+    if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1 }); return true }
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
@@ -199,6 +230,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     const pub: ProfilePublic = { ...get().pub, ...patch }
+    if (get().isGuest) { set({ pub }); return true }
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, public_profile: pub }], { onConflict: 'id' })
@@ -210,6 +242,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   setAvatarUrl: async (url) => {
     const userId = get().userId
     if (!userId) return false
+    if (get().isGuest) { set({ avatarUrl: url }); return true }
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, avatar_url: url }], { onConflict: 'id' })
@@ -220,7 +253,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
 
   refreshXp: async () => {
     const userId = get().userId
-    if (!userId) return
+    if (!userId || get().isGuest) return
     try {
       const { data: row } = await insforge
         .from('profiles')

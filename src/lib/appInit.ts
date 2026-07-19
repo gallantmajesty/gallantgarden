@@ -33,6 +33,14 @@ export async function runGlobalInit(): Promise<void> {
 
 /** Per-user init. Call whenever a user becomes authenticated. */
 export async function runUserInit(user: AuthUser): Promise<void> {
+  const guest = !!user.isGuest
+
+  // Guests skip all cloud operations — local-only state.
+  if (guest) {
+    await useProfile.getState().hydrate(user.id, user.profile?.name, true)
+    return
+  }
+
   // 1. Pull the user's cloud settings document (also primes the run-once cache).
   const cloud = await loadProfileSettings(user.id)
 
