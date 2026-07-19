@@ -56,14 +56,13 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
     case 'laptop':
   case 'gaming_laptop': {
     const isGaming = id === 'gaming_laptop'
-    const clockSec = isGaming ? (Date.now() / 1000) % 10 : 0
-    const shell = isGaming ? tm('#3a2616', 0.5, 0, 'wood') : tm('#b8a48c', 0.5, 0.1, 'leather')
-    const base = isGaming ? tm('#2a1a10', 0.6, 0, 'wood') : tm('#9a8468', 0.6, 0, 'wood')
+    const shell = isGaming ? tm('#1a1218', 0.35, 0.15, 'wood') : tm('#b8a48c', 0.5, 0.1, 'leather')
+    const base = isGaming ? tm('#0f0a12', 0.4, 0.1, 'wood') : tm('#9a8468', 0.6, 0, 'wood')
     const keyMat = !isGaming ? m('#e9dcc4', 0.5) : null
 
     const { base: hueBase, glowSoft, glowMid, glowHard, glowUltra, complimentGlowSoft, complimentGlowMid, rgb } =
       isGaming
-        ? makeRgbGamingPalette(clockSec / 10)
+        ? makeRgbGamingPalette()
         : {
             base: '#c9924a',
             compliment: '#7a4a2b',
@@ -80,18 +79,21 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
     const logo = isGaming ? glowMid : m('#caa24a', 0.4, 0.3)
 
     const keys = []
-    const colsK = 11
-    const rowsK = 5
+    const colsK = isGaming ? 13 : 11
+    const rowsK = isGaming ? 5 : 5
+    const keyW = isGaming ? 0.03 : 0.033
+    const keyD = isGaming ? 0.024 : 0.022
+    const keySpacing = isGaming ? 0.032 : 0.033
     for (let r = 0; r < rowsK; r++) {
       for (let c = 0; c < colsK; c++) {
-        const kx = -0.165 + c * 0.033
+        const kx = -((colsK - 1) * keySpacing) / 2 + c * keySpacing
         const kz = 0.015 + r * 0.026
         const keyPalette = isGaming ? rgb : ['#e9dcc4']
         const hue = keyMat ? keyPalette[0] : keyPalette[(c + r) % keyPalette.length]
         keys.push(
           <mesh
             key={`k${r}-${c}`}
-            geometry={boxGeo(0.028, 0.009, 0.022)}
+            geometry={boxGeo(keyW, 0.009, keyD)}
             material={keyMat ? keyMat : m(hue, 0.45, 0.2)}
             position={[kx, 0.031, kz]}
           />,
@@ -103,46 +105,52 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
       <group>
         {/* RGB underglow / backlight strip */}
         <group position={[0, -0.004, 0]}>
-          <mesh geometry={boxGeo(0.48, 0.005, 0.18)} material={glowSoft} />
-          <mesh geometry={boxGeo(0.44, 0.004, 0.14)} material={glowHard} />
-          <mesh geometry={boxGeo(0.4, 0.003, 0.1)} material={glowUltra} />
+          <mesh geometry={boxGeo(0.52, 0.006, 0.2)} material={glowSoft} />
+          <mesh geometry={boxGeo(0.48, 0.005, 0.16)} material={glowHard} />
+          <mesh geometry={boxGeo(0.44, 0.004, 0.12)} material={glowUltra} />
         </group>
 
         {/* base / keyboard deck */}
         <mesh
-          geometry={boxGeo(0.44, 0.025, 0.32)}
-          material={isGaming ? tm('#2a1a10', 0.5, 0, 'wood') : shell}
-          position={[0, 0.0125, 0.02]}
+          geometry={boxGeo(0.48, 0.028, 0.34)}
+          material={isGaming ? tm('#0f0a12', 0.35, 0.12, 'wood') : shell}
+          position={[0, 0.014, 0.02]}
           castShadow
         />
-        <mesh geometry={boxGeo(0.4, 0.012, 0.22)} material={base} position={[0, 0.026, 0.03]} />
+        <mesh geometry={boxGeo(0.44, 0.014, 0.24)} material={base} position={[0, 0.028, 0.03]} />
         {keys}
         {/* trackpad (lit edge when gaming) */}
         <mesh
-          geometry={boxGeo(0.11, 0.006, 0.07)}
+          geometry={boxGeo(0.12, 0.006, 0.08)}
           material={isGaming ? glowMid : m('#d9c8a8', 0.5)}
-          position={[0, 0.03, 0.13]}
+          position={[0, 0.032, 0.14]}
         />
         {/* left RGB accent bar */}
         {isGaming && (
-          <mesh geometry={boxGeo(0.005, 0.025, 0.28)} material={complimentGlowMid} position={[-0.215, 0.025, 0.03]} />
+          <mesh geometry={boxGeo(0.006, 0.028, 0.3)} material={complimentGlowMid} position={[-0.235, 0.026, 0.03]} />
         )}
         {/* right RGB accent bar */}
         {isGaming && (
-          <mesh geometry={boxGeo(0.005, 0.025, 0.28)} material={complimentGlowSoft} position={[0.215, 0.025, 0.03]} />
+          <mesh geometry={boxGeo(0.006, 0.028, 0.3)} material={complimentGlowSoft} position={[0.235, 0.026, 0.03]} />
+        )}
+        {/* front vent strip */}
+        {isGaming && (
+          <mesh geometry={boxGeo(0.36, 0.008, 0.008)} material={glowUltra} position={[0, 0.008, 0.19]} />
         )}
 
         {/* screen lid */}
-        <group position={[0, 0.025, -0.13]} rotation={[-0.22, 0, 0]}>
+        <group position={[0, 0.028, -0.14]} rotation={[-0.22, 0, 0]}>
           {/* thin RGB light bar on screen hinge */}
           {isGaming && (
-            <mesh geometry={boxGeo(0.46, 0.006, 0.012)} material={glowUltra} position={[0, -0.002, 0.005]} />
+            <mesh geometry={boxGeo(0.5, 0.007, 0.014)} material={glowUltra} position={[0, -0.002, 0.005]} />
           )}
-          <mesh geometry={boxGeo(0.44, 0.3, 0.014)} material={shell} position={[0, 0.15, 0]} castShadow />
-          <mesh geometry={boxGeo(0.4, 0.26, 0.004)} material={m('#241510', 0.4)} position={[0, 0.15, 0.008]} />
-          <mesh geometry={boxGeo(0.37, 0.23, 0.002)} material={screenGlow} position={[0, 0.15, 0.01]} />
+          <mesh geometry={boxGeo(0.48, 0.32, 0.016)} material={shell} position={[0, 0.16, 0]} castShadow />
+          <mesh geometry={boxGeo(0.44, 0.28, 0.004)} material={m('#0a0610', 0.3)} position={[0, 0.16, 0.009]} />
+          <mesh geometry={boxGeo(0.41, 0.25, 0.002)} material={screenGlow} position={[0, 0.16, 0.011]} />
           {/* lit brand emblem on the lid */}
-          <mesh geometry={boxGeo(0.06, 0.06, 0.002)} material={logo} position={[0, 0.15, 0.011]} />
+          <mesh geometry={boxGeo(0.08, 0.08, 0.002)} material={logo} position={[0, 0.16, 0.012]} />
+          {/* webcam dot */}
+          <mesh geometry={sphereGeo(0.004)} material={m('#1a1a2a', 0.3)} position={[0, 0.31, 0.01]} />
         </group>
       </group>
     )

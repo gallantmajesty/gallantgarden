@@ -4,6 +4,7 @@ import { type Group, type InstancedMesh, MeshStandardMaterial, Object3D, Vector3
 import { HALL } from './layout'
 import { env } from './env'
 import { InstancedShape, type ShapeItem } from './Instanced'
+import { throttle } from '../../lib/frameThrottle'
 
 // glowing castle-window material (module-level so it can be animated each frame)
 const CASTLE_WIN_MAT = new MeshStandardMaterial({ color: '#ffcf8a', emissive: '#ffaa44', emissiveIntensity: 1.5 })
@@ -218,6 +219,9 @@ function ForestLanterns({ trees }: { trees: Tree[] }) {
   useFrame((state) => {
     const mesh = ref.current
     if (!mesh) return
+    // Lanterns only pulse softly — rewriting their instance buffer at 60fps is
+    // wasted work. 20Hz is visually identical.
+    if (!throttle(20, performance.now())) return
     const t = state.clock.elapsedTime
     for (let i = 0; i < lanterns.length; i++) {
       const l = lanterns[i]

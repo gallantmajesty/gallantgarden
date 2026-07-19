@@ -10,6 +10,7 @@ import { WebBackground } from './components/WebBackground'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
 import { MobileControlCenter } from './components/mobile/MobileControlCenter'
+import { MobileBlocker } from './components/MobileBlocker'
 import GlobalClickSpark from './components/GlobalClickSpark'
 import { LibraryScene } from './three/library/LibraryScene'
 import { AuthScreen } from './screens/AuthScreen'
@@ -81,7 +82,7 @@ export default function App() {
   // straight in the Lobby without a flash of the Landing page.
    if (isPublic && !user && !loading) {
     return (
-      <>
+      <MobileBlocker>
         <ErrorBoundary resetKeys={[location.pathname]}>
           <Suspense fallback={null}>
             <Routes>
@@ -91,14 +92,14 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
         <GlobalClickSpark />
-      </>
+      </MobileBlocker>
     )
   }
 
   // The background is mounted once, above the auth/loading/router branch, so it
   // persists across every navigation and never remounts (zero flash).
   return (
-    <>
+    <MobileBlocker>
       {user && <WebBackground />}
       {user && <IntroVeil ready={veilReady} />}
       {loading ? null : !user ? (
@@ -110,8 +111,6 @@ export default function App() {
           <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Lobby />} />
-              {/* Global mobile/tablet Control Center — exposes the whole-app
-                  settings from any screen. Renders null on desktop. */}
               <Route path="/blueprint" element={<Blueprint />} />
               <Route path="/notes" element={<NotesHub />} />
               <Route path="/notes/doc" element={<NotesEditor />} />
@@ -119,9 +118,9 @@ export default function App() {
               <Route path="/realm/explore" element={<Explore />} />
               <Route path="/realm/:code" element={<RealmInvite />} />
               <Route path="/info" element={<About />} />
-<Route path="/room" element={<Navigate to="/rooms" replace />} />
-<Route path="/rooms" element={<RoomsList />} />
-<Route path="/room/:id" element={<StudyRoom />} />
+              <Route path="/room" element={<Navigate to="/rooms" replace />} />
+              <Route path="/rooms" element={<RoomsList />} />
+              <Route path="/room/:id" element={<StudyRoom />} />
               <Route path="/magnet" element={<TaskMagnet />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/u/:playerId" element={<Profile />} />
@@ -130,17 +129,13 @@ export default function App() {
               <Route path="/games" element={<Games />} />
               <Route path="/games/lava-pad" element={<LavaPad />} />
               <Route path="/trainx" element={<TrainX />} />
-
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
       )}
-      {/* Global mobile/tablet Control Center — exposes the whole-app settings
-          from any screen. Renders null on desktop, so the desktop UI is
-          completely untouched. */}
       {user && <MobileControlCenter />}
       <GlobalClickSpark />
-    </>
+    </MobileBlocker>
   )
 }

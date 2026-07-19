@@ -44,7 +44,7 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   // 2b. Hydrate the onboarding/profile store from the same cloud document. This
   //     finishes before `loading` flips false (auth awaits runUserInit), so the
   //     onboarding gate reads `onboarded` with no default-then-swap flash.
-  await useProfile.getState().hydrate(user.id)
+  await useProfile.getState().hydrate(user.id, user.profile?.name)
 
   // 2c. Hydrate the social graph (who I follow + my counts) so Follow buttons
   //     and the profile header render correct state immediately. Non-blocking.

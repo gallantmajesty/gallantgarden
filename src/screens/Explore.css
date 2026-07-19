@@ -1215,7 +1215,6 @@
 .sso-plan-rail { stroke: rgba(201, 168, 124, 0.55); stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
 .sso-plan-col { fill: rgba(150, 110, 70, 0.5); stroke: rgba(201, 168, 124, 0.4); stroke-width: 1; }
 .sso-plan-stair { fill: rgba(120, 80, 45, 0.4); stroke: rgba(150, 105, 60, 0.5); stroke-width: 1; }
-.sso-plan-corner { fill: rgba(150, 110, 70, 0.5); stroke: rgba(201, 168, 124, 0.45); stroke-width: 1.5; }
 .sso-plan-tree-dais { fill: rgba(138, 122, 94, 0.4); stroke: rgba(201, 168, 124, 0.5); stroke-width: 1.2; }
 .sso-plan-tree-dais-ring { fill: none; stroke: rgba(201, 168, 124, 0.35); stroke-width: 1.5; stroke-dasharray: 3 2; }
 .sso-plan-tree-trunk { fill: rgba(90, 60, 30, 0.9); stroke: rgba(70, 45, 20, 0.6); stroke-width: 0.8; }

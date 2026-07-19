@@ -17,6 +17,7 @@ import {
 import { HALL } from './layout'
 import { env } from './env'
 import { useSettings } from '../../store/settings'
+import { throttle } from '../../lib/frameThrottle'
 
 // reusable temporaries (allocated once)
 const cTop = new Color()
@@ -70,6 +71,11 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
     const s = useSettings.getState()
+
+    // The sky/storm/lighting values barely change between frames; recomputing the
+    // whole sim + sky-colour lerp + dir-light/fog every frame is wasted CPU. 20Hz
+    // is visually identical (the effects are slow) and cuts this loop's cost ~3x.
+    if (!throttle(20, performance.now())) return
 
     // ---- time is frozen, dayFactor always 0 (the realm is lit by lanterns) ----
     // `nightMode` OFF = current daytime atmosphere (untouched). ON = the richer
@@ -270,6 +276,9 @@ function RainSide({ side, scale, count }: { side: number; scale: number; count: 
     const drops = dropsRef.current
     if (!mesh || !drops) return
     const dt = Math.min(dtRaw, 0.05)
+    // Rain falls fast but the eye can't tell 30Hz from 60Hz; rewriting the whole
+    // instance buffer every frame is the dominant cost of this loop.
+    if (!throttle(30, performance.now())) return
     const active = Math.floor(drops.length * env.rain * scale)
     // PERF: when it isn't raining, don't rewrite + re-upload the whole instance
     // buffer every frame. Park the drops once on the transition to dry, then idle.
@@ -353,6 +362,7 @@ function GlassStreaks() {
     const mesh = ref.current
     if (!mesh) return
     const dt = Math.min(dtRaw, 0.05)
+    if (!throttle(30, performance.now())) return
     const active = Math.floor(streaks.length * env.rain)
     // PERF: skip the per-frame rewrite + buffer upload while dry (see RainSide).
     if (active === 0) {

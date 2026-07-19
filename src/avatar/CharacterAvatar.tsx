@@ -12,9 +12,11 @@ interface CharacterAvatarProps {
   locomotion?: React.RefObject<Locomotion>
   lod?: React.RefObject<Lod>
   preview?: PreviewState
+  /** Hide accessories (desk/items) — useful for portrait views */
+  hideAccessories?: boolean
 }
 
-export function CharacterAvatar({ config, locomotion, lod, preview }: CharacterAvatarProps) {
+export function CharacterAvatar({ config, locomotion, lod, preview, hideAccessories }: CharacterAvatarProps) {
   const primaryRig = useRef<AvatarRigHandle>(null)
   const nearLod = useRef<Lod>('near')
   const resolvedLod = lod ?? nearLod
@@ -38,7 +40,7 @@ export function CharacterAvatar({ config, locomotion, lod, preview }: CharacterA
         />
       ) : (
         <>
-          <AvatarRig ref={primaryRig} config={config} />
+          <AvatarRig ref={primaryRig} config={config} hideAccessories={hideAccessories} />
           <AvatarAnimator rig={primaryRig} locomotion={resolvedLoco} lod={resolvedLod} preview={preview} />
         </>
       )}

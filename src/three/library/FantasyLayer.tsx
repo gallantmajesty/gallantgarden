@@ -7,6 +7,7 @@ import {
 import { HALL, WINDOW, windowStep, windowZs } from './layout'
 import { env } from './env'
 import { useSettings } from '../../store/settings'
+import { throttle } from '../../lib/frameThrottle'
 
 /**
  * The "Fantasy first" magical layer — purely additive / emissive, zero extra
@@ -119,6 +120,7 @@ function RuneCircle({
   const haloRef = useRef<MeshBasicMaterial>(null)
 
   useFrame((state) => {
+    if (!throttle(20, performance.now())) return
     const t = state.clock.elapsedTime
     const pulse = 0.85 + Math.sin(t * 0.7 + x * 0.3 + z * 0.3) * 0.15
     const night = useSettings.getState().nightMode
@@ -189,6 +191,7 @@ function LightShafts() {
   )
 
   useFrame((state) => {
+    if (!throttle(20, performance.now())) return
     const day = env.dayFactor
     const flick = 0.9 + Math.sin(state.clock.elapsedTime * 0.5) * 0.1
     shaftMat.opacity = (0.1 + day * 0.25) * flick

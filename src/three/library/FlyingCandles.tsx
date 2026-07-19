@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { type InstancedMesh, Object3D } from 'three'
 import { HALL } from './layout'
+import { throttle } from '../../lib/frameThrottle'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -61,6 +62,9 @@ export function FlyingCandles({ count = 70, night = false }: { count?: number; n
     const wax = waxRef.current
     const flame = flameRef.current
     if (!wax || !flame) return
+    // Candles only bob/sway slowly — rewriting the instance buffers at the full
+    // 60fps is wasted GPU. 30Hz is visually identical but halves the per-frame cost.
+    if (!throttle(30, performance.now())) return
     const t = state.clock.elapsedTime
     for (let i = 0; i < candles.length; i++) {
       const c = candles[i]

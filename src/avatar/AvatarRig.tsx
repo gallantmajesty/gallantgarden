@@ -48,9 +48,11 @@ function shade(hex: string, amt: number): string {
 export function AvatarRig({
   config,
   ref,
+  hideAccessories,
 }: {
   config: AvatarConfig
   ref?: React.Ref<AvatarRigHandle>
+  hideAccessories?: boolean
 }) {
   const rootRef = useRef<Group>(null)
   const lidsRef = useRef<Group>(null)
@@ -111,6 +113,18 @@ export function AvatarRig({
   const glowGold = glowMaterial('#ffe9a8', 2.6)
   const angelWing = sharedMaterial('#fbf7ee', 0.7)
   const angelWingShade = sharedMaterial('#e9e0cf', 0.7)
+
+  // Hacker: a fully-clothed, masked cyber operator on the same skeleton. The
+  // hood is pulled UP over the head, the lower face is covered by a balaclava
+  // mask, the eyes hide behind a glowing green visor, the hands wear gloves and
+  // the chest carries a glowing terminal keypad. Reads unmistakably as a hacker.
+  const isHacker = config.characterId === 'hacker'
+  const hackerDark = sharedMaterial('#15171c', 0.7, 0.1)
+  const hackerHood = sharedMaterial('#0b0d11', 0.85, 0.06)
+  const hackerMask = sharedMaterial('#0e0f13', 0.8, 0.05)
+  const hackerAccent = sharedMaterial('#1a2028', 0.6)
+  const hackerGlow = glowMaterial('#39ff14', 3.0)
+  const hackerVisorGlass = sharedMaterial('#0c2112', 0.2, 0.1)
 
   const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel
   const bunFur = sharedMaterial('#f8f5f0', 0.75)
@@ -226,6 +240,30 @@ export function AvatarRig({
               </group>
             )}
 
+            {/* Hacker: a big glowing green terminal panel on the chest + a keypad
+                grid, with neon green shoulder/zip lines so the hoodie reads as a
+                real hacker outfit instead of a dark blob. */}
+            {isHacker && (
+              <group>
+                {/* chunky neon-green vertical zip line down the front */}
+                <mesh geometry={boxGeo(P.chestW * 0.06, P.chestLen * 0.95, P.torsoD * 0.04)} material={hackerGlow} position={[0, P.chestLen * 0.45, P.torsoD * 1.02]} />
+                {/* shoulder accent lines */}
+                <mesh geometry={boxGeo(P.chestW * 0.55, P.chestLen * 0.05, P.torsoD * 0.04)} material={hackerGlow} position={[-P.chestW * 0.3, P.chestLen * 0.82, P.torsoD * 0.5]} rotation={[0, 0, 0.55]} />
+                <mesh geometry={boxGeo(P.chestW * 0.55, P.chestLen * 0.05, P.torsoD * 0.04)} material={hackerGlow} position={[P.chestW * 0.3, P.chestLen * 0.82, P.torsoD * 0.5]} rotation={[0, 0, -0.55]} />
+                {/* dark terminal panel */}
+                <mesh geometry={boxGeo(P.chestW * 0.6, P.chestLen * 0.62, P.torsoD * 0.05)} material={hackerAccent} position={[0, P.chestLen * 0.42, P.torsoD * 0.99]} />
+                {/* glowing screen */}
+                <mesh geometry={boxGeo(P.chestW * 0.5, P.chestLen * 0.2, P.torsoD * 0.03)} material={hackerGlow} position={[0, P.chestLen * 0.58, P.torsoD * 1.03]} />
+                {/* keypad grid */}
+                {[0.34, 0.26, 0.18].map((y, r) => (
+                  [-0.2, 0, 0.2].map((x, c) => (
+                    <mesh key={`hk${r}${c}`} geometry={boxGeo(P.chestW * 0.11, P.chestLen * 0.06, P.torsoD * 0.03)} material={hackerGlow}
+                      position={[x * P.chestW, P.chestLen * y, P.torsoD * 1.03]} />
+                  ))
+                ))}
+              </group>
+            )}
+
             {/* seamless body for animal mascots — torso + limbs render in their
                 suit colour; heads and feet stay skin. No discs/plates. */}
 
@@ -257,6 +295,8 @@ export function AvatarRig({
                   <PigHead P={P} main={pigMain} belly={pigBelly} nose={pigNose} dark={pigDark} />
                 ) : isAngel ? (
                   <AngelHead P={P} skin={angelSkin} gold={angelGold} glow={glowGold} />
+                ) : isHacker ? (
+                  <HackerHead P={P} skin={skin} hairM={hairM} glow={hackerGlow} config={config} />
                 ) : (
                   <>
                     <Head P={P} skin={skin} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} characterId={config.characterId ?? 'james'} eyeHexVal={eyeCol} />
@@ -271,8 +311,8 @@ export function AvatarRig({
           </group>
         </group>
 
-        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} glowM={glowBlue} />
-        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} glowM={glowBlue} />
+        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} glowM={glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} />
+        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} glowM={glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} />
 
         {/* Dino tail — a thick tapering tail rooted at the lower back (overlapping
             the body so there's no gap), curving out and down, ridged with golden
@@ -408,14 +448,16 @@ export function AvatarRig({
 
         {/* Arms rendered LAST inside hips — always on top of clothing. The
             sarafan wears a white blouse, so its sleeves render white. */}
-        <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} />
-        <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} />
+        <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} />
+        <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} />
 
         {/* Equipped accessories on a little study desk that travels with the avatar
-            (so they're visible in the library hall too). */}
-        <group position={[0, -1.05, 0.62]}>
-          <AccessoryTray accessories={config.accessories} />
-        </group>
+            (so they're visible in the library hall too). Hidden in portrait views. */}
+        {!hideAccessories && (
+          <group position={[0, -1.15, 0.85]} scale={0.7}>
+            <AccessoryTray accessories={config.accessories} />
+          </group>
+        )}
 
         {/* Wizard gold sparkle particles — 6 emitters: hands, robe hem, pouch */}
         {config.characterId === 'wizard' && (() => {
@@ -1002,6 +1044,53 @@ function AngelHead({ P, skin, gold, glow }: { P: Proportions; skin: Mat; gold: M
   )
 }
 
+/* ================================================ HACKER HEAD ================================================ */
+
+/** Hacker head: a normal human face (skin + black eyes, like James) with the
+ *  hoodie hood DOWN around the neck/shoulders, and a pair of chunky neon-green
+ *  headphones (band + ear cups + mic boom). Not a mask — you can see the face.
+ *  Black hair, fully clothed, never naked. */
+function HackerHead({ P, skin, hairM, glow, config }: { P: Proportions; skin: Mat; hairM: Mat; glow: Mat; config: AvatarConfig }) {
+  const r = P.headR
+  const cy = r * 0.92
+  const fz = r * 0.88
+  const lidsRef = useRef<Group>(null)
+  const cupM = sharedMaterial('#15171c', 0.6, 0.1)
+
+  return (
+    <group>
+      {/* normal human head + face + hair */}
+      <Head P={P} skin={skin} hairM={hairM} bodyType={'male'} lidsRef={lidsRef} characterId={'hacker'} eyeHexVal={'#0a0a0a'} />
+      <Hair config={config} P={P} hairM={hairM} />
+
+      {/* HEADPHONE BAND — arcs over the top of the head (neon green) */}
+      <mesh geometry={torusGeo(r * 1.1, r * 0.09, 12, 40)} material={glow}
+        position={[0, cy + r * 0.55, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+      {/* headphone band core (dark) just under the glow */}
+      <mesh geometry={torusGeo(r * 1.06, r * 0.05, 12, 36)} material={cupM}
+        position={[0, cy + r * 0.55, 0]} rotation={[Math.PI / 2, 0, 0]} />
+
+      {/* EAR CUPS (chunky green) over each ear */}
+      {[-1, 1].map((sx) => (
+        <group key={sx}>
+          <mesh geometry={boxGeo(r * 0.28, r * 0.52, r * 0.36)} material={cupM} position={[sx * r * 1.02, cy - r * 0.02, 0]} castShadow />
+          <mesh geometry={boxGeo(r * 0.14, r * 0.34, r * 0.22)} material={glow} position={[sx * r * 0.94, cy - r * 0.02, 0]} />
+          {/* mic boom curving toward the mouth */}
+          <mesh geometry={boxGeo(r * 0.05, r * 0.48, r * 0.05)} material={cupM} position={[sx * r * 0.82, cy - r * 0.42, fz * 0.55]} rotation={[0.2, 0, sx * 0.5]} />
+          <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.09, r * 0.09, r * 0.09]} position={[sx * r * 0.6, cy - r * 0.6, fz * 0.78]} />
+        </group>
+      ))}
+
+      {/* HOOD (down) — a soft hood collar resting on the shoulders behind the neck */}
+      <mesh geometry={torusGeo(P.neckR * 2.5, P.neckR * 0.55)} material={cupM} position={[0, P.chestLen * 0.88, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+      {/* neon green drawstrings hanging from the hood */}
+      {[-1, 1].map((sx) => (
+        <mesh key={sx} geometry={boxGeo(r * 0.04, r * 0.6, r * 0.04)} material={glow} position={[sx * r * 0.36, P.chestLen * 0.55, fz * 0.5]} />
+      ))}
+    </group>
+  )
+}
+
 /* ================================================ ANGEL WING ================================================ */
 
 /** A single feathered angel wing: a fan of overlapping ellipsoid "feathers"
@@ -1212,14 +1301,15 @@ function WizardHat({ P }: { P: Proportions }) {
 
 /* ================================================ ARMS ================================================ */
 
-function Arm({ side, bind, P, skin, topM, isSleeved, isDino, clawM, isRobot, glowM }: {
+function Arm({ side, bind, P, skin, topM, isSleeved, isDino, clawM, isRobot, glowM, isHacker }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; topM: Mat; isSleeved: boolean; isDino?: boolean; clawM?: Mat; isRobot?: boolean; glowM?: Mat
+  P: Proportions; skin: Mat; topM: Mat; isSleeved: boolean; isDino?: boolean; clawM?: Mat; isRobot?: boolean; glowM?: Mat; isHacker?: boolean
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'armUpperL' : 'armUpperR'
   const lower: BoneName = side === 'L' ? 'armLowerL' : 'armLowerR'
   const armM = isSleeved ? topM : skin
+  const gloveM = isHacker ? sharedMaterial('#0e0f13', 0.7, 0.05) : skin
 
   return (
     <group ref={bind(upper)} position={[sign * P.shoulderW, 0.04 + P.spineLen + P.chestLen * 0.65, 0]}>
@@ -1257,14 +1347,14 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, clawM, isRobot, glo
             sleeve (sleeved tops paint the whole forearm in the garment colour,
             which otherwise made the hand read as "merged into the clothes"). */}
         <group position={[0, -P.lowerArm - P.wristR * 0.2, P.wristR * 0.3]}>
-          {/* exposed skin wrist cuff between the sleeve end and the palm */}
-          <mesh geometry={taperGeo(P.wristR * 0.95, P.wristR * 0.7, P.wristR * 1.5)} material={skin} position={[0, P.wristR * 0.55, 0]} castShadow />
-          <mesh geometry={sphereGeo(1)} material={skin} scale={[P.wristR * 1.3, P.handLen * 0.48, P.wristR * 1.1]} position={[0, -P.handLen * 0.3, 0]} castShadow />
-          <mesh geometry={sphereGeo(1)} material={skin} scale={[P.wristR * 0.26, P.wristR * 0.26, P.wristR * 0.26]} position={[P.wristR * 0.88, -P.handLen * 0.12, P.wristR * 0.26]} />
+          {/* exposed wrist cuff between the sleeve end and the palm (gloved for hacker) */}
+          <mesh geometry={taperGeo(P.wristR * 0.95, P.wristR * 0.7, P.wristR * 1.5)} material={gloveM} position={[0, P.wristR * 0.55, 0]} castShadow />
+          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 1.3, P.handLen * 0.48, P.wristR * 1.1]} position={[0, -P.handLen * 0.3, 0]} castShadow />
+          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.26, P.wristR * 0.26, P.wristR * 0.26]} position={[P.wristR * 0.88, -P.handLen * 0.12, P.wristR * 0.26]} />
           {[-P.wristR * 0.46, -P.wristR * 0.14, P.wristR * 0.14, P.wristR * 0.4].map((fx, i) => (
             <group key={i} position={[fx, -P.handLen * 0.45, 0]}>
-              <mesh geometry={taperGeo(P.wristR * 0.12, P.wristR * 0.08, P.handLen * (0.28 - i * 0.02))} material={skin} position={[0, -P.handLen * 0.12, 0]} />
-              <mesh geometry={sphereGeo(1)} material={skin} scale={[P.wristR * 0.08, P.wristR * 0.08, P.wristR * 0.08]} position={[0, -P.handLen * (0.26 - i * 0.02), 0]} />
+              <mesh geometry={taperGeo(P.wristR * 0.12, P.wristR * 0.08, P.handLen * (0.28 - i * 0.02))} material={gloveM} position={[0, -P.handLen * 0.12, 0]} />
+              <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.08, P.wristR * 0.08, P.wristR * 0.08]} position={[0, -P.handLen * (0.26 - i * 0.02), 0]} />
               {/* dino claw tip */}
               {isDino && (
                 <mesh geometry={taperGeo(P.wristR * 0.005, P.wristR * 0.09, P.handLen * 0.16)} material={clawM ?? skin} position={[0, -P.handLen * (0.32 - i * 0.02), P.wristR * 0.04]} rotation={[0.5, 0, 0]} />
@@ -1286,9 +1376,9 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, clawM, isRobot, glo
 
 /* ================================================ LEGS ================================================ */
 
-function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, glowM }: {
+function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, glowM, isHacker, hackerGlow, hackerAccent }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; glowM?: Mat
+  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'legUpperL' : 'legUpperR'
@@ -1321,13 +1411,28 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
           [P.kneeR, 0],
         ])} material={calfMat} castShadow />
 
+        {/* Hacker cargo pockets + neon-green side stripes on the leg */}
+        {isHacker && hackerGlow && (
+          <group>
+            {/* thigh cargo pocket (front of thigh) */}
+            <mesh geometry={boxGeo(P.thighR * 0.7, P.upperLeg * 0.28, P.torsoD * 0.06)} material={hackerAccent}
+              position={[sign * P.thighR * 0.3, -P.upperLeg * 0.45, P.torsoD * 0.5]} castShadow />
+            {/* green side stripe down the outer thigh — flush against the leg surface */}
+            <mesh geometry={boxGeo(P.thighR * 0.1, P.upperLeg * 0.85, P.torsoD * 0.03)} material={hackerGlow}
+              position={[sign * P.thighR * 1.15, -P.upperLeg * 0.5, 0]} />
+            {/* green side stripe down the outer calf — flush against the leg surface */}
+            <mesh geometry={boxGeo(P.ankleR * 0.1, P.lowerLeg * 0.9, P.torsoD * 0.03)} material={hackerGlow}
+              position={[sign * P.kneeR * 1.1, -P.lowerLeg * 0.5, 0]} />
+          </group>
+        )}
+
         <group ref={bind(foot)} position={[0, -P.lowerLeg - P.ankleR * 0.4, 0]}>
           {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien */}
           {!isAlien && (
-            <mesh geometry={sphereGeo(1)} material={showShoes && config.shoes === 'boots' ? shoeM : skin}
+            <mesh geometry={sphereGeo(1)} material={showShoes && config.shoes === 'boots' && !isHacker ? shoeM : skin}
               scale={Array(3).fill(P.ankleR * (isRobot ? 0.65 : 1.1)) as [number, number, number]} />
           )}
-          {showShoes && (
+          {showShoes && !isHacker && (
             <>
               <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.2, P.ankleR * 0.8, P.footLen * 0.45]} position={[0, -P.ankleR * 0.08, P.footLen * 0.22]} castShadow />
               <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.0, P.ankleR * 0.65, P.footLen * 0.3]} position={[0, -P.ankleR * 0.22, P.footLen * 0.62]} castShadow />
@@ -1350,6 +1455,31 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               <mesh geometry={boxGeo(P.ankleR * 2.0, P.ankleR * 0.18, P.footLen * 0.9)} material={glowM} position={[0, -P.ankleR * 0.78, P.footLen * 0.28]} />
             </group>
           )}
+          {/* Hacker: clean high-top sneaker — dark body, neon-green sole +
+              side accent. No floating panels, everything flush on the foot. */}
+          {isHacker && hackerGlow && (() => {
+            const shoeDark = sharedMaterial('#16181d', 0.6, 0.05)
+            return (
+              <group>
+                {/* main shoe body — one smooth rounded shape */}
+                <mesh geometry={sphereGeo(1)} material={shoeDark}
+                  scale={[P.ankleR * 1.2, P.ankleR * 0.95, P.footLen * 0.52]}
+                  position={[0, -P.ankleR * 0.25, P.footLen * 0.35]} castShadow />
+                {/* ankle collar / high-top cuff */}
+                <mesh geometry={latheGeo([
+                  [P.ankleR * 0.85, P.ankleR * 0.45],
+                  [P.ankleR * 1.05, P.ankleR * 0.05],
+                  [P.ankleR * 0.95, -P.ankleR * 0.35],
+                ])} material={shoeDark} position={[0, -P.ankleR * 0.05, P.footLen * 0.1]} castShadow />
+                {/* neon-green sole — flush at the bottom */}
+                <mesh geometry={boxGeo(P.ankleR * 2.2, P.ankleR * 0.22, P.footLen * 1.05)}
+                  material={hackerGlow} position={[0, -P.ankleR * 0.6, P.footLen * 0.35]} castShadow />
+                {/* green accent line on outer side — flush on the shoe surface */}
+                <mesh geometry={boxGeo(P.ankleR * 0.06, P.ankleR * 0.8, P.footLen * 0.04)}
+                  material={hackerGlow} position={[sign * P.ankleR * 1.05, -P.ankleR * 0.2, P.footLen * 0.35]} />
+              </group>
+            )
+          })()}
           {/* Alien: a slim rounded green foot that connects smoothly to the shin. */}
           {isAlien && (
             <group>

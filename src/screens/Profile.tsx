@@ -21,6 +21,7 @@ import { getRank, rankProgress, RANKS } from '../lib/ranks'
 import { characterById } from '../avatar/characters'
 import { useAvatar } from '../avatar/store'
 import { computeStreak } from '../lib/magnet/insights'
+import { generatePlayerId } from '../lib/playerId'
 import { CharacterPortrait3D } from '../components/CharacterPortrait3D'
 import { Flag } from '../components/Flag'
 import { Icon } from '../components/magnet/Icon'
@@ -85,7 +86,7 @@ export function Profile() {
       return {
         id: user.id,
         playerId: ownPlayerId,
-        displayName: ownDisplayName,
+        displayName: ownDisplayName || user.profile?.name || 'Explorer',
         avatarUrl: ownAvatarUrl,
         country: ownCountry,
         rankId: ownRank,
@@ -174,7 +175,9 @@ function ProfileBody({
   onBack: () => void
 }) {
   const myCounts = useSocial((s) => s.myCounts)
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
+  const setAvatarUrl = useProfile((s) => s.setAvatarUrl)
+  const ownPlayerId = useProfile((s) => s.playerId)
   const xp = useMagnet((s) => s.data.xp)
   const goldenXp = useMagnet((s) => s.data.premiumXp)
   const totalXp = xp + goldenXp
@@ -189,8 +192,18 @@ function ProfileBody({
   const [remoteCounts, setRemoteCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 })
   const [studyCounts, setStudyCounts] = useState<StudyCounts>({ blueprints: 0 })
   const [listModal, setListModal] = useState<null | 'followers' | 'following' | 'mutual'>(null)
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const counts = isOwn ? myCounts : remoteCounts
+
+  // Generate Player ID if missing (for existing users who signed up before this feature)
+  useEffect(() => {
+    if (isOwn && ownPlayerId == null && user) {
+      const pid = generatePlayerId()
+      useProfile.getState().setPlayerId(pid)
+    }
+  }, [isOwn, ownPlayerId, user])
 
   useEffect(() => {
     let cancelled = false
@@ -240,12 +253,6 @@ function ProfileBody({
             <span className="pf-char-level-num">{levelData.level}</span>
           </div>
 
-          <div className="pf-char-flame" aria-hidden>
-            <span className="pf-ember pf-ember-1" />
-            <span className="pf-ember pf-ember-2" />
-            <span className="pf-ember pf-ember-3" />
-            <span className="pf-ember pf-ember-4" />
-          </div>
 
           <div className="pf-char-img-wrap">
             <CharacterPortrait3D config={avatarConfig} size={300} />
@@ -257,12 +264,75 @@ function ProfileBody({
               <FollowButton targetId={view.id} />
             </div>
           )}
+
+          {/* About Me — study info */}
+          <div className="pf-about-section">
+            <div className="pf-about-title">About Me</div>
+            {view.pub.favoriteSubject && (
+              <div className="pf-about-row">
+                <span className="pf-about-label">Studying</span>
+                <span className="pf-about-value">{view.pub.favoriteSubject}</span>
+              </div>
+            )}
+            {view.pub.studySchedule && (
+              <div className="pf-about-row">
+                <span className="pf-about-label">Schedule</span>
+                <span className="pf-about-value">{view.pub.studySchedule}</span>
+              </div>
+            )}
+            {view.pub.studyInterests.length > 0 && (
+              <div className="pf-about-row">
+                <span className="pf-about-label">Interests</span>
+                <span className="pf-about-value">{view.pub.studyInterests.slice(0, 3).join(', ')}</span>
+              </div>
+            )}
+            {!view.pub.favoriteSubject && !view.pub.studySchedule && view.pub.studyInterests.length === 0 && (
+              <div className="pf-about-empty">
+                {isOwn ? 'Add study info in Customize.' : 'No study info yet.'}
+              </div>
+            )}
+          </div>
+
+          {/* Study Interests — dynamic from onboarding/customize */}
+          {view.pub.studyInterests.length > 0 && (
+            <div className="pf-qa-section">
+              <div className="pf-qa-title">Study Focus</div>
+              <div className="pf-interests-row">
+                {view.pub.studyInterests.map((interest) => (
+                  <span key={interest} className="pf-interest-chip">{interest}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {view.pub.bio && (
+            <div className="pf-qa-section">
+              <div className="pf-qa-title">Bio</div>
+              <div className="pf-bio-text">{view.pub.bio}</div>
+            </div>
+          )}
+          {!view.pub.studyInterests.length && !view.pub.bio && (
+            <div className="pf-qa-section">
+              <div className="pf-about-empty">
+                {isOwn ? 'Add study interests in Customize.' : 'No study info yet.'}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ========== CENTER — Identity Card ========== */}
         <div className="pf-panel pf-identity-card pf-panel-inner">
-          {/* rank emblem — click to open the rank roadmap */}
-          <button className="pf-rank-emblem pf-rank-emblem-btn" onClick={() => setRankModal(true)}>
+          {/* rank emblem — click to upload avatar or open rank roadmap */}
+          <button
+            className="pf-rank-emblem pf-rank-emblem-btn"
+            onClick={() => {
+              if (isOwn) {
+                avatarInputRef.current?.click()
+              } else {
+                setRankModal(true)
+              }
+            }}
+            title={isOwn ? 'Click to change profile picture' : rank.name}
+          >
             {view.avatarUrl ? (
               <img src={view.avatarUrl} alt="" />
             ) : (
@@ -273,7 +343,19 @@ function ProfileBody({
                 {(view.displayName.trim()[0] || 'E').toUpperCase()}
               </div>
             )}
+            {isOwn && <span className="pf-avatar-edit-badge">📷</span>}
           </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) setPendingAvatar(file)
+              if (avatarInputRef.current) avatarInputRef.current.value = ''
+            }}
+          />
           <button className="pf-rank-name-tag pf-rank-name-btn" onClick={() => setRankModal(true)}>
             <img src={rank.badge} alt="" />
             {rank.name}
@@ -435,6 +517,18 @@ function ProfileBody({
       {/* rank roadmap modal */}
       {rankModal && (
         <RankRoadmap totalXp={totalXp} onClose={() => setRankModal(false)} />
+      )}
+
+      {/* avatar cropper modal */}
+      {pendingAvatar && (
+        <AvatarCropper
+          file={pendingAvatar}
+          onCancel={() => setPendingAvatar(null)}
+          onDone={async (url) => {
+            await setAvatarUrl(url)
+            setPendingAvatar(null)
+          }}
+        />
       )}
     </div>
   )

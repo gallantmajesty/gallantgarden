@@ -51,6 +51,8 @@ function look(bodyType: BodyType, over: Partial<AvatarConfig>): AvatarConfig {
 //   6. rabbit → Bunny (COSTUME)  — white toy rabbit, pink suit, green rear flap, cotton tail
 //   7. robot  → Robot (COSTUME)  — sci-fi robot with a black outfit and glowing blue accent lines
 //   8. alien  → Alien (COSTUME)  — friendly green extraterrestrial with big black eyes and antennae
+//   9. hacker → Neo   (MALE)     — fully-clothed cyber hacker: dark hoodie + cargo pants + boots,
+//                                  black hair, glowing green visor headset and a laptop terminal
 //
 //  All share the SAME skeleton + height (see src/avatar/rig.ts). Gender is
 //  signalled by body shape, hair, clothing and colour — not scale.
@@ -234,6 +236,27 @@ export const CHARACTERS: Character[] = [
     bg: '#11131f',
     special: true,
     isAnimal: true,
+  },
+  {
+    id: 'hacker',
+    name: 'Neo',
+    gender: 'male',
+    model: 'hacker.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('male', {
+      skin: 'light', hair: 'short_messy', hairColor: 'black', eyes: 'green',
+      top: 'hoodie', bottom: 'pants', shoes: 'boots',
+      topColor: '#3a4a58', bottomColor: '#2a3040',
+      accessories: ['laptop', 'phone'],
+      characterId: 'hacker',
+    }),
+    description: 'A cyber hacker in a dark hoodie and cargo pants — green glowing visor headset, terminal at the ready',
+    icon: '/icons/characters/hacker.svg',
+    rarity: 'Legendary',
+    color: '#39ff14',
+    bg: '#0a0e0a',
+    special: true,
   },
 ]
 

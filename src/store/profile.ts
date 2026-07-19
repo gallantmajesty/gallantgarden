@@ -53,7 +53,7 @@ interface ProfileState {
   premiumXp: number
 
   /** Load onboarding data for a user from the (already-fetched) profile cache. */
-  hydrate: (userId: string) => Promise<void>
+  hydrate: (userId: string, fallbackName?: string) => Promise<void>
   /** Persist a completed onboarding document (jsonb + country/rank columns). */
   complete: (data: Omit<OnboardingData, 'completed'>) => Promise<boolean>
   /** Assign the unique numeric Player ID (called once at signup). */
@@ -87,7 +87,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   xp: 0,
   premiumXp: 0,
 
-  hydrate: async (userId) => {
+  hydrate: async (userId, fallbackName) => {
     // runUserInit calls loadProfileSettings() before this, so the cache is
     // usually warm; fall back to a load if not (e.g. hydrate called standalone).
     let settings = getCachedProfileSettings(userId)
@@ -111,7 +111,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       if (row) {
         const r = row as Record<string, unknown>
         playerId = (r.player_id as number | null) ?? null
-        displayName = (r.display_name as string) || 'Explorer'
+        displayName = (r.display_name as string) || fallbackName || 'Explorer'
         displayNameChanges = (r.display_name_changes as number) ?? 0
         avatarUrl = (r.avatar_url as string | null) ?? null
         pub = parseProfilePublic(r.public_profile)
@@ -120,6 +120,11 @@ export const useProfile = create<ProfileState>((set, get) => ({
       }
     } catch {
       /* offline / columns missing — fall back to empties */
+    }
+
+    // If the DB didn't have a display name, use the auth metadata fallback
+    if (!displayName || displayName === 'Explorer') {
+      displayName = fallbackName || 'Explorer'
     }
 
     set({ userId, data, onboarded: data.completed, ready: true, playerId, displayName, displayNameChanges, avatarUrl, pub, xp, premiumXp })

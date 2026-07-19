@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, memo, type CSSProperties } from 'react'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
 import { HALL, windowZs } from '../../three/library/layout'
-import { seatAnchors, TABLE, groundShelves, upperShelves, balconyPlatforms, columns, staircases, readingCorners } from '../../three/library/furniture'
+import { seatAnchors, TABLE, groundShelves, upperShelves, balconyPlatforms, columns, staircases } from '../../three/library/furniture'
 import type { Seat } from '../../three/library/furniture'
 
 const ASPECT_W = HALL.halfW * 2
@@ -202,7 +202,7 @@ const MapPlan = memo(function MapPlan({ seats }: { seats: DisplaySeat[] }) {
   const sx = (x: number) => ((x + W) / (2 * W)) * 560
   const sy = (z: number) => ((z + L) / (2 * L)) * 920
 
-  const { tables, windows, shelves, decks, cols, corners, stairs } = useMemo(() => {
+  const { tables, windows, shelves, decks, cols, stairs } = useMemo(() => {
     const tableGroups = new Map<string, Seat[]>()
     for (const s of seats) {
       const key = `${Math.round(s.pos[0] / 13) * 13},${Math.round(s.pos[2] / 18) * 18}`
@@ -218,7 +218,6 @@ const MapPlan = memo(function MapPlan({ seats }: { seats: DisplaySeat[] }) {
       shelves: [...groundShelves(), ...upperShelves()],
       decks: balconyPlatforms(),
       cols: columns(),
-      corners: readingCorners(),
       stairs: staircases(),
     }
   }, [seats])
@@ -243,9 +242,6 @@ const MapPlan = memo(function MapPlan({ seats }: { seats: DisplaySeat[] }) {
         ))}
         {cols.map((c, i) => (
           <rect key={i} x={sx(c[0]) - 3} y={sy(c[2]) - 3} width={6} height={6} rx={1} className="sso-plan-col" />
-        ))}
-        {corners.map((p, i) => (
-          <circle key={i} cx={sx(p.pos[0])} cy={sy(p.pos[2])} r={8} className="sso-plan-corner" />
         ))}
         {stairs.map((st, i) => (
           <rect

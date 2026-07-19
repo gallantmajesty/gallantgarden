@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <radialGradient id="hSkin" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#FDDCB5"/>
+      <stop offset="100%" stop-color="#E0B088"/>
+    </radialGradient>
+    <linearGradient id="hHood" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1c1f26"/>
+      <stop offset="100%" stop-color="#0a0c10"/>
+    </linearGradient>
+    <linearGradient id="hGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7dff5e"/>
+      <stop offset="100%" stop-color="#1fae10"/>
+    </linearGradient>
+    <linearGradient id="hPants" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#232838"/>
+      <stop offset="100%" stop-color="#141824"/>
+    </linearGradient>
+    <linearGradient id="hShoe" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#26292f"/>
+      <stop offset="100%" stop-color="#14161b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- HAIR (black, on top) -->
+  <ellipse cx="100" cy="58" rx="46" ry="34" fill="#161616"/>
+
+  <!-- FACE (skin, visible) -->
+  <rect x="58" y="58" width="84" height="74" rx="22" fill="url(#hSkin)"/>
+
+  <!-- EARS -->
+  <ellipse cx="58" cy="100" rx="8" ry="10" fill="#E0B088"/>
+  <ellipse cx="142" cy="100" rx="8" ry="10" fill="#E0B088"/>
+
+  <!-- EYES (black, like the other characters) -->
+  <ellipse cx="82" cy="96" rx="7" ry="9" fill="#0a0a0a"/>
+  <ellipse cx="118" cy="96" rx="7" ry="9" fill="#0a0a0a"/>
+  <ellipse cx="84" cy="93" rx="3" ry="3.5" fill="white" opacity="0.85"/>
+  <ellipse cx="120" cy="93" rx="3" ry="3.5" fill="white" opacity="0.85"/>
+
+  <!-- MOUTH -->
+  <path d="M90 116 Q100 122 110 116" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- GREEN HEADPHONES -->
+  <!-- band over the head -->
+  <path d="M48 92 Q100 30 152 92" stroke="url(#hGreen)" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M50 92 Q100 36 150 92" stroke="#16181d" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- ear cups -->
+  <rect x="42" y="86" width="18" height="36" rx="9" fill="#16181d"/>
+  <rect x="140" y="86" width="18" height="36" rx="9" fill="#16181d"/>
+  <rect x="47" y="94" width="7" height="20" rx="3" fill="url(#hGreen)"/>
+  <rect x="146" y="94" width="7" height="20" rx="3" fill="url(#hGreen)"/>
+  <!-- mic boom -->
+  <path d="M52 120 Q64 134 80 126" stroke="#16181d" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <circle cx="82" cy="125" r="4" fill="url(#hGreen)"/>
+
+  <!-- NECK -->
+  <rect x="88" y="130" width="24" height="14" rx="4" fill="url(#hSkin)"/>
+
+  <!-- HOODIE (hood DOWN, crew neck) -->
+  <rect x="48" y="142" width="104" height="84" rx="14" fill="url(#hHood)"/>
+  <!-- hood collar resting on shoulders -->
+  <path d="M70 142 Q100 168 130 142 Q130 156 100 160 Q70 156 70 142 Z" fill="#0a0c10"/>
+  <!-- chest terminal keypad -->
+  <rect x="72" y="158" width="56" height="42" rx="6" fill="#0d0f13"/>
+  <rect x="80" y="164" width="40" height="6" rx="3" fill="url(#hGreen)"/>
+  <rect x="80" y="174" width="10" height="5" rx="2" fill="url(#hGreen)"/>
+  <rect x="95" y="174" width="10" height="5" rx="2" fill="url(#hGreen)"/>
+  <rect x="110" y="174" width="10" height="5" rx="2" fill="url(#hGreen)"/>
+  <rect x="80" y="184" width="10" height="5" rx="2" fill="url(#hGreen)"/>
+  <rect x="95" y="184" width="10" height="5" rx="2" fill="url(#hGreen)"/>
+  <rect x="110" y="184" width="10" height="5" rx="2" fill="url(#hGreen)"/>
+  <!-- neon green drawstrings -->
+  <rect x="84" y="150" width="4" height="22" rx="2" fill="url(#hGreen)"/>
+  <rect x="112" y="150" width="4" height="22" rx="2" fill="url(#hGreen)"/>
+  <!-- shoulders -->
+  <ellipse cx="56" cy="150" rx="14" ry="9" fill="#0a0c10"/>
+  <ellipse cx="144" cy="150" rx="14" ry="9" fill="#0a0c10"/>
+
+  <!-- ARMS (hoodie, gloved hands) -->
+  <rect x="20" y="146" width="30" height="64" rx="15" fill="url(#hHood)"/>
+  <rect x="150" y="146" width="30" height="64" rx="15" fill="url(#hHood)"/>
+  <circle cx="35" cy="212" r="12" fill="#16181d"/>
+  <circle cx="165" cy="212" r="12" fill="#16181d"/>
+
+  <!-- CARGO PANTS -->
+  <rect x="52" y="222" width="42" height="40" rx="9" fill="url(#hPants)"/>
+  <rect x="106" y="222" width="42" height="40" rx="9" fill="url(#hPants)"/>
+  <rect x="56" y="236" width="16" height="16" rx="3" fill="#0d0f13"/>
+  <rect x="128" y="236" width="16" height="16" rx="3" fill="#0d0f13"/>
+
+  <!-- HACKER HIGH-TOP SNEAKERS with green sole + laces -->
+  <rect x="44" y="240" width="50" height="22" rx="7" fill="url(#hShoe)"/>
+  <rect x="106" y="240" width="50" height="22" rx="7" fill="url(#hShoe)"/>
+  <!-- high-top cuffs -->
+  <rect x="46" y="232" width="46" height="12" rx="6" fill="#16181d"/>
+  <rect x="108" y="232" width="46" height="12" rx="6" fill="#16181d"/>
+  <!-- green laces -->
+  <rect x="50" y="236" width="40" height="3" rx="1.5" fill="url(#hGreen)"/>
+  <rect x="112" y="236" width="40" height="3" rx="1.5" fill="url(#hGreen)"/>
+  <!-- green chunky soles -->
+  <rect x="42" y="258" width="54" height="6" rx="3" fill="url(#hGreen)"/>
+  <rect x="104" y="258" width="54" height="6" rx="3" fill="url(#hGreen)"/>
+</svg>

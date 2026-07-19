@@ -467,9 +467,10 @@ export function PlayerController() {
   const cameraModeR = useSettings((s) => s.cameraMode)
 
   const displayName = useProfile((s) => s.displayName)
+  const playerId = useProfile((s) => s.playerId)
   const rank = useProfile((s) => s.data.rank)
   const country = useProfile((s) => s.data.country)
-  const localName = displayName || 'Explorer'
+  const localName = displayName || (playerId != null ? `#${playerId}` : 'Explorer')
 
   return (
     <group ref={avatarRef}>
@@ -480,7 +481,7 @@ export function PlayerController() {
           clean. */}
       <group visible={seatWorld != null && cameraModeR !== 'first'}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
-        <PlayerNameTag3D name={localName} rank={rank} country={country} self headY={2.55} hidden={cinematic} />
+        <PlayerNameTag3D name={localName} rank={rank} country={country} playerId={playerId} self headY={2.55} hidden={cinematic} />
       </group>
     </group>
   )

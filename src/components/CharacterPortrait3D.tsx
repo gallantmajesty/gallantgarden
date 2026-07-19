@@ -23,8 +23,7 @@ export function CharacterPortrait3D({
         margin: '12px auto 8px',
         borderRadius: 8,
         overflow: 'hidden',
-        background:
-          'radial-gradient(120% 100% at 50% 18%, rgba(200,168,78,0.10), rgba(11,16,34,0) 70%)',
+        background: 'transparent',
       }}
     >
       <Canvas
@@ -38,11 +37,10 @@ export function CharacterPortrait3D({
         <hemisphereLight args={['#ffe8c0', '#1a1208', 0.75]} />
         <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
         <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
-        <pointLight position={[0, 0.6, 0.6]} intensity={0.55} color="#ff9040" distance={5} decay={2} />
         <ambientLight intensity={0.3} color="#ffe8d0" />
 
         <group position={[0, -0.9, 0]}>
-          <CharacterAvatar config={config} />
+          <CharacterAvatar config={config} hideAccessories />
           {/* glowing gold ring pedestal */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
             <ringGeometry args={[0.55, 0.72, 48]} />

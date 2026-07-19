@@ -11,11 +11,12 @@ export interface PlayerNameTagProps {
   name: string
   rank: string
   country: string | null
+  playerId?: number | null
   /** the local player gets a brighter ring so you can spot yourself */
   self?: boolean
 }
 
-export function PlayerNameTag({ name, rank, country, self }: PlayerNameTagProps) {
+export function PlayerNameTag({ name, rank, country, playerId, self }: PlayerNameTagProps) {
   const r = getRank(rank)
   return (
     <div
@@ -33,6 +34,7 @@ export function PlayerNameTag({ name, rank, country, self }: PlayerNameTagProps)
         <span className="pnt-bottom">
           <RankBadge rankId={rank} size={18} className="pnt-rank" />
           <span className="pnt-rankname">{r.name}</span>
+          {playerId != null && <span className="pnt-id"> #{playerId}</span>}
         </span>
       </span>
     </div>

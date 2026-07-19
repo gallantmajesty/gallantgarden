@@ -13,7 +13,6 @@ import {
   columns,
   groundShelves,
   groundTables,
-  readingCorners,
   staircases,
   upperTables,
 } from './furniture'
@@ -79,12 +78,6 @@ export function buildCollision(): Collision {
   for (const s of groundShelves()) {
     const [hx, hz] = shelfHalf(s.rotY)
     blockers.push(box(s.pos[0], s.pos[2], hx, hz, 0, SHELF.h))
-  }
-
-  // ---- reading-corner sofas (block at their own floor: ground or balcony) ----
-  for (const c of readingCorners()) {
-    const baseY = c.pos[1]
-    blockers.push(box(c.pos[0], c.pos[2], 1.1, 1.1, baseY, baseY + 0.9))
   }
 
   // ---- columns (footprint matches the carved plinth) ----

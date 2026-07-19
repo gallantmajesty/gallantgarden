@@ -11,6 +11,7 @@ import { HALL } from './layout'
 import { staircases, columns } from './furniture'
 import { InstancedBoxes } from './Instanced'
 import { useSettings } from '../../store/settings'
+import { throttle } from '../../lib/frameThrottle'
 
 /**
  * Night-only magical layer — the Harry-Potter Great-Hall feel. Mounted ONLY when
@@ -41,6 +42,7 @@ function EnchantedCeiling() {
     [],
   )
   useFrame((s) => {
+    if (!throttle(20, performance.now())) return
     if (mat.current) mat.current.uniforms.uTime.value = s.clock.elapsedTime
   })
   const { halfW, halfL, wallH } = HALL
@@ -159,6 +161,7 @@ function FloorRuneRing() {
   const tex = useMemo(() => makeRuneRingTexture(), [])
   const matRef = useRef<MeshStandardMaterial>(null)
   useFrame((s) => {
+    if (!throttle(20, performance.now())) return
     if (matRef.current) {
       const t = s.clock.elapsedTime
       // gentle breathing glow
@@ -231,6 +234,7 @@ function CarpetGlow() {
   const tex = useMemo(() => makePathGlowTexture(), [])
   const matRef = useRef<MeshStandardMaterial>(null)
   useFrame((s) => {
+    if (!throttle(20, performance.now())) return
     if (matRef.current) matRef.current.emissiveIntensity = 1.1 + Math.sin(s.clock.elapsedTime * 0.7) * 0.3
   })
   const { halfL } = HALL
@@ -325,6 +329,7 @@ function PillarRunes() {
   }, [cols, wallH])
   const matRef = useRef<MeshStandardMaterial>(null)
   useFrame((s) => {
+    if (!throttle(20, performance.now())) return
     if (matRef.current) matRef.current.emissiveIntensity = 1.0 + Math.sin(s.clock.elapsedTime * 0.9) * 0.3
   })
   return (

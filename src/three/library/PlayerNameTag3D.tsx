@@ -8,6 +8,7 @@ export function PlayerNameTag3D({
   name,
   rank,
   country,
+  playerId,
   self,
   headY = 2.55,
   hidden = false,
@@ -15,6 +16,7 @@ export function PlayerNameTag3D({
   name: string
   rank: string
   country: string | null
+  playerId?: number | null
   self?: boolean
   headY?: number
   hidden?: boolean
@@ -28,7 +30,7 @@ export function PlayerNameTag3D({
       zIndexRange={[30, 0]}
       style={{ pointerEvents: 'none' }}
     >
-      <PlayerNameTag name={name} rank={rank} country={country} self={self} />
+      <PlayerNameTag name={name} rank={rank} country={country} playerId={playerId} self={self} />
     </Html>
   )
 }

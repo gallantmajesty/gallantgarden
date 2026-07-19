@@ -5,6 +5,7 @@ import { groundTables, TABLE, upperTables } from './furniture'
 import { useScenePreset, type ScenePreset } from '../../store/quality'
 import { useSettings } from '../../store/settings'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
+import { throttle } from '../../lib/frameThrottle'
 
 const WOOD = '#3b2718'
 const WOOD_DARK = '#241608'
@@ -269,6 +270,7 @@ function TableSigil({ tables }: { tables: TableInfo[] }) {
   const tex = useMemo(() => makeTableSigilTexture(), [])
   const matRef = useRef<MeshStandardMaterial>(null)
   useFrame((s) => {
+    if (!throttle(20, performance.now())) return
     if (matRef.current) {
       const night = useSettings.getState().nightMode
       const base = night ? 1.6 : 0.5
