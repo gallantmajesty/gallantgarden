@@ -98,8 +98,11 @@ export default function App() {
 
   // The background is mounted once, above the auth/loading/router branch, so it
   // persists across every navigation and never remounts (zero flash).
-  return (
-    <MobileBlocker>
+  // Blueprint route is accessible on mobile — no MobileBlocker wrapper for it.
+  const isBlueprintRoute = location.pathname === '/blueprint'
+
+  const appContent = (
+    <>
       {user && <WebBackground />}
       {user && <IntroVeil ready={veilReady} />}
       {loading ? null : !user ? (
@@ -136,6 +139,15 @@ export default function App() {
       )}
       {user && <MobileControlCenter />}
       <GlobalClickSpark />
+    </>
+  )
+
+  // Blueprint works on mobile — skip the blocker for that route
+  if (isBlueprintRoute) return appContent
+
+  return (
+    <MobileBlocker>
+      {appContent}
     </MobileBlocker>
   )
 }

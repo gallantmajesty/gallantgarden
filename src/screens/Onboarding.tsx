@@ -1,7 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
+import { useAvatar } from '../avatar/store'
+import { SKINS, type AvatarConfig } from '../avatar/config'
 import { COUNTRIES } from '../lib/countries'
 import { REFERRAL_OPTIONS, type ReferralOption } from '../lib/onboarding'
 import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
@@ -14,9 +16,9 @@ import './Onboarding.css'
 
 const AuthGlobe = lazy(() => import('../components/AuthGlobe'))
 
-type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6
-const LAST_STEP: StepId = 6
-const STEP_COUNT = 7
+type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+const LAST_STEP: StepId = 7
+const STEP_COUNT = 8
 
 export function Onboarding() {
   const { t } = useTranslation()
@@ -29,6 +31,8 @@ export function Onboarding() {
   const [fullNameOk, setFullNameOk] = useState(false)
   const [country, setCountry] = useState<string | null>(null)
   const [age, setAge] = useState<number | null>(null)
+  const [characterId, setCharacterId] = useState<string>('james')
+  const [skinId, setSkinId] = useState<string>('light')
   const [goals, setGoals] = useState<string[]>([])
   const [referral, setReferral] = useState<ReferralOption | null>(null)
   const [referralOther, setReferralOther] = useState('')
@@ -44,8 +48,9 @@ export function Onboarding() {
     : step === 1 ? fullNameOk
     : step === 2 ? !!country
     : step === 3 ? !!age
-    : step === 4 ? goals.length > 0
-    : step === 5 ? termsAccepted
+    : step === 4 ? !!characterId
+    : step === 5 ? goals.length > 0
+    : step === 6 ? termsAccepted
     : true
 
   function next() {
@@ -74,6 +79,11 @@ export function Onboarding() {
     }
     // Save the full name as the display name.
     await useProfile.getState().setDisplayName(fullName.trim())
+
+    // Apply chosen character + skin to the avatar store.
+    const charFallback = (await import('../avatar/characters')).characterById(characterId).fallback
+    useAvatar.getState().set({ ...charFallback, characterId, skin: skinId } as Partial<AvatarConfig>)
+
     const ok = await complete({
       country,
       age: age,
@@ -129,8 +139,16 @@ export function Onboarding() {
            )}
            {step === 2 && <CountryStep value={country} onChange={setCountry} />}
            {step === 3 && <AgeStep value={age} onChange={setAge} />}
-            {step === 4 && <StudyGoalsSelector value={goals} onChange={setGoals} />}
-            {step === 5 && (
+           {step === 4 && (
+             <CharacterStep
+               characterId={characterId}
+               onCharacter={setCharacterId}
+               skinId={skinId}
+               onSkin={setSkinId}
+             />
+           )}
+           {step === 5 && <StudyGoalsSelector value={goals} onChange={setGoals} />}
+           {step === 6 && (
               <TermsStep
                 accepted={termsAccepted}
                 onChange={setTermsAccepted}
@@ -140,7 +158,7 @@ export function Onboarding() {
                 onReferralOther={setReferralOther}
               />
             )}
-            {step === 6 && (
+            {step === 7 && (
              <FinishStep
                name={fullName || displayName}
                country={country}
@@ -426,6 +444,102 @@ return (
       {value && (value < 7 || value > 100) && (
         <p className="ob-username-status bad">Age must be between 7 and 100</p>
       )}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------- step 4: character + skin */
+
+interface CharacterOption {
+  id: string
+  name: string
+  icon: string
+  fallback: AvatarConfig
+}
+
+const PICK_CHARACTERS: CharacterOption[] = [
+  { id: 'james', name: 'James', icon: '/icons/characters/james.svg', fallback: { bodyType: 'male', skin: 'light', hair: 'short_neat', hairColor: 'brown', top: 'jacket', bottom: 'pants', shoes: 'sneakers' } as AvatarConfig },
+  { id: 'claire', name: 'Lily', icon: '/icons/characters/lily.svg', fallback: { bodyType: 'female', skin: 'light', hair: 'ponytail', hairColor: 'chestnut', top: 'frock', bottom: 'leggings', shoes: 'sneakers' } as AvatarConfig },
+  { id: 'mia', name: 'Mia', icon: '/icons/characters/mia.svg', fallback: { bodyType: 'female', skin: 'tan', hair: 'long_straight', hairColor: 'auburn', top: 'blazer', bottom: 'leggings', shoes: 'boots' } as AvatarConfig },
+]
+
+const SKIN_OPTIONS = SKINS.map((s) => ({ id: s.id, name: s.name, hex: s.hex }))
+
+function CharacterStep({
+  characterId,
+  onCharacter,
+  skinId,
+  onSkin,
+}: {
+  characterId: string
+  onCharacter: (id: string) => void
+  skinId: string
+  onSkin: (id: string) => void
+}) {
+  const { t } = useTranslation()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const dragStart = useRef({ x: 0, scrollLeft: 0 })
+
+  function handleMouseDown(e: React.MouseEvent) {
+    if (!scrollRef.current) return
+    setDragging(true)
+    dragStart.current = { x: e.clientX, scrollLeft: scrollRef.current.scrollLeft }
+  }
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!dragging || !scrollRef.current) return
+    const dx = e.clientX - dragStart.current.x
+    scrollRef.current.scrollLeft = dragStart.current.scrollLeft - dx
+  }
+  function handleMouseUp() { setDragging(false) }
+
+  return (
+    <div className="ob-step">
+      <h2 className="ob-q">Choose your character</h2>
+      <p className="ob-hint">Swipe to browse. You can customize more later.</p>
+
+      {/* Horizontal swipeable character cards */}
+      <div
+        className="ob-char-scroll"
+        ref={scrollRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {PICK_CHARACTERS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`ob-char-card ${characterId === c.id ? 'selected' : ''}`}
+            onClick={() => onCharacter(c.id)}
+          >
+            <div className="ob-char-avatar">
+              <img src={c.icon} alt={c.name} draggable={false} />
+            </div>
+            <span className="ob-char-name">{c.name}</span>
+            {characterId === c.id && <span className="ob-char-check">✓</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Skin color swatches */}
+      <div className="ob-skin-row">
+        <span className="ob-skin-label">Skin tone</span>
+        <div className="ob-skin-swatches">
+          {SKIN_OPTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`ob-swatch ${skinId === s.id ? 'on' : ''}`}
+              style={{ background: s.hex }}
+              onClick={() => onSkin(s.id)}
+              aria-label={s.name}
+              title={s.name}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

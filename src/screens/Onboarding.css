@@ -324,6 +324,108 @@
 .ob-age-input:focus { outline: none; }
 .ob-age-label { color: var(--ink-soft); font-size: 13px; margin-top: -6px; }
 
+/* ---- character picker (onboarding step 4) ---- */
+.ob-char-scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 4px 16px;
+  cursor: grab;
+  user-select: none;
+}
+.ob-char-scroll:active { cursor: grabbing; }
+.ob-char-scroll::-webkit-scrollbar { height: 4px; }
+.ob-char-scroll::-webkit-scrollbar-track { background: transparent; }
+.ob-char-scroll::-webkit-scrollbar-thumb { background: var(--wood); border-radius: 2px; }
+
+.ob-char-card {
+  flex: 0 0 160px;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 12px 14px;
+  border: 2px solid var(--wood);
+  border-radius: 16px;
+  background: var(--parchment);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  position: relative;
+}
+.ob-char-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+.ob-char-card.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.25), 0 4px 16px rgba(212,175,55,0.15);
+  transform: translateY(-3px);
+}
+.ob-char-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ob-char-avatar img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+.ob-char-name {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--wood-dark);
+}
+.ob-char-check {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 16px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.ob-skin-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ob-skin-label {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ob-skin-swatches {
+  display: flex;
+  gap: 10px;
+}
+.ob-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  padding: 0;
+}
+.ob-swatch:hover { transform: scale(1.15); }
+.ob-swatch.on {
+  border-color: var(--wood-dark);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.35);
+  transform: scale(1.15);
+}
+
 /* birthdate */
 .ob-birthdate {
   display: flex;
