@@ -1,0 +1,16 @@
+{
+  "name": "Focus Lily",
+  "short_name": "Focus Lily",
+  "description": "A calm magical world for focused study. Plant trees, grow your notes, and study with companions who feel like real adventure partners.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e0a06",
+  "theme_color": "#0e0a06",
+  "icons": [
+    { "src": "/favicon-16.png", "sizes": "16x16", "type": "image/png" },
+    { "src": "/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

@@ -428,11 +428,11 @@ export function AvatarRig({
             ))}
 
             {/* FEATHERED WINGS — fanned, mirrored on both sides, behind the
-                shoulders. Mounted with a small outward sweep + slight upward tilt. */}
+                shoulders. Mounted with an upward sweep + outward fan. */}
             {[-1, 1].map((sx) => (
               <group key={`wing${sx}`}
-                position={[sx * P.chestW * 0.42, P.spineLen + P.chestLen * 0.7, -P.torsoD * 0.3]}
-                rotation={[-0.42, sx * 0.32, 0]}
+                position={[sx * P.chestW * 0.5, P.spineLen + P.chestLen * 0.78, -P.torsoD * 0.2]}
+                rotation={[0.25, sx * 0.55, 0]}
                 scale={[sx, 1, 1]}>
                 <AngelWing P={P} mat={angelWing} shade={angelWingShade} edge={angelWingEdge} glow={glowGold} />
               </group>
@@ -1055,82 +1055,61 @@ function AngelHead({ P, skin, hairM, hairShade, gold, glow }: { P: Proportions; 
   const lidsRef = useRef<Group>(null)
   const blush = sharedMaterial('#f4a9c0', 0.5)
 
-  // ---- HALO: two concentric glowing rings floating level, directly above the
-  //      crown — the universal angel signal. Kept flat (no tilt) and centred so
-  //      it clearly reads as a nimbus hovering over the head. ----
-  const haloR = r * 0.8
-  const haloY = r * 1.72
-  const haloTilt = 0
+  // NOTE: <Head> self-offsets by cy, so everything here is placed in the SAME
+  // head-bone space (origin at the neck-top). We keep this group at [0,0,0] and
+  // position hair/halo/circlet at +cy so they sit on the actual skull — NOT
+  // double-offset (that made the face float above the head).
 
-  // ---- GOLDEN HAIR: curls distributed on the upper/back hemisphere of the skull
-  //      via a Fibonacci spiral. We keep only points with y>=-0.05*... and a back
-  //      bias (z<frontClear) so the face stays open, leaving a radiant halo of curls. ----
+  // HALO — flat glowing rings hovering level directly above the crown.
+  const haloR = r * 0.82
+  const haloY = cy + r * 1.7
+
+  // GOLDEN HAIR — a soft cap of curls on the back/upper skull only (front clear).
   const curls: JSX.Element[] = []
-  const NC = 26
+  const NC = 22
   const golden = Math.PI * (3 - Math.sqrt(5))
   for (let i = 0; i < NC; i++) {
-    const y = 1 - (i / (NC - 1)) * 1.35            // from top (1) down toward the nape (-0.35)
+    const y = 1 - (i / (NC - 1)) * 1.3
     const rad = Math.sqrt(Math.max(0, 1 - y * y))
     const th = i * golden
     const x = Math.cos(th) * rad
     const z = Math.sin(th) * rad
-    // skip the frontal area (front, regardless of height) so the face, circlet
-    // and halo stay clearly visible — hair reads as a radiant crown at the back.
-    if (z > 0.25) continue
-    const bump = r * (0.14 + 0.08 * (1 - Math.abs(y)))
-    const px = x * r * 1.0
-    const py = cy + y * r * 1.02
-    const pz = z * r * 1.0 - r * 0.02
+    if (z > 0.2) continue
+    const bump = r * (0.13 + 0.07 * (1 - Math.abs(y)))
     curls.push(
       <mesh key={`c${i}`} geometry={sphereGeo(1)} material={y > 0.2 ? hairM : hairShade}
-        scale={[bump * 1.15, bump * 1.0, bump * 1.15]} position={[px, py, pz]} />,
+        scale={[bump * 1.1, bump, bump * 1.1]}
+        position={[x * r, cy + y * r, z * r]} />,
     )
   }
-  // a few long flowing locks down the sides/back, each a tapered strand hanging
-  // down and splaying outward (rotation about Z only — reliable, no face clipping).
-  const sideLocks: JSX.Element[] = []
-  const NL = 5
-  for (let i = 0; i < NL; i++) {
-    const t = i / (NL - 1)
-    const sx = i < NL / 2 ? -1 : 1
-    const k = i < NL / 2 ? t * 2 : (t - 0.5) * 2
-    const len = r * (1.6 + 1.1 * (1 - Math.abs(k - 0.5) * 2))
-    const rootX = sx * r * (0.82 - 0.12 * Math.abs(k - 0.5) * 2)
-    const rootY = cy + r * (0.1 - 0.5 * Math.abs(k - 0.5))
-    const rootZ = -r * 0.55 - r * 0.35 * (1 - Math.abs(k - 0.5))
-    sideLocks.push(
-      <mesh key={`sl${i}`} geometry={taperGeo(r * 0.05, r * 0.016, len)} material={hairShade}
-        position={[rootX, rootY - len * 0.5, rootZ]}
-        rotation={[0.15, 0, -sx * (0.18 + 0.12 * Math.abs(k - 0.5))]} castShadow />,
-    )
-  }
+  // two long side locks hanging down behind the shoulders
+  const sideLocks = [-1, 1].map((sx) => (
+    <mesh key={`sl${sx}`} geometry={taperGeo(r * 0.05, r * 0.018, r * 2.4)} material={hairShade}
+      position={[sx * r * 0.78, cy - r * 0.9, -r * 0.5]}
+      rotation={[0.2, 0, -sx * 0.25]} castShadow />
+  ))
 
   return (
-    <group position={[0, cy, 0]}>
-      {/* serene human face — proper eyes (soft blue), brows, gentle smile, ears */}
+    <group>
+      {/* serene face (self-offset by cy) */}
       <Head P={P} skin={skin} hairM={hairM} bodyType={'female'} lidsRef={lidsRef} characterId={'angel'} eyeHexVal={'#5aa6ff'} />
 
-      {/* rosy cheeks for a soft, gentle glow */}
+      {/* rosy cheeks */}
       {[-1, 1].map((sx) => (
-        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.14, r * 0.1, r * 0.05]} position={[sx * r * 0.52, -r * 0.12, fz * 0.92]} />
+        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.14, r * 0.1, r * 0.05]} position={[sx * r * 0.52, cy - r * 0.12, fz * 0.92]} />
       ))}
 
-      {/* golden hair curls + flowing side locks */}
+      {/* hair */}
       <group>{curls}{sideLocks}</group>
 
-      {/* CIRCLET — a thin gold band across the forehead with a glowing centre gem */}
-      <mesh geometry={torusGeo(r * 0.95, r * 0.05, 12, 36)} material={gold}
-        position={[0, r * 0.55, -r * 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+      {/* CIRCLET — gold band at the hairline with a glowing centre gem */}
+      <mesh geometry={torusGeo(r * 0.96, r * 0.05, 12, 36)} material={gold}
+        position={[0, cy + r * 0.5, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow />
       <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.1, r * 0.14, r * 0.06]}
-        position={[0, r * 0.55, fz * 1.02]} />
-      {/* little gold studs along the circlet */}
-      {[-0.5, -0.25, 0.25, 0.5].map((u, i) => (
-        <mesh key={`st${i}`} geometry={sphereGeo(1)} material={gold} scale={[r * 0.05, r * 0.05, r * 0.03]}
-          position={[Math.sin(u * Math.PI) * r * 0.92, r * 0.55, Math.cos(u * Math.PI) * r * 0.92 * 0.2 + fz * 0.95]} />
-      ))}
+        position={[0, cy + r * 0.5, fz * 1.02]} />
 
-      {/* HALO — two glowing rings hovering level above the crown */}
-      <group position={[0, haloY, 0]} rotation={[haloTilt, 0, 0]}>
+      {/* HALO */}
+      <group position={[0, haloY, 0]}>
         <mesh geometry={torusGeo(haloR, r * 0.085, 14, 40)} material={gold} rotation={[Math.PI / 2, 0, 0]} castShadow />
         <mesh geometry={torusGeo(haloR, r * 0.05, 14, 40)} material={glow} rotation={[Math.PI / 2, 0, 0]} />
       </group>
@@ -1193,87 +1172,46 @@ function HackerHead({ P, skin, hairM, glow, config }: { P: Proportions; skin: Ma
  *  the other side). The long axis of each feather is X; rotation around Z aims it
  *  along its fan angle so the cluster reads as a classic cartoon wing, not a blob. */
 /**
- * A single feathered angel wing, built parametrically in local +X / +Y space
- * (the parent mirrors it to the other side). The wing is a solid, readable
- * shape: a smooth BASE MEMBRANE fills the silhouette, then rounded FEATHER
- * SCALLOPS are layered over it in four overlapping rows. Each feather is a
- * wide, rounded ellipsoid (long axis along its fan angle phi, generous
- * in-plane width and real volume) so it reads as a soft plume, not a stick.
+ * A single solid angel wing in local +X / +Y space (parent mirrors it).
+ * Built from THREE big overlapping rounded lobes (primaries / secondaries /
+ * coverts) fanned from the shoulder root + a small root puff. Fewer, larger,
+ * smoothly-shaded lobes read as a clean feathered wing — not a tangle of
+ * thin meshes. Each lobe is a scaled sphere lying in the wing plane.
  */
 function AngelWing({ P, mat, shade, edge, glow }: { P: Proportions; mat: Mat; shade: Mat; edge: Mat; glow: Mat }) {
-  const Lmax = P.chestW * 2.1
+  const L = P.chestW * 2.0
   const D2R = Math.PI / 180
   const feats: JSX.Element[] = []
   let key = 0
 
-  // one feather: scale [along, across, thick] ellipsoid, placed at fan angle phi
-  // from +Y so its long axis points along (cos phi, sin phi). Overlapping + wide
-  // = a soft, fluffy plume rather than a thin quill.
-  const feather = (phi: number, len: number, wid: number, m: Mat, z: number, thick: number) => {
-    const reach = len * 0.46
+  // one lobe: scaled sphere [len, wid, thick] placed along fan angle phi from +Y
+  const lobe = (phi: number, len: number, wid: number, m: Mat, z: number) => {
+    const reach = len * 0.45
     feats.push(
       <mesh key={key++} geometry={sphereGeo(1)} material={m}
         position={[Math.cos(phi) * reach, Math.sin(phi) * reach, z]}
         rotation={[0, 0, phi - Math.PI / 2]}
-        scale={[len * 0.52, wid, thick]} castShadow />,
+        scale={[len, wid, P.chestW * 0.5]} castShadow />,
     )
   }
 
-  // BASE MEMBRANE — a single smooth filled shape behind the feathers so the wing
-  // reads as one solid form. A wide, rounded lobe covering the whole fan.
-  const baseX = Lmax * 0.42
-  const baseY = Lmax * 0.34
+  // UPPER lobe — primaries, long, swept up and out.
+  lobe((74 * D2R), L * 1.0, L * 0.34, mat, P.chestW * 0.06)
+  // MIDDLE lobe — secondaries, medium, straight out.
+  lobe((18 * D2R), L * 0.82, L * 0.4, shade, 0)
+  // LOWER lobe — coverts, shorter, swept down and out.
+  lobe((-34 * D2R), L * 0.62, L * 0.42, edge, -P.chestW * 0.04)
+
+  // a smooth inner fill so the three lobes read as one solid wing
   feats.push(
     <mesh key={key++} geometry={sphereGeo(1)} material={shade}
-      position={[baseX * 0.5, baseY * 0.42, -P.chestW * 0.04]}
-      scale={[baseX, baseY, P.chestW * 0.4]} castShadow />,
+      position={[L * 0.3, L * 0.18, -P.chestW * 0.05]}
+      scale={[L * 0.5, L * 0.42, P.chestW * 0.4]} castShadow />,
   )
 
-  // PRIMARIES — longest rounded plumes sweeping up-and-out (76° → 4°).
-  const N1 = 9
-  for (let i = 0; i < N1; i++) {
-    const t = i / (N1 - 1)
-    const phi = (76 - 72 * t) * D2R
-    const len = Lmax * (0.6 + 0.4 * Math.sin(Math.PI * (0.12 + 0.78 * t)))
-    const wid = len * 0.42
-    feather(phi, len, wid, i < 3 ? shade : mat, P.chestW * 0.05, P.chestW * 0.34)
-  }
-
-  // SECONDARIES — broader, shorter plumes filling the lower wing (−2° → −38°).
-  const N2 = 10
-  for (let i = 0; i < N2; i++) {
-    const t = i / (N2 - 1)
-    const phi = (-2 - 36 * t) * D2R
-    const len = Lmax * (0.46 + 0.3 * Math.sin(Math.PI * (0.1 + 0.8 * t)))
-    const wid = len * 0.5
-    feather(phi, len, wid, shade, -P.chestW * 0.02, P.chestW * 0.38)
-  }
-
-  // COVERT ROW A — medium plumes near the root (upper), layered fullness.
-  const N3 = 8
-  for (let i = 0; i < N3; i++) {
-    const t = i / (N3 - 1)
-    const phi = (70 - 58 * t) * D2R
-    const len = Lmax * (0.34 + 0.18 * Math.sin(Math.PI * t))
-    const wid = len * 0.54
-    feather(phi, len, wid, mat, P.chestW * 0.07, P.chestW * 0.4)
-  }
-
-  // COVERT ROW B — shortest plumes tucked at the very root, slightly forward.
-  const N4 = 7
-  for (let i = 0; i < N4; i++) {
-    const t = i / (N4 - 1)
-    const phi = (64 - 68 * t) * D2R
-    const len = Lmax * (0.2 + 0.12 * Math.sin(Math.PI * t))
-    const wid = len * 0.58
-    feather(phi, len, wid, edge, P.chestW * 0.11, P.chestW * 0.42)
-  }
-
-  // WING ARM — smooth tapered strut from the root up along the leading edge to
-  // the longest primary tip (atan2 of the tip), the bone the feathers fan from.
-  const tipPhi = 76 * D2R
-  const tipLen = Lmax * 0.92
-  const tipReach = tipLen * 0.46
+  // WING ARM — tapered strut from root up the leading edge (to upper-lobe tip).
+  const tipPhi = 74 * D2R
+  const tipReach = L * 0.45
   const tipX = Math.cos(tipPhi) * tipReach
   const tipY = Math.sin(tipPhi) * tipReach
   const armLen = Math.hypot(tipX, tipY)
@@ -1283,10 +1221,9 @@ function AngelWing({ P, mat, shade, edge, glow }: { P: Proportions; mat: Mat; sh
     <group>
       {feats}
       <mesh geometry={taperGeo(P.chestW * 0.06, P.chestW * 0.025, armLen)} material={glow}
-        position={[tipX * 0.5, tipY * 0.5, P.chestW * 0.03]}
+        position={[tipX * 0.5, tipY * 0.5, P.chestW * 0.04]}
         rotation={[0, 0, armAng - Math.PI / 2]} />
-      {/* scapular puff at the root where the wing meets the back */}
-      <mesh geometry={sphereGeo(1)} material={mat} scale={[P.chestW * 0.32, P.chestW * 0.26, P.chestW * 0.2]} castShadow />
+      <mesh geometry={sphereGeo(1)} material={mat} scale={[P.chestW * 0.34, P.chestW * 0.28, P.chestW * 0.22]} castShadow />
     </group>
   )
 }

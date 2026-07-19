@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
@@ -8,10 +8,11 @@ import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
 import { generatePlayerId } from '../lib/playerId'
 import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
-import { CountryGlobe } from '../components/CountryGlobe'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import { SparklesText } from '../components/SparklesText'
 import './Onboarding.css'
+
+const AuthGlobe = lazy(() => import('../components/AuthGlobe'))
 
 type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6
 const LAST_STEP: StepId = 6
@@ -285,6 +286,22 @@ function FullNameStep({
 function CountryStep({ value, onChange }: { value: string | null; onChange: (c: string) => void }) {
   const { t } = useTranslation()
   const [q, setQ] = useState('')
+  const [marker, setMarker] = useState<{ lat: number; lng: number } | null>(null)
+
+  useEffect(() => {
+    if (!value) { setMarker(null); return }
+    let cancelled = false
+    fetch(`https://restcountries.com/v3.1/alpha/${value}?fields=latlng`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !Array.isArray(d) || !d[0]?.latlng) return
+        const [lat, lng] = d[0].latlng
+        setMarker({ lat, lng })
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [value])
+
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase()
     if (!needle) return COUNTRIES
@@ -297,7 +314,31 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
       <p className="ob-hint">{t('onboarding.countryHint')}</p>
       {/* Globe visualization */}
       <div className="ob-globe-wrapper">
-        <CountryGlobe countryCode={value} />
+        <Suspense fallback={null}>
+          <AuthGlobe
+            speed={1}
+            scale={7}
+            fill="dots"
+            fillColor="#d4af37"
+            dots={{ color: '#d4af37', size: 4, density: 7, allDots: false }}
+            oceanColor="transparent"
+            outlineColor="#d4af37"
+            showOutline
+            outlineWidth={1.5}
+            graticuleColor="rgba(212,175,55,0.12)"
+            showGrid
+            direction="left"
+            stopOnHover={false}
+            dragSpeed={5}
+            initialLatitude={20}
+            initialLongitude={-30}
+            markerConfig={{
+              markers: marker ? [{ lat: marker.lat, lng: marker.lng }] : [],
+              color: '#ff5722',
+              size: marker ? 60 : 0,
+            }}
+          />
+        </Suspense>
       </div>
       <input
         className="sf-input ob-search"
