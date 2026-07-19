@@ -4,6 +4,7 @@ import { autoPorts, screenToWorld } from '../../lib/blueprint/geom'
 import type { Pt } from '../../lib/blueprint/geom'
 
 import { NoteNode } from './NoteNode'
+import { StickerNode } from './StickerNode'
 import { EdgesLayer } from './EdgesLayer'
 import { MiniMap } from './MiniMap'
 
@@ -33,7 +34,15 @@ const WorldLayer = memo(function WorldLayer({ vp, nodes, selection, pendingFrom,
       style={{ transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }}
     >
       <EdgesLayer preview={preview} />
-      {nodes.map((n) => (
+      {nodes.map((n) => n.kind === 'sticker' ? (
+        <StickerNode
+          key={n.id}
+          node={n}
+          zoom={vp.zoom}
+          selected={selectionSet.has(n.id)}
+          dimmed={false}
+        />
+      ) : (
         <NoteNode
           key={n.id}
           node={n}

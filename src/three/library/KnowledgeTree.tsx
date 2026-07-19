@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, type BufferAttribute, type BufferGeometry, CanvasTexture, Color, type Group, type InstancedMesh, Object3D } from 'three'
 import { throttle } from '../../lib/frameThrottle'
+import { useScenePreset } from '../../store/quality'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -19,6 +20,7 @@ function rng(seed: number) {
  */
 export function KnowledgeTree() {
   const sway = useRef<Group>(null)
+  const preset = useScenePreset()
 
   // canopy leaf clusters within a dome (deterministic)
   const leaves = useMemo(() => {

@@ -3,6 +3,7 @@ import { useBlueprint } from '../../store/blueprint'
 import { uploadMedia } from '../../lib/blueprint/sync'
 import { FONT_OPTIONS, YARN_STYLE_META, NOTE_CUTE_PRESETS, type NotePattern, type Shape, type TextAlign } from '../../lib/blueprint/types'
 import { Field, Select, Slider } from './controls'
+import { StickerPicker } from './StickerPicker'
 
 const SHAPES: { value: Shape; label: string }[] = [
   { value: 'sticky', label: 'Square' },
@@ -60,6 +61,41 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
   if (!node) return null
   const st = node.style
 
+  if (node.kind === 'sticker') {
+    return (
+      <div className="bp-inspector-body">
+        <InspectorTabs tab={tab} setTab={setTab} />
+        <div className="bp-inspector-scroll">
+          <Section title="Sticker" divider={false}>
+            {st.stickerUrl && (
+              <div className="bp-sticker-active">
+                <div className="bp-sticker-active-row">
+                  <img src={st.stickerUrl} alt="" draggable={false} className="bp-sticker-active-img" />
+                  <div className="bp-sticker-active-fields">
+                    <input className="bp-text" maxLength={80} placeholder="Caption..."
+                      value={st.stickerText ?? ''}
+                      onChange={(e) => updateNodeStyle(nodeId, { stickerText: e.target.value })} />
+                    <div className="bp-sticker-row">
+                      <span className="bp-field-label">Size</span>
+                      <input type="range" min={40} max={300} step={2} value={node.w}
+                        onChange={(e) => { const v = Number(e.target.value); useBlueprint.getState().setNodeRect(nodeId, { w: v, h: v }) }} />
+                    </div>
+                    <div className="bp-sticker-row">
+                      <span className="bp-field-label">Rotate</span>
+                      <input type="range" min={-180} max={180} step={1} value={st.stickerRotation ?? 0}
+                        onChange={(e) => updateNodeStyle(nodeId, { stickerRotation: Number(e.target.value) })} />
+                    </div>
+                    <button className="sf-btn secondary tiny" onClick={() => useBlueprint.getState().deleteNodes([nodeId])}>Remove</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Section>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bp-inspector-body">
       <InspectorTabs tab={tab} setTab={setTab} />
@@ -114,42 +150,17 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
 
           {/* STICKER */}
           <Section title="Sticker">
-            {st.stickerUrl && (
-              <div className="bp-sticker-preview">
-                <img src={st.stickerUrl} alt="Sticker" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 6, background: '#F0F0F0', padding: 4 }} />
-                <button className="sf-btn secondary tiny" onClick={() => updateNodeStyle(nodeId, { stickerUrl: '' })}>Remove</button>
-              </div>
-            )}
-            <div className="bp-sticker-controls">
-              <label className="sf-btn secondary tiny" style={{ cursor: 'pointer' }}>
-                Upload
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
-                  const file = e.target.files?.[0]; if (!file) return
-                  const url = await uploadMedia(file)
-                  if (url) updateNodeStyle(nodeId, { stickerUrl: url })
-                  e.target.value = ''
-                }} />
-              </label>
-              <select className="bp-text" value={st.stickerPos}
-                onChange={(e) => updateNodeStyle(nodeId, { stickerPos: e.target.value })}>
-                <option value="top-left">Top Left</option>
-                <option value="top-right">Top Right</option>
-                <option value="bottom-left">Bottom Left</option>
-                <option value="bottom-right">Bottom Right</option>
-              </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span className="bp-field-label">Size</span>
-                <input type="range" min={24} max={120} step={2} value={st.stickerSize}
-                  onChange={(e) => updateNodeStyle(nodeId, { stickerSize: Number(e.target.value) })} style={{ width: 70 }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span className="bp-field-label">Rotate</span>
-                <input type="range" min={-45} max={45} step={1} value={st.stickerRotation}
-                  onChange={(e) => updateNodeStyle(nodeId, { stickerRotation: Number(e.target.value) })} style={{ width: 70 }} />
-              </div>
-            </div>
-            <input className="bp-text bp-sticker-url-input" placeholder="Or paste image URL..."
-              value={st.stickerUrl} onChange={(e) => updateNodeStyle(nodeId, { stickerUrl: e.target.value })} />
+            <StickerPicker
+              value={st.stickerUrl}
+              text={st.stickerText ?? ''}
+              size={st.stickerSize}
+              rotation={st.stickerRotation}
+              onSelect={(url) => updateNodeStyle(nodeId, { stickerUrl: url })}
+              onText={(t) => updateNodeStyle(nodeId, { stickerText: t })}
+              onSize={(s) => updateNodeStyle(nodeId, { stickerSize: s })}
+              onRotation={(r) => updateNodeStyle(nodeId, { stickerRotation: r })}
+              onRemove={() => updateNodeStyle(nodeId, { stickerUrl: '', stickerText: '' })}
+            />
           </Section>
 
           {/* BORDER */}

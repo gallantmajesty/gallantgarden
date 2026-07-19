@@ -150,11 +150,11 @@ function TopBar({ onBack, right }: { onBack: () => void; right?: React.ReactNode
       </div>
       <div className="pf-topbar-right">
         <span className="pf-resource">
-          <span className="pf-resource-icon">💎</span>
+          <img className="pf-resource-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
           {goldenXp.toLocaleString()}
         </span>
         <span className="pf-resource">
-          <span className="pf-resource-icon">🪙</span>
+          <img className="pf-resource-icon" src="/icons/leaf.png" alt="" draggable={false} />
           {xp >= 1000 ? `${(xp / 1000).toFixed(1)}K` : xp.toLocaleString()}
         </span>
         {right}

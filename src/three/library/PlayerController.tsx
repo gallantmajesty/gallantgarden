@@ -297,7 +297,7 @@ export function PlayerController() {
           c.t += dt / c.dur
           if (c.t >= 1) {
             c.t = 1
-            c.dwell = 0.25 + Math.random() * 0.4
+            c.dwell = 2 + Math.random() * 1
           }
           const e = smoothstep(c.t)
           const px = c.from.x + (c.to.x - c.from.x) * e

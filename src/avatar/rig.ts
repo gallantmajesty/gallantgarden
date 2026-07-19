@@ -121,5 +121,5 @@ export const REALISTIC: Proportions = {
 
 /** Uniform scale — fixed at 1.0 so all avatars are the same height. */
 export function heightScale(_heightCm: number): number {
-  return 1.0
+  return 1.12
 }

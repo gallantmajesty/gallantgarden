@@ -55,6 +55,9 @@ export interface NoteStyle {
   stickerPos: StickerPos
   stickerSize: number // px
   stickerRotation: number // degrees
+  stickerText: string // caption overlay (max 15 words)
+  stickerX: number // % horizontal position within note (0-100)
+  stickerY: number // % vertical position within note (0-100)
   // text
   font: string // css font-family stack key
   fontSize: number // px
@@ -90,6 +93,7 @@ export interface BlueprintNode {
   y: number
   w: number
   h: number
+  kind: 'note' | 'sticker'
   html: string // TipTap rich-text body
   style: NoteStyle
   media?: NoteMedia | null
@@ -217,6 +221,9 @@ export function defaultNoteStyle(): NoteStyle {
     stickerPos: 'top-right',
     stickerSize: 56,
     stickerRotation: 0,
+    stickerText: '',
+    stickerX: 70,
+    stickerY: 10,
     borderColor: '#353B45',
     borderWidth: 1.5,
     radius: 20,
@@ -306,6 +313,7 @@ export function makeNode(x: number, y: number, partial?: Partial<BlueprintNode>)
     y: Math.round(y + jy),
     w: 220,
     h: 130,
+    kind: 'note',
     html: '<p>New note</p>',
     style: defaultNoteStyle(),
     media: null,

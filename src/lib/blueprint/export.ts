@@ -69,7 +69,16 @@ export async function exportBoardPng(doc: BoardDoc, accentRgb = '138,108,255'): 
         }
       }
       const sticker = n.style.stickerUrl
-        ? `<img src="${escapeHtml(n.style.stickerUrl)}" style="position:absolute;${n.style.stickerPos?.includes('top') ? 'top:-12px' : 'bottom:-12px'};${n.style.stickerPos?.includes('right') ? 'right:-12px' : 'left:-12px'};width:${n.style.stickerSize ?? 56}px;height:${n.style.stickerSize ?? 56}px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18));transform:rotate(${n.style.stickerRotation ?? 0}deg);z-index:10;pointer-events:none" alt="" />`
+        ? (() => {
+            const sx = n.style.stickerX ?? 70
+            const sy = n.style.stickerY ?? 10
+            const sz = n.style.stickerSize ?? 56
+            const rot = n.style.stickerRotation ?? 0
+            const txt = n.style.stickerText
+              ? `<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,0.55);border-radius:6px;padding:2px 6px;max-width:120px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">${escapeHtml(n.style.stickerText)}</span>`
+              : ''
+            return `<div style="position:absolute;left:${sx}%;top:${sy}%;transform:translate(-50%,-50%) rotate(${rot}deg);z-index:10;pointer-events:none;display:flex;flex-direction:column;align-items:center"><img src="${escapeHtml(n.style.stickerUrl)}" style="width:${sz}px;height:${sz}px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.2));border-radius:8px" alt="" />${txt}</div>`
+          })()
         : ''
       const icon = n.icon ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;z-index:1">${escapeHtml(n.icon)}</div>` : ''
       return `<foreignObject x="${n.x - b.x}" y="${n.y - b.y}" width="${n.w}" height="${n.h}">

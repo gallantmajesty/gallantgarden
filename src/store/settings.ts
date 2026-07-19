@@ -160,12 +160,10 @@ export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false)
     treeLight: a.shadowQuality !== 'off' || post !== 'off',
     pillarDetail: lod < 0.5,
     windowDetail: lod < 0.75,
-    // dpr ceiling capped at 1.0: above ~1.0 the fill-bound scene gains almost
-    // nothing in sharpness while multiplying frame-buffer + bloom + shadow
-    // memory, which is the single biggest driver of GPU context-loss (the
-    // whole-screen black blink). A fixed DPR (no live re-scaling) removes the
-    // resize blink entirely; this ceiling just bounds the entry step-up.
-    dpr: Math.min(1.0, Math.round(2 * a.resolutionScale * 100) / 100),
+    // dpr maps resolutionScale (0.5–1.0) to a real canvas DPR. Below 1.0 the
+    // scene renders fewer pixels → faster frame rate on weak GPUs. Above 1.0 is
+    // clamped to avoid frame-buffer blowout on high-DPR screens.
+    dpr: Math.min(1.5, Math.max(0.5, Math.round(a.resolutionScale * 100) / 100)),
     far: Math.round(700 + 700 * vd),
     anisotropy: ANISO_LEVEL[a.textureQuality],
     lodBias: lod,

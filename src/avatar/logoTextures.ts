@@ -94,45 +94,10 @@ export function focusLilyChestTex(): CanvasTexture {
   })
 }
 
-/** Big back FocusLily logo — full brand name + monogram. */
+/** Big back FocusLily logo — now just a clean empty texture (no text). */
 export function focusLilyBackTex(): CanvasTexture {
   return cachedTexture('fl-back', (ctx, w, h) => {
     ctx.clearRect(0, 0, w, h)
-    const cx = w / 2, cy = h / 2
-
-    // Large outer ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)'
-    ctx.lineWidth = w * 0.008
-    ctx.beginPath()
-    ctx.arc(cx, cy * 0.85, w * 0.35, 0, Math.PI * 2)
-    ctx.stroke()
-
-    // "FL" monogram inside ring
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `bold ${w * 0.22}px "Segoe UI", Arial, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('FL', cx, cy * 0.83)
-
-    // "FocusLily" full name below
-    ctx.font = `bold ${w * 0.1}px "Segoe UI", Arial, sans-serif`
-    ctx.fillText('FocusLily', cx, cy * 1.35)
-
-    // Tagline
-    ctx.font = `${w * 0.045}px "Segoe UI", Arial, sans-serif`
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'
-    ctx.fillText('Study  ·  Focus  ·  Grow', cx, cy * 1.55)
-
-    // Decorative lily petals at top
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    for (let i = 0; i < 5; i++) {
-      const angle = (i / 5) * Math.PI - Math.PI / 2
-      const px = cx + Math.cos(angle) * w * 0.12
-      const py = cy * 0.42 + Math.sin(angle) * h * 0.06
-      ctx.beginPath()
-      ctx.ellipse(px, py, w * 0.035, h * 0.025, angle, 0, Math.PI * 2)
-      ctx.fill()
-    }
   })
 }
 

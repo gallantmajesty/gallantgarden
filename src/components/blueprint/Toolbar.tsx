@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Plus, Shapes, Undo2, Redo2,
-  Minus, ChevronDown, Sparkles,
+  Minus, ChevronDown, Smile,
 } from 'lucide-react'
 import { useBlueprint } from '../../store/blueprint'
 import { defaultNoteStyle, type Shape } from '../../lib/blueprint/types'
@@ -14,10 +14,10 @@ const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
 ]
 
 interface ToolbarProps {
-  onJarvis?: () => void
+  onSticker?: () => void
 }
 
-export function Toolbar({ onJarvis }: ToolbarProps) {
+export function Toolbar({ onSticker }: ToolbarProps) {
   const zoom = useBlueprint((s) => s.viewport.zoom)
   const addNode = useBlueprint((s) => s.addNode)
   const undo = useBlueprint((s) => s.undo)
@@ -51,9 +51,9 @@ export function Toolbar({ onJarvis }: ToolbarProps) {
       {/* Floating center toolbar — canvas tools */}
       <header className="bp-toolbar bp-surface">
         <button className="sf-btn tiny bp-add-note" onClick={() => addNode()}><Plus size={16} strokeWidth={2.4} /> Note</button>
-        {onJarvis && (
-          <button className="sf-btn tiny bp-jarvis-btn" onClick={onJarvis} title="Jarvis · AI Assistant">
-            <Sparkles size={16} strokeWidth={2.4} /> Jarvis
+        {onSticker && (
+          <button className="sf-btn tiny bp-sticker-btn" onClick={onSticker} title="Stickers">
+            <Smile size={16} strokeWidth={2.4} /> Sticker
           </button>
         )}
         <div className="bp-rel">

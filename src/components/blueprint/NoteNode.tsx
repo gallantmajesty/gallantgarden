@@ -99,7 +99,7 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
     <div
       ref={rootRef}
       data-node-id={node.id}
-      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${editing ? 'editing' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connectSource ? 'connect-source' : ''}`}
+      className={`bp-node shape-${node.style.shape} ${selected ? 'selected' : ''} ${editing ? 'editing' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''} ${connectSource ? 'connect-source' : ''} ${node.groupId ? 'grouped' : ''}`}
       style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
       onPointerDown={onBodyPointerDown}
       onPointerMove={onBodyPointerMove}
@@ -113,6 +113,7 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
       }}
     >
       <div className="bp-node-surface" style={surface}>
+        {node.groupId && <span className="bp-node-group-badge" title={`Group: ${node.groupId}`}>⊞</span>}
         {bgMedia && <span className="bp-node-media-bg" style={mediaBackgroundStyle(media!)} aria-hidden />}
         {media?.url && media.place !== 'background' && (
           <img className="bp-node-media" src={media.url} alt="" draggable={false} style={mediaImageStyle(media)} />
@@ -159,17 +160,27 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
 
         {/* Sticker overlay */}
         {node.style.stickerUrl && (
-          <img
-            className={`bp-node-sticker bp-node-sticker--${node.style.stickerPos}`}
-            src={node.style.stickerUrl}
-            alt=""
-            draggable={false}
+          <div
+            className="bp-node-sticker"
             style={{
-              width: node.style.stickerSize,
-              height: node.style.stickerSize,
-              transform: `rotate(${node.style.stickerRotation}deg)`,
+              left: `${node.style.stickerX ?? 70}%`,
+              top: `${node.style.stickerY ?? 10}%`,
+              transform: `translate(-50%, -50%) rotate(${node.style.stickerRotation ?? 0}deg)`,
             }}
-          />
+          >
+            <img
+              src={node.style.stickerUrl}
+              alt=""
+              draggable={false}
+              style={{
+                width: node.style.stickerSize,
+                height: node.style.stickerSize,
+              }}
+            />
+            {node.style.stickerText && (
+              <span className="bp-node-sticker-text">{node.style.stickerText}</span>
+            )}
+          </div>
         )}
       </div>
 

@@ -10,7 +10,7 @@ import { Toolbar } from '../components/blueprint/Toolbar'
 import { Inspector } from '../components/blueprint/Inspector'
 import { SearchPanel } from '../components/blueprint/SearchPanel'
 import { AIPanel } from '../components/blueprint/AIPanel'
-import { JarvisPanel } from '../components/blueprint/JarvisPanel'
+import { StickerPanel } from '../components/blueprint/StickerPanel'
 import { BlueprintSidebar } from '../components/blueprint/BlueprintSidebar'
 import '../screens/TaskMagnet.css'
 import './Blueprint.css'
@@ -32,7 +32,7 @@ export function Blueprint() {
   const hydrate = useBlueprint((s) => s.hydrate)
   const ready = useBlueprint((s) => s.ready)
 
-  const [panel, setPanel] = useState<null | 'search' | 'ai' | 'jarvis'>(null)
+  const [panel, setPanel] = useState<null | 'search' | 'ai' | 'sticker'>(null)
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [uiDark, setUiDark] = useState(true)
@@ -123,7 +123,7 @@ export function Blueprint() {
       />
 
       <div className="bp-main">
-        <Toolbar onJarvis={() => setPanel((p) => (p === 'jarvis' ? null : 'jarvis'))} />
+        <Toolbar onSticker={() => setPanel((p) => (p === 'sticker' ? null : 'sticker'))} />
 
         <Canvas />
 
@@ -140,7 +140,7 @@ export function Blueprint() {
 
         {panel === 'search' && <SearchPanel onClose={() => setPanel(null)} />}
         {panel === 'ai' && <AIPanel onClose={() => setPanel(null)} />}
-        {panel === 'jarvis' && <JarvisPanel onClose={() => setPanel(null)} />}
+        {panel === 'sticker' && <StickerPanel onClose={() => setPanel(null)} />}
       </div>
     </div>
   )

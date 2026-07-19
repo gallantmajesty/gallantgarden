@@ -1,22 +1,29 @@
 /* ============================================================
-   Profile — Free Fire–style gaming profile.
-   Dark navy, gold accents, geometric borders, 3-column layout.
+   Profile — Harry Potter magical dark theme.
+   Dark translucent panels, warm gold accents, parchment textures,
+   ornate borders, candlelight glow effects.
    ============================================================ */
 
-/* --- colour tokens (local overrides) --- */
+/* --- colour tokens (HP magical palette) --- */
 .pf-root {
-  --pf-bg: #0b1022;
-  --pf-card: #111a30;
-  --pf-card-inner: #0d1528;
-  --pf-border: #c8a84e;
-  --pf-border-dim: rgba(200, 168, 78, 0.25);
+  --pf-bg: #0a0806;
+  --pf-bg-translucent: rgba(10, 8, 6, 0.85);
+  --pf-card: rgba(26, 18, 8, 0.92);
+  --pf-card-inner: rgba(18, 12, 6, 0.88);
+  --pf-border: #d4a843;
+  --pf-border-dim: rgba(212, 168, 67, 0.25);
+  --pf-border-warm: rgba(139, 105, 20, 0.4);
   --pf-gold: #d4a843;
   --pf-gold-bright: #f0c850;
-  --pf-text: #e8e4dc;
-  --pf-text-soft: #8a8878;
+  --pf-gold-dim: rgba(212, 168, 67, 0.15);
+  --pf-text: #e8dcc8;
+  --pf-text-soft: #8b7a5e;
   --pf-accent-blue: #3b82f6;
   --pf-xp-bar: #eab308;
-  --pf-xp-track: #1e2a42;
+  --pf-xp-track: rgba(26, 18, 8, 0.6);
+  --pf-parchment: #f6e8c8;
+  --pf-dark-wood: #1a1208;
+  --pf-medium-wood: #2a1a10;
 
   position: relative;
   z-index: 1;
@@ -27,17 +34,134 @@
   overflow-y: auto;
 }
 
+/* --- ambient background (subtle magical glow) --- */
+.pf-root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(212, 168, 67, 0.06), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 70%, rgba(139, 105, 20, 0.05), transparent 55%);
+  z-index: 0;
+  animation: pf-ambient-pulse 6s ease-in-out infinite;
+}
+
+@keyframes pf-ambient-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* --- floating magical particles (CSS-only) --- */
+.pf-root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(2px 2px at 15% 25%, rgba(240, 200, 80, 0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 35% 65%, rgba(212, 168, 67, 0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 55% 15%, rgba(240, 200, 80, 0.45) 0%, transparent 100%),
+    radial-gradient(2px 2px at 75% 55%, rgba(212, 168, 67, 0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 85% 85%, rgba(240, 200, 80, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 90%, rgba(212, 168, 67, 0.3) 0%, transparent 100%),
+    radial-gradient(2px 2px at 65% 45%, rgba(240, 200, 80, 0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 75%, rgba(212, 168, 67, 0.4) 0%, transparent 100%);
+  animation: pf-particles-float 12s ease-in-out infinite alternate;
+}
+
+@keyframes pf-particles-float {
+  0% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-8px) translateX(4px); }
+  50% { transform: translateY(-3px) translateX(-3px); }
+  75% { transform: translateY(-10px) translateX(2px); }
+  100% { transform: translateY(-5px) translateX(-2px); }
+}
+
+/* --- rank emblem pulsing glow --- */
+.pf-rank-emblem-monogram {
+  animation: pf-rank-pulse 3s ease-in-out infinite;
+}
+
+@keyframes pf-rank-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(212, 168, 67, 0.25); }
+  50% { box-shadow: 0 0 28px rgba(212, 168, 67, 0.45), 0 0 48px rgba(212, 168, 67, 0.15); }
+}
+
+/* --- level badge shimmer --- */
+.pf-char-level {
+  animation: pf-level-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes pf-level-shimmer {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 168, 67, 0.15); }
+  50% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 20px rgba(212, 168, 67, 0.3); }
+}
+
+/* --- XP bar glow pulse --- */
+.pf-xp-bar-fill {
+  animation: xp-bar-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes xp-bar-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(234, 179, 8, 0.4); }
+  50% { box-shadow: 0 0 16px rgba(234, 179, 8, 0.6), 0 0 24px rgba(234, 179, 8, 0.2); }
+}
+
+/* --- goal badge subtle pulse --- */
+.pf-goal-badge {
+  animation: pf-goal-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes pf-goal-shimmer {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 8px rgba(212, 168, 67, 0.1); }
+}
+
+/* --- interest chip hover glow --- */
+.pf-interest-chip {
+  animation: pf-chip-float 5s ease-in-out infinite;
+}
+
+@keyframes pf-chip-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+/* --- rank name tag shimmer --- */
+.pf-rank-name-tag {
+  animation: pf-rank-tag-glow 3.5s ease-in-out infinite;
+}
+
+@keyframes pf-rank-tag-glow {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 10px rgba(212, 168, 67, 0.15); }
+}
+
+/* --- stat card subtle float --- */
+.pf-stat-card {
+  animation: pf-stat-float 6s ease-in-out infinite;
+}
+
+@keyframes pf-stat-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
 /* --- top bar --- */
 .pf-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 24px;
-  border-bottom: 1px solid var(--pf-border-dim);
-  background: linear-gradient(180deg, rgba(11, 16, 34, 0.95), rgba(11, 16, 34, 0.8));
+  border-bottom: 1px solid var(--pf-border-warm);
+  background: linear-gradient(180deg, rgba(26, 18, 8, 0.95), rgba(10, 8, 6, 0.9));
   position: sticky;
   top: 0;
   z-index: 20;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 .pf-topbar-left {
   display: flex;
@@ -56,11 +180,15 @@
   text-transform: uppercase;
   color: var(--pf-text);
   background: none;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 .pf-back:hover {
   color: var(--pf-gold);
+  border-color: var(--pf-border-dim);
+  background: rgba(212, 168, 67, 0.08);
 }
 .pf-topbar-title {
   font-family: 'Rajdhani', 'Segoe UI', sans-serif;
@@ -83,9 +211,15 @@
   font-weight: 700;
   font-size: 16px;
   color: var(--pf-text);
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(212, 168, 67, 0.08);
+  border: 1px solid var(--pf-border-dim);
 }
 .pf-resource-icon {
-  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 .pf-settings-btn {
   width: 36px;
@@ -93,15 +227,16 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(200, 168, 78, 0.12);
+  background: rgba(212, 168, 67, 0.1);
   border: 1px solid var(--pf-border-dim);
   color: var(--pf-gold);
   cursor: pointer;
   font-size: 18px;
-  transition: background 0.15s;
+  transition: all 0.2s ease;
 }
 .pf-settings-btn:hover {
-  background: rgba(200, 168, 78, 0.25);
+  background: rgba(212, 168, 67, 0.25);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.2);
 }
 
 /* --- main 3-column layout --- */
@@ -112,56 +247,99 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 24px 24px 64px;
+  position: relative;
+  z-index: 1;
 }
 
-/* --- panel base (geometric gold-border frame) --- */
+/* --- panel base (magical dark card with animated golden border) --- */
 .pf-panel {
   background: var(--pf-card);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 6px;
+  border: 1.5px solid rgba(212, 168, 67, 0.25);
+  border-radius: 16px;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow:
+    0 0 0 1px rgba(212, 168, 67, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  z-index: 1;
 }
-/* corner accents */
-.pf-panel::before,
-.pf-panel::after {
-  content: '';
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: var(--pf-border);
-  border-style: solid;
-  z-index: 2;
-}
+
+/* animated gradient border (HP magical glow) */
 .pf-panel::before {
-  top: -1px;
-  left: -1px;
-  border-width: 2px 0 0 2px;
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 168, 67, 0.5),
+    rgba(139, 105, 20, 0.3),
+    rgba(212, 168, 67, 0.2),
+    rgba(139, 105, 20, 0.4)
+  );
+  background-size: 300% 300%;
+  animation: pf-border-glow 6s ease-in-out infinite;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  z-index: 3;
 }
-.pf-panel::after {
-  bottom: -1px;
-  right: -1px;
-  border-width: 0 2px 2px 0;
+
+@keyframes pf-border-glow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
-.pf-panel-inner::before,
+
+/* warm inner glow overlay */
+.pf-panel-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(212, 168, 67, 0.04) 0%, transparent 40%);
+  z-index: 0;
+}
+
+/* ornate corner accents (HP-style) */
 .pf-panel-inner::after {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: var(--pf-border);
-  border-style: solid;
-  z-index: 2;
-}
-.pf-panel-inner::before {
   top: -1px;
-  right: -1px;
-  border-width: 2px 2px 0 0;
-}
-.pf-panel-inner::after {
-  bottom: -1px;
   left: -1px;
-  border-width: 0 0 2px 2px;
+  width: 24px;
+  height: 24px;
+  border-color: var(--pf-gold);
+  border-style: solid;
+  border-width: 2px 0 0 2px;
+  border-radius: 16px 0 0 0;
+  z-index: 4;
+  opacity: 0.7;
+}
+
+/* bottom-right corner accent */
+.pf-panel > :last-child::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 24px;
+  height: 24px;
+  border-color: var(--pf-gold);
+  border-style: solid;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 16px 0;
+  z-index: 4;
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 /* ============================================================
@@ -182,11 +360,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(135deg, #1a2744, #0f1a30);
-  border: 2px solid var(--pf-border);
-  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(26, 18, 8, 0.95), rgba(18, 12, 6, 0.9));
+  border: 2px solid var(--pf-gold);
+  border-radius: 8px;
   padding: 4px 10px 3px;
   line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 168, 67, 0.15);
 }
 .pf-char-level-label {
   font-family: 'Rajdhani', sans-serif;
@@ -242,7 +421,7 @@
   width: 100%;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--pf-border-dim);
+  border-top: 1px solid var(--pf-border-warm);
 }
 .pf-about-title {
   font-family: 'Rajdhani', sans-serif;
@@ -258,7 +437,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(200, 168, 78, 0.1);
+  border-bottom: 1px solid rgba(212, 168, 67, 0.08);
 }
 .pf-about-row:last-child {
   border-bottom: none;
@@ -294,7 +473,7 @@
   width: 100%;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--pf-border-dim);
+  border-top: 1px solid var(--pf-border-warm);
 }
 .pf-qa-title {
   font-family: 'Rajdhani', sans-serif;
@@ -307,8 +486,8 @@
 }
 .pf-qa-card {
   background: var(--pf-card-inner);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 4px;
+  border: 1px solid var(--pf-border-warm);
+  border-radius: 8px;
   padding: 12px;
 }
 .pf-qa-question {
@@ -341,10 +520,15 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--pf-gold-dim, rgba(212,175,55,0.12)), var(--pf-card-inner));
-  border: 1px solid var(--pf-gold-dim, rgba(212,175,55,0.2));
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.12), rgba(18, 12, 6, 0.6));
+  border: 1px solid rgba(212, 168, 67, 0.2);
   color: var(--pf-gold);
   white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.pf-interest-chip:hover {
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.2), rgba(18, 12, 6, 0.7));
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.15);
 }
 .pf-bio-text {
   font-size: 12px;
@@ -416,21 +600,43 @@
   font-weight: 800;
   font-size: 36px;
   color: #fff;
-  border: 3px solid var(--pf-border);
+  border: 3px solid var(--pf-gold);
+  box-shadow:
+    0 0 16px rgba(212, 168, 67, 0.25),
+    0 0 32px rgba(212, 168, 67, 0.1),
+    inset 0 0 16px rgba(0, 0, 0, 0.2);
+  animation: pf-emblem-glow 3s ease-in-out infinite;
+}
+
+@keyframes pf-emblem-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 16px rgba(212, 168, 67, 0.25),
+      0 0 32px rgba(212, 168, 67, 0.1),
+      inset 0 0 16px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 24px rgba(212, 168, 67, 0.45),
+      0 0 48px rgba(212, 168, 67, 0.18),
+      inset 0 0 16px rgba(0, 0, 0, 0.2);
+  }
 }
 .pf-rank-name-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 3px 12px;
-  border-radius: 4px;
-  background: rgba(200, 168, 78, 0.15);
+  border-radius: 8px;
+  background: rgba(212, 168, 67, 0.12);
   border: 1px solid var(--pf-border-dim);
   font-family: 'Rajdhani', sans-serif;
   font-size: 13px;
   font-weight: 700;
   color: var(--pf-gold);
   margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 .pf-rank-name-btn {
   cursor: pointer;
@@ -438,6 +644,7 @@
 }
 .pf-rank-name-btn:hover {
   filter: brightness(1.2);
+  background: rgba(212, 168, 67, 0.2);
 }
 .pf-rank-name-tag img {
   width: 18px;
@@ -481,10 +688,15 @@
 }
 .pf-rank-box {
   background: var(--pf-card-inner);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 4px;
+  border: 1px solid var(--pf-border-warm);
+  border-radius: 8px;
   padding: 10px 8px;
   text-align: center;
+  transition: all 0.2s ease;
+}
+.pf-rank-box:hover {
+  border-color: var(--pf-border-dim);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.1);
 }
 .pf-rank-box-label {
   font-family: 'Rajdhani', sans-serif;
@@ -511,8 +723,8 @@
   width: 100%;
   padding: 10px 0;
   margin-bottom: 8px;
-  border-top: 1px solid var(--pf-border-dim);
-  border-bottom: 1px solid var(--pf-border-dim);
+  border-top: 1px solid var(--pf-border-warm);
+  border-bottom: 1px solid var(--pf-border-warm);
 }
 .pf-id-stat {
   text-align: center;
@@ -561,13 +773,14 @@
   background: var(--pf-xp-track);
   border-radius: 5px;
   overflow: hidden;
-  border: 1px solid rgba(200, 168, 78, 0.15);
+  border: 1px solid rgba(212, 168, 67, 0.15);
 }
 .pf-xp-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--pf-xp-bar), var(--pf-gold-bright));
   border-radius: 5px;
   transition: width 0.5s ease;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
 }
 
 /* bio */
@@ -576,8 +789,8 @@
   text-align: left;
   padding: 10px 14px;
   background: var(--pf-card-inner);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 4px;
+  border: 1px solid var(--pf-border-warm);
+  border-radius: 8px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--pf-text);
@@ -590,27 +803,74 @@
   font-style: italic;
 }
 
-/* customize button */
+/* ============================================================
+   HP-STYLE BUTTONS — magical gold gradient, parchment feel
+   ============================================================ */
 .pf-customize-btn {
   width: 100%;
   padding: 14px 0;
   border: none;
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--pf-gold-bright), var(--pf-gold));
-  color: #0b1022;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #d4a843 0%, #8b6914 100%);
+  color: #1a1208;
   font-family: 'Rajdhani', sans-serif;
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
   cursor: pointer;
-  transition: filter 0.15s, transform 0.1s;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 4px 16px rgba(212, 168, 67, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  animation: pf-btn-glow 3s ease-in-out infinite;
+}
+
+@keyframes pf-btn-glow {
+  0%, 100% {
+    box-shadow:
+      0 4px 16px rgba(212, 168, 67, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+      0 0 0 rgba(212, 168, 67, 0);
+  }
+  50% {
+    box-shadow:
+      0 4px 20px rgba(212, 168, 67, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+      0 0 24px rgba(212, 168, 67, 0.25);
+  }
+}
+
+/* magical shimmer effect on hover */
+.pf-customize-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.4s ease;
+}
+.pf-customize-btn:hover::before {
+  left: 100%;
 }
 .pf-customize-btn:hover {
-  filter: brightness(1.1);
+  background: linear-gradient(180deg, #e0b850 0%, #9a7a20 100%);
+  box-shadow:
+    0 6px 24px rgba(212, 168, 67, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
 }
 .pf-customize-btn:active {
-  transform: scale(0.98);
+  transform: translateY(0);
+  background: linear-gradient(180deg, #c09838 0%, #7a5a10 100%);
 }
 
 /* ============================================================
@@ -631,7 +891,7 @@
   text-transform: uppercase;
   color: var(--pf-gold);
   padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--pf-border-dim);
+  border-bottom: 1px solid var(--pf-border-warm);
 }
 
 /* stat cards grid */
@@ -643,10 +903,15 @@
 }
 .pf-stat-card {
   background: var(--pf-card-inner);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 4px;
+  border: 1px solid var(--pf-border-warm);
+  border-radius: 8px;
   padding: 14px 10px;
   text-align: center;
+  transition: all 0.2s ease;
+}
+.pf-stat-card:hover {
+  border-color: var(--pf-border-dim);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.1);
 }
 .pf-stat-card-label {
   font-family: 'Rajdhani', sans-serif;
@@ -682,8 +947,8 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, rgba(200, 168, 78, 0.1), rgba(200, 168, 78, 0.04));
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.1), rgba(212, 168, 67, 0.04));
   border: 1px solid var(--pf-border-dim);
   font-family: 'Rajdhani', sans-serif;
   font-size: 15px;
@@ -691,6 +956,11 @@
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--pf-gold);
+  transition: all 0.2s ease;
+}
+.pf-goal-badge:hover {
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.18), rgba(212, 168, 67, 0.08));
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.12);
 }
 .pf-goal-lock {
   font-size: 14px;
@@ -705,14 +975,14 @@
 }
 
 /* ============================================================
-   EDIT MODE OVERLAY (customization)
+   EDIT MODE OVERLAY (customization) — magical backdrop
    ============================================================ */
 .pf-edit-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -724,9 +994,10 @@
   max-height: 85vh;
   overflow-y: auto;
   background: var(--pf-card);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 8px;
+  border: 1px solid var(--pf-border-warm);
+  border-radius: 12px;
   padding: 28px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 .pf-edit-header {
   display: flex;
@@ -748,14 +1019,15 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(200, 168, 78, 0.12);
+  background: rgba(212, 168, 67, 0.1);
   border: 1px solid var(--pf-border-dim);
   color: var(--pf-text);
   cursor: pointer;
   font-size: 16px;
+  transition: all 0.2s ease;
 }
 .pf-edit-close:hover {
-  background: rgba(200, 168, 78, 0.25);
+  background: rgba(212, 168, 67, 0.25);
 }
 .pf-edit-section {
   margin-bottom: 20px;
@@ -801,15 +1073,19 @@
   gap: 6px;
   padding: 6px 14px;
   font-size: 13px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
   color: var(--pf-text-soft);
   background: none;
   border: 1px solid var(--pf-border-dim);
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 .pf-signout:hover {
   color: var(--pf-text);
   border-color: var(--pf-border);
+  background: rgba(212, 168, 67, 0.08);
 }
 
 /* ============================================================
@@ -821,11 +1097,14 @@
   gap: 6px;
   padding: 6px 14px;
   font-size: 13px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
   color: var(--pf-accent-blue);
   background: none;
   border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 .pf-share-btn:hover {
   background: rgba(59, 130, 246, 0.1);
@@ -874,9 +1153,10 @@
   max-height: 85vh;
   overflow-y: auto;
   background: var(--pf-card);
-  border: 1px solid var(--pf-border-dim);
-  border-radius: 8px;
+  border: 1px solid var(--pf-border-warm);
+  border-radius: 12px;
   padding: 24px 24px 28px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 .pf-roadmap-intro {
   font-size: 14px;
@@ -902,8 +1182,8 @@
   margin-bottom: 20px;
   padding: 14px;
   text-align: center;
-  border-radius: 6px;
-  background: rgba(200, 168, 78, 0.12);
+  border-radius: 8px;
+  background: rgba(212, 168, 67, 0.12);
   border: 1px solid var(--pf-border-dim);
   font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
@@ -919,12 +1199,12 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--pf-card-inner);
-  border: 1px solid var(--pf-border-dim);
+  border: 1px solid var(--pf-border-warm);
   opacity: 0.5;
   position: relative;
-  transition: opacity 0.15s;
+  transition: all 0.2s ease;
 }
 .pf-roadmap-node.reached {
   opacity: 1;
@@ -960,7 +1240,7 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #0b1022;
+  color: #1a1208;
   background: var(--rank);
   padding: 3px 8px;
   border-radius: 4px;

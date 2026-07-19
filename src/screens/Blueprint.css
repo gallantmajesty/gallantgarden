@@ -341,12 +341,10 @@
 .bp-node-media { width: 100%; max-height: 60%; border-radius: 10px; display: block; margin-bottom: 4px; pointer-events: none; object-fit: cover; flex: 0 0 auto; }
 .bp-node-media-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .bp-node-surface > .bp-node-body,
-.bp-node-surface > .bp-node-sticker,
 .bp-node-surface > .bp-node-icon,
 .bp-node-surface > .bp-node-tags,
 .bp-node-surface > .bp-node-header,
 .bp-node-surface > .bp-node-toolbar { position: relative; z-index: 1; }
-.bp-node-sticker { font-size: 30px; line-height: 1; }
 .bp-node-icon { position: absolute; top: 8px; right: 10px; font-size: 17px; filter: drop-shadow(0 1px 2px rgba(20, 23, 48, 0.12)); }
 .bp-node-lock { position: absolute; top: 8px; left: 10px; font-size: 12px; opacity: 0.7; }
 .bp-node-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
@@ -1280,33 +1278,154 @@
 .bp-pattern-opacity { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .bp-pattern-opacity input[type="range"] { flex: 1; height: 4px; }
 
-/* Sticker overlay on notes */
+/* Sticker overlay on notes — free positioned */
 .bp-node-sticker {
   position: absolute;
   z-index: 10;
   pointer-events: none;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18));
-  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
-.bp-node-sticker--top-left { top: -12px; left: -12px; }
-.bp-node-sticker--top-right { top: -12px; right: -12px; }
-.bp-node-sticker--bottom-left { bottom: -12px; left: -12px; }
-.bp-node-sticker--bottom-right { bottom: -12px; right: -12px; }
+.bp-node-sticker img {
+  object-fit: contain;
+  border-radius: 8px;
+}
+.bp-node-sticker-text {
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  padding: 2px 6px;
+  max-width: 120px;
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Group badge */
+.bp-node.grouped .bp-node-surface {
+  outline: 2px dashed rgba(212, 168, 67, 0.5);
+  outline-offset: 2px;
+}
+.bp-node-group-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 12;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(212, 168, 67, 0.85);
+  color: #1A1208;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  pointer-events: none;
+}
 
 /* Sticker picker in inspector */
-.bp-sticker-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-.bp-sticker-thumb {
-  width: 42px; height: 42px; border-radius: 8px; border: 2px solid var(--bp-border);
-  background: #F5F5F5; cursor: pointer; overflow: hidden; transition: border-color 0.12s;
-  display: grid; place-items: center; padding: 4px;
+.bp-sticker-picker { display: flex; flex-direction: column; gap: 8px; }
+.bp-sticker-active { padding: 8px; background: rgba(255,255,255,0.06); border-radius: 8px; border: 1px solid var(--bp-border); }
+.bp-sticker-active-row { display: flex; gap: 8px; align-items: flex-start; }
+.bp-sticker-active-img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; background: rgba(255,255,255,0.08); flex: none; }
+.bp-sticker-active-fields { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.bp-sticker-active-fields input.bp-text { font-size: 12px; padding: 4px 6px; }
+.bp-sticker-row { display: flex; align-items: center; gap: 4px; }
+.bp-sticker-row input[type="range"] { flex: 1; height: 3px; }
+.bp-sticker-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.bp-sticker-tab {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--bp-border); background: transparent;
+  color: var(--bp-text); cursor: pointer; transition: all 0.12s;
 }
-.bp-sticker-thumb:hover { border-color: var(--bp-accent); }
-.bp-sticker-thumb.on { border-color: var(--bp-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bp-accent) 30%, transparent); }
-.bp-sticker-thumb img { width: 100%; height: 100%; object-fit: contain; }
-.bp-sticker-controls { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
-.bp-sticker-controls select, .bp-sticker-controls input { font-size: 12px; }
-.bp-sticker-url-input { width: 100%; margin-top: 6px; }
-.bp-sticker-preview { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bp-sticker-tab:hover { border-color: var(--bp-accent); }
+.bp-sticker-tab.on { background: var(--bp-accent); color: #fff; border-color: var(--bp-accent); }
+.bp-sticker-search { font-size: 12px !important; padding: 4px 8px !important; }
+.bp-sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 200px; overflow-y: auto; }
+.bp-sticker-grid::-webkit-scrollbar { width: 4px; }
+.bp-sticker-grid::-webkit-scrollbar-track { background: transparent; }
+.bp-sticker-grid::-webkit-scrollbar-thumb { background: var(--bp-border); border-radius: 2px; }
+.bp-sticker-item {
+  aspect-ratio: 1; border-radius: 8px; border: 2px solid transparent;
+  background: rgba(255,255,255,0.04); cursor: pointer; overflow: hidden;
+  display: grid; place-items: center; padding: 4px; transition: all 0.12s;
+}
+.bp-sticker-item:hover { border-color: var(--bp-accent); background: rgba(255,255,255,0.08); }
+.bp-sticker-item.on { border-color: var(--bp-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bp-accent) 30%, transparent); }
+.bp-sticker-item img { width: 100%; height: 100%; object-fit: contain; }
+.bp-sticker-empty { font-size: 12px; color: var(--bp-text-secondary); text-align: center; padding: 12px; grid-column: 1 / -1; }
+
+/* Standalone sticker node — draggable canvas object */
+.bp-sticker-node {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  transition: box-shadow 0.15s;
+}
+.bp-sticker-node:active { cursor: grabbing; }
+.bp-sticker-node.selected {
+  outline: 2px solid var(--bp-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--bp-accent) 25%, transparent);
+}
+.bp-sticker-node.dimmed { opacity: 0.4; }
+.bp-sticker-node.locked { cursor: default; }
+.bp-sticker-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.25));
+}
+.bp-sticker-text {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 700 11px 'Nunito', 'Segoe UI', sans-serif;
+  color: #fff;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  padding: 2px 8px;
+  max-width: 90%;
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-word;
+  pointer-events: none;
+}
+.bp-sticker-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  line-height: 1;
+}
 .thumb-hexagon { clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0% 50%); width: 24px; }
 .thumb-folder { border-radius: 0 4px 4px 4px; position: relative; }
 .thumb-folder::before { content: ''; position: absolute; top: -4px; left: 0; width: 11px; height: 4px; background: currentColor; border-radius: 3px 3px 0 0; }
@@ -1977,6 +2096,7 @@ label.sf-btn.bp-upload::after { display: none; }
 .bp-quiz-card summary { cursor: pointer; font: 600 12px var(--bp-sans); color: var(--bp-text); }
 .bp-quiz-card p { margin: 6px 0 0; font: 400 12px var(--bp-sans); color: var(--bp-text-soft); line-height: 1.5; }
 .bp-jarvis-btn { background: linear-gradient(135deg, #8b6fff, #b98cff) !important; color: #fff !important; border: none !important; }
+.bp-sticker-btn { background: linear-gradient(135deg, #e8a04c, #f0c060) !important; color: #fff !important; border: none !important; }
 
 /* ---- Jarvis settings (Explore settings panel) ---- */
 .jarvis-settings { display: flex; flex-direction: column; gap: 10px; }

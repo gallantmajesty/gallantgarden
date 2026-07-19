@@ -24,6 +24,8 @@ const cTop = new Color()
 const cHorizon = new Color()
 const cNightTop = new Color('#172a4d')
 const cNightHor = new Color('#4a3522')
+const cDayTop = new Color('#5da4d9')
+const cDayHor = new Color('#c9a87c')
 const tmp = new Color()
 const tmpSunPos = new Vector3()
 
@@ -119,9 +121,9 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
       cTop.set('#070b1a')
       cHorizon.set('#3a2a18')
     } else {
-      // current daytime atmosphere — unchanged
-      cTop.copy(cNightTop)
-      cHorizon.copy(cNightHor)
+      // daytime atmosphere — bright blue sky with warm horizon
+      cTop.copy(cDayTop)
+      cHorizon.copy(cDayHor)
     }
     // grey out with fog
     tmp.set('#1a1e2a')
@@ -137,12 +139,12 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
         dir.current.position.copy(tmpSunPos)
       }
       // at night the moon is a touch brighter/silver; daytime keeps the current value
-      dir.current.intensity = night ? 0.18 * (1 - env.fog * 0.55) : 0.12 * (1 - env.fog * 0.55)
-      dir.current.color.set(night ? '#cdd9f0' : '#b0c4de')
+      dir.current.intensity = night ? 0.18 * (1 - env.fog * 0.55) : 0.6 * (1 - env.fog * 0.55)
+      dir.current.color.set(night ? '#cdd9f0' : '#fff5e0')
     }
     if (hemi.current) {
       // dark cool sky fill — the hall is lit by lanterns, not the sky
-      hemi.current.intensity = 0.18 + env.lightning * env.lightning * 1.6
+      hemi.current.intensity = night ? 0.18 + env.lightning * env.lightning * 1.6 : 0.5 + env.lightning * env.lightning * 1.6
       const hc = hemi.current.color as Color
       hc.set('#1a1e2e')
       tmp.set('#0a0e18')
@@ -202,10 +204,10 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
         <meshBasicMaterial color="#fff3c8" />
       </mesh>
 
-      {/* moon — bright silver disc, always visible */}
+      {/* moon — soft silver disc, subtle so bloom doesn't blow it out */}
       <mesh ref={moon}>
-        <sphereGeometry args={[12, 20, 20]} />
-        <meshBasicMaterial color="#e8eef8" />
+        <sphereGeometry args={[8, 20, 20]} />
+        <meshStandardMaterial color="#c8d0e0" roughness={0.8} metalness={0.1} emissive="#c8d0e0" emissiveIntensity={0.3} />
       </mesh>
 
       <hemisphereLight ref={hemi} args={['#1a1e2e', '#0a0e18', 0.22]} />

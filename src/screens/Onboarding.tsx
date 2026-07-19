@@ -1,9 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Canvas } from '@react-three/fiber'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
 import { SKINS, type AvatarConfig } from '../avatar/config'
+import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { COUNTRIES } from '../lib/countries'
 import { REFERRAL_OPTIONS, type ReferralOption } from '../lib/onboarding'
 import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
@@ -13,8 +15,6 @@ import { RankBadge } from '../components/RankBadge'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import { SparklesText } from '../components/SparklesText'
 import './Onboarding.css'
-
-const AuthGlobe = lazy(() => import('../components/AuthGlobe'))
 
 type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 const LAST_STEP: StepId = 7
@@ -125,7 +125,7 @@ export function Onboarding() {
         </svg>
       </div>
 
-      <div className="ob-card sf-panel">
+      <div className={`ob-card sf-panel${step === 4 ? ' ob-card--wide' : ''}`}>
         <ProgressDots step={step} />
 
          <div className="ob-body" key={step}>
@@ -330,34 +330,6 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
     <div className="ob-step">
       <h2 className="ob-q">{t('onboarding.countryTitle')}</h2>
       <p className="ob-hint">{t('onboarding.countryHint')}</p>
-      {/* Globe visualization */}
-      <div className="ob-globe-wrapper">
-        <Suspense fallback={null}>
-          <AuthGlobe
-            speed={1}
-            scale={7}
-            fill="dots"
-            fillColor="#d4af37"
-            dots={{ color: '#d4af37', size: 4, density: 7, allDots: false }}
-            oceanColor="transparent"
-            outlineColor="#d4af37"
-            showOutline
-            outlineWidth={1.5}
-            graticuleColor="rgba(212,175,55,0.12)"
-            showGrid
-            direction="left"
-            stopOnHover={false}
-            dragSpeed={5}
-            initialLatitude={20}
-            initialLongitude={-30}
-            markerConfig={{
-              markers: marker ? [{ lat: marker.lat, lng: marker.lng }] : [],
-              color: '#ff5722',
-              size: marker ? 60 : 0,
-            }}
-          />
-        </Suspense>
-      </div>
       <input
         className="sf-input ob-search"
         placeholder={t('common.searchCountries')}
@@ -453,15 +425,40 @@ return (
 interface CharacterOption {
   id: string
   name: string
-  icon: string
   fallback: AvatarConfig
 }
 
 const PICK_CHARACTERS: CharacterOption[] = [
-  { id: 'james', name: 'James', icon: '/icons/characters/james.svg', fallback: { bodyType: 'male', skin: 'light', hair: 'short_neat', hairColor: 'brown', top: 'jacket', bottom: 'pants', shoes: 'sneakers' } as AvatarConfig },
-  { id: 'claire', name: 'Lily', icon: '/icons/characters/lily.svg', fallback: { bodyType: 'female', skin: 'light', hair: 'ponytail', hairColor: 'chestnut', top: 'frock', bottom: 'leggings', shoes: 'sneakers' } as AvatarConfig },
-  { id: 'mia', name: 'Mia', icon: '/icons/characters/mia.svg', fallback: { bodyType: 'female', skin: 'tan', hair: 'long_straight', hairColor: 'auburn', top: 'blazer', bottom: 'leggings', shoes: 'boots' } as AvatarConfig },
+  { id: 'james', name: 'James', fallback: { characterId: 'james', bodyType: 'male', skin: 'light', hair: 'short_neat', hairColor: 'brown', top: 'jacket', bottom: 'pants', shoes: 'sneakers' } as AvatarConfig },
+  { id: 'claire', name: 'Lily', fallback: { characterId: 'claire', bodyType: 'female', skin: 'light', hair: 'ponytail', hairColor: 'chestnut', top: 'frock', bottom: 'leggings', shoes: 'sneakers' } as AvatarConfig },
+  { id: 'mia', name: 'Mia', fallback: { characterId: 'mia', bodyType: 'female', skin: 'tan', hair: 'long_straight', hairColor: 'auburn', top: 'blazer', bottom: 'leggings', shoes: 'boots' } as AvatarConfig },
 ]
+
+function CharPreview3D({ config, skinId }: { config: AvatarConfig; skinId?: string }) {
+  const merged = useMemo(
+    () => (skinId ? { ...config, skin: skinId } : config),
+    [config, skinId],
+  )
+  return (
+    <div className="ob-char-3d">
+      <Canvas
+        shadows={false}
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 1.05, 3.2], fov: 34, near: 0.1, far: 50 }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        style={{ background: 'transparent' }}
+      >
+        <hemisphereLight args={['#ffe8c0', '#1a1208', 0.7]} />
+        <directionalLight position={[3, 5, 2]} intensity={1.0} color="#ffecd0" />
+        <directionalLight position={[-2, 3, -1]} intensity={0.35} color="#ffb870" />
+        <ambientLight intensity={0.25} color="#ffe8d0" />
+        <group position={[0, -0.85, 0]}>
+          <CharacterAvatar config={merged} hideAccessories />
+        </group>
+      </Canvas>
+    </div>
+  )
+}
 
 const SKIN_OPTIONS = SKINS.map((s) => ({ id: s.id, name: s.name, hex: s.hex }))
 
@@ -514,9 +511,7 @@ function CharacterStep({
             className={`ob-char-card ${characterId === c.id ? 'selected' : ''}`}
             onClick={() => onCharacter(c.id)}
           >
-            <div className="ob-char-avatar">
-              <img src={c.icon} alt={c.name} draggable={false} />
-            </div>
+            <CharPreview3D config={c.fallback} skinId={characterId === c.id ? skinId : undefined} />
             <span className="ob-char-name">{c.name}</span>
             {characterId === c.id && <span className="ob-char-check">✓</span>}
           </button>
