@@ -47,6 +47,8 @@ export interface AnimatorProps {
    *  camera distance changes — read live each frame so the tier updates without
    *  any React re-render. Defaults to 'near'. */
   lod?: Lod | React.RefObject<Lod>
+  /** Apply a static idle pose once and stop animating (for customization previews) */
+  static?: boolean
 }
 
 const BONE_NAMES: BoneName[] = [
@@ -71,7 +73,7 @@ function zero(): Vec3 { return { x: 0, y: 0, z: 0 } }
  *  4. honours the LOD tier (far avatars skip blink/idle micro-motion and only
  *     update every Nth frame; culled avatars don't animate at all).
  */
-export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near' }: AnimatorProps) {
+export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near', static: isStatic = false }: AnimatorProps) {
   const clock = useRef(0)
   const gaitPhase = useRef(0)
   const blink = useRef({ next: 1.5, t: 0, closing: 0 })
@@ -87,7 +89,24 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
     clock.current = 0
   }, [preview])
 
+  // Static mode: apply idle pose once and hold it (no continuous animation)
+  const staticApplied = useRef(false)
+  useFrame(() => {
+    if (!isStatic) return
+    if (staticApplied.current) return
+    const handle = rig.current
+    if (!handle) return
+    staticApplied.current = true
+    const pose = idlePose(0)
+    for (const name in pose) {
+      const e = pose[name as BoneName]
+      const bone = handle.bones[name as BoneName]
+      if (e && bone) bone.rotation.set(e.x ?? 0, e.y ?? 0, e.z ?? 0)
+    }
+  })
+
   useFrame((_, dtRaw) => {
+    if (isStatic) return
     const handle = rig.current
     if (!handle) return
     // Resolve the LOD tier — a plain value (creator/shot) or the live ref

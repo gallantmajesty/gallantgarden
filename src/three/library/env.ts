@@ -4,7 +4,7 @@
 // lights, rain, glass) read them in their own useFrame loops.
 //
 // NIGHT ONLY: `t` is frozen at midnight. dayFactor is always 0.
-// The world is perpetually dark — lanterns, moon and rain set the mood.
+// The world is perpetually dark — lanterns, rain and stars set the mood.
 
 export const env = {
   t: 0.0, // frozen at midnight — night only, no day cycle

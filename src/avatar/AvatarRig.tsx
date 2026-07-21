@@ -24,7 +24,7 @@ import {
 } from './config'
 import { AccessoryTray } from './Accessories'
 import { heightScale, proportionsFor, type BoneName, type Proportions } from './rig'
-import { focusLilyChestTex, focusLilyBackTex, hairFrizzTex, skinReliefTex } from './logoTextures'
+import { focusLilyChestTex, hairFrizzTex, skinReliefTex } from './logoTextures'
 
 export type BoneMap = Partial<Record<BoneName, Group>>
 
@@ -124,6 +124,34 @@ export function AvatarRig({
   // mask, the eyes hide behind a glowing green visor, the hands wear gloves and
   // the chest carries a glowing terminal keypad. Reads unmistakably as a hacker.
   const isHacker = config.characterId === 'hacker'
+
+  // Sunflower: a cheerful full-body sunflower mascot — glowing yellow skin/body,
+  // green leafy arms and skirt, earthy brown root feet and a big sunflower bloom head.
+  const isSunflower = config.characterId === 'sunflower'
+  const sfYellow = sharedMaterial('#ffcd00', 0.52)
+  const sfYellowDark = sharedMaterial('#e8b800', 0.55)
+  const sfBrown = sharedMaterial('#8c6c30', 0.72)
+  const sfGreen = sharedMaterial('#5caa3a', 0.65)
+  const sfSeed = sharedMaterial('#603813', 0.6)
+  const sfPetalEdge = sharedMaterial('#ffe680', 0.5)
+
+  // Grim Reaper: chibi skeleton in a dark hooded cloak with gold armor, green
+  // glowing eyes, a scythe and spectral green flames.
+  const isGrim = config.characterId === 'grim'
+  const grimBone = sharedMaterial('#e8dcc0', 0.6)
+  const grimBoneDark = sharedMaterial('#c4b89a', 0.65)
+  const grimCloak = sharedMaterial('#1a1a1e', 0.85)
+  const grimCloakInner = sharedMaterial('#8b1a1a', 0.8)
+  const grimArmor = sharedMaterial('#2a2a2e', 0.5, 0.8)
+  const grimGold = sharedMaterial('#c9a84c', 0.35, 0.55)
+  const grimGoldDark = sharedMaterial('#a08030', 0.4, 0.6)
+  const grimGem = glowMaterial('#2ef060', 2.8)
+  const grimGlow = glowMaterial('#39ff14', 3.0)
+  const grimLeather = sharedMaterial('#3a2820', 0.82)
+  const grimRedBoot = sharedMaterial('#7a1a1a', 0.7)
+  const grimEyeOrbit = sharedMaterial('#0a0c08', 0.15)
+  const grimSocket = sharedMaterial('#0a0a0c', 0.15)
+
   const hackerDark = sharedMaterial('#15171c', 0.7, 0.1)
   const hackerHood = sharedMaterial('#0b0d11', 0.85, 0.06)
   const hackerMask = sharedMaterial('#0e0f13', 0.8, 0.05)
@@ -131,14 +159,14 @@ export function AvatarRig({
   const hackerGlow = glowMaterial('#39ff14', 3.0)
   const hackerVisorGlass = sharedMaterial('#0c2112', 0.2, 0.1)
 
-  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel
+  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel || isSunflower || isGrim
   const bunFur = sharedMaterial('#f8f5f0', 0.75)
   const bunPink = sharedMaterial('#f2a3c0', 0.6)
   const bunInner = sharedMaterial('#f6c2d6', 0.6)
   const bunGreen = sharedMaterial('#7cc47b', 0.6)
   const bunNose = sharedMaterial('#e488a6', 0.5)
 
-  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : skinMaterial(config.skinColor ?? skinHex(config.skin))
+  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : isSunflower ? sfYellow : isGrim ? grimCloak : skinMaterial(config.skinColor ?? skinHex(config.skin))
   const hairM = hairMaterial(config.hairColorHex ?? hairHex(config.hairColor))
   const eyeCol = eyeHex(config.eyes)
 
@@ -152,13 +180,13 @@ export function AvatarRig({
   hairM.roughness = 0.5
   // Subtle skin micro-relief so the face isn't plastic-smooth (human only).
   const skinTex = skinReliefTex()
-  if (!isDino && !isRabbit && !isRobot && !isAlien && !isPig && !isAngel) {
+  if (!isDino && !isRabbit && !isRobot && !isAlien && !isPig && !isAngel && !isSunflower && !isGrim) {
     skin.bumpMap = skinTex
     skin.bumpScale = 0.025
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
-  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : sharedMaterial(shoeHex(config.shoes), 0.5)
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
 
   const bind = (name: BoneName) => (g: Group | null) => {
@@ -220,8 +248,8 @@ export function AvatarRig({
           )}
 
           <group ref={bind('chest')} position={[0, P.spineLen, 0]}>
-            {/* Costume characters (dino/rabbit/robot/pig/angel/cat) have no clothing overlays. */}
-            {!isDino && !isRabbit && !isRobot && !isPig && !isAngel && <Top config={config} P={P} topM={topM} skin={skin} />}
+            {/* Costume characters (dino/rabbit/robot/pig/angel/sunflower/grim) have no clothing overlays. */}
+            {!isDino && !isRabbit && !isRobot && !isPig && !isAngel && !isSunflower && !isGrim && <Top config={config} P={P} topM={topM} skin={skin} />}
 
             {/* Robot sci-fi accents: glowing chest core + blue accent lines. */}
             {isRobot && (
@@ -273,6 +301,17 @@ export function AvatarRig({
                 suit colour; heads and feet stay skin. No discs/plates. */}
 
             <group ref={bind('neck')} position={[0, P.chestLen * 0.86, 0]}>
+              {/* Sunflower: green leafy collar with petal-like ruffles around the neck */}
+              {isSunflower && (
+                <group>
+                  {[0, Math.PI * 0.25, Math.PI * 0.5, Math.PI * 0.75, Math.PI, -Math.PI * 0.25, -Math.PI * 0.5, -Math.PI * 0.75].map((a, i) => (
+                    <mesh key={`nlp${i}`} geometry={sphereGeo(1)} material={sfGreen}
+                      scale={[P.neckR * 0.9, P.neckR * 0.6, P.torsoD * 0.18]}
+                      position={[Math.sin(a) * P.neckR * 2.5, P.chestLen * 0.15, Math.cos(a) * P.torsoD * 0.6]}
+                      rotation={[0, a, Math.sin(a) * 0.3]} />
+                  ))}
+                </group>
+              )}
               {/* Collar — plugs the open torso top in the garment colour so the
                   neckline reads as part of the outfit rather than a bare skin ring. */}
               <mesh geometry={latheGeo([
@@ -300,6 +339,10 @@ export function AvatarRig({
                   <PigHead P={P} main={pigMain} belly={pigBelly} nose={pigNose} dark={pigDark} />
                 ) : isAngel ? (
                   <AngelHead P={P} skin={angelSkin} hairM={angelHair} hairShade={angelHairShade} gold={angelGold} glow={glowGold} />
+                ) : isSunflower ? (
+                  <SunflowerHead P={P} yellow={sfYellow} dark={sfYellowDark} seed={sfSeed} green={sfGreen} petalEdge={sfPetalEdge} />
+                ) : isGrim ? (
+                  <GrimHead P={P} bone={grimBone} boneDark={grimBoneDark} cloak={grimCloak} glow={grimGlow} gold={grimGold} />
                 ) : isHacker ? (
                   <HackerHead P={P} skin={skin} hairM={hairM} glow={hackerGlow} config={config} />
                 ) : (
@@ -316,8 +359,8 @@ export function AvatarRig({
           </group>
         </group>
 
-        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} />
-        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} />
+        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} />
+        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} />
 
         {/* Dino tail — a thick tapering tail rooted at the lower back (overlapping
             the body so there's no gap), curving out and down, ridged with golden
@@ -362,6 +405,93 @@ export function AvatarRig({
             <mesh geometry={torusGeo(P.hipBoneW * 0.16, P.hipBoneW * 0.05, 8, 16)} material={pigMain} position={[0, 0, -P.hipBoneW * 0.1]} rotation={[Math.PI / 2, 0, 0.5]} />
             <mesh geometry={torusGeo(P.hipBoneW * 0.11, P.hipBoneW * 0.045, 8, 16)} material={pigMain} position={[P.hipBoneW * 0.05, P.hipBoneW * 0.16, -P.hipBoneW * 0.2]} rotation={[Math.PI / 2, 0, 0.9]} />
             <mesh geometry={torusGeo(P.hipBoneW * 0.07, P.hipBoneW * 0.04, 8, 16)} material={pigMain} position={[P.hipBoneW * 0.0, P.hipBoneW * 0.32, -P.hipBoneW * 0.28]} rotation={[Math.PI / 2, 0, 1.3]} />
+          </group>
+        )}
+
+        {/* Sunflower costume — green leafy skirt around the hips, petal-like
+            ruffles at the waist, no shoes (bare brown root feet instead) */}
+        {isSunflower && (
+          <group>
+            {/* Green leafy skirt around the hips */}
+            <mesh geometry={latheGeo([
+              [P.waistW * 1.1, 0],
+              [P.hipBoneW * 1.35, -P.upperLeg * 0.25],
+              [P.hipBoneW * 1.6, -P.upperLeg * 0.5],
+              [P.hipBoneW * 1.4, -P.upperLeg * 0.65],
+            ])} material={sfGreen} castShadow />
+            {/* Leafy waistband */}
+            <mesh geometry={torusGeo(P.waistW * 1.05, P.hipBoneW * 0.1, 8, 24)} material={sfGreen} position={[0, 0.02, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            {/* Petal-like bumps ringing the waist */}
+            {[0, Math.PI * 0.25, Math.PI * 0.5, Math.PI * 0.75, Math.PI, -Math.PI * 0.25, -Math.PI * 0.5, -Math.PI * 0.75].map((a, i) => (
+              <mesh key={`sp${i}`} geometry={sphereGeo(1)} material={sfYellow} scale={[P.hipBoneW * 0.22, P.hipBoneW * 0.18, P.torsoD * 0.14]}
+                position={[Math.sin(a) * P.hipBoneW * 1.3, -P.upperLeg * 0.1, Math.cos(a) * P.torsoD * 0.7]} />
+            ))}
+          </group>
+        )}
+
+        {/* Grim Reaper costume — dark hooded cloak with red inner lining, gold
+            trimmed armor, shoulder pads with spikes, green gem on chest, leather
+            belt with skull buckle, and a scythe weapon */}
+        {isGrim && (
+          <group>
+            {/* Dark cloak — flowing tattered robe, wider at the hem */}
+            <mesh geometry={latheGeo([
+              [P.waistW * 1.05, P.chestLen * 0.2],
+              [P.hipBoneW * 1.2, 0],
+              [P.hipBoneW * 1.5, -P.upperLeg * 0.4],
+              [P.hipBoneW * 1.9, -P.upperLeg * 0.9],
+              [P.hipBoneW * 2.2, -P.upperLeg * 1.4],
+              [P.hipBoneW * 2.0, -P.upperLeg * 1.6],
+            ])} material={grimCloak} castShadow />
+            {/* Red inner lining visible at the hem */}
+            <mesh geometry={latheGeo([
+              [P.hipBoneW * 1.85, -P.upperLeg * 1.35],
+              [P.hipBoneW * 2.15, -P.upperLeg * 1.45],
+              [P.hipBoneW * 1.95, -P.upperLeg * 1.55],
+            ])} material={grimCloakInner} />
+
+            {/* Leather belt with skull buckle */}
+            <mesh geometry={latheGeo([
+              [P.hipBoneW * 1.08, -P.hipBoneW * 0.08],
+              [P.hipBoneW * 1.12, -P.hipBoneW * 0.04],
+              [P.hipBoneW * 1.12, P.hipBoneW * 0.04],
+              [P.hipBoneW * 1.08, P.hipBoneW * 0.08],
+            ])} material={grimLeather} position={[0, 0, 0]} />
+            {/* Gold belt buckle — small skull shape (sphere + eye dots) */}
+            <mesh geometry={sphereGeo(1)} material={grimGold} scale={[P.hipBoneW * 0.14, P.hipBoneW * 0.12, P.torsoD * 0.06]} position={[0, 0, P.torsoD * 1.02]} />
+            <mesh geometry={sphereGeo(1)} material={grimEyeOrbit} scale={[P.hipBoneW * 0.03, P.hipBoneW * 0.03, P.torsoD * 0.03]} position={[-P.hipBoneW * 0.04, P.hipBoneW * 0.03, P.torsoD * 1.1]} />
+            <mesh geometry={sphereGeo(1)} material={grimEyeOrbit} scale={[P.hipBoneW * 0.03, P.hipBoneW * 0.03, P.torsoD * 0.03]} position={[P.hipBoneW * 0.04, P.hipBoneW * 0.03, P.torsoD * 1.1]} />
+
+            {/* Armor chest plate — dark metal */}
+            <mesh geometry={latheGeo([
+              [P.chestW * 0.4, P.chestLen * 0.3],
+              [P.chestW * 0.48, P.chestLen * 0.5],
+              [P.chestW * 0.52, P.chestLen * 0.7],
+              [P.chestW * 0.44, P.chestLen * 0.9],
+            ])} material={grimArmor} position={[0, 0, P.torsoD * 0.85]} castShadow />
+
+            {/* Green gem on chest — pentagon shape */}
+            <mesh geometry={sphereGeo(1)} material={grimGem} scale={[P.chestW * 0.12, P.chestLen * 0.12, P.torsoD * 0.06]} position={[0, P.chestLen * 0.55, P.torsoD * 1.08]} />
+            {/* Gold gem setting */}
+            <mesh geometry={torusGeo(P.chestW * 0.14, P.chestW * 0.02, 5, 12)} material={grimGold} position={[0, P.chestLen * 0.55, P.torsoD * 1.06]} />
+
+            {/* Shoulder pads — gold with green gem accents and spikes */}
+            {[-1, 1].map((sx) => (
+              <group key={`spad${sx}`} position={[sx * P.shoulderW * 0.95, P.chestLen * 0.85, -P.torsoD * 0.2]}>
+                {/* Gold shoulder plate */}
+                <mesh geometry={sphereGeo(1)} material={grimGold} scale={[P.chestW * 0.22, P.chestLen * 0.16, P.torsoD * 0.2]} castShadow />
+                {/* Gold spike on top */}
+                <mesh geometry={taperGeo(P.chestW * 0.02, P.chestW * 0.08, P.chestLen * 0.22)} material={grimGold} position={[0, P.chestLen * 0.2, 0]} castShadow />
+                {/* Green gem accent */}
+                <mesh geometry={sphereGeo(1)} material={grimGem} scale={[P.chestW * 0.06, P.chestLen * 0.06, P.torsoD * 0.04]} position={[sx * -P.chestW * 0.08, 0, P.torsoD * 0.12]} />
+              </group>
+            ))}
+
+            {/* Red tattered cloth strips hanging from the belt */}
+            {[-0.6, -0.2, 0.2, 0.6].map((x, i) => (
+              <mesh key={`ts${i}`} geometry={boxGeo(P.hipBoneW * 0.08, P.upperLeg * 0.5, P.torsoD * 0.02)} material={grimCloakInner}
+                position={[x * P.hipBoneW, -P.upperLeg * 0.35, P.torsoD * 0.6]} rotation={[0, 0, Math.sin(i) * 0.15]} />
+            ))}
           </group>
         )}
 
@@ -481,6 +611,45 @@ export function AvatarRig({
             sarafan wears a white blouse, so its sleeves render white. */}
         <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} />
         <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} />
+
+        {/* Grim Reaper scythe — a long dark handle with a curved blade and
+            a skull pommel, held in the right hand */}
+        {isGrim && (
+          <group position={[P.shoulderW * 1.1, P.spineLen + P.chestLen * 0.15, P.torsoD * 0.4]} rotation={[0, 0, -0.15]}>
+            {/* Scythe handle — long dark rod */}
+            <mesh geometry={taperGeo(P.chestW * 0.03, P.chestW * 0.025, P.chestLen * 3.8)} material={grimLeather} position={[0, -P.chestLen * 1.6, 0]} castShadow />
+            {/* Gold grip bands along the handle */}
+            {[0.0, 0.25, 0.5].map((t, i) => (
+              <mesh key={`gb${i}`} geometry={torusGeo(P.chestW * 0.04, P.chestW * 0.008, 8, 16)} material={grimGold}
+                position={[0, -P.chestLen * 1.6 + t * P.chestLen * 3.2, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            ))}
+            {/* Scythe blade — curved crescent */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#b0b8c0', 0.2, 0.7)} scale={[P.chestW * 0.05, P.chestLen * 0.8, P.torsoD * 0.15]}
+              position={[P.chestW * 0.2, P.chestLen * 1.2, 0]} rotation={[0, 0, 0.5]} castShadow />
+            {/* Blade edge — thinner, sharper inner */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#d0d8e0', 0.15, 0.85)} scale={[P.chestW * 0.03, P.chestLen * 0.65, P.torsoD * 0.08]}
+              position={[P.chestW * 0.22, P.chestLen * 1.2, P.torsoD * 0.05]} rotation={[0, 0, 0.5]} />
+            {/* Skull pommel at the top */}
+            <mesh geometry={sphereGeo(1)} material={grimBone} scale={[P.chestW * 0.1, P.chestLen * 0.1, P.torsoD * 0.08]} position={[0, P.chestLen * 1.5, 0]} castShadow />
+            {/* Skull eye sockets */}
+            <mesh geometry={sphereGeo(1)} material={grimSocket} scale={[P.chestW * 0.03, P.chestLen * 0.03, P.torsoD * 0.03]} position={[-P.chestW * 0.03, P.chestLen * 1.52, P.torsoD * 0.05]} />
+            <mesh geometry={sphereGeo(1)} material={grimSocket} scale={[P.chestW * 0.03, P.chestLen * 0.03, P.torsoD * 0.03]} position={[P.chestW * 0.03, P.chestLen * 1.52, P.torsoD * 0.05]} />
+            {/* Skull glowing green eyes */}
+            <mesh geometry={sphereGeo(1)} material={grimGlow} scale={[P.chestW * 0.015, P.chestLen * 0.015, P.torsoD * 0.02]} position={[-P.chestW * 0.03, P.chestLen * 1.52, P.torsoD * 0.08]} />
+            <mesh geometry={sphereGeo(1)} material={grimGlow} scale={[P.chestW * 0.015, P.chestLen * 0.015, P.torsoD * 0.02]} position={[P.chestW * 0.03, P.chestLen * 1.52, P.torsoD * 0.08]} />
+          </group>
+        )}
+
+        {/* Grim Reaper green flame wisps — spectral green fire at the base */}
+        {isGrim && (
+          <group position={[0, -P.upperLeg * 0.8, 0]}>
+            {[-P.hipBoneW * 1.2, -P.hipBoneW * 0.4, P.hipBoneW * 0.4, P.hipBoneW * 1.2].map((fx, i) => (
+              <mesh key={`gfl${i}`} geometry={taperGeo(P.hipBoneW * 0.02, P.hipBoneW * 0.12, P.upperLeg * 0.45)} material={grimGlow}
+                position={[fx, -P.upperLeg * 0.3, P.torsoD * 0.3]}
+                rotation={[0.1, 0, Math.sin(i * 1.5) * 0.3]} />
+            ))}
+          </group>
+        )}
 
         {/* Equipped accessories on a little study desk that travels with the avatar
             (so they're visible in the library hall too). Hidden in portrait views. */}
@@ -1114,6 +1283,154 @@ function AngelHead({ P, skin, hairM, hairShade, gold, glow }: { P: Proportions; 
   )
 }
 
+/* ================================================ SUNFLOWER HEAD ================================================ */
+
+/** Big single sunflower bloom head: a rounded yellow skull with a large brown
+ *  seed disc in the centre, a ring of wide golden-yellow petals radiating outward,
+ *  cute eyes on the disc, a happy smile and a small green leaf accent. The whole
+ *  head reads as one giant cheerful sunflower. */
+function SunflowerHead({ P, yellow, dark, seed, green, petalEdge }: { P: Proportions; yellow: Mat; dark: Mat; seed: Mat; green: Mat; petalEdge: Mat }) {
+  const r = P.headR
+  const cy = r * 0.92
+  const fz = r * 0.88
+  const blackDot = sharedMaterial('#1a1a1a', 0.6)
+
+  return (
+    <group position={[0, cy, 0]}>
+      {/* rounded yellow skull (the face base behind the petals) */}
+      <mesh geometry={sphereGeo(1)} material={yellow} scale={[r * 1.05, r * 1.08, r * 0.92]} castShadow />
+
+      {/* Lily-style anime eyes — big coloured iris with dark limbal ring,
+          brighter lower glow, small pupil, two catchlights, upper lash line */}
+      <Eye r={r} x={-r * 0.3} y={-r * 0.04} z={fz * 0.98} iris="#8c5a2e" />
+      <Eye r={r} x={r * 0.3} y={-r * 0.04} z={fz * 0.98} iris="#8c5a2e" />
+
+      {/* Lily-style eyebrows — thin, dark, gentle arch */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.16, r * 0.03, r * 0.02]} position={[-r * 0.3, -r * 0.04 + r * 0.18, fz * 0.98]} rotation={[0, 0, 0.14]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.16, r * 0.03, r * 0.02]} position={[r * 0.3, -r * 0.04 + r * 0.18, fz * 0.98]} rotation={[0, 0, -0.14]} />
+
+      {/* Lily cute smile — a small centre dot + two side dots */}
+      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.045, r * 0.02, r * 0.01]} position={[0, -r * 0.51, fz * 0.92]} />
+      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.028, r * 0.018, r * 0.01]} position={[-r * 0.07, -r * 0.49, fz * 0.92]} />
+      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.028, r * 0.018, r * 0.01]} position={[r * 0.07, -r * 0.49, fz * 0.92]} />
+
+      {/* rosy cheeks */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`sch${sx}`} geometry={sphereGeo(1)} material={sharedMaterial('#f4a040', 0.5)} scale={[r * 0.13, r * 0.1, r * 0.05]} position={[sx * r * 0.5, -r * 0.12, fz * 0.8]} />
+      ))}
+
+      {/* tiny seed dots scattered across the face as texture (no disc) */}
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+        const a = (i / 8) * Math.PI * 2 + 0.3
+        const dist = r * 0.65
+        return (
+          <mesh key={`sd${i}`} geometry={sphereGeo(1)} material={dark}
+            scale={[r * 0.04, r * 0.04, r * 0.03]}
+            position={[Math.cos(a) * dist, Math.sin(a) * dist * 0.7, fz * 0.8]} />
+        )
+      })}
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const a = (i / 6) * Math.PI * 2 + 0.7
+        const dist = r * 0.42
+        return (
+          <mesh key={`sd2${i}`} geometry={sphereGeo(1)} material={dark}
+            scale={[r * 0.03, r * 0.03, r * 0.02]}
+            position={[Math.cos(a) * dist, Math.sin(a) * dist * 0.7, fz * 0.84]} />
+        )
+      })}
+
+      {/* BIG PETAL RING — petals radiating outward from the seed disc */}
+      {Array.from({ length: 18 }, (_, i) => {
+        const a = (i / 18) * Math.PI * 2
+        return (
+          <mesh key={`petal${i}`} geometry={sphereGeo(1)} material={petalEdge}
+            scale={[r * 0.28, r * 0.55, r * 0.05]}
+            position={[Math.cos(a) * r * 1.45, Math.sin(a) * r * 1.1, fz * 0.35]}
+            rotation={[0, 0, a + Math.PI / 2]} />
+        )
+      })}
+      {/* inner ring of petals — slightly darker yellow, behind the outer ring */}
+      {Array.from({ length: 14 }, (_, i) => {
+        const a = (i / 14) * Math.PI * 2 + Math.PI / 18
+        return (
+          <mesh key={`peti${i}`} geometry={sphereGeo(1)} material={yellow}
+            scale={[r * 0.22, r * 0.42, r * 0.05]}
+            position={[Math.cos(a) * r * 1.2, Math.sin(a) * r * 0.92, fz * 0.24]}
+            rotation={[0, 0, a + Math.PI / 2]} />
+        )
+      })}
+
+      {/* small green leaf accent on the head */}
+      <mesh geometry={sphereGeo(1)} material={green}
+        scale={[r * 0.2, r * 0.35, r * 0.06]}
+        position={[-r * 0.65, r * 0.85, -r * 0.55]}
+        rotation={[0, 0.15, 0.3]} />
+    </group>
+  )
+}
+
+/* ================================================ GRIM REAPER HEAD ================================================ */
+
+/** Chibi Grim Reaper: a skull face with glowing green eyes, dark hollow eye
+ *  sockets, a triangular nose hole, a teeth/jaw row, all wrapped in a dark
+ *  tattered hood. Reads as a cute but menacing skeleton reaper. */
+function GrimHead({ P, bone, boneDark, cloak, glow, gold }: { P: Proportions; bone: Mat; boneDark: Mat; cloak: Mat; glow: Mat; gold: Mat }) {
+  const r = P.headR
+  const cy = r * 0.92
+  const fz = r * 0.88
+  const eyeSocket = sharedMaterial('#0a0a0c', 0.15)
+  const teethMat = sharedMaterial('#d8ccb0', 0.55)
+  const noseHole = sharedMaterial('#0c0c0a', 0.12)
+
+  return (
+    <group position={[0, cy, 0]}>
+      {/* Dark hood — large draped cowl over the skull */}
+      <mesh geometry={sphereGeo(1)} material={cloak} scale={[r * 1.25, r * 1.3, r * 1.15]} castShadow />
+      {/* Hood opening — slightly darker inner surface */}
+      <mesh geometry={sphereGeo(1)} material={eyeSocket} scale={[r * 0.92, r * 1.0, r * 0.72]} position={[0, -r * 0.05, r * 0.35]} />
+
+      {/* Skull face — rounded bone-coloured dome */}
+      <mesh geometry={sphereGeo(1)} material={bone} scale={[r * 0.88, r * 0.92, r * 0.7]} position={[0, -r * 0.08, r * 0.38]} castShadow />
+
+      {/* Brow ridge — thick bone shelf over the eyes */}
+      <mesh geometry={sphereGeo(1)} material={boneDark} scale={[r * 0.85, r * 0.14, r * 0.42]} position={[0, r * 0.22, r * 0.5]} />
+
+      {/* Eye sockets — deep hollow dark ovals */}
+      {[-1, 1].map((sx) => (
+        <group key={`gs${sx}`} position={[sx * r * 0.28, r * 0.08, r * 0.62]}>
+          <mesh geometry={sphereGeo(1)} material={eyeSocket} scale={[r * 0.22, r * 0.26, r * 0.18]} castShadow />
+          {/* Glowing green eye — the iris floating in the socket */}
+          <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.14, r * 0.16, r * 0.1]} position={[0, 0, r * 0.08]} />
+          {/* Eye catchlight */}
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.08)} scale={[r * 0.04, r * 0.04, r * 0.02]} position={[sx * -r * 0.03, r * 0.04, r * 0.16]} />
+        </group>
+      ))}
+
+      {/* Nose hole — triangular/heart-shaped */}
+      <mesh geometry={sphereGeo(1)} material={noseHole} scale={[r * 0.1, r * 0.14, r * 0.06]} position={[0, -r * 0.12, r * 0.7]} />
+
+      {/* Teeth row — a row of small rectangular bone segments */}
+      {[-0.16, -0.08, 0, 0.08, 0.16].map((tx, i) => (
+        <mesh key={`gt${i}`} geometry={boxGeo(r * 0.065, r * 0.07, r * 0.04)} material={teethMat}
+          position={[tx * r, -r * 0.32, r * 0.66]} />
+      ))}
+
+      {/* Lower jaw — a thin curved bone plate */}
+      <mesh geometry={sphereGeo(1)} material={boneDark} scale={[r * 0.52, r * 0.12, r * 0.22]} position={[0, -r * 0.38, r * 0.5]} />
+
+      {/* Gold hood clasp at the throat */}
+      <mesh geometry={sphereGeo(1)} material={gold} scale={[r * 0.08, r * 0.08, r * 0.05]} position={[0, -r * 0.58, r * 0.6]} />
+
+      {/* Green flame wisps rising from behind the hood */}
+      {[-0.5, 0, 0.5].map((fx, i) => (
+        <mesh key={`gf${i}`} geometry={taperGeo(r * 0.02, r * 0.08, r * 0.4)} material={glow}
+          position={[fx * r, r * 1.15 + i * r * 0.12, -r * 0.2]}
+          rotation={[0.2, 0, fx * 0.3]} />
+      ))}
+    </group>
+  )
+}
+
 /* ================================================ HACKER HEAD ================================================ */
 
 /** Hacker head: a normal human face (skin + black eyes, like James) with the
@@ -1500,9 +1817,9 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
 
 /* ================================================ LEGS ================================================ */
 
-function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, isAngel, sashM, glowM, isHacker, hackerGlow, hackerAccent }: {
+function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, isAngel, sashM, glowM, isHacker, hackerGlow, hackerAccent, isSunflower, sfBrown, isGrim, grimCloak, grimRedBoot, grimGold, grimGoldDark }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; isAngel?: boolean; sashM?: Mat; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat
+  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; isAngel?: boolean; sashM?: Mat; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat; isSunflower?: boolean; sfBrown?: Mat; isGrim?: boolean; grimCloak?: Mat; grimRedBoot?: Mat; grimGold?: Mat; grimGoldDark?: Mat
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'legUpperL' : 'legUpperR'
@@ -1553,19 +1870,128 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
         <group ref={bind(foot)} position={[0, -P.lowerLeg - P.ankleR * 0.4, 0]}>
           {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien */}
           {!isAlien && (
-            <mesh geometry={sphereGeo(1)} material={showShoes && config.shoes === 'boots' && !isHacker ? shoeM : skin}
+            <mesh geometry={sphereGeo(1)} material={showShoes && !isHacker ? shoeM : skin}
               scale={Array(3).fill(P.ankleR * (isRobot ? 0.65 : 1.1)) as [number, number, number]} />
           )}
-          {showShoes && !isHacker && (
-            <>
-              <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.2, P.ankleR * 0.8, P.footLen * 0.45]} position={[0, -P.ankleR * 0.08, P.footLen * 0.22]} castShadow />
-              <mesh geometry={sphereGeo(1)} material={shoeM} scale={[P.ankleR * 1.0, P.ankleR * 0.65, P.footLen * 0.3]} position={[0, -P.ankleR * 0.22, P.footLen * 0.62]} castShadow />
-              <mesh geometry={boxGeo(P.ankleR * 2.2, P.ankleR * 0.4, P.footLen * 1.0)} material={shoeAccent} position={[0, -P.ankleR * 0.6, P.footLen * 0.28]} castShadow />
-              {config.shoes === 'boots' && (
-                <mesh geometry={taperGeo(P.ankleR * 1.2, P.ankleR * 1.05, P.lowerLeg * 0.4)} material={shoeM} position={[0, P.lowerLeg * 0.2, -P.footLen * 0.02]} />
-              )}
-            </>
+          {/* Sunflower: earthy brown root-like feet */}
+          {isSunflower && sfBrown && (
+            <group>
+              <mesh geometry={sphereGeo(1)} material={sfBrown}
+                scale={[P.ankleR * 1.2, P.ankleR * 1.0, P.footLen * 0.8]}
+                position={[0, -P.ankleR * 0.5, P.footLen * 0.3]} castShadow />
+              {[-P.ankleR * 0.35, P.ankleR * 0.35].map((tx, i) => (
+                <mesh key={`rt${i}`} geometry={taperGeo(P.ankleR * 0.04, P.ankleR * 0.1, P.ankleR * 0.6)} material={sfBrown}
+                  position={[tx, -P.ankleR * 0.65, P.footLen * 0.45]}
+                  rotation={[0.6, 0, Math.sin(i * Math.PI) * 0.5]} />
+              ))}
+              <mesh geometry={torusGeo(P.ankleR * 1.1, P.ankleR * 0.08, 8, 18)} material={sfGreen}
+                position={[0, P.ankleR * 0.15, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            </group>
           )}
+          {/* Grim Reaper: dark boots with gold buckles + red accents */}
+          {isGrim && (
+            <group>
+              {/* Main boot body — dark with rounded toe */}
+              <mesh geometry={sphereGeo(1)} material={grimCloak}
+                scale={[P.ankleR * 1.25, P.ankleR * 1.1, P.footLen * 0.65]}
+                position={[0, -P.ankleR * 0.35, P.footLen * 0.35]} castShadow />
+              {/* Red boot toe cap */}
+              <mesh geometry={sphereGeo(1)} material={grimRedBoot}
+                scale={[P.ankleR * 0.8, P.ankleR * 0.6, P.footLen * 0.35]}
+                position={[0, -P.ankleR * 0.55, P.footLen * 0.7]} castShadow />
+              {/* Gold buckle strap across the ankle */}
+              <mesh geometry={boxGeo(P.ankleR * 2.0, P.ankleR * 0.22, P.footLen * 0.04)} material={grimGold}
+                position={[0, P.ankleR * 0.1, P.footLen * 0.45]} />
+              {/* Gold buckle square */}
+              <mesh geometry={boxGeo(P.ankleR * 0.22, P.ankleR * 0.22, P.footLen * 0.06)} material={grimGoldDark}
+                position={[0, P.ankleR * 0.1, P.footLen * 0.5]} />
+              {/* Gold sole trim */}
+              <mesh geometry={boxGeo(P.ankleR * 2.2, P.ankleR * 0.14, P.footLen * 1.0)} material={grimGold}
+                position={[0, -P.ankleR * 0.6, P.footLen * 0.35]} castShadow />
+              {/* Boot shaft — wraps up the shin */}
+              <mesh geometry={latheGeo([
+                [P.ankleR * 1.1, P.lowerLeg * 0.15],
+                [P.ankleR * 1.0, P.lowerLeg * 0.05],
+                [P.ankleR * 0.95, -P.ankleR * 0.2],
+                [P.ankleR * 1.1, -P.ankleR * 0.5],
+              ])} material={grimCloak} position={[0, 0, -P.footLen * 0.1]} castShadow />
+              {/* Gold armor plate on the shin */}
+              <mesh geometry={boxGeo(P.ankleR * 0.6, P.lowerLeg * 0.3, P.torsoD * 0.05)} material={grimGold}
+                position={[0, P.lowerLeg * 0.2, P.ankleR * 0.85]} castShadow />
+            </group>
+          )}
+          {showShoes && !isHacker && !isSunflower && !isGrim && (() => {
+            const ar = P.ankleR
+            const fl = P.footLen
+            const zS = fl / (ar * 1.7)
+
+            if (config.shoes === 'boots') {
+              const bootProfile: [number, number][] = [
+                [0, -ar * 0.65],
+                [ar * 0.9, -ar * 0.65],
+                [ar * 0.95, -ar * 0.6],
+                [ar * 0.95, -ar * 0.1],
+                [ar * 0.85, ar * 0.15],
+                [ar * 0.6, ar * 0.3],
+                [ar * 0.25, ar * 0.38],
+                [0, ar * 0.4],
+              ]
+              return (
+                <group>
+                  <mesh geometry={taperGeo(ar * 0.85, ar * 0.95, fl * 0.55)}
+                    material={shoeM} position={[0, fl * 0.22, 0]} castShadow />
+                  <mesh geometry={latheGeo(bootProfile)} material={shoeM}
+                    scale={[1.15, 1.15, zS * 0.9]} position={[0, 0, fl * 0.18]} castShadow />
+                </group>
+              )
+            }
+            if (config.shoes === 'whiteshoes') {
+              const whiteProfile: [number, number][] = [
+                [0, -ar * 0.65],
+                [ar * 0.9, -ar * 0.65],
+                [ar * 0.95, -ar * 0.6],
+                [ar * 0.95, -ar * 0.1],
+                [ar * 0.85, ar * 0.15],
+                [ar * 0.6, ar * 0.3],
+                [ar * 0.25, ar * 0.38],
+                [0, ar * 0.4],
+              ]
+              return (
+                <group>
+                  <mesh geometry={latheGeo(whiteProfile)} material={shoeM}
+                    scale={[1.15, 1.15, zS * 0.9]} position={[0, 0, fl * 0.18]} castShadow />
+                </group>
+              )
+            }
+            const sneakerProfile: [number, number][] = [
+              [0, -ar * 0.65],
+              [ar * 0.9, -ar * 0.65],
+              [ar * 0.95, -ar * 0.6],
+              [ar * 0.95, -ar * 0.1],
+              [ar * 0.85, ar * 0.15],
+              [ar * 0.6, ar * 0.3],
+              [ar * 0.25, ar * 0.38],
+              [0, ar * 0.4],
+            ]
+            return (
+              <group>
+                <mesh geometry={latheGeo(sneakerProfile)} material={shoeM}
+                  scale={[1.15, 1.15, zS * 0.9]} position={[0, 0, fl * 0.18]} castShadow />
+                {[-0.18, 0, 0.18].map((offset, i) => (
+                  <mesh key={`rs${i}`} geometry={boxGeo(ar * 0.03, ar * 0.35, fl * 0.3)}
+                    material={shoeAccent}
+                    position={[ar * 0.92, -ar * 0.1, fl * (0.18 + offset * 0.28)]}
+                    rotation={[0, 0.12, 0]} castShadow />
+                ))}
+                {[-0.18, 0, 0.18].map((offset, i) => (
+                  <mesh key={`ls${i}`} geometry={boxGeo(ar * 0.03, ar * 0.35, fl * 0.3)}
+                    material={shoeAccent}
+                    position={[-ar * 0.92, -ar * 0.1, fl * (0.18 + offset * 0.28)]}
+                    rotation={[0, -0.12, 0]} castShadow />
+                ))}
+              </group>
+            )
+          })()}
           {/* dino toe claws — three cream claws pointing forward */}
           {isDino && [-1, 0, 1].map((tx, i) => (
             <mesh key={i} geometry={taperGeo(P.ankleR * 0.02, P.ankleR * 0.17, P.footLen * 0.38)} material={shoeAccent}
@@ -1656,7 +2082,6 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
 
 function Top({ config, P, topM, skin: _skin }: { config: AvatarConfig; P: Proportions; topM: Mat; skin: Mat }) {
   const chestLogoTex = focusLilyChestTex()
-  const backLogoTex = focusLilyBackTex()
 
   switch (config.top) {
     case 'hoodie':
@@ -1668,7 +2093,6 @@ function Top({ config, P, topM, skin: _skin }: { config: AvatarConfig; P: Propor
           <mesh geometry={boxGeo(P.chestW * 0.006, P.chestLen * 0.2, P.torsoD * 0.006)} material={sharedMaterial('#e0ddd5', 0.7)} position={[-P.chestW * 0.03, P.chestLen * 0.58, P.torsoD * 0.97]} />
           <mesh geometry={boxGeo(P.chestW * 0.006, P.chestLen * 0.2, P.torsoD * 0.006)} material={sharedMaterial('#e0ddd5', 0.7)} position={[P.chestW * 0.03, P.chestLen * 0.58, P.torsoD * 0.97]} />
           <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), chestLogoTex)} scale={[P.chestW * 0.18, P.chestLen * 0.18, 0.015]} position={[-P.chestW * 0.3, P.chestLen * 0.52, P.torsoD * 0.98]} />
-          <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), backLogoTex)} scale={[P.chestW * 0.55, P.chestLen * 0.55, 0.015]} position={[0, P.chestLen * 0.35, -P.torsoD * 0.92]} rotation={[0, Math.PI, 0]} />
         </group>
       )
 
@@ -1680,7 +2104,6 @@ function Top({ config, P, topM, skin: _skin }: { config: AvatarConfig; P: Propor
           <mesh geometry={sphereGeo(1)} material={topM} scale={[P.chestW * 0.65, P.chestLen * 0.12, P.torsoD * 0.52]} position={[0, P.chestLen * 0.78, P.torsoD * 0.16]} />
           <mesh geometry={boxGeo(P.chestW * 0.01, P.chestLen * 0.68, P.torsoD * 0.012)} material={sharedMaterial('#8a8a8a', 0.3, 0.2)} position={[0, P.chestLen * 0.4, P.torsoD * 0.96]} />
           <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), chestLogoTex)} scale={[P.chestW * 0.15, P.chestLen * 0.15, 0.015]} position={[-P.chestW * 0.28, P.chestLen * 0.52, P.torsoD * 0.98]} />
-          <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), backLogoTex)} scale={[P.chestW * 0.5, P.chestLen * 0.5, 0.015]} position={[0, P.chestLen * 0.35, -P.torsoD * 0.92]} rotation={[0, Math.PI, 0]} />
         </group>
       )
 
@@ -1692,7 +2115,6 @@ function Top({ config, P, topM, skin: _skin }: { config: AvatarConfig; P: Propor
           <mesh geometry={sphereGeo(1)} material={topM} scale={[P.chestW * 0.72, P.chestLen * 0.13, P.torsoD * 0.56]} position={[0, P.chestLen * 0.78, P.torsoD * 0.16]} />
           <mesh geometry={sphereGeo(1)} material={sharedMaterial('#2a2a2a', 0.3, 0.1)} scale={[P.chestW * 0.02, P.chestLen * 0.02, P.torsoD * 0.015]} position={[0, P.chestLen * 0.35, P.torsoD * 0.98]} />
           <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), chestLogoTex)} scale={[P.chestW * 0.14, P.chestLen * 0.14, 0.015]} position={[P.chestW * 0.26, P.chestLen * 0.54, P.torsoD * 0.98]} />
-          <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), backLogoTex)} scale={[P.chestW * 0.48, P.chestLen * 0.48, 0.015]} position={[0, P.chestLen * 0.35, -P.torsoD * 0.92]} rotation={[0, Math.PI, 0]} />
         </group>
       )
 
@@ -1786,7 +2208,6 @@ function Top({ config, P, topM, skin: _skin }: { config: AvatarConfig; P: Propor
       return (
         <group>
           <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), chestLogoTex)} scale={[P.chestW * 0.17, P.chestLen * 0.17, 0.015]} position={[-P.chestW * 0.28, P.chestLen * 0.54, P.torsoD * 0.98]} />
-          <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), backLogoTex)} scale={[P.chestW * 0.52, P.chestLen * 0.52, 0.015]} position={[0, P.chestLen * 0.35, -P.torsoD * 0.92]} rotation={[0, Math.PI, 0]} />
         </group>
       )
 
@@ -1801,7 +2222,6 @@ function Top({ config, P, topM, skin: _skin }: { config: AvatarConfig; P: Propor
           <mesh geometry={sphereGeo(1)} material={ribbonM} scale={[P.chestW * 0.06, P.chestLen * 0.04, P.torsoD * 0.01]} position={[0, P.chestLen * 0.65, P.torsoD * 0.96]} />
           {/* Logo patches */}
           <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), chestLogoTex)} scale={[P.chestW * 0.14, P.chestLen * 0.14, 0.015]} position={[-P.chestW * 0.26, P.chestLen * 0.52, P.torsoD * 0.98]} />
-          <mesh geometry={sphereGeo(1)} material={texMat(topHex(config.top), backLogoTex)} scale={[P.chestW * 0.46, P.chestLen * 0.46, 0.015]} position={[0, P.chestLen * 0.35, -P.torsoD * 0.92]} rotation={[0, Math.PI, 0]} />
         </group>
       )
     }

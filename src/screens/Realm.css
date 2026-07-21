@@ -4,6 +4,12 @@
   overflow: hidden;
 }
 
+.realm-root h1,
+.realm-root h2,
+.realm-root h3 {
+  font-family: 'Wonderworld', var(--sans);
+}
+
 .realm-topleft {
   position: absolute;
   top: 18px;
@@ -105,6 +111,7 @@
   color: var(--gold, #caa84a);
 }
 .realm-head h1 {
+  font-family: 'Wonderworld', var(--sans);
   font-size: 34px;
   margin: 10px 0 4px;
   text-shadow: 0 1px 14px rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.28);
@@ -184,6 +191,7 @@
   filter: drop-shadow(0 1px 2px rgba(58, 42, 23, 0.18));
 }
 .realm-card h2 {
+  font-family: 'Wonderworld', var(--sans);
   font-size: 22px;
   color: var(--wood-dark);
 }
@@ -217,6 +225,7 @@
   margin-bottom: 8px;
 }
 .realm-card-dev h2 {
+  font-family: 'Wonderworld', var(--sans);
   font-size: 17px;
 }
 .realm-card-dev p {
@@ -391,6 +400,7 @@
   text-align: left;
 }
 .realm-mine h3 {
+  font-family: 'Wonderworld', var(--sans);
   font-size: 16px;
   color: var(--wood-dark);
   margin-bottom: 8px;
@@ -519,6 +529,24 @@
   border: 1px solid var(--glass-border);
   padding: 8px 12px;
   border-radius: 10px;
+}
+
+/* ---- Coming Soon card state ---- */
+.realm-card--soon {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.realm-card--soon:hover {
+  transform: none;
+  box-shadow: var(--glass-shadow);
+}
+.realm-card--soon .realm-card-cta {
+  color: var(--ink-soft);
+  font-weight: 700;
+  background: rgba(122, 74, 38, 0.12);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
 }
 
 /* ---- Mobile responsive ---- */

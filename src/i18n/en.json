@@ -94,6 +94,8 @@
   "lobby": {
     "objStudyRooms": "Study Rooms",
     "objStudyRoomsCaption": "Study on camera, together",
+    "objCustomize": "Customize",
+    "objCustomizeCaption": "Change your avatar and style",
     "objBlueprint": "Blueprints",
     "objBlueprintCaption": "Visual sticky notes to map your study ideas",
     "objRealm": "Realm",

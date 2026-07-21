@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import DOMPurify from 'dompurify'
+import type { Editor } from '@tiptap/react'
 import {
   makeBoard,
   makeNode,
@@ -56,6 +57,7 @@ interface BlueprintState {
   activeTypeId: string // connection type applied to newly-drawn strings
   activeYarnColor: string | null // yarn palette colour override (null = no override)
   activeYarnStyle: YarnStyle // yarn visual style applied to newly-drawn strings
+  activeEditor: Editor | null // currently active TipTap editor (for inspector formatting controls)
 
   // undo/redo
   past: BoardDoc[]
@@ -106,6 +108,7 @@ interface BlueprintState {
   /** cancel any in-progress / traced connection state */
   cancelConnect: () => void
   setHoverNode: (id: string | null) => void
+  setActiveEditor: (editor: Editor | null) => void
   setViewport: (v: { x: number; y: number; zoom: number }) => void
   toggleSnap: () => void
 
@@ -178,6 +181,7 @@ export const useBlueprint = create<BlueprintState>((set, get) => {
   activeTypeId: 'link',
   activeYarnColor: null,
   activeYarnStyle: 'solid',
+  activeEditor: null,
   past: [],
   future: [],
 
@@ -477,6 +481,7 @@ newBoard: (title) => {
     setPendingFrom: (id) => set({ pendingFrom: id }),
     cancelConnect: () => set({ pendingFrom: null, focus: { typeId: null } }),
     setHoverNode: (id) => set((s) => (s.hoverNodeId === id ? s : { hoverNodeId: id })),
+    setActiveEditor: (editor) => set({ activeEditor: editor }),
 
   setViewport: (v) => {
     set({ viewport: v })

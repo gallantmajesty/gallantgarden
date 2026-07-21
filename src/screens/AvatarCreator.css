@@ -730,28 +730,35 @@
 }
 .ac-char-tabs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
 .ac-char-tab {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: none;
-  font-size: 10px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.15s;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   color: #9a8a6a;
+}
+.ac-char-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 .ac-char-tab.active {
   background: #d49040;
   color: #fff;
+  border-color: #d49040;
 }
-.ac-char-tab:nth-child(4) { color: #a855f7; }
-.ac-char-tab:nth-child(4).active { background: #a855f7; color: #fff; }
-.ac-char-tab:nth-child(5) { color: #f59e0b; }
-.ac-char-tab:nth-child(5).active { background: #f59e0b; color: #fff; }
+.ac-char-tab[data-rarity='owned'] { color: #d49040; border-color: rgba(212, 144, 64, 0.3); }
+.ac-char-tab[data-rarity='owned'].active { background: #d49040; color: #fff; border-color: #d49040; }
+.ac-char-tab[data-rarity='epic'] { color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
+.ac-char-tab[data-rarity='epic'].active { background: #a855f7; color: #fff; border-color: #a855f7; }
+.ac-char-tab[data-rarity='legendary'] { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+.ac-char-tab[data-rarity='legendary'].active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
 .ac-char-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

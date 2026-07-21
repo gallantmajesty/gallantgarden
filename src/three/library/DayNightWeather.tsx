@@ -30,16 +30,15 @@ const tmp = new Color()
 const tmpSunPos = new Vector3()
 
 /**
- * Night-only atmosphere. The sky dome is permanently dark, stars and moon are
+ * Night-only atmosphere. The sky dome is permanently dark, stars are
  * always visible, rain falls perpetually, and the only directional light is a
- * faint cool moonlight. The hall glows warm from its lanterns.
+ * faint cool skylight. The hall glows warm from its lanterns.
  */
 export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, sunRef, onSunReady }: { fog: boolean; rainScale: number; shadowMap: number; rainDrops: number; sunRef?: MutableRefObject<Mesh | null>; onSunReady?: () => void }) {
   const dir = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
   const fog = useRef<FogExp2>(null)
   const sun = useRef<Mesh>(null)
-  const moon = useRef<Mesh>(null)
   const stars = useRef<Group>(null)
 
   const skyMat = useMemo(
@@ -88,7 +87,7 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
 
     const night = s.nightMode
 
-    // moon sits high in the sky — a cool silver disc
+    // directional light direction (for shadows)
     sunDir.set(0.3, 0.65, 0.2).normalize()
     env.sun.x = sunDir.x
     env.sun.y = sunDir.y
@@ -132,13 +131,13 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
     ;(skyMat.uniforms.top.value as Color).copy(cTop)
     ;(skyMat.uniforms.horizon.value as Color).copy(cHorizon)
 
-    // ---- lights: faint cool moonlight + warm interior fill ----
+    // ---- lights: cool directional + warm interior fill ----
     if (dir.current) {
       tmpSunPos.set(sunDir.x * 120, sunDir.y * 120, sunDir.z * 120)
       if (!dir.current.position.equals(tmpSunPos)) {
         dir.current.position.copy(tmpSunPos)
       }
-      // at night the moon is a touch brighter/silver; daytime keeps the current value
+      // at night the directional is dimmer/silver; daytime keeps the current value
       dir.current.intensity = night ? 0.18 * (1 - env.fog * 0.55) : 0.6 * (1 - env.fog * 0.55)
       dir.current.color.set(night ? '#cdd9f0' : '#fff5e0')
     }
@@ -155,13 +154,9 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
       fog.current.density = fogOn ? 0.006 + env.fog * 0.022 : 0.002
     }
 
-    // ---- sun hidden, moon + stars always visible ----
+    // ---- sun hidden, stars always visible ----
     if (sun.current) {
       sun.current.visible = false
-    }
-    if (moon.current) {
-      moon.current.position.set(sunDir.x * 360, sunDir.y * 360, sunDir.z * 360)
-      moon.current.visible = true
     }
     if (stars.current) {
       stars.current.visible = true
@@ -202,12 +197,6 @@ export function DayNightWeather({ fog: fogOn, rainScale, shadowMap, rainDrops, s
       >
         <sphereGeometry args={[14, 16, 16]} />
         <meshBasicMaterial color="#fff3c8" />
-      </mesh>
-
-      {/* moon — soft silver disc, subtle so bloom doesn't blow it out */}
-      <mesh ref={moon}>
-        <sphereGeometry args={[8, 20, 20]} />
-        <meshStandardMaterial color="#c8d0e0" roughness={0.8} metalness={0.1} emissive="#c8d0e0" emissiveIntensity={0.3} />
       </mesh>
 
       <hemisphereLight ref={hemi} args={['#1a1e2e', '#0a0e18', 0.22]} />

@@ -14,9 +14,11 @@ interface CharacterAvatarProps {
   preview?: PreviewState
   /** Hide accessories (desk/items) — useful for portrait views */
   hideAccessories?: boolean
+  /** Freeze in a static idle pose (no breathing/movement) — for customization previews */
+  static?: boolean
 }
 
-export function CharacterAvatar({ config, locomotion, lod, preview, hideAccessories }: CharacterAvatarProps) {
+export function CharacterAvatar({ config, locomotion, lod, preview, hideAccessories, static: isStatic = false }: CharacterAvatarProps) {
   const primaryRig = useRef<AvatarRigHandle>(null)
   const nearLod = useRef<Lod>('near')
   const resolvedLod = lod ?? nearLod
@@ -41,7 +43,7 @@ export function CharacterAvatar({ config, locomotion, lod, preview, hideAccessor
       ) : (
         <>
           <AvatarRig ref={primaryRig} config={config} hideAccessories={hideAccessories} />
-          <AvatarAnimator rig={primaryRig} locomotion={resolvedLoco} lod={resolvedLod} preview={preview} />
+          <AvatarAnimator rig={primaryRig} locomotion={resolvedLoco} lod={resolvedLod} preview={preview} static={isStatic} />
         </>
       )}
     </group>

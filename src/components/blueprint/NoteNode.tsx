@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { useBlueprint } from '../../store/blueprint'
 import { mediaBackgroundStyle, mediaImageStyle, noteSurfaceStyle } from '../../lib/blueprint/style'
@@ -7,27 +7,38 @@ import { RichText } from './RichText'
 
 interface NoteNodeProps {
   node: BlueprintNode
-  /** current viewport zoom — passed from Canvas so this node never subscribes to viewport */
   zoom: number
   selected?: boolean
   dimmed?: boolean
-  /** true when this node is the armed source of a pending thread */
   connectSource?: boolean
   onDoubleTap?: (nodeId: string) => void
-  /** start a drag-to-connect from this note's bottom port */
   onPortDown?: (nodeId: string, e: React.PointerEvent) => void
 }
+
+interface ContextMenu { x: number; y: number }
 
 export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, connectSource, onDoubleTap, onPortDown }: NoteNodeProps) {
   const select = useBlueprint((s) => s.select)
   const setHoverNode = useBlueprint((s) => s.setHoverNode)
 
   const [editing, setEditing] = useState(false)
-  const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number } | null>(null)
+  const [ctx, setCtx] = useState<ContextMenu | null>(null)
+  const drag = useRef<{ set: string[]; lastX: number; lastY: number; ax: number; ay: number; vpX: number; vpY: number; vpZoom: number } | null>(null)
   const resize = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
+  const closeCtx = useCallback(() => setCtx(null), [])
+
+  // close context menu on any outside click
+  useEffect(() => {
+    if (!ctx) return
+    const handler = () => setCtx(null)
+    window.addEventListener('pointerdown', handler, { once: true })
+    return () => window.removeEventListener('pointerdown', handler)
+  }, [ctx])
+
   function onBodyPointerDown(e: React.PointerEvent) {
+    closeCtx()
     if (editing || node.locked) return
     if (e.button !== 0) return
     e.stopPropagation()
@@ -38,18 +49,26 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
       ? useBlueprint.getState().selection
       : [node.id]
     st.pushHistory()
-    drag.current = { set: [...set], lastX: e.clientX, lastY: e.clientY, ax: 0, ay: 0 }
-    ;(e.target as Element).setPointerCapture(e.pointerId)
+    const vp = useBlueprint.getState().viewport
+    drag.current = { set: [...set], lastX: e.clientX, lastY: e.clientY, ax: 0, ay: 0, vpX: vp.x, vpY: vp.y, vpZoom: vp.zoom }
+    rootRef.current?.setPointerCapture(e.pointerId)
   }
 
   function onBodyPointerMove(e: React.PointerEvent) {
     const d = drag.current
     if (!d) return
-    const dx = (e.clientX - d.lastX) / zoom
-    const dy = (e.clientY - d.lastY) / zoom
+    e.preventDefault()
+    const vp = useBlueprint.getState().viewport
+    const worldX = (e.clientX - vp.x) / vp.zoom
+    const worldY = (e.clientY - vp.y) / vp.zoom
+    const lastWorldX = (d.lastX - d.vpX) / d.vpZoom
+    const lastWorldY = (d.lastY - d.vpY) / d.vpZoom
     d.lastX = e.clientX
     d.lastY = e.clientY
-    useBlueprint.getState().moveBy(d.set, dx, dy)
+    d.vpX = vp.x
+    d.vpY = vp.y
+    d.vpZoom = vp.zoom
+    useBlueprint.getState().moveBy(d.set, worldX - lastWorldX, worldY - lastWorldY)
   }
 
   function onBodyPointerUp(e: React.PointerEvent) {
@@ -62,11 +81,15 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
       st.setNodeRect(node.id, { x: sx, y: sy })
     }
     st.flush()
-    try {
-      ;(e.target as Element).releasePointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
+    try { rootRef.current?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+  }
+
+  function onBodyContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const st = useBlueprint.getState()
+    if (!st.selection.includes(node.id)) st.select(node.id)
+    setCtx({ x: e.clientX, y: e.clientY })
   }
 
   function onResizeDown(e: React.PointerEvent) {
@@ -89,6 +112,17 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
     useBlueprint.getState().flush()
   }
 
+  function ctxAction(action: string) {
+    closeCtx()
+    const st = useBlueprint.getState()
+    switch (action) {
+      case 'edit': setEditing(true); break
+      case 'lock': st.setLocked([node.id], !node.locked); break
+      case 'duplicate': st.duplicateNodes([node.id]); break
+      case 'delete': st.deleteNodes([node.id]); break
+    }
+  }
+
   const surface = noteSurfaceStyle(node.style)
   const media = node.media
   const bgMedia = media?.url && media.place === 'background'
@@ -104,12 +138,13 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
       onPointerDown={onBodyPointerDown}
       onPointerMove={onBodyPointerMove}
       onPointerUp={onBodyPointerUp}
+      onContextMenu={onBodyContextMenu}
       onPointerEnter={() => setHoverNode(node.id)}
       onPointerLeave={() => setHoverNode(null)}
       onDoubleClick={(e) => {
         if (editing || node.locked) return
         e.stopPropagation()
-        onDoubleTap?.(node.id)
+        setEditing(true)
       }}
     >
       <div className="bp-node-surface" style={surface}>
@@ -119,18 +154,6 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
           <img className="bp-node-media" src={media.url} alt="" draggable={false} style={mediaImageStyle(media)} />
         )}
 
-        {/* Header bar */}
-        <div className="bp-node-header">
-          <button className="bp-node-menu" title="Menu" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(node.id) }}>☰</button>
-          <div className="bp-node-actions">
-            <button className="bp-node-action" title="Lock" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); useBlueprint.getState().setLocked([node.id], !node.locked) }}>{node.locked ? '🔒' : '🔓'}</button>
-            {!node.locked && (
-              <button className="bp-node-action" title="Delete" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); useBlueprint.getState().deleteNodes([node.id]) }}>✕</button>
-            )}
-          </div>
-        </div>
-
-        {/* Content */}
         <div className="bp-node-body">
           {editing ? (
             <RichText html={node.html} onChange={(html) => useBlueprint.getState().setNodeHtml(node.id, html)} autoFocus />
@@ -138,17 +161,6 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
             <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.html) }} />
           )}
         </div>
-
-        {/* Bottom toolbar */}
-        {editing && (
-          <div className="bp-node-toolbar">
-            <button className="bp-toolbar-btn" title="Bold" onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold') }}><b>B</b></button>
-            <button className="bp-toolbar-btn" title="Italic" onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic') }}><i>I</i></button>
-            <button className="bp-toolbar-btn" title="Underline" onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline') }}><u>U</u></button>
-            <button className="bp-toolbar-btn" title="Strikethrough" onMouseDown={(e) => { e.preventDefault(); document.execCommand('strikethrough') }}><s>S</s></button>
-            <button className="bp-toolbar-btn" title="List" onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertUnorderedList') }}>≡</button>
-          </div>
-        )}
 
         {node.locked && (
           <span className="bp-node-lock" title="Locked" aria-label="Locked">
@@ -158,7 +170,6 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
           </span>
         )}
 
-        {/* Sticker overlay */}
         {node.style.stickerUrl && (
           <div
             className="bp-node-sticker"
@@ -168,60 +179,33 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
               transform: `translate(-50%, -50%) rotate(${node.style.stickerRotation ?? 0}deg)`,
             }}
           >
-            <img
-              src={node.style.stickerUrl}
-              alt=""
-              draggable={false}
-              style={{
-                width: node.style.stickerSize,
-                height: node.style.stickerSize,
-              }}
-            />
-            {node.style.stickerText && (
-              <span className="bp-node-sticker-text">{node.style.stickerText}</span>
-            )}
+            <img src={node.style.stickerUrl} alt="" draggable={false} style={{ width: node.style.stickerSize, height: node.style.stickerSize }} />
+            {node.style.stickerText && <span className="bp-node-sticker-text">{node.style.stickerText}</span>}
           </div>
         )}
       </div>
 
-      {/* edit button — double-click is reserved for connecting threads */}
-      {!editing && !node.locked && (
-        <button
-          type="button"
-          className="bp-node-edit"
-          title="Edit note"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (!selected) select(node.id)
-            setEditing(true)
-          }}
-        >
-          ✎
-        </button>
-      )}
-
-      {/* resize handle */}
       {selected && !node.locked && (
-        <span
-          className="bp-resize"
-          onPointerDown={onResizeDown}
-          onPointerMove={onResizeMove}
-          onPointerUp={onResizeUp}
-        />
+        <span className="bp-resize" onPointerDown={onResizeDown} onPointerMove={onResizeMove} onPointerUp={onResizeUp} />
       )}
 
-      {/* single connection port — drag from here onto another note to link */}
       {!node.locked && (
         <div
           className={`bp-node-port ${connectSource ? 'is-source' : ''}`}
           title="Drag to another note to connect"
           style={{ ['--port' as string]: portColor } as React.CSSProperties}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            onPortDown?.(node.id, e)
-          }}
+          onPointerDown={(e) => { e.stopPropagation(); onPortDown?.(node.id, e) }}
         />
+      )}
+
+      {ctx && (
+        <div className="bp-ctx-menu" style={{ left: ctx.x, top: ctx.y }} onPointerDown={(e) => e.stopPropagation()}>
+          <button className="bp-ctx-item" onClick={() => ctxAction('edit')}>✏️ Edit text</button>
+          <button className="bp-ctx-item" onClick={() => ctxAction('lock')}>{node.locked ? '🔓 Unlock' : '🔒 Lock'}</button>
+          <button className="bp-ctx-item" onClick={() => ctxAction('duplicate')}>📋 Duplicate</button>
+          <div className="bp-ctx-sep" />
+          <button className="bp-ctx-item danger" onClick={() => ctxAction('delete')}>🗑️ Delete</button>
+        </div>
       )}
     </div>
   )

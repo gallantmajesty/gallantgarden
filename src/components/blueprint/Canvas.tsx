@@ -6,7 +6,7 @@ import type { Pt } from '../../lib/blueprint/geom'
 import { NoteNode } from './NoteNode'
 import { StickerNode } from './StickerNode'
 import { EdgesLayer } from './EdgesLayer'
-import { MiniMap } from './MiniMap'
+
 
 const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3.0
@@ -318,12 +318,12 @@ export function Canvas() {
       role="application"
       aria-label="Sticky notes canvas"
     >
-{/* Dark investigation grid */}
+{/* Snapping grid — subtle gingham guides */}
 <div className="bp-grid" style={{
   ...gridStyle,
   backgroundColor: 'transparent',
-    backgroundImage:
-    'radial-gradient(circle, rgba(35,37,47,0.05) 1px, transparent 1px)',
+  backgroundImage:
+    'linear-gradient(to right, rgba(200,185,165,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(200,185,165,0.10) 1px, transparent 1px)',
 }} />
 
 {/* World container — isolated so viewport changes don't re-render Canvas */}
@@ -359,8 +359,7 @@ export function Canvas() {
   </div>
 )}
 
-      {/* Minimap */}
-      <MiniMap />
+      {/* Minimap — removed */}
 
     </div>
   )

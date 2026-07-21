@@ -54,39 +54,31 @@ export const PAPER_TEXTURE =
   'repeating-linear-gradient(0deg, transparent, transparent 22px, rgba(0,0,0,0.05) 23px), ' +
   'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%)'
 
-/** Generate a repeating CSS pattern image string for the given pattern type. */
-function patternImage(pattern: NotePattern, opacity: number): string | undefined {
-  const c = `rgba(0,0,0,${opacity})`
+/** Generate a CSS backgroundImage for interior note patterns. */
+export function notePatternTexture(pattern: NotePattern, tint: string): string | undefined {
   switch (pattern) {
     case 'dots':
-      return `radial-gradient(circle, ${c} 1.2px, transparent 1.2px)`
-    case 'gingham':
-      return `linear-gradient(45deg, ${c} 25%, transparent 25%, transparent 75%, ${c} 75%), linear-gradient(45deg, ${c} 25%, transparent 25%, transparent 75%, ${c} 75%)`
-    case 'stripes':
-      return `repeating-linear-gradient(45deg, ${c} 0px, ${c} 1px, transparent 1px, transparent 8px)`
+      return `radial-gradient(circle, ${tint} 2px, transparent 2px)`
+    case 'lines':
+      return `repeating-linear-gradient(0deg, transparent, transparent 16px, ${tint} 17px)`
     case 'grid':
-      return `linear-gradient(${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px)`
-    case 'plaid':
-      return `linear-gradient(0deg, ${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,${opacity * 0.5}) 2px, transparent 2px), linear-gradient(90deg, rgba(0,0,0,${opacity * 0.5}) 2px, transparent 2px)`
+      return `linear-gradient(${tint} 1.5px, transparent 1.5px), linear-gradient(90deg, ${tint} 1.5px, transparent 1.5px)`
+    case 'diagonal':
+      return `repeating-linear-gradient(45deg, transparent, transparent 10px, ${tint} 11px)`
+    case 'crosshatch':
+      return `repeating-linear-gradient(45deg, transparent, transparent 10px, ${tint} 11px), repeating-linear-gradient(-45deg, transparent, transparent 10px, ${tint} 11px)`
+    case 'zigzag':
+      return `linear-gradient(135deg, ${tint} 25%, transparent 25%) -10px 0, linear-gradient(225deg, ${tint} 25%, transparent 25%) -10px 0, linear-gradient(315deg, ${tint} 25%, transparent 25%), linear-gradient(45deg, ${tint} 25%, transparent 25%)`
     default:
       return undefined
   }
 }
 
-function patternSize(pattern: NotePattern): string | undefined {
-  switch (pattern) {
-    case 'dots': return '14px 14px'
-    case 'gingham': return '16px 16px'
-    case 'stripes': return undefined
-    case 'grid': return '20px 20px'
-    case 'plaid': return '24px 24px, 24px 24px, 12px 12px, 12px 12px'
-    default: return undefined
-  }
-}
-
-function patternPosition(pattern: NotePattern): string | undefined {
-  if (pattern === 'gingham') return '0 0, 8px 8px'
-  if (pattern === 'plaid') return '0 0, 0 0, 4px 4px, 4px 4px'
+/** Returns the CSS background-size needed for zigzag (other patterns tile at 100%). */
+export function notePatternSize(pattern: NotePattern): string | undefined {
+  if (pattern === 'zigzag') return '20px 20px'
+  if (pattern === 'dots') return '18px 18px'
+  if (pattern === 'grid') return '24px 24px'
   return undefined
 }
 
@@ -95,18 +87,15 @@ function patternPosition(pattern: NotePattern): string | undefined {
  * can't rasterise) for an opaque approximation.
  */
 export function noteSurfaceStyle(style: NoteStyle, opts?: { forExport?: boolean }): CSSProperties {
-  const glow = style.glow > 0 ? `0 0 ${8 + style.glow * 26}px rgba(var(--mg-accent-rgb,91,124,250), ${0.14 + style.glow * 0.4})` : ''
-  const shadow = style.shadow > 0 ? `0 ${3 + style.shadow * 10}px ${8 + style.shadow * 24}px rgba(20,30,60,${0.08 + style.shadow * 0.22})` : ''
-  const boxShadow = [glow, shadow].filter(Boolean).join(', ') || 'none'
-
-  const hasPattern = style.pattern && style.pattern !== 'none'
+  const shadow = style.shadow > 0 ? `0 ${2 + style.shadow * 6}px ${4 + style.shadow * 12}px rgba(0,0,0,${0.04 + style.shadow * 0.08})` : 'none'
   const hasPaper = style.bgKind === 'paper'
+  const hasPattern = style.pattern && style.pattern !== 'none'
 
   const base: CSSProperties = {
     border: `${style.borderWidth}px solid ${style.borderColor}`,
     borderRadius: shapeRadius(style),
     clipPath: shapeClip(style.shape),
-    boxShadow,
+    boxShadow: shadow,
     opacity: style.opacity,
     color: style.textColor,
     fontFamily: style.font,
@@ -117,18 +106,25 @@ export function noteSurfaceStyle(style: NoteStyle, opts?: { forExport?: boolean 
     textDecoration: style.underline ? 'underline' : 'none',
   }
 
-  if (hasPattern) {
-    const pat = patternImage(style.pattern, style.patternOpacity ?? 0.15)
-    const grad = noteBackground(style)
-    base.backgroundImage = pat ? `${pat}, ${grad}` : grad
-    const patSize = patternSize(style.pattern)
-    const patPos = patternPosition(style.pattern)
-    if (patSize) base.backgroundSize = patSize
-    if (patPos) base.backgroundPosition = patPos
-    if (pat) base.backgroundRepeat = 'repeat'
-  } else if (hasPaper) {
-    base.background = style.bgColor
-    base.backgroundImage = PAPER_TEXTURE
+  const textColor = style.textColor || '#000000'
+  const patternColor = textColor.length === 7
+    ? `${textColor}22`
+    : `rgba(0,0,0,0.15)`
+  const patternImage = hasPattern ? notePatternTexture(style.pattern, patternColor) : undefined
+  const patternSz = hasPattern ? notePatternSize(style.pattern) : undefined
+
+  if (hasPaper) {
+    base.backgroundColor = style.bgColor
+    base.backgroundImage = patternImage
+      ? `${PAPER_TEXTURE}, ${patternImage}`
+      : PAPER_TEXTURE
+    if (patternSz) base.backgroundSize = patternSz
+    base.backgroundRepeat = 'repeat'
+  } else if (hasPattern) {
+    base.backgroundColor = noteBackground(style)
+    base.backgroundImage = patternImage
+    if (patternSz) base.backgroundSize = patternSz
+    base.backgroundRepeat = 'repeat'
   } else {
     base.background = noteBackground(style)
   }

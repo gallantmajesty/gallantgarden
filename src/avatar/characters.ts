@@ -51,8 +51,6 @@ function look(bodyType: BodyType, over: Partial<AvatarConfig>): AvatarConfig {
 //   6. rabbit → Bunny (COSTUME)  — white toy rabbit, pink suit, green rear flap, cotton tail
 //   7. robot  → Robot (COSTUME)  — sci-fi robot with a black outfit and glowing blue accent lines
 //   8. alien  → Alien (COSTUME)  — friendly green extraterrestrial with big black eyes and antennae
-//   9. hacker → Neo   (MALE)     — fully-clothed cyber hacker: dark hoodie + cargo pants + boots,
-//                                  black hair, glowing green visor headset and a laptop terminal
 //
 //  All share the SAME skeleton + height (see src/avatar/rig.ts). Gender is
 //  signalled by body shape, hair, clothing and colour — not scale.
@@ -68,6 +66,7 @@ export const CHARACTERS: Character[] = [
     fallback: look('male', {
       skin: 'light', hair: 'short_neat', hairColor: 'brown',
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
+      topColor: '#cc2222', bottomColor: '#1a1a1a',
     }),
     description: 'Friendly student with a cool black outfit',
     icon: '/icons/characters/james.svg',
@@ -85,6 +84,7 @@ export const CHARACTERS: Character[] = [
     fallback: look('female', {
       skin: 'light', hair: 'ponytail', hairColor: 'chestnut',
       top: 'frock', bottom: 'leggings', shoes: 'sneakers',
+      topColor: '#e87ca0', bottomColor: '#2d1f3d',
     }),
     description: 'Cheerful girl with a cute ponytail and pink dress',
     icon: '/icons/characters/lily.svg',
@@ -102,6 +102,7 @@ export const CHARACTERS: Character[] = [
     fallback: look('female', {
       skin: 'tan', hair: 'long_straight', hairColor: 'auburn',
       top: 'blazer', bottom: 'leggings', shoes: 'boots',
+      topColor: '#1e3a5f', bottomColor: '#3d2b1f',
     }),
     description: 'Bright scholar with long auburn hair and a smart blazer',
     icon: '/icons/characters/mia.svg',
@@ -119,6 +120,7 @@ export const CHARACTERS: Character[] = [
     fallback: look('female', {
       skin: 'porcelain', hair: 'braided', hairColor: 'blonde', eyes: 'blue',
       top: 'sarafan', bottom: 'leggings', shoes: 'boots',
+      topColor: '#b4202f', bottomColor: '#1a2a3a',
     }),
     description: 'Cheerful scholar from the snowy north in an embroidered red sarafan, a pearl kokoshnik and a long braid',
     icon: '/icons/characters/ruslan.svg',
@@ -164,7 +166,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'robot',
-    name: 'Robot',
+    name: 'Black Robot',
     gender: 'male',
     model: 'robot.glb',
     scale: 1,
@@ -176,7 +178,7 @@ export const CHARACTERS: Character[] = [
     description: 'A sci-fi robot with a sleek black outfit and glowing blue sci-fi accent lines',
     icon: '/icons/characters/robot.svg',
     rarity: 'Legendary',
-    color: '#1e6bff',
+    color: '#1a1a2e',
     bg: '#0c1322',
     special: true,
     isAnimal: true,
@@ -194,7 +196,7 @@ export const CHARACTERS: Character[] = [
     }),
     description: 'A friendly green extraterrestrial with big black eyes and glowing antennae',
     icon: '/icons/characters/alien.svg',
-    rarity: 'Legendary',
+    rarity: 'Epic',
     color: '#52c64a',
     bg: '#0f2417',
     special: true,
@@ -238,25 +240,43 @@ export const CHARACTERS: Character[] = [
     isAnimal: true,
   },
   {
-    id: 'hacker',
-    name: 'Neo',
+    id: 'sunflower',
+    name: 'Sunny',
+    gender: 'female',
+    model: 'sunflower.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('female', {
+      skin: 'light', hair: 'none', hairColor: 'blonde', eyes: 'brown',
+      top: 'tee', bottom: 'pants', shoes: 'sneakers',
+      topColor: '#f9d857', bottomColor: '#e8c32a',
+    }),
+    description: 'A radiant sunflower — whole body glowing yellow with a giant sunflower bloom for a head, green leafy arms, and earthy brown feet',
+    icon: '/icons/characters/sunflower.svg',
+    rarity: 'Legendary',
+    color: '#ffcd00',
+    bg: '#1a3010',
+    special: true,
+    isAnimal: true,
+  },
+  {
+    id: 'grim',
+    name: 'Grim',
     gender: 'male',
-    model: 'hacker.glb',
+    model: 'grim.glb',
     scale: 1,
     yOffset: 0,
     fallback: look('male', {
-      skin: 'light', hair: 'short_messy', hairColor: 'black', eyes: 'green',
+      skin: 'light', hair: 'none', hairColor: 'black', eyes: 'green',
       top: 'hoodie', bottom: 'pants', shoes: 'boots',
-      topColor: '#3a4a58', bottomColor: '#2a3040',
-      accessories: ['laptop', 'phone'],
-      characterId: 'hacker',
     }),
-    description: 'A cyber hacker in a dark hoodie and cargo pants — green glowing visor headset, terminal at the ready',
-    icon: '/icons/characters/hacker.svg',
+    description: 'A chibi Grim Reaper — glowing green skull eyes, dark hooded cloak with gold armor, a scythe and spectral green flames',
+    icon: '/icons/characters/grim.svg',
     rarity: 'Legendary',
     color: '#39ff14',
-    bg: '#0a0e0a',
+    bg: '#0a1a0a',
     special: true,
+    isAnimal: true,
   },
 ]
 

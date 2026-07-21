@@ -1,13 +1,25 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
+import { Underline } from '@tiptap/extension-underline'
+import { Highlight } from '@tiptap/extension-highlight'
+import { useBlueprint } from '../../store/blueprint'
 
-// A lightweight TipTap editor mounted only for the note currently being edited.
-// Inline structure (bold / italic / strike / headings / lists / code / quote /
-// coloured text) comes from TipTap; font / size / alignment / line-spacing live
-// on the note container (see NoteStyle), so we don't need extra extensions.
+const EMOJI_SHORTCUTS: Record<string, string> = {
+  ':)': '😊', ':(': '😢', ':D': '😃', '<3': '❤️', ':*': '😘',
+  ':+1': '👍', ':fire': '🔥', ':star': '⭐', ':heart': '❤️',
+  ':smile': '😊', ':cry': '😢', ':laugh': '😃', ':wink': '😉',
+  ':clap': '👏', ':wave': '👋', ':muscle': '💪', ':sparkles': '✨',
+  ':rainbow': '🌈', ':sun': '☀️', ':moon': '🌙', ':cloud': '☁️',
+  ':flower': '🌸', ':leaf': '🍃', ':mushroom': '🍄', ':cat': '🐱',
+  ':dog': '🐶', ':bear': '🐻', ':bunny': '🐰', ':fox': '🦊',
+  ':panda': '🐼', ':penguin': '🐧', ':bird': '🐦', ':butterfly': '🦋',
+  ':book': '📚', ':pen': '🖊️', ':pencil': '✏️', ':memo': '📝',
+  ':coffee': '☕', ':tea': '🍵', ':cake': '🍰', ':cookie': '🍪',
+  ':rain': '🌧️', ':snow': '❄️', ':wind': '💨', ':lightning': '⚡',
+}
 
 interface RichTextProps {
   html: string
@@ -16,17 +28,35 @@ interface RichTextProps {
 }
 
 export function RichText({ html, onChange, autoFocus }: RichTextProps) {
+  const setEditor = useBlueprint((s) => s.setActiveEditor)
+
   const editor = useEditor({
-    extensions: [StarterKit, TextStyle, Color],
+    extensions: [
+      StarterKit,
+      TextStyle,
+      Color,
+      Underline,
+      Highlight.configure({ multicolor: true }),
+    ],
     content: html,
     autofocus: autoFocus ? 'end' : false,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      let content = editor.getHTML()
+      for (const [shortcut, emoji] of Object.entries(EMOJI_SHORTCUTS)) {
+        content = content.replaceAll(shortcut, emoji)
+      }
+      onChange(content)
+    },
   })
 
-  // keep external html in sync if it changes from elsewhere (e.g. undo)
+  // store editor in store so Inspector can access it
+  useEffect(() => {
+    if (editor) setEditor(editor)
+    return () => setEditor(null)
+  }, [editor, setEditor])
+
   useEffect(() => {
     if (editor && html !== editor.getHTML()) editor.commands.setContent(html, { emitUpdate: false })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html])
 
   if (!editor) return null

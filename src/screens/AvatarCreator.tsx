@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -59,37 +59,16 @@ export function AvatarCreator() {
   const goBack = () => { if (stepIndex > 0) setStep(steps[stepIndex - 1]) }
   const hasChar = !!config.characterId
 
+  const humanIds = ['james', 'claire', 'mia']
+  const isCurrentHuman = humanIds.includes(config.characterId || 'james')
+  useEffect(() => {
+    if (!isCurrentHuman && (step === 'outfit' || step === 'accessories')) {
+      setStep('characters')
+    }
+  }, [config.characterId])
+
   return (
     <div className="ac-root">
-      {/* ---- top game nav ---- */}
-      <header className="ac-topnav">
-        <button className="ac-brand" onClick={() => navigate('/')}>
-          <span className="ac-brand-mark">✿</span>
-          <span className="ac-brand-name">Focus Lily</span>
-        </button>
-
-        <nav className="ac-nav">
-          <button className="ac-nav-item" onClick={() => navigate('/')}>
-            <Glyph kind="home" /> Home
-          </button>
-          <button className="ac-nav-item" data-on onClick={() => navigate('/avatar')}>
-            <Glyph kind="body" /> Customize
-          </button>
-        </nav>
-
-        <div className="ac-wallet">
-          <span className="ac-coin ac-coin-petal">
-            <img className="ac-coin-icon" src="/icons/leaf.png" alt="" draggable={false} /> {userXp.toLocaleString()}
-          </span>
-          <span className="ac-coin ac-coin-gem">
-            <img className="ac-coin-icon" src="/icons/golden-leaf.png" alt="" draggable={false} /> {userPremiumXp.toLocaleString()}
-          </span>
-          <button className="ac-gear" onClick={() => navigate('/')} aria-label="Settings">
-            <Glyph kind="gear" />
-          </button>
-        </div>
-      </header>
-
       <div className="ac-body">
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
@@ -107,7 +86,7 @@ export function AvatarCreator() {
         </section>
 
         {/* ---- mind-map sidebar ---- */}
-        <MindMap step={step} onPick={(s) => setStep(s)} />
+        <MindMap step={step} onPick={(s) => setStep(s)} config={config} />
 
         {/* ---- right: light dock ---- */}
         <aside className="ac-dock">
@@ -153,11 +132,15 @@ export function AvatarCreator() {
 
 /* ----------------------------------------------------------- mind-map sidebar */
 
-function MindMap({ step, onPick }: { step: 'characters' | 'outfit' | 'accessories'; onPick: (s: 'characters' | 'outfit' | 'accessories') => void }) {
+function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'accessories'; onPick: (s: 'characters' | 'outfit' | 'accessories') => void; config: AvatarConfig }) {
+  const humanIds = ['james', 'claire', 'mia']
+  const isHuman = humanIds.includes(config.characterId || 'james')
   const nodes: { id: 'characters' | 'outfit' | 'accessories'; label: string; ico: 'body' | 'top' | 'bag' }[] = [
-    { id: 'characters', label: 'Characters', ico: 'body' },
-    { id: 'outfit', label: 'Outfit', ico: 'top' },
-    { id: 'accessories', label: 'Accessories', ico: 'bag' },
+    { id: 'characters', label: 'Body', ico: 'body' },
+    ...(isHuman ? [
+      { id: 'outfit' as const, label: 'Outfit', ico: 'top' as const },
+      { id: 'accessories' as const, label: 'Accessories', ico: 'bag' as const },
+    ] : []),
   ]
   return (
     <aside className="ac-mindmap">
@@ -181,12 +164,13 @@ type SetFn = (patch: Partial<AvatarConfig>) => void
 
 function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
   const characters = CHARACTERS
-  const tabs = ['ALL', 'COMMON', 'RARE', 'EPIC', 'LEGENDARY']
-  const [activeTab, setActiveTab] = useState('ALL')
+  const tabs = ['Owned', 'EPIC', 'LEGENDARY']
+  const [activeTab, setActiveTab] = useState('Owned')
   const current = config.characterId || 'james'
 
-  const filtered = activeTab === 'ALL'
-    ? characters
+  const ownedIds = ['james', 'claire', 'mia']
+  const filtered = activeTab === 'Owned'
+    ? characters.filter(c => ownedIds.includes(c.id))
     : characters.filter(c => (c.rarity ?? '').toLowerCase() === activeTab.toLowerCase())
 
   return (
@@ -196,6 +180,7 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
           <button
             key={tab}
             className={`ac-char-tab ${activeTab === tab ? 'active' : ''}`}
+            data-rarity={tab.toLowerCase()}
             onClick={() => setActiveTab(tab)}
           >
             {tab}
@@ -607,7 +592,7 @@ function CafePedestal() {
 /** The customizable body, driven by the emote bar. Uses CharacterAvatar
  *  to render the GLB model (the Blender schoolboy). */
 function PreviewAvatar({ config }: { config: AvatarConfig }) {
-  return <CharacterAvatar config={config} />
+  return <CharacterAvatar config={config} static />
 }
 
 /* -------------------------------------------------------------------- glyphs */
@@ -617,7 +602,7 @@ type GlyphKind =
   | 'sliders' | 'bag' | 'gem' | 'close' | 'check' | 'auto'
   | 'body' | 'hair' | 'eyes' | 'top' | 'bottom' | 'shoes'
   | 'idle' | 'wave' | 'happy' | 'celebrate' | 'sit'
-  | 'users'
+  | 'users' | 'back'
 
 function Glyph({ kind }: { kind: GlyphKind }) {
   const c = {
@@ -649,6 +634,7 @@ function Glyph({ kind }: { kind: GlyphKind }) {
     case 'happy': return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M8 14a4 4 0 008 0" /><path d="M9 9h.01M15 9h.01" /></svg>
     case 'celebrate': return <svg {...c}><path d="M3 21l5-12 7 7-12 5z" /><path d="M14 4l1 2M18 8l2 1M16 2l0 2M20 6l2 0" /></svg>
     case 'sit': return <svg {...c}><path d="M6 4v7h7M6 11l-1 9M13 11l1 4h4M13 15l1 5M18 4v16" /></svg>
+    case 'back': return <svg {...c}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
     default: return null
   }
 }

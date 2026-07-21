@@ -159,25 +159,246 @@ export function Decor() {
         <coneGeometry args={[0.95, 0.5, 3]} />
       </InstancedShape>
 
-      {/* great clock on the near end wall */}
+      {/* ── great clock gallery wall on the near end ── */}
       <group position={[0, 13, halfL - 0.05]} rotation={[0, Math.PI, 0]}>
+        {/* ornate outer frame ring */}
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[1.6, 1.6, 0.2, 32]} />
-          <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+          <torusGeometry args={[2.0, 0.12, 12, 48]} />
+          <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
         </mesh>
+        {/* decorative inner bevel */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[1.7, 0.06, 8, 48]} />
+          <meshStandardMaterial color="#b8942e" metalness={0.6} roughness={0.35} />
+        </mesh>
+        {/* clock face */}
         <mesh position={[0, 0, 0.12]}>
-          <circleGeometry args={[1.35, 32]} />
+          <circleGeometry args={[1.6, 48]} />
           <meshStandardMaterial color="#f6e8c8" roughness={0.8} />
         </mesh>
-        <mesh position={[0, 0.36, 0.16]}>
-          <boxGeometry args={[0.07, 0.85, 0.04]} />
-          <meshStandardMaterial color="#2a1c10" />
+        {/* 12 hour markers — gold dots around the face */}
+        {Array.from({ length: 12 }, (_, i) => {
+          const a = (i / 12) * Math.PI * 2 - Math.PI / 2
+          const r = 1.38
+          return (
+            <mesh key={`hm${i}`} position={[Math.cos(a) * r, Math.sin(a) * r, 0.16]}>
+              <sphereGeometry args={[0.06, 8, 8]} />
+              <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.3} />
+            </mesh>
+          )
+        })}
+        {/* ornate hour hand — tapered with arrow tip */}
+        <group position={[0, 0, 0.16]}>
+          <mesh position={[0, 0.3, 0]}>
+            <boxGeometry args={[0.08, 0.9, 0.04]} />
+            <meshStandardMaterial color="#2a1c10" />
+          </mesh>
+          <mesh position={[0, 0.78, 0]}>
+            <coneGeometry args={[0.06, 0.18, 4]} />
+            <meshStandardMaterial color="#2a1c10" />
+          </mesh>
+        </group>
+        {/* minute hand — slimmer */}
+        <group position={[0, 0, 0.16]} rotation={[0, 0, Math.PI / 2]}>
+          <mesh position={[0, 0.22, 0]}>
+            <boxGeometry args={[0.05, 0.65, 0.03]} />
+            <meshStandardMaterial color="#2a1c10" />
+          </mesh>
+          <mesh position={[0, 0.58, 0]}>
+            <coneGeometry args={[0.04, 0.12, 4]} />
+            <meshStandardMaterial color="#2a1c10" />
+          </mesh>
+        </group>
+        {/* center cap */}
+        <mesh position={[0, 0, 0.18]}>
+          <sphereGeometry args={[0.07, 12, 12]} />
+          <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
         </mesh>
-        <mesh position={[0.32, 0, 0.16]} rotation={[0, 0, Math.PI / 2]}>
-          <boxGeometry args={[0.06, 0.6, 0.04]} />
-          <meshStandardMaterial color="#2a1c10" />
+        {/* decorative crown above clock */}
+        <mesh position={[0, 2.2, 0.05]}>
+          <coneGeometry args={[0.3, 0.4, 5]} />
+          <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+        </mesh>
+        <mesh position={[-0.25, 2.0, 0.05]}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+        </mesh>
+        <mesh position={[0.25, 2.0, 0.05]}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+        </mesh>
+        {/* pendulum below */}
+        <mesh position={[0, -2.0, 0.08]}>
+          <cylinderGeometry args={[0.02, 0.02, 1.8, 6]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, -2.95, 0.08]}>
+          <sphereGeometry args={[0.18, 12, 12]} />
+          <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.25} />
         </mesh>
       </group>
+
+      {/* ── left astrolabe — concentric rings + cross ── */}
+      <group position={[-5.5, 13, halfL - 0.08]} rotation={[0, Math.PI, 0]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[1.0, 0.06, 8, 32]} />
+          <meshStandardMaterial color={GOLD} metalness={0.65} roughness={0.3} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.7, 0.04, 8, 32]} />
+          <meshStandardMaterial color="#b8942e" metalness={0.55} roughness={0.35} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.4, 0.03, 8, 24]} />
+          <meshStandardMaterial color="#8a6c20" metalness={0.5} roughness={0.4} />
+        </mesh>
+        {/* cross hairs */}
+        <mesh position={[0, 0, 0.02]}>
+          <boxGeometry args={[2.0, 0.03, 0.02]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.02]}>
+          <boxGeometry args={[0.03, 2.0, 0.02]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        {/* pointer needle */}
+        <mesh position={[0, 0, 0.04]} rotation={[0, 0, 0.4]}>
+          <boxGeometry args={[0.04, 0.9, 0.02]} />
+          <meshStandardMaterial color="#c03030" metalness={0.3} roughness={0.5} />
+        </mesh>
+        {/* degree dots around outer ring */}
+        {Array.from({ length: 8 }, (_, i) => {
+          const a = (i / 8) * Math.PI * 2
+          return (
+            <mesh key={`ad${i}`} position={[Math.cos(a) * 0.85, Math.sin(a) * 0.85, 0.03]}>
+              <sphereGeometry args={[0.03, 6, 6]} />
+              <meshStandardMaterial color={GOLD} metalness={0.5} roughness={0.4} />
+            </mesh>
+          )
+        })}
+      </group>
+
+      {/* ── right astrolabe ── */}
+      <group position={[5.5, 13, halfL - 0.08]} rotation={[0, Math.PI, 0]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[1.0, 0.06, 8, 32]} />
+          <meshStandardMaterial color={GOLD} metalness={0.65} roughness={0.3} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.7, 0.04, 8, 32]} />
+          <meshStandardMaterial color="#b8942e" metalness={0.55} roughness={0.35} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.4, 0.03, 8, 24]} />
+          <meshStandardMaterial color="#8a6c20" metalness={0.5} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, 0, 0.02]}>
+          <boxGeometry args={[2.0, 0.03, 0.02]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.02]}>
+          <boxGeometry args={[0.03, 2.0, 0.02]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.04]} rotation={[0, 0, -0.7]}>
+          <boxGeometry args={[0.04, 0.9, 0.02]} />
+          <meshStandardMaterial color="#c03030" metalness={0.3} roughness={0.5} />
+        </mesh>
+        {Array.from({ length: 8 }, (_, i) => {
+          const a = (i / 8) * Math.PI * 2
+          return (
+            <mesh key={`ad${i}`} position={[Math.cos(a) * 0.85, Math.sin(a) * 0.85, 0.03]}>
+              <sphereGeometry args={[0.03, 6, 6]} />
+              <meshStandardMaterial color={GOLD} metalness={0.5} roughness={0.4} />
+            </mesh>
+          )
+        })}
+      </group>
+
+      {/* ── left star chart (framed rectangle) ── */}
+      <group position={[-9.5, 14.5, halfL - 0.06]} rotation={[0, Math.PI, 0]}>
+        {/* frame */}
+        <mesh>
+          <boxGeometry args={[2.6, 3.4, 0.12]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        {/* chart surface */}
+        <mesh position={[0, 0, 0.07]}>
+          <planeGeometry args={[2.2, 3.0]} />
+          <meshStandardMaterial color="#1a1a2e" roughness={0.9} />
+        </mesh>
+        {/* star dots */}
+        {[
+          [-0.6, 1.0], [0.3, 0.8], [-0.2, 0.3], [0.7, 0.1], [-0.8, -0.2],
+          [0.1, -0.6], [-0.5, -1.0], [0.6, -0.8], [-0.3, -1.2], [0.4, 1.2],
+          [-0.9, 0.5], [0.8, -0.3], [-0.1, 0.9], [0.5, -1.1], [-0.7, -0.5],
+        ].map(([x, y], i) => (
+          <mesh key={`sc${i}`} position={[x * 0.9, y * 0.9, 0.09]}>
+            <sphereGeometry args={[0.03, 6, 6]} />
+            <meshStandardMaterial color="#fff8e0" emissive="#fff8e0" emissiveIntensity={0.8} />
+          </mesh>
+        ))}
+        {/* constellation lines */}
+        <mesh position={[-0.15, 0.6, 0.09]}>
+          <boxGeometry args={[0.015, 0.5, 0.01]} />
+          <meshStandardMaterial color="#4a4a6a" />
+        </mesh>
+        <mesh position={[0.25, -0.1, 0.09]} rotation={[0, 0, 0.6]}>
+          <boxGeometry args={[0.015, 0.7, 0.01]} />
+          <meshStandardMaterial color="#4a4a6a" />
+        </mesh>
+      </group>
+
+      {/* ── right star chart ── */}
+      <group position={[9.5, 14.5, halfL - 0.06]} rotation={[0, Math.PI, 0]}>
+        <mesh>
+          <boxGeometry args={[2.6, 3.4, 0.12]} />
+          <meshStandardMaterial color="#5a4020" metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.07]}>
+          <planeGeometry args={[2.2, 3.0]} />
+          <meshStandardMaterial color="#1a1a2e" roughness={0.9} />
+        </mesh>
+        {[
+          [0.5, 1.1], [-0.4, 0.7], [0.1, 0.4], [-0.7, 0.0], [0.3, -0.3],
+          [-0.2, -0.7], [0.6, -1.0], [-0.6, -0.9], [0.0, -1.3], [-0.5, 1.3],
+          [0.8, 0.4], [-0.8, -0.4], [0.2, 0.8], [-0.3, -1.0], [0.7, -0.6],
+        ].map(([x, y], i) => (
+          <mesh key={`sc${i}`} position={[x * 0.9, y * 0.9, 0.09]}>
+            <sphereGeometry args={[0.03, 6, 6]} />
+            <meshStandardMaterial color="#fff8e0" emissive="#fff8e0" emissiveIntensity={0.8} />
+          </mesh>
+        ))}
+        <mesh position={[0.1, 0.5, 0.09]} rotation={[0, 0, -0.3]}>
+          <boxGeometry args={[0.015, 0.6, 0.01]} />
+          <meshStandardMaterial color="#4a4a6a" />
+        </mesh>
+        <mesh position={[-0.2, -0.2, 0.09]} rotation={[0, 0, 0.8]}>
+          <boxGeometry args={[0.015, 0.5, 0.01]} />
+          <meshStandardMaterial color="#4a4a6a" />
+        </mesh>
+      </group>
+
+      {/* ── decorative scrollwork connecting elements ── */}
+      {/* left scroll */}
+      <mesh position={[-3.2, 13, halfL - 0.06]} rotation={[0, Math.PI, 0]}>
+        <torusGeometry args={[0.4, 0.025, 6, 16, Math.PI]} />
+        <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+      </mesh>
+      {/* right scroll */}
+      <mesh position={[3.2, 13, halfL - 0.06]} rotation={[0, Math.PI, 0]}>
+        <torusGeometry args={[0.4, 0.025, 6, 16, Math.PI]} />
+        <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+      </mesh>
+      {/* horizontal connecting bars */}
+      <mesh position={[-3.0, 13, halfL - 0.06]}>
+        <boxGeometry args={[2.0, 0.04, 0.03]} />
+        <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[3.0, 13, halfL - 0.06]}>
+        <boxGeometry args={[2.0, 0.04, 0.03]} />
+        <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.35} />
+      </mesh>
 
       {/* central rug ring around the tree + side runners */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { uploadMedia } from '../../lib/blueprint/sync'
-import { FONT_OPTIONS, YARN_STYLE_META, NOTE_CUTE_PRESETS, type NotePattern, type Shape, type TextAlign } from '../../lib/blueprint/types'
+import { FONT_OPTIONS, YARN_STYLE_META, type NotePattern, type Shape, type TextAlign } from '../../lib/blueprint/types'
 import { Field, Select, Slider } from './controls'
-import { StickerPicker } from './StickerPicker'
+
 
 const SHAPES: { value: Shape; label: string }[] = [
   { value: 'sticky', label: 'Square' },
@@ -11,15 +11,6 @@ const SHAPES: { value: Shape; label: string }[] = [
   { value: 'circle', label: 'Circle' },
   { value: 'hexagon', label: 'Hex' },
 ]
-const PATTERNS: { value: NotePattern; label: string; icon: string }[] = [
-  { value: 'none', label: 'None', icon: '—' },
-  { value: 'dots', label: 'Dots', icon: '●●●' },
-  { value: 'gingham', label: 'Gingham', icon: '▦▦' },
-  { value: 'stripes', label: 'Stripes', icon: '╱╱╱' },
-  { value: 'grid', label: 'Grid', icon: '⊞⊞' },
-  { value: 'plaid', label: 'Plaid', icon: '╬╬' },
-]
-
 type InspectorTab = 'style' | 'properties' | 'connections'
 
 export function Inspector() {
@@ -115,52 +106,23 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
             </div>
           </Section>
 
-          {/* CUTE PRESETS */}
-          <Section title="Cute Gradients">
-            <div className="bp-preset-grid">
-              {NOTE_CUTE_PRESETS.map((p) => (
-                <button key={p.id} className="bp-preset" title={p.name}
-                  onClick={() => updateNodeStyle(nodeId, p.patch as any)}>
-                  <span className="bp-preset-swatch" style={{ background: p.swatch }} />
-                  <span className="bp-preset-name">{p.name}</span>
-                </button>
-              ))}
+          {/* COLOR */}
+          <Section title="Color">
+            <div className="bp-color-row">
+              <label className="bp-color-label">Fill</label>
+              <input type="color" className="bp-color-input" value={st.bgColor} onChange={(e) => updateNodeStyle(nodeId, { bgColor: e.target.value })} />
+              <input className="bp-text bp-color-hex" value={st.bgColor} onChange={(e) => updateNodeStyle(nodeId, { bgColor: e.target.value })} />
             </div>
-          </Section>
-
-          {/* PATTERN */}
-          <Section title="Pattern">
-            <div className="bp-pattern-row">
-              {PATTERNS.map((p) => (
-                <button key={p.value} className={`bp-pattern-btn ${st.pattern === p.value ? 'on' : ''}`}
-                  onClick={() => updateNodeStyle(nodeId, { pattern: p.value })}>
-                  <span className="bp-pattern-icon">{p.icon}</span>
-                  <span className="bp-pattern-label">{p.label}</span>
-                </button>
-              ))}
+            <div className="bp-color-row">
+              <label className="bp-color-label">Text</label>
+              <input type="color" className="bp-color-input" value={st.textColor} onChange={(e) => updateNodeStyle(nodeId, { textColor: e.target.value })} />
+              <input className="bp-text bp-color-hex" value={st.textColor} onChange={(e) => updateNodeStyle(nodeId, { textColor: e.target.value })} />
             </div>
-            {st.pattern !== 'none' && (
-              <div className="bp-pattern-opacity">
-                <span className="bp-field-label">Opacity</span>
-                <input type="range" min={0.04} max={0.5} step={0.02} value={st.patternOpacity ?? 0.15}
-                  onChange={(e) => updateNodeStyle(nodeId, { patternOpacity: Number(e.target.value) })} />
-              </div>
-            )}
-          </Section>
-
-          {/* STICKER */}
-          <Section title="Sticker">
-            <StickerPicker
-              value={st.stickerUrl}
-              text={st.stickerText ?? ''}
-              size={st.stickerSize}
-              rotation={st.stickerRotation}
-              onSelect={(url) => updateNodeStyle(nodeId, { stickerUrl: url })}
-              onText={(t) => updateNodeStyle(nodeId, { stickerText: t })}
-              onSize={(s) => updateNodeStyle(nodeId, { stickerSize: s })}
-              onRotation={(r) => updateNodeStyle(nodeId, { stickerRotation: r })}
-              onRemove={() => updateNodeStyle(nodeId, { stickerUrl: '', stickerText: '' })}
-            />
+            <div className="bp-color-row">
+              <label className="bp-color-label">Border</label>
+              <input type="color" className="bp-color-input" value={st.borderColor} onChange={(e) => updateNodeStyle(nodeId, { borderColor: e.target.value })} />
+              <input className="bp-text bp-color-hex" value={st.borderColor} onChange={(e) => updateNodeStyle(nodeId, { borderColor: e.target.value })} />
+            </div>
           </Section>
 
           {/* BORDER */}
@@ -175,6 +137,20 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
                   ))}
                 </select>
               </div>
+            </div>
+          </Section>
+
+          {/* PATTERN */}
+          <Section title="Pattern">
+            <div className="bp-pattern-row">
+              {(['none', 'dots', 'lines', 'grid', 'diagonal', 'crosshatch', 'zigzag'] as NotePattern[]).map((p) => (
+                <button key={p} className={`bp-pattern-btn ${(st.pattern ?? 'none') === p ? 'on' : ''}`}
+                  title={p}
+                  onClick={() => updateNodeStyle(nodeId, { pattern: p })}>
+                  <span className="bp-pattern-icon">{p === 'none' ? '—' : p === 'dots' ? '⋯' : p === 'lines' ? '≡' : p === 'grid' ? '⊞' : p === 'diagonal' ? '╱' : p === 'crosshatch' ? '╳' : '⌇'}</span>
+                  <span className="bp-pattern-label">{p}</span>
+                </button>
+              ))}
             </div>
           </Section>
 
@@ -223,6 +199,25 @@ function NodeInspector({ nodeId, tab, setTab }: { nodeId: string; tab: Inspector
               <input className="bp-text bp-border-hex" value={st.textColor} onChange={(e) => updateNodeStyle(nodeId, { textColor: e.target.value })} />
               <input type="color" value={st.textColor} className="bp-border-color" onChange={(e) => updateNodeStyle(nodeId, { textColor: e.target.value })} />
             </div>
+          </Section>
+
+          {/* TEXT FORMATTING */}
+          <Section title="Text Formatting">
+            <div className="bp-rt-toolbar">
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleBold().run() }} title="Bold"><b>B</b></button>
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleItalic().run() }} title="Italic"><i>I</i></button>
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleUnderline().run() }} title="Underline"><u>U</u></button>
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleStrike().run() }} title="Strikethrough"><s>S</s></button>
+              <span className="bp-rt-sep" />
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleHeading({ level: 1 }).run() }} title="Heading 1">H1</button>
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleHeading({ level: 2 }).run() }} title="Heading 2">H2</button>
+              <span className="bp-rt-sep" />
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleBulletList().run() }} title="Bullet list">•≡</button>
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleOrderedList().run() }} title="Numbered list">1.</button>
+              <span className="bp-rt-sep" />
+              <button type="button" className="bp-rt-btn" onClick={() => { const e = useBlueprint.getState().activeEditor; e?.chain().focus().toggleHighlight().run() }} title="Highlight">🖍</button>
+            </div>
+            <p className="bp-ins-hint">Double-click note to edit, then use buttons above.</p>
           </Section>
 
           {/* NODE SIZE */}

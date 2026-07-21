@@ -1,0 +1,192 @@
+/* ============================================================
+   Coming Soon — teaser page for upcoming features
+   ============================================================ */
+
+.cs-root {
+  min-height: 100svh;
+  background: linear-gradient(180deg, #1a1208 0%, #0d0a04 100%);
+  padding: 24px 20px 60px;
+  position: relative;
+}
+
+/* ---- back button ---- */
+.cs-back {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 20;
+}
+
+/* ---- header ---- */
+.cs-header {
+  text-align: center;
+  padding: 60px 20px 40px;
+}
+
+.cs-title {
+  font-family: var(--display);
+  font-size: clamp(32px, 5vw, 52px);
+  color: var(--gold, #ffce54);
+  margin: 12px 0 8px;
+  text-shadow: 0 2px 20px rgba(255, 206, 84, 0.3);
+}
+
+.cs-subtitle {
+  font-size: clamp(14px, 2vw, 18px);
+  color: rgba(240, 223, 192, 0.6);
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ---- card grid ---- */
+.cs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---- card ---- */
+.cs-card {
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(60, 40, 18, 0.6), rgba(30, 20, 8, 0.8));
+  border: 1px solid rgba(255, 206, 84, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cs-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 24px rgba(255, 206, 84, 0.08);
+}
+
+/* ---- card image ---- */
+.cs-card-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.cs-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.cs-card:hover .cs-card-image img {
+  transform: scale(1.05);
+}
+
+.cs-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 40%,
+    rgba(10, 8, 4, 0.7) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 16px;
+}
+
+.cs-badge {
+  background: linear-gradient(135deg, rgba(255, 206, 84, 0.2), rgba(230, 168, 23, 0.3));
+  border: 1px solid rgba(255, 206, 84, 0.3);
+  color: var(--gold, #ffce54);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+}
+
+/* ---- card content ---- */
+.cs-card-content {
+  padding: 24px;
+}
+
+.cs-card-title {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--gold, #ffce54);
+  margin: 0 0 8px;
+}
+
+.cs-card-desc {
+  font-size: 14px;
+  color: rgba(240, 223, 192, 0.55);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---- footer ---- */
+.cs-footer {
+  text-align: center;
+  padding: 60px 20px 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cs-footer p {
+  font-size: 16px;
+  color: rgba(240, 223, 192, 0.6);
+  margin: 0 0 4px;
+}
+
+.cs-footer-hint {
+  font-size: 13px;
+  color: rgba(240, 223, 192, 0.35);
+  display: block;
+  margin-bottom: 24px;
+}
+
+.cs-cta {
+  background: linear-gradient(180deg, var(--gold, #ffce54), var(--gold-dark, #e6a817));
+  color: #1a1208;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--gold-dark, #e6a817), 0 9px 14px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.cs-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 var(--gold-dark, #e6a817), 0 12px 20px rgba(0, 0, 0, 0.3);
+}
+
+.cs-cta:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--gold-dark, #e6a817), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ---- responsive ---- */
+@media (max-width: 700px) {
+  .cs-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .cs-header {
+    padding: 80px 16px 32px;
+  }
+
+  .cs-back {
+    top: 12px;
+    left: 12px;
+  }
+}

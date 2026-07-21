@@ -193,15 +193,17 @@ for side in [-1, 1]:
     eye.data.materials.append(mat_eye_glow)
     bpy.ops.object.shade_smooth()
 
-# Antenna with glowing tip
-bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.006, depth=0.12,
-    location=(0, head_y + head_r * 1.4, head_z))
+# Antenna with glowing tip — sits on top of the head, pointing up (Z axis)
+antenna_base_z = head_z + head_r * 1.0
+antenna_len = 0.10
+bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.006, depth=antenna_len,
+    location=(0, head_y, antenna_base_z + antenna_len / 2))
 antenna = bpy.context.active_object
 antenna.name = "RobotAntenna"
 antenna.data.materials.append(mat_robot_joint)
 
 bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.018,
-    location=(0, head_y + head_r * 1.55, head_z))
+    location=(0, head_y, antenna_base_z + antenna_len + 0.018))
 antenna_tip = bpy.context.active_object
 antenna_tip.name = "RobotAntennaTip"
 antenna_tip.data.materials.append(mat_blue_glow)
@@ -526,182 +528,6 @@ except Exception as e:
     mod = body_obj.modifiers.new("Armature", 'ARMATURE')
     mod.object = armature_obj
     bpy.ops.object.parent_set(type='OBJECT')
-
-# ── Initialize animation data ────────────────────────────────────────────────
-if not armature_obj.animation_data:
-    armature_obj.animation_data_create()
-
-# ── Animations (shared with all characters) ──────────────────────────────────
-action_idle = bpy.data.actions.new("Idle")
-action_walk = bpy.data.actions.new("Walk")
-action_run = bpy.data.actions.new("Run")
-action_jump = bpy.data.actions.new("Jump")
-action_sit = bpy.data.actions.new("Sit")
-
-fps = 24
-
-def keyframe_bone(armature_obj, bone_name, frame, location=None, rotation=None):
-    pbone = armature_obj.pose.bones.get(bone_name)
-    if not pbone:
-        return
-    if location:
-        pbone.location = Vector(location)
-        pbone.keyframe_insert(data_path="location", frame=frame)
-    if rotation:
-        pbone.rotation_mode = 'XYZ'
-        pbone.rotation_euler = Euler(rotation)
-        pbone.keyframe_insert(data_path="rotation_euler", frame=frame)
-
-# ── IDLE ─────────────────────────────────────────────────────────────────────
-armature_obj.animation_data.action = action_idle
-for f in range(1, 49):
-    t = f / fps
-    breath = math.sin(t * 1.4) * 0.015
-    sway = math.sin(t * 0.55) * 0.012
-    head_drift = math.sin(t * 0.4 + 1) * 0.05
-    keyframe_bone(armature_obj, "chest", f, rotation=(0.03 + breath, 0, 0))
-    keyframe_bone(armature_obj, "spine", f, rotation=(0, 0, sway))
-    keyframe_bone(armature_obj, "hips", f, rotation=(0, sway * 0.018, -sway * 0.018))
-    keyframe_bone(armature_obj, "neck", f, rotation=(-0.02, head_drift, 0))
-    keyframe_bone(armature_obj, "head", f, rotation=(breath, head_drift * 0.9, 0))
-    keyframe_bone(armature_obj, "armUpperL", f, rotation=(0.08 + breath * 0.5, 0, -0.06))
-    keyframe_bone(armature_obj, "armUpperR", f, rotation=(0.08 + breath * 0.5, 0, 0.06))
-    keyframe_bone(armature_obj, "armLowerL", f, rotation=(0.15, 0, -0.04))
-    keyframe_bone(armature_obj, "armLowerR", f, rotation=(0.15, 0, 0.04))
-
-# ── WALK ─────────────────────────────────────────────────────────────────────
-armature_obj.animation_data.action = action_walk
-for f in range(1, 49):
-    t = f / fps
-    phase = t * 4.5
-    s = math.sin(phase)
-    c = math.cos(phase)
-    leg_swing = 0.45
-    knee_bend = 0.7
-    arm_swing = 0.35
-    lean = 0.1
-    keyframe_bone(armature_obj, "hips", f, rotation=(lean * 0.4, 0, 0))
-    keyframe_bone(armature_obj, "spine", f, rotation=(lean * 0.5, 0, 0))
-    keyframe_bone(armature_obj, "chest", f, rotation=(lean * 0.3, -s * 0.05, 0))
-    keyframe_bone(armature_obj, "head", f, rotation=(-lean * 0.2, s * 0.025, 0))
-    knee_l = max(0, -c) * knee_bend
-    knee_r = max(0, c) * knee_bend
-    keyframe_bone(armature_obj, "legUpperL", f, rotation=(s * leg_swing, 0, 0))
-    keyframe_bone(armature_obj, "legUpperR", f, rotation=(-s * leg_swing, 0, 0))
-    keyframe_bone(armature_obj, "legLowerL", f, rotation=(knee_l, 0, 0))
-    keyframe_bone(armature_obj, "legLowerR", f, rotation=(knee_r, 0, 0))
-    keyframe_bone(armature_obj, "footL", f, rotation=(-s * leg_swing * 0.4, 0, 0))
-    keyframe_bone(armature_obj, "footR", f, rotation=(s * leg_swing * 0.4, 0, 0))
-    carry = 0.25
-    keyframe_bone(armature_obj, "armUpperL", f, rotation=(-s * arm_swing, 0, 0.07))
-    keyframe_bone(armature_obj, "armUpperR", f, rotation=(s * arm_swing, 0, -0.07))
-    keyframe_bone(armature_obj, "armLowerL", f, rotation=(carry + max(0, -s) * 0.18, 0, 0.05))
-    keyframe_bone(armature_obj, "armLowerR", f, rotation=(carry + max(0, s) * 0.18, 0, -0.05))
-
-# ── RUN ──────────────────────────────────────────────────────────────────────
-armature_obj.animation_data.action = action_run
-for f in range(1, 49):
-    t = f / fps
-    phase = t * 7
-    s = math.sin(phase)
-    c = math.cos(phase)
-    leg_swing = 0.75
-    knee_bend = 1.1
-    arm_swing = 0.55
-    lean = 0.22
-    keyframe_bone(armature_obj, "hips", f, rotation=(lean * 0.4, 0, 0))
-    keyframe_bone(armature_obj, "spine", f, rotation=(lean * 0.5, 0, 0))
-    keyframe_bone(armature_obj, "chest", f, rotation=(lean * 0.3, -s * 0.06, 0))
-    keyframe_bone(armature_obj, "head", f, rotation=(-lean * 0.2, s * 0.03, 0))
-    knee_l = max(0, -c) * knee_bend
-    knee_r = max(0, c) * knee_bend
-    keyframe_bone(armature_obj, "legUpperL", f, rotation=(s * leg_swing, 0, 0))
-    keyframe_bone(armature_obj, "legUpperR", f, rotation=(-s * leg_swing, 0, 0))
-    keyframe_bone(armature_obj, "legLowerL", f, rotation=(knee_l, 0, 0))
-    keyframe_bone(armature_obj, "legLowerR", f, rotation=(knee_r, 0, 0))
-    keyframe_bone(armature_obj, "footL", f, rotation=(-s * leg_swing * 0.4, 0, 0))
-    keyframe_bone(armature_obj, "footR", f, rotation=(s * leg_swing * 0.4, 0, 0))
-    carry = 0.35
-    keyframe_bone(armature_obj, "armUpperL", f, rotation=(-s * arm_swing, 0, 0.1))
-    keyframe_bone(armature_obj, "armUpperR", f, rotation=(s * arm_swing, 0, -0.1))
-    keyframe_bone(armature_obj, "armLowerL", f, rotation=(carry + max(0, -s) * 0.22, 0, 0.06))
-    keyframe_bone(armature_obj, "armLowerR", f, rotation=(carry + max(0, s) * 0.22, 0, -0.06))
-
-# ── JUMP ─────────────────────────────────────────────────────────────────────
-armature_obj.animation_data.action = action_jump
-for f in range(1, 49):
-    t = f / fps
-    if f <= 16:
-        p = f / 16
-        keyframe_bone(armature_obj, "hips", f, location=(0, -0.06 * p, 0))
-        keyframe_bone(armature_obj, "legUpperL", f, rotation=(0.3 * p, 0, 0))
-        keyframe_bone(armature_obj, "legUpperR", f, rotation=(0.3 * p, 0, 0))
-        keyframe_bone(armature_obj, "legLowerL", f, rotation=(0.6 * p, 0, 0))
-        keyframe_bone(armature_obj, "legLowerR", f, rotation=(0.6 * p, 0, 0))
-        keyframe_bone(armature_obj, "armUpperL", f, rotation=(0.3 * p, 0, -0.1))
-        keyframe_bone(armature_obj, "armUpperR", f, rotation=(0.3 * p, 0, 0.1))
-    elif f <= 32:
-        p = (f - 16) / 16
-        up = math.sin(p * math.pi)
-        keyframe_bone(armature_obj, "hips", f, location=(0, up * 0.3, 0))
-        keyframe_bone(armature_obj, "legUpperL", f, rotation=(-0.5 * up, 0, 0))
-        keyframe_bone(armature_obj, "legUpperR", f, rotation=(-0.3 * up, 0, 0))
-        keyframe_bone(armature_obj, "legLowerL", f, rotation=(0.6 * up, 0, 0))
-        keyframe_bone(armature_obj, "legLowerR", f, rotation=(0.4 * up, 0, 0))
-        keyframe_bone(armature_obj, "armUpperL", f, rotation=(-1.0 * up, 0, 0.15))
-        keyframe_bone(armature_obj, "armUpperR", f, rotation=(-1.0 * up, 0, -0.15))
-        keyframe_bone(armature_obj, "armLowerL", f, rotation=(0.6 * up, 0, 0))
-        keyframe_bone(armature_obj, "armLowerR", f, rotation=(0.6 * up, 0, 0))
-    else:
-        p = (f - 32) / 16
-        squash = (1 - p) * 0.8
-        keyframe_bone(armature_obj, "hips", f, location=(0, squash * 0.05, 0))
-        keyframe_bone(armature_obj, "legUpperL", f, rotation=(0.4 * squash, 0, 0))
-        keyframe_bone(armature_obj, "legUpperR", f, rotation=(0.4 * squash, 0, 0))
-        keyframe_bone(armature_obj, "legLowerL", f, rotation=(0.8 * squash, 0, 0))
-        keyframe_bone(armature_obj, "legLowerR", f, rotation=(0.8 * squash, 0, 0))
-        keyframe_bone(armature_obj, "armUpperL", f, rotation=(-0.2 * squash, 0, 0.15))
-        keyframe_bone(armature_obj, "armUpperR", f, rotation=(-0.2 * squash, 0, -0.15))
-
-# ── SIT ──────────────────────────────────────────────────────────────────────
-armature_obj.animation_data.action = action_sit
-for f in range(1, 49):
-    t = f / fps
-    breath = math.sin(t * 1.2) * 0.015
-    keyframe_bone(armature_obj, "hips", f, location=(0, -0.26, 0), rotation=(0.06, 0, 0))
-    keyframe_bone(armature_obj, "spine", f, rotation=(0.03, 0, 0))
-    keyframe_bone(armature_obj, "chest", f, rotation=(0.03 + breath, 0, 0))
-    keyframe_bone(armature_obj, "head", f, rotation=(-0.06, breath * 2, 0))
-    keyframe_bone(armature_obj, "legUpperL", f, rotation=(-1.48, 0, 0.05))
-    keyframe_bone(armature_obj, "legUpperR", f, rotation=(-1.48, 0, -0.05))
-    keyframe_bone(armature_obj, "legLowerL", f, rotation=(1.55, 0, 0))
-    keyframe_bone(armature_obj, "legLowerR", f, rotation=(1.55, 0, 0))
-    keyframe_bone(armature_obj, "footL", f, rotation=(0.18, 0, 0))
-    keyframe_bone(armature_obj, "footR", f, rotation=(0.18, 0, 0))
-    keyframe_bone(armature_obj, "armUpperL", f, rotation=(0.15, 0, -0.08))
-    keyframe_bone(armature_obj, "armUpperR", f, rotation=(0.15, 0, 0.08))
-    keyframe_bone(armature_obj, "armLowerL", f, rotation=(1.1, 0, 0.1))
-    keyframe_bone(armature_obj, "armLowerR", f, rotation=(1.1, 0, -0.1))
-
-# Set all actions to loop
-for act in [action_idle, action_walk, action_run, action_jump, action_sit]:
-    act.use_frame_range = True
-    act.frame_start = 1
-    act.frame_end = 48
-
-armature_obj.animation_data.action = action_idle
-scene.frame_set(1)
-
-# ── Push all actions to NLA strips ───────────────────────────────────────────
-armature_obj.animation_data.use_nla = True
-for act in [action_idle, action_walk, action_run, action_jump, action_sit]:
-    strip = armature_obj.animation_data.nla_tracks.new()
-    strip.name = act.name
-    nla_strip = strip.strips.new(act.name, 1, act)
-    nla_strip.frame_start = 1
-    nla_strip.frame_end = 48
-
-armature_obj.animation_data.use_nla = False
 
 # ── Export as GLB ────────────────────────────────────────────────────────────
 import os

@@ -38,13 +38,6 @@ import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
 import { CinematicEntry } from '../components/library/CinematicEntry'
-import {
-  loadAIConfig,
-  saveAIConfig,
-  clearAIConfig,
-  type AIProvider,
-} from '../lib/ai/jarvis'
-
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { useSeatFlow } from '../store/seatFlow'
 import './Explore.css'
@@ -1090,14 +1083,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               {fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             </button>
           </Section>
-
-          <Section title="AI Assistant (Jarvis)">
-            <p className="settings-hint">
-              Your key stays on this device only — it is never uploaded to our servers. Jarvis runs
-              entirely through your own AI account.
-            </p>
-            <JarvisSettings />
-          </Section>
         </div>
       </div>
     </div>
@@ -1106,61 +1091,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
 
 /* Settings control primitives (Section/Toggle/Slider/Stepper/Seg/FocusLength)
    are shared from components/settings/controls. */
-
-function JarvisSettings() {
-  const existing = loadAIConfig()
-  const [provider, setProvider] = useState<AIProvider>(existing?.provider ?? 'openai')
-  const [apiKey, setApiKey] = useState(existing?.apiKey ?? '')
-  const [model, setModel] = useState(existing?.model ?? (existing?.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini'))
-  const [saved, setSaved] = useState(false)
-
-  const models: Record<AIProvider, string[]> = {
-    openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
-    anthropic: ['claude-3-5-sonnet-latest', 'claude-3-haiku-20240307', 'claude-3-opus-latest'],
-  }
-
-  function save() {
-    if (!apiKey.trim()) { clearAIConfig(); setSaved(true); return }
-    saveAIConfig({ provider, apiKey: apiKey.trim(), model })
-    setSaved(true)
-  }
-
-  return (
-    <div className="jarvis-settings">
-      <div className="settings-row">
-        <label>Provider</label>
-        <select className="bp-text" value={provider} onChange={(e) => {
-          const p = e.target.value as AIProvider
-          setProvider(p)
-          setModel(models[p][0])
-        }}>
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-        </select>
-      </div>
-      <div className="settings-row">
-        <label>API key</label>
-        <input
-          className="bp-text"
-          type="password"
-          placeholder={provider === 'openai' ? 'sk-…' : 'sk-ant-…'}
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-        />
-      </div>
-      <div className="settings-row">
-        <label>Model</label>
-        <select className="bp-text" value={model} onChange={(e) => setModel(e.target.value)}>
-          {models[provider].map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-      </div>
-      <button className="sf-btn tiny" onClick={save}>Save key</button>
-      {saved && <span className="settings-saved">Saved ✓</span>}
-    </div>
-  )
-}
 
 /* --------------------------------------------------------------- touch ui */
 

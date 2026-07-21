@@ -761,7 +761,7 @@ function buildTorso(rings: TorsoRing[]): BufferGeometry {
   const first = rings[0]
   const botC = pos.length / 3
   pos.push(0, first.y, first.cz ?? 0)
-  for (let i = 0; i < seg; i++) idx.push(botC, i, (i + 1) % seg)
+  for (let i = 0; i < seg; i++) idx.push(botC, (i + 1) % seg, i)
 
   const g = new BufferGeometry()
   g.setAttribute('position', new Float32BufferAttribute(pos, 3))

@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import {
   Plus, Shapes, Undo2, Redo2,
-  Minus, ChevronDown, Smile,
+  Minus, ChevronDown, Smile, FileText,
 } from 'lucide-react'
 import { useBlueprint } from '../../store/blueprint'
-import { defaultNoteStyle, type Shape } from '../../lib/blueprint/types'
+import { defaultNoteStyle, NOTE_TEMPLATES, type Shape } from '../../lib/blueprint/types'
 
 const SHAPE_ADDS: { shape: Shape; label: string; bg: string }[] = [
-  { shape: 'sticky', label: 'Sticky', bg: '#23272F' },
-  { shape: 'rounded', label: 'Card', bg: '#23272F' },
-  { shape: 'circle', label: 'Bubble', bg: '#2C313A' },
-  { shape: 'hexagon', label: 'Hex', bg: '#2C313A' },
+  { shape: 'sticky', label: 'Sticky', bg: '#FEF3C7' },
+  { shape: 'rounded', label: 'Card', bg: '#E0F5F0' },
+  { shape: 'circle', label: 'Bubble', bg: '#F3E8FF' },
+  { shape: 'hexagon', label: 'Hex', bg: '#FFE8E0' },
 ]
 
 interface ToolbarProps {
@@ -24,7 +24,7 @@ export function Toolbar({ onSticker }: ToolbarProps) {
   const redo = useBlueprint((s) => s.redo)
   const setViewport = useBlueprint((s) => s.setViewport)
 
-  const [menu, setMenu] = useState<null | 'shapes'>(null)
+  const [menu, setMenu] = useState<null | 'shapes' | 'templates'>(null)
   const toggle = (m: typeof menu) => setMenu((cur) => (cur === m ? null : m))
 
   function zoomBy(factor: number) {
@@ -46,11 +46,36 @@ export function Toolbar({ onSticker }: ToolbarProps) {
     setMenu(null)
   }
 
+  function addTemplate(templateId: string) {
+    const t = NOTE_TEMPLATES.find((t) => t.id === templateId)
+    if (!t) return
+    const style = defaultNoteStyle()
+    Object.assign(style, t.style)
+    addNode({ style, html: t.html, w: t.w, h: t.h })
+    setMenu(null)
+  }
+
   return (
     <>
       {/* Floating center toolbar — canvas tools */}
       <header className="bp-toolbar bp-surface">
         <button className="sf-btn tiny bp-add-note" onClick={() => addNode()}><Plus size={16} strokeWidth={2.4} /> Note</button>
+        <div className="bp-rel">
+          <button className="sf-btn secondary tiny" onClick={() => toggle('templates')}><FileText size={16} strokeWidth={2} /> Templates <ChevronDown size={14} strokeWidth={2} /></button>
+          {menu === 'templates' && (
+            <Menu onClose={() => setMenu(null)}>
+              <div className="bp-menu-title">Note templates</div>
+              <div className="bp-template-grid">
+                {NOTE_TEMPLATES.map((t) => (
+                  <button key={t.id} className="bp-menu-item bp-template-item" onClick={() => addTemplate(t.id)}>
+                    <span className="bp-template-icon">{t.icon}</span>
+                    <span>{t.name}</span>
+                  </button>
+                ))}
+              </div>
+            </Menu>
+          )}
+        </div>
         {onSticker && (
           <button className="sf-btn tiny bp-sticker-btn" onClick={onSticker} title="Stickers">
             <Smile size={16} strokeWidth={2.4} /> Sticker

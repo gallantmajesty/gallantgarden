@@ -16,6 +16,7 @@ import { LibraryScene } from './three/library/LibraryScene'
 import { AuthScreen } from './screens/AuthScreen'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
+const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ default: m.ComingSoon })))
 import { useLobbyReady } from './hooks/useLobbyReady'
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
 const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
@@ -33,7 +34,6 @@ const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ 
 const CharacterSelection = lazy(() => import('./screens/CharacterSelection').then(m => ({ default: m.CharacterSelection })))
 const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
 const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
-const TrainX = lazy(() => import('./screens/TrainX'))
 
 
 export default function App() {
@@ -88,6 +88,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/about" element={<About />} />
+              <Route path="/coming-soon" element={<ComingSoon />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
@@ -131,7 +132,6 @@ export default function App() {
               <Route path="/character-select" element={<CharacterSelection />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/lava-pad" element={<LavaPad />} />
-              <Route path="/trainx" element={<TrainX />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

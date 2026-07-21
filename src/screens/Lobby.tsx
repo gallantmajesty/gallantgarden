@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { Modal } from '../components/Modal'
+import { ComingSoonModal } from '../components/ComingSoonModal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
 import { ResourceBar } from '../components/ResourceBar'
@@ -71,6 +72,9 @@ export function Lobby() {
   const [mobileNav, setMobileNav] = useState<'home' | 'realm' | 'tasks' | 'games' | 'profile'>('home')
   const [showQuests, setShowQuests] = useState(false)
 
+  // Coming Soon modal state
+  const [comingSoon, setComingSoon] = useState<{ title: string; description: string; image: string } | null>(null)
+
   // Transition animation state
   const [transition, setTransition] = useState<{
     active: boolean
@@ -128,8 +132,32 @@ export function Lobby() {
     }, 3250))
   }, [navigate, transition, rankTransition])
 
+  // Coming soon feature data
+  const comingSoonFeatures: Record<string, { title: string; description: string; image: string }> = {
+    blueprint: {
+      title: 'Blueprint',
+      description: 'Visual mind-mapping with sticky notes, idea threads, and AI-powered study note generation.',
+      image: '/teasers/blueprint.png',
+    },
+    magnet: {
+      title: 'Task Magnet',
+      description: 'Your all-in-one productivity command center with tasks, goals, habits, analytics, and more.',
+      image: '/teasers/task-magnet.png',
+    },
+    games: {
+      title: 'Games',
+      description: 'Fun mini-games to take a break and recharge during your study sessions.',
+      image: '/teasers/games.png',
+    },
+  }
+
   const pick = useCallback((o: LobbyObject, idx: number, e: React.MouseEvent) => {
     if (o.soon || !o.route) { setPanel(null); return }
+    // Show coming soon modal for features under construction
+    if (comingSoonFeatures[o.key]) {
+      setComingSoon(comingSoonFeatures[o.key])
+      return
+    }
     if (transition?.active) return
     const rect = e.currentTarget.getBoundingClientRect()
     const cx = rect.left + rect.width / 2
@@ -150,6 +178,11 @@ export function Lobby() {
 
   const pickMobile = useCallback((o: LobbyObject) => {
     if (o.soon || !o.route) return
+    // Show coming soon modal for features under construction
+    if (comingSoonFeatures[o.key]) {
+      setComingSoon(comingSoonFeatures[o.key])
+      return
+    }
     navigate(o.route)
   }, [navigate])
 
@@ -190,6 +223,9 @@ export function Lobby() {
           <button className="lobby-exit sf-btn water" onClick={() => { signOut(); navigate('/') }}>Exit</button>
         </div>
         <div className="lobby-topright">
+          <button className="lobby-round" title="Avatar" onClick={() => navigate('/avatar')}>
+            <Glyph name="people" />
+          </button>
           <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
             <Glyph name="gear" />
           </button>
@@ -290,6 +326,13 @@ export function Lobby() {
         {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
         {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
         <ResourceBar />
+        <ComingSoonModal
+          open={!!comingSoon}
+          title={comingSoon?.title ?? ''}
+          description={comingSoon?.description ?? ''}
+          image={comingSoon?.image ?? ''}
+          onClose={() => setComingSoon(null)}
+        />
       </div>
     )
   }
@@ -519,6 +562,13 @@ export function Lobby() {
       </Modal>
       {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
+      <ComingSoonModal
+        open={!!comingSoon}
+        title={comingSoon?.title ?? ''}
+        description={comingSoon?.description ?? ''}
+        image={comingSoon?.image ?? ''}
+        onClose={() => setComingSoon(null)}
+      />
     </div>
   )
 }

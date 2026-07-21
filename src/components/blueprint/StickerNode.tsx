@@ -12,8 +12,9 @@ interface StickerNodeProps {
 export const StickerNode = memo(function StickerNode({ node, zoom, selected, dimmed }: StickerNodeProps) {
   const select = useBlueprint((s) => s.select)
   const setHoverNode = useBlueprint((s) => s.setHoverNode)
-  const drag = useRef<{ set: string[]; lastX: number; lastY: number } | null>(null)
+  const drag = useRef<{ set: string[]; lastX: number; lastY: number; vpX: number; vpY: number; vpZoom: number } | null>(null)
   const resize = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   function onPointerDown(e: React.PointerEvent) {
     if (node.locked) return
@@ -24,18 +25,26 @@ export const StickerNode = memo(function StickerNode({ node, zoom, selected, dim
     if (!isSel) st.select(node.id, e.shiftKey)
     const set = st.selection.includes(node.id) ? st.selection : [node.id]
     st.pushHistory()
-    drag.current = { set: [...set], lastX: e.clientX, lastY: e.clientY }
-    ;(e.target as Element).setPointerCapture(e.pointerId)
+    const vp = st.viewport
+    drag.current = { set: [...set], lastX: e.clientX, lastY: e.clientY, vpX: vp.x, vpY: vp.y, vpZoom: vp.zoom }
+    rootRef.current?.setPointerCapture(e.pointerId)
   }
 
   function onPointerMove(e: React.PointerEvent) {
     const d = drag.current
     if (!d) return
-    const dx = (e.clientX - d.lastX) / zoom
-    const dy = (e.clientY - d.lastY) / zoom
+    e.preventDefault()
+    const vp = useBlueprint.getState().viewport
+    const worldX = (e.clientX - vp.x) / vp.zoom
+    const worldY = (e.clientY - vp.y) / vp.zoom
+    const lastWorldX = (d.lastX - d.vpX) / d.vpZoom
+    const lastWorldY = (d.lastY - d.vpY) / d.vpZoom
     d.lastX = e.clientX
     d.lastY = e.clientY
-    useBlueprint.getState().moveBy(d.set, dx, dy)
+    d.vpX = vp.x
+    d.vpY = vp.y
+    d.vpZoom = vp.zoom
+    useBlueprint.getState().moveBy(d.set, worldX - lastWorldX, worldY - lastWorldY)
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -48,7 +57,7 @@ export const StickerNode = memo(function StickerNode({ node, zoom, selected, dim
       st.setNodeRect(node.id, { x: sx, y: sy })
     }
     st.flush()
-    try { (e.target as Element).releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+    try { rootRef.current?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
   }
 
   function onResizeDown(e: React.PointerEvent) {
@@ -76,6 +85,7 @@ export const StickerNode = memo(function StickerNode({ node, zoom, selected, dim
 
   return (
     <div
+      ref={rootRef}
       data-node-id={node.id}
       className={`bp-sticker-node ${selected ? 'selected' : ''} ${dimmed ? 'dimmed' : ''} ${node.locked ? 'locked' : ''}`}
       style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
