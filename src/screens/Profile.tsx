@@ -13,15 +13,16 @@ import {
   getMutualIds,
 } from '../lib/social'
 import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '../lib/stats'
-import { BANNERS } from '../lib/banners'
+import { BANNERS, getBanner } from '../lib/banners'
 import { checkDisplayName } from '../lib/displayName'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { getRank, rankProgress, RANKS } from '../lib/ranks'
-import { characterById } from '../avatar/characters'
-import { useAvatar } from '../avatar/store'
 import { computeStreak } from '../lib/magnet/insights'
 import { generatePlayerId } from '../lib/playerId'
+import { studyGoalLabel } from '../lib/studyGoals'
+import { characterById } from '../avatar/characters'
+import { useAvatar } from '../avatar/store'
 import { CharacterPortrait3D } from '../components/CharacterPortrait3D'
 import { Flag } from '../components/Flag'
 import { Icon } from '../components/magnet/Icon'
@@ -33,7 +34,7 @@ import { UserListModal } from '../components/UserListModal'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import './Profile.css'
 
-// Free Fire–style profile. One component serves both the editable own profile
+// YouTube-style profile. One component serves both the editable own profile
 // (/profile) and read-only public profiles (/u/:playerId).
 
 interface ProfileView {
@@ -145,7 +146,7 @@ function TopBar({ onBack, right }: { onBack: () => void; right?: React.ReactNode
     <div className="pf-topbar">
       <div className="pf-topbar-left">
         <button className="pf-back" onClick={onBack}>
-          ← PROFILE
+          ← Back
         </button>
       </div>
       <div className="pf-topbar-right">
@@ -178,6 +179,7 @@ function ProfileBody({
   const { signOut, user } = useAuth()
   const setAvatarUrl = useProfile((s) => s.setAvatarUrl)
   const ownPlayerId = useProfile((s) => s.playerId)
+  const onboardingGoals = useProfile((s) => s.data.studyGoals)
   const xp = useMagnet((s) => s.data.xp)
   const goldenXp = useMagnet((s) => s.data.premiumXp)
   const totalXp = xp + goldenXp
@@ -186,6 +188,14 @@ function ProfileBody({
   const achievements = useMagnet((s) => s.data.achievements.length)
   const magnetData = useMagnet((s) => s.data)
   const streak = useMemo(() => computeStreak(magnetData, new Date()), [magnetData])
+  const charConfig = useAvatar((s) => s.config)
+  const character = characterById(charConfig?.characterId ?? 'james')
+  const avatarConfig = { ...character.fallback, characterId: character.id }
+
+  // Study goals: prefer onboarding goals (exam IDs), fall back to pub.studyInterests
+  const studyGoals = isOwn && onboardingGoals.length > 0
+    ? onboardingGoals
+    : view.pub.studyInterests
 
   const [editing, setEditing] = useState(false)
   const [rankModal, setRankModal] = useState(false)
@@ -197,7 +207,7 @@ function ProfileBody({
 
   const counts = isOwn ? myCounts : remoteCounts
 
-  // Generate Player ID if missing (for existing users who signed up before this feature)
+  // Generate Player ID if missing
   useEffect(() => {
     if (isOwn && ownPlayerId == null && user) {
       const pid = generatePlayerId()
@@ -222,9 +232,7 @@ function ProfileBody({
 
   const rank = getRank(view.rankId)
   const levelData = levelProgress(totalXp)
-  const charConfig = useAvatar((s) => s.config)
-  const character = characterById(charConfig?.characterId ?? 'james')
-  const avatarConfig = { ...character.fallback, characterId: character.id }
+  const banner = getBanner(view.pub.banner)
 
   const formatHours = (min: number) => {
     if (min < 60) return `${min}M`
@@ -245,247 +253,192 @@ function ProfileBody({
         }
       />
 
-      <div className="pf-layout">
-        {/* ========== LEFT — Character Card ========== */}
-        <div className="pf-panel pf-char-card pf-panel-inner">
-          <div className="pf-char-level">
-            <span className="pf-char-level-label">Level</span>
-            <span className="pf-char-level-num">{levelData.level}</span>
-          </div>
-
-
-          <div className="pf-char-img-wrap">
-            <CharacterPortrait3D config={avatarConfig} size={300} />
-          </div>
-
-          {!isOwn && (
-            <div className="pf-public-actions">
-              <AddFriendButton targetId={view.id} />
-              <FollowButton targetId={view.id} />
-            </div>
-          )}
-
-          {/* About Me — study info */}
-          <div className="pf-about-section">
-            <div className="pf-about-title">About Me</div>
-            {view.pub.favoriteSubject && (
-              <div className="pf-about-row">
-                <span className="pf-about-label">Studying</span>
-                <span className="pf-about-value">{view.pub.favoriteSubject}</span>
-              </div>
-            )}
-            {view.pub.studySchedule && (
-              <div className="pf-about-row">
-                <span className="pf-about-label">Schedule</span>
-                <span className="pf-about-value">{view.pub.studySchedule}</span>
-              </div>
-            )}
-            {view.pub.studyInterests.length > 0 && (
-              <div className="pf-about-row">
-                <span className="pf-about-label">Interests</span>
-                <span className="pf-about-value">{view.pub.studyInterests.slice(0, 3).join(', ')}</span>
-              </div>
-            )}
-            {!view.pub.favoriteSubject && !view.pub.studySchedule && view.pub.studyInterests.length === 0 && (
-              <div className="pf-about-empty">
-                {isOwn ? 'Add study info in Customize.' : 'No study info yet.'}
-              </div>
-            )}
-          </div>
-
-          {/* Study Interests — dynamic from onboarding/customize */}
-          {view.pub.studyInterests.length > 0 && (
-            <div className="pf-qa-section">
-              <div className="pf-qa-title">Study Focus</div>
-              <div className="pf-interests-row">
-                {view.pub.studyInterests.map((interest) => (
-                  <span key={interest} className="pf-interest-chip">{interest}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {view.pub.bio && (
-            <div className="pf-qa-section">
-              <div className="pf-qa-title">Bio</div>
-              <div className="pf-bio-text">{view.pub.bio}</div>
-            </div>
-          )}
-          {!view.pub.studyInterests.length && !view.pub.bio && (
-            <div className="pf-qa-section">
-              <div className="pf-about-empty">
-                {isOwn ? 'Add study interests in Customize.' : 'No study info yet.'}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ========== CENTER — Identity Card ========== */}
-        <div className="pf-panel pf-identity-card pf-panel-inner">
-          {/* rank emblem — click to upload avatar or open rank roadmap */}
-          <button
-            className="pf-rank-emblem pf-rank-emblem-btn"
-            onClick={() => {
-              if (isOwn) {
-                avatarInputRef.current?.click()
-              } else {
-                setRankModal(true)
-              }
-            }}
-            title={isOwn ? 'Click to change profile picture' : rank.name}
-          >
-            {view.avatarUrl ? (
-              <img src={view.avatarUrl} alt="" />
-            ) : (
-              <div
-                className="pf-rank-emblem-monogram"
-                style={{ background: `linear-gradient(135deg, ${rank.accent}, ${rank.accent}88)` }}
-              >
-                {(view.displayName.trim()[0] || 'E').toUpperCase()}
-              </div>
-            )}
-            {isOwn && <span className="pf-avatar-edit-badge">📷</span>}
-          </button>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) setPendingAvatar(file)
-              if (avatarInputRef.current) avatarInputRef.current.value = ''
-            }}
-          />
-          <button className="pf-rank-name-tag pf-rank-name-btn" onClick={() => setRankModal(true)}>
-            <img src={rank.badge} alt="" />
-            {rank.name}
-          </button>
-
-          {/* name + flag */}
-          <div className="pf-id-name">
-            {view.displayName}
-            {view.country && <Flag code={view.country} className="pf-flag" />}
-          </div>
-          <div className="pf-id-playerid">
-            Player ID: <strong>{view.playerId ?? '—'}</strong>
-          </div>
-
-          {/* rank boxes */}
-          <div className="pf-rank-boxes">
-            <div className="pf-rank-box">
-              <div className="pf-rank-box-label">Focus Rank</div>
-              <div className="pf-rank-box-value">{rank.name}</div>
-            </div>
-            <div className="pf-rank-box">
-              <div className="pf-rank-box-label">Study Streak</div>
-              <div className="pf-rank-box-value">{streak}d</div>
-            </div>
-          </div>
-
-          {/* level / likes / uid row */}
-          <div className="pf-id-stats-row">
-            <div className="pf-id-stat">
-              <div className="pf-id-stat-label">Level</div>
-              <div className="pf-id-stat-value">{levelData.level}</div>
-            </div>
-            <div className="pf-id-stat">
-              <div className="pf-id-stat-label">Likes</div>
-              <div className="pf-id-stat-value">{formatLikes(view.pub.likes ?? 0)}</div>
-            </div>
-            <div className="pf-id-stat">
-              <div className="pf-id-stat-label">UID</div>
-              <div className="pf-id-stat-value">{view.playerId ?? '—'}</div>
-            </div>
-          </div>
-
-          {/* XP bar */}
-          <div className="pf-xp-bar-wrap">
-            <div className="pf-xp-bar-header">
-              <span className="pf-xp-bar-label">
-                XP {levelData.intoLevel}/{levelData.needed}
-              </span>
-              <span className="pf-xp-bar-pct">{Math.round(levelData.pct * 100)}%</span>
-            </div>
-            <div className="pf-xp-bar-track">
-              <div className="pf-xp-bar-fill" style={{ width: `${levelData.pct * 100}%` }} />
-            </div>
-          </div>
-
-          {/* bio */}
-          <div className="pf-id-bio">{view.pub.bio}</div>
-
-          {/* customize / share */}
-          {isOwn ? (
-            <button className="pf-customize-btn" onClick={() => setEditing(true)}>
-              CUSTOMIZE
-            </button>
+      <div className="pf-channel">
+        {/* ========== BANNER ========== */}
+        <div className="pf-banner">
+          {view.pub.bannerImage ? (
+            <img src={view.pub.bannerImage} alt="" style={{ ['--pf-banner-pos' as string]: `${view.pub.bannerPos}%` }} />
           ) : (
-            <ShareButton playerId={view.playerId} />
+            <div className="pf-banner-gradient" style={{ background: banner.css }} />
           )}
         </div>
 
-        {/* ========== RIGHT — Stats + Goals ========== */}
-        <div className="pf-right-col">
-          {/* Study Stats */}
-          <div className="pf-panel pf-panel-inner">
-            <div className="pf-section-title">Study Stats</div>
-            <div className="pf-stat-grid">
-              <div className="pf-stat-card">
-                <div className="pf-stat-card-label">Total Study Hours</div>
-                <div className="pf-stat-card-value">{formatHours(totalFocusMin)}</div>
+        {/* ========== CHANNEL HEADER ========== */}
+        <div className="pf-channel-header">
+          {/* Avatar — overlaps banner */}
+          <div className="pf-avatar-wrap">
+            <ProfileAvatar
+              name={view.displayName}
+              avatarUrl={view.avatarUrl}
+              rankId={view.rankId}
+              size={120}
+            />
+            {isOwn && (
+              <div className="pf-avatar-edit-overlay" onClick={() => avatarInputRef.current?.click()}>
+                <span>📷</span>
               </div>
-              <div className="pf-stat-card">
-                <div className="pf-stat-card-label">Focus Sessions</div>
-                <div className="pf-stat-card-value">{focusSessions}</div>
-              </div>
-              <div className="pf-stat-card">
-                <div className="pf-stat-card-label">Blueprints</div>
-                <div className="pf-stat-card-value">{studyCounts.blueprints}</div>
-              </div>
-              <div className="pf-stat-card">
-                <div className="pf-stat-card-label">Current Rank</div>
-                <div className="pf-stat-card-value rank-val">{rank.name}</div>
-              </div>
-            </div>
+            )}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) setPendingAvatar(file)
+                if (avatarInputRef.current) avatarInputRef.current.value = ''
+              }}
+            />
           </div>
 
-          {/* Study Goals */}
-          <div className="pf-panel pf-panel-inner">
-            <div className="pf-section-title">Study Goals</div>
-            {view.pub.studyInterests.length > 0 ? (
-              <div className="pf-goals-list">
-                {view.pub.studyInterests.map((goal) => (
-                  <div key={goal} className="pf-goal-badge">
-                    <span className="pf-goal-lock">🔒</span>
-                    {goal}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="pf-goals-empty">
-                {isOwn ? 'Set your study goals in Customize.' : 'No study goals set.'}
-              </div>
+          {/* Name + meta */}
+          <div className="pf-channel-info">
+            <div className="pf-channel-name-row">
+              <h1 className="pf-channel-name">{view.displayName}</h1>
+              {view.country && <Flag code={view.country} className="pf-flag" />}
+              <button className="pf-rank-badge" onClick={() => setRankModal(true)}>
+                <img src={rank.badge} alt="" />
+                {rank.name}
+              </button>
+            </div>
+            <div className="pf-channel-meta">
+              Player ID: {view.playerId ?? '—'} · {counts.followers} followers · {counts.following} following
+            </div>
+            {view.pub.bio && (
+              <div className="pf-channel-bio">{view.pub.bio}</div>
             )}
           </div>
 
-          {/* Followers/Following — visible on every profile */}
-          <div className="pf-panel pf-panel-inner">
-            <div className="pf-section-title">Social</div>
-            <div className="pf-stat-grid" style={{ padding: '14px' }}>
-              <button className="pf-stat-card" onClick={() => setListModal('followers')} style={{ cursor: 'pointer' }}>
-                <div className="pf-stat-card-label">Followers</div>
-                <div className="pf-stat-card-value">{counts.followers}</div>
+          {/* Actions */}
+          <div className="pf-channel-actions">
+            {!isOwn && (
+              <>
+                <AddFriendButton targetId={view.id} />
+                <FollowButton targetId={view.id} />
+              </>
+            )}
+            {isOwn ? (
+              <button className="pf-customize-btn" onClick={() => setEditing(true)}>
+                Customize
               </button>
-              <button className="pf-stat-card" onClick={() => setListModal('following')} style={{ cursor: 'pointer' }}>
-                <div className="pf-stat-card-label">Following</div>
-                <div className="pf-stat-card-value">{counts.following}</div>
-              </button>
+            ) : (
+              <ShareButton playerId={view.playerId} />
+            )}
+          </div>
+        </div>
+
+        <div className="pf-divider" />
+
+        {/* ========== STATS ROW ========== */}
+        <div className="pf-stats-row">
+          <div className="pf-stat-card">
+            <div className="pf-stat-card-label">Study Hours</div>
+            <div className="pf-stat-card-value">{formatHours(totalFocusMin)}</div>
+          </div>
+          <div className="pf-stat-card">
+            <div className="pf-stat-card-label">Sessions</div>
+            <div className="pf-stat-card-value">{focusSessions}</div>
+          </div>
+          <div className="pf-stat-card">
+            <div className="pf-stat-card-label">Blueprints</div>
+            <div className="pf-stat-card-value">{studyCounts.blueprints}</div>
+          </div>
+          <div className="pf-stat-card">
+            <div className="pf-stat-card-label">Rank</div>
+            <div className="pf-stat-card-value rank-val">{rank.name}</div>
+          </div>
+        </div>
+
+        {/* ========== XP BAR ========== */}
+        <div className="pf-xp-bar-wrap">
+          <div className="pf-xp-bar-header">
+            <span className="pf-xp-bar-label">
+              Level {levelData.level} · XP {levelData.intoLevel}/{levelData.needed}
+            </span>
+            <span className="pf-xp-bar-pct">{Math.round(levelData.pct * 100)}%</span>
+          </div>
+          <div className="pf-xp-bar-track">
+            <div className="pf-xp-bar-fill" style={{ width: `${levelData.pct * 100}%` }} />
+          </div>
+        </div>
+
+        {/* ========== ABOUT ME ========== */}
+        {(view.pub.favoriteSubject || view.pub.studySchedule || view.pub.studyInterests.length > 0) && (
+          <div className="pf-about-section">
+            <div className="pf-section-title">About</div>
+            <div className="pf-about-grid">
+              {view.pub.favoriteSubject && (
+                <div className="pf-about-card">
+                  <div className="pf-about-card-label">Studying</div>
+                  <div className="pf-about-card-value">{view.pub.favoriteSubject}</div>
+                </div>
+              )}
+              {view.pub.studySchedule && (
+                <div className="pf-about-card">
+                  <div className="pf-about-card-label">Schedule</div>
+                  <div className="pf-about-card-value">{view.pub.studySchedule}</div>
+                </div>
+              )}
             </div>
+          </div>
+        )}
+
+        {/* ========== INTERESTS ========== */}
+        {view.pub.studyInterests.length > 0 && (
+          <div className="pf-interests-section">
+            <div className="pf-section-title">Study Focus</div>
+            <div className="pf-interests-row">
+              {view.pub.studyInterests.map((interest) => (
+                <span key={interest} className="pf-interest-chip">{interest}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ========== SOCIAL ========== */}
+        <div className="pf-social-section">
+          <div className="pf-section-title">Social</div>
+          <div className="pf-social-row">
+            <button className="pf-social-btn" onClick={() => setListModal('followers')}>
+              <span className="pf-social-btn-value">{counts.followers}</span>
+              <span className="pf-social-btn-label">Followers</span>
+            </button>
+            <button className="pf-social-btn" onClick={() => setListModal('following')}>
+              <span className="pf-social-btn-value">{counts.following}</span>
+              <span className="pf-social-btn-label">Following</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ========== STUDY GOALS ========== */}
+        <div className="pf-goals-section">
+          <div className="pf-section-title">Study Goals</div>
+          {studyGoals.length > 0 ? (
+            <div className="pf-goals-list">
+              {studyGoals.map((goal) => (
+                <div key={goal} className="pf-goal-badge">
+                  <span className="pf-goal-lock">🎯</span>
+                  {studyGoalLabel(goal)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="pf-goals-empty">
+              {isOwn ? 'Set your study goals in Customize.' : 'No study goals set.'}
+            </div>
+          )}
+        </div>
+
+        {/* ========== CHARACTER ========== */}
+        <div className="pf-character-section">
+          <div className="pf-section-title">Character</div>
+          <div className="pf-character-wrap">
+            <CharacterPortrait3D config={avatarConfig} size={280} />
           </div>
         </div>
       </div>
 
-      {/* modals */}
+      {/* ========== MODALS ========== */}
       <UserListModal
         open={listModal === 'followers'}
         title="Followers"
@@ -509,17 +462,14 @@ function ProfileBody({
         }}
       />
 
-      {/* edit overlay */}
       {isOwn && editing && (
         <EditOverlay view={view} onClose={() => setEditing(false)} />
       )}
 
-      {/* rank roadmap modal */}
       {rankModal && (
         <RankRoadmap totalXp={totalXp} onClose={() => setRankModal(false)} />
       )}
 
-      {/* avatar cropper modal */}
       {pendingAvatar && (
         <AvatarCropper
           file={pendingAvatar}
@@ -541,14 +491,14 @@ function RankRoadmap({ totalXp, onClose }: { totalXp: number; onClose: () => voi
   const currentIdx = RANKS.findIndex((r) => r.id === rank.id)
   return (
     <div className="pf-edit-overlay" onClick={onClose}>
-      <div className="pf-roadmap pf-panel-inner" onClick={(e) => e.stopPropagation()}>
+      <div className="pf-roadmap" onClick={(e) => e.stopPropagation()}>
         <div className="pf-edit-header">
           <div className="pf-edit-title">Rank Roadmap</div>
           <button className="pf-edit-close" onClick={onClose}>✕</button>
         </div>
 
         <p className="pf-roadmap-intro">
-          Your rank is earned from <strong>total XP</strong> = 🌿 Green Leaves (study time) + 💎 Golden Leaves (engagement &amp; streaks). The ladder is exponential: early ranks come fast to hook you in, later ranks are a long grind that rewards consistency.
+          Your rank is earned from <strong>total XP</strong> = Green Leaves (study time) + Golden Leaves (engagement &amp; streaks).
         </p>
 
         {nextRank ? (
@@ -567,7 +517,7 @@ function RankRoadmap({ totalXp, onClose }: { totalXp: number; onClose: () => voi
             </div>
           </div>
         ) : (
-          <div className="pf-roadmap-max">You've reached the highest rank — Focuster! 👑</div>
+          <div className="pf-roadmap-max">You've reached the highest rank!</div>
         )}
 
         <div className="pf-roadmap-list">
@@ -613,7 +563,7 @@ function ShareButton({ playerId }: { playerId: number | null }) {
   }
   return (
     <button className="pf-share-btn" onClick={copy}>
-      <Icon name="people" size={16} /> {copied ? 'Copied!' : 'Share Profile'}
+      <Icon name="people" size={16} /> {copied ? 'Copied!' : 'Share'}
     </button>
   )
 }
@@ -644,6 +594,8 @@ function EditOverlay({
   const [pendingAvatar, setPendingAvatar] = useState<File | null>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
+  const [saved, setSaved] = useState(false)
+
   const remaining = Math.max(0, DISPLAY_NAME_CHANGES_MAX - changesUsed)
 
   async function saveName() {
@@ -657,149 +609,157 @@ function EditOverlay({
     if (!ok) setNameStatus({ ok: false, error: 'Could not save' })
   }
 
-  function saveBio() {
-    if (bio !== view.pub.bio) savePublic({ bio })
+  async function saveAll() {
+    // Save display name if changed
+    if (name.trim() && name.trim() !== view.displayName) {
+      await saveName()
+    }
+    // Save bio if changed
+    if (bio !== view.pub.bio) {
+      await savePublic({ bio })
+    }
+    // Save goals
+    await setStudyGoals(draftGoals)
+    setSaved(true)
+    window.setTimeout(() => setSaved(false), 2000)
   }
 
-  function saveGoals() {
-    setStudyGoals(draftGoals)
-  }
+  const tabStyle = (t: string) => ({
+    flex: 1,
+    padding: '10px 0',
+    borderRadius: 8,
+    border: 'none',
+    cursor: 'pointer' as const,
+    fontFamily: "'Rajdhani', sans-serif",
+    fontWeight: 700 as const,
+    fontSize: 14,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+    background: tab === t ? 'linear-gradient(180deg, #d4a843, #8b6914)' : 'rgba(212, 168, 67, 0.08)',
+    color: tab === t ? '#1a1008' : '#b8a88a',
+    transition: 'background 0.15s',
+  })
 
   return (
     <div className="pf-edit-overlay" onClick={onClose}>
-      <div className="pf-edit-panel pf-panel-inner" onClick={(e) => e.stopPropagation()}>
+      <div className="pf-edit-panel" onClick={(e) => e.stopPropagation()}>
         <div className="pf-edit-header">
           <div className="pf-edit-title">Customize Profile</div>
           <button className="pf-edit-close" onClick={onClose}>✕</button>
         </div>
 
         {/* tab bar */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-          {(['identity', 'avatar', 'bio', 'goals'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 4, border: 'none', cursor: 'pointer',
-                fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, textTransform: 'uppercase',
-                letterSpacing: 0.8,
-                background: tab === t ? 'linear-gradient(180deg, #f0c850, #d4a843)' : 'rgba(200,168,78,0.1)',
-                color: tab === t ? '#0b1022' : '#8a8878',
-              }}
-            >
-              {t === 'identity' ? 'Name' : t === 'avatar' ? 'Avatar' : t === 'bio' ? 'Bio' : 'Goals'}
-            </button>
-          ))}
-        </div>
-
-        {/* identity tab */}
-        {tab === 'identity' && (
-          <div className="pf-edit-section">
-            <div className="pf-edit-label">Display Name</div>
-            <input
-              className="sf-input"
-              value={name}
-              maxLength={40}
-              placeholder="Display name"
-              onChange={(e) => { setName(e.target.value); if (!nameStatus.ok) setNameStatus({ ok: true }) }}
-              onBlur={saveName}
-              style={{ width: '100%', fontSize: 18, fontWeight: 700 }}
-            />
-            <div style={{ marginTop: 6, fontSize: 13, color: nameStatus.ok ? '#4fd1c5' : '#ff6a6a' }}>
-              {nameStatus.ok
-                ? `${remaining} free change${remaining === 1 ? '' : 's'} left`
-                : nameStatus.error}
-            </div>
-
-            <div className="pf-edit-label" style={{ marginTop: 16 }}>Banner</div>
-            <BannerPicker view={view} />
+        <div className="pf-edit-body">
+          <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
+            {(['identity', 'avatar', 'bio', 'goals'] as const).map((t) => (
+              <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>
+                {t === 'identity' ? 'Name & Banner' : t === 'avatar' ? 'Avatar' : t === 'bio' ? 'Bio' : 'Goals'}
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* avatar tab */}
-        {tab === 'avatar' && (
-          <div className="pf-edit-section">
-            <div className="pf-edit-label">Profile Picture</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-              <ProfileAvatar name={view.displayName} avatarUrl={view.avatarUrl} rankId={view.rankId} size={80} />
-              <div>
-                <button
-                  className="sf-btn"
-                  onClick={() => avatarInputRef.current?.click()}
-                  style={{ fontSize: 14 }}
-                >
-                  Upload Photo
-                </button>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) setPendingAvatar(file)
-                    if (avatarInputRef.current) avatarInputRef.current.value = ''
+          {/* identity tab */}
+          {tab === 'identity' && (
+            <div className="pf-edit-section">
+              <div className="pf-edit-label">Display Name</div>
+              <input
+                className="sf-input"
+                value={name}
+                maxLength={40}
+                placeholder="Display name"
+                onChange={(e) => { setName(e.target.value); if (!nameStatus.ok) setNameStatus({ ok: true }) }}
+                style={{ width: '100%', fontSize: 18, fontWeight: 700, padding: '12px 14px' }}
+              />
+              <div style={{ marginTop: 6, fontSize: 13, color: nameStatus.ok ? '#d4a843' : '#e25b4b' }}>
+                {nameStatus.ok
+                  ? `${remaining} free change${remaining === 1 ? '' : 's'} left`
+                  : nameStatus.error}
+              </div>
+
+              <div className="pf-edit-label" style={{ marginTop: 20 }}>Banner</div>
+              <BannerPicker view={view} />
+            </div>
+          )}
+
+          {/* avatar tab */}
+          {tab === 'avatar' && (
+            <div className="pf-edit-section">
+              <div className="pf-edit-label">Profile Picture</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
+                <ProfileAvatar name={view.displayName} avatarUrl={view.avatarUrl} rankId={view.rankId} size={96} />
+                <div>
+                  <button
+                    className="pf-customize-btn"
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={{ fontSize: 14 }}
+                  >
+                    Upload Photo
+                  </button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) setPendingAvatar(file)
+                      if (avatarInputRef.current) avatarInputRef.current.value = ''
+                    }}
+                  />
+                </div>
+              </div>
+              {pendingAvatar && (
+                <AvatarCropper
+                  file={pendingAvatar}
+                  onCancel={() => setPendingAvatar(null)}
+                  onDone={async (url) => {
+                    await setAvatarUrl(url)
+                    setPendingAvatar(null)
                   }}
                 />
+              )}
+            </div>
+          )}
+
+          {/* bio tab */}
+          {tab === 'bio' && (
+            <div className="pf-edit-section">
+              <div className="pf-edit-label">About / Bio</div>
+              <textarea
+                className="sf-input"
+                value={bio}
+                maxLength={280}
+                placeholder="Tell other explorers about your study journey…"
+                onChange={(e) => setBio(e.target.value)}
+                rows={5}
+                style={{ width: '100%', resize: 'vertical', fontSize: 15, padding: '12px 14px' }}
+              />
+              <div style={{ marginTop: 6, fontSize: 12, color: '#b8a88a', textAlign: 'right' }}>
+                {bio.length}/280
               </div>
             </div>
-            <div style={{ fontSize: 13, color: '#8a8878' }}>
-              Choose a character or upload your own picture.
-            </div>
-            <button
-              className="sf-btn secondary"
-              onClick={() => window.location.href = '/character-select'}
-              style={{ marginTop: 12, fontSize: 14 }}
-            >
-              Choose Character
-            </button>
-            {pendingAvatar && (
-              <AvatarCropper
-                file={pendingAvatar}
-                onCancel={() => setPendingAvatar(null)}
-                onDone={async (url) => {
-                  await setAvatarUrl(url)
-                  setPendingAvatar(null)
-                }}
-              />
-            )}
-          </div>
-        )}
+          )}
 
-        {/* bio tab */}
-        {tab === 'bio' && (
-          <div className="pf-edit-section">
-            <div className="pf-edit-label">About / Bio</div>
-            <textarea
-              className="sf-input"
-              value={bio}
-              maxLength={280}
-              placeholder="Tell other explorers about your study journey…"
-              onChange={(e) => setBio(e.target.value)}
-              onBlur={saveBio}
-              rows={4}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-            <div style={{ marginTop: 4, fontSize: 12, color: '#8a8878', textAlign: 'right' }}>
-              {bio.length}/280
+          {/* goals tab */}
+          {tab === 'goals' && (
+            <div className="pf-edit-section">
+              <div className="pf-edit-label">Study Goals</div>
+              <StudyGoalsSelector value={draftGoals} onChange={setDraftGoals} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* goals tab */}
-        {tab === 'goals' && (
-          <div className="pf-edit-section">
-            <div className="pf-edit-label">Study Goals</div>
-            <StudyGoalsSelector value={draftGoals} onChange={setDraftGoals} />
-            <button
-              className="sf-btn"
-              onClick={saveGoals}
-              style={{ marginTop: 12, width: '100%', fontSize: 14 }}
-            >
-              Save Goals
-            </button>
-          </div>
-        )}
+        {/* SAVE BAR — sticky bottom */}
+        <div className="pf-edit-save-bar">
+          {saved ? (
+            <span className="pf-edit-saved-indicator">✓ Saved!</span>
+          ) : (
+            <button className="pf-edit-cancel-btn" onClick={onClose}>Cancel</button>
+          )}
+          <button className="pf-edit-save-btn" onClick={saveAll}>
+            Save
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -830,33 +790,49 @@ function BannerPicker({ view }: { view: ProfileView }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          style={{
-            padding: '6px 12px', borderRadius: 4, border: '1px solid rgba(200,168,78,0.3)',
-            background: 'rgba(200,168,78,0.1)', color: '#d4a843', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', fontFamily: "'Rajdhani', sans-serif",
-          }}
-        >
-          {busy ? '…' : '⬆ Upload'}
-        </button>
+      {/* Current banner preview */}
+      <div style={{
+        width: '100%', height: 80, borderRadius: 10, overflow: 'hidden',
+        border: '2px solid var(--pf-border)', marginBottom: 12,
+        background: hasImage ? undefined : getBanner(view.pub.banner).css,
+      }}>
+        {hasImage && (
+          <img
+            src={view.pub.bannerImage!}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${view.pub.bannerPos}%` }}
+          />
+        )}
+      </div>
+
+      {/* Banner grid */}
+      <div className="pf-banner-picker-grid">
         {BANNERS.map((b) => (
           <button
             key={b.id}
-            style={{
-              width: 32, height: 20, borderRadius: 4, border: `2px solid ${!hasImage && view.pub.banner === b.id ? '#d4a843' : 'rgba(200,168,78,0.2)'}`,
-              background: b.css, cursor: 'pointer',
-            }}
+            className={`pf-banner-preview ${!hasImage && view.pub.banner === b.id ? 'active' : ''}`}
+            style={{ background: b.css }}
             title={b.name}
             onClick={() => savePublic({ banner: b.id, bannerImage: null })}
-          />
+          >
+            {!hasImage && view.pub.banner === b.id && (
+              <span className="pf-banner-preview-check">✓</span>
+            )}
+          </button>
         ))}
-        <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+        <button
+          className="pf-banner-upload-btn"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+        >
+          {busy ? '…' : '⬆ Upload'}
+        </button>
       </div>
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+
+      {/* Position slider for uploaded images */}
       {hasImage && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8a8878' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#b8a88a', marginTop: 12 }}>
           <span>Position</span>
           <input
             type="range" min={0} max={100} step={1}

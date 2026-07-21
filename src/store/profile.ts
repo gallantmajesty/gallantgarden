@@ -234,7 +234,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, public_profile: pub }], { onConflict: 'id' })
-    if (error) return false
+    if (error) { console.error('[profile] savePublic failed:', error.message); return false }
     set({ pub })
     return true
   },
@@ -246,7 +246,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, avatar_url: url }], { onConflict: 'id' })
-    if (error) return false
+    if (error) { console.error('[profile] setAvatarUrl failed:', error.message); return false }
     set({ avatarUrl: url })
     return true
   },
