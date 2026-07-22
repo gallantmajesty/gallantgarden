@@ -23,9 +23,6 @@ export function PlayerNameTag({ name, rank, country, playerId, self }: PlayerNam
       className={`pnt${self ? ' pnt-self' : ''}`}
       style={{ ['--rank' as string]: r.accent } as React.CSSProperties}
     >
-      <span className="pnt-shine" aria-hidden />
-      <span className="pnt-frame" aria-hidden />
-      <span className="pnt-spark" aria-hidden>✦</span>
       <span className="pnt-content">
         <span className="pnt-top">
           {country && <Flag code={country} className="pnt-flag" />}

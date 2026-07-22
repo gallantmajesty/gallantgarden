@@ -9,7 +9,7 @@ import { useMagnet } from '../store/magnet'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
 import { globalRunOnce, userRunOnce } from './runOnce'
-import { awardFocusSessionBonuses } from './xpEngine'
+import { awardFocusSessionBonuses, calcPomoLeaves, awardLeaves } from './xpEngine'
 import { rankForTotalXp } from './ranks'
 
 /**
@@ -105,16 +105,34 @@ function bindFocusLogging(): void {
   setPomodoroFocusSink((minutes, subject) => {
     useMagnet.getState().logFocus(minutes, subject)
 
-    // Award focus session quality bonuses
+    // Award pomodoro leaves (base + bonuses)
     try {
-      const { xp, premiumXp, data } = useProfile.getState()
-      const isLibrary = false // Pomodoro is not library-specific
+      const { xp, premiumXp } = useProfile.getState()
       const currentRank = rankForTotalXp(xp + premiumXp)
-      const { result } = awardFocusSessionBonuses(
-        xp, premiumXp, minutes, focusTabAlwaysVisible, isLibrary, 'pomodoro', currentRank.id,
+      const hasSubject = !!subject?.trim()
+
+      // Calculate pomodoro-specific leaves
+      const pomoLeaves = calcPomoLeaves(minutes, focusTabAlwaysVisible, hasSubject)
+
+      // Award base + bonuses as leaves
+      const leafResult = awardLeaves(xp, premiumXp, 'focus', pomoLeaves.total, currentRank.id)
+      if (leafResult.leaves > 0) {
+        const newXp = xp + leafResult.leaves
+        useProfile.setState({ xp: newXp })
+        const userId = useProfile.getState().userId
+        if (userId) {
+          import('./insforge').then(({ insforge }) =>
+            insforge.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
+          ).catch(() => {})
+        }
+      }
+
+      // Also award golden leaves for quality bonuses (deep work, etc.)
+      const { result: bonusResult } = awardFocusSessionBonuses(
+        xp, premiumXp, minutes, focusTabAlwaysVisible, false, 'pomodoro', currentRank.id,
       )
-      if (result.goldenLeaves > 0) {
-        const newPremiumXp = premiumXp + result.goldenLeaves
+      if (bonusResult.goldenLeaves > 0) {
+        const newPremiumXp = premiumXp + bonusResult.goldenLeaves
         useProfile.setState({ premiumXp: newPremiumXp })
         const userId = useProfile.getState().userId
         if (userId) {
@@ -123,6 +141,9 @@ function bindFocusLogging(): void {
           ).catch(() => {})
         }
       }
+
+      // Store reward breakdown for UI popup
+      usePomodoro.setState({ lastReward: pomoLeaves })
     } catch { /* ignore — bonus is best-effort */ }
 
     // Reset tab visibility tracking for next session

@@ -9,6 +9,7 @@ import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
 import { useAvatar } from '../avatar/store'
 import { CHARACTERS, characterById } from '../avatar/characters'
 import { useProfile } from '../store/profile'
+import { useShop } from '../shop/store'
 import {
   type AvatarConfig,
   type StyleOption,
@@ -91,38 +92,14 @@ export function AvatarCreator() {
         {/* ---- right: light dock ---- */}
         <aside className="ac-dock">
           <div className="ac-dock-head">
-            <div className="ac-dock-toggle">
-              <button data-on>
-                <Glyph kind="sliders" /> {step === 'characters' ? 'Characters' : step === 'outfit' ? 'Outfit' : 'Accessories'}
-              </button>
-            </div>
-            <button className="ac-dock-x" onClick={() => navigate('/')} aria-label="Close">
-              <Glyph kind="close" />
+            <button className="ac-dock-back" onClick={() => navigate('/')} aria-label="Back">
+              ← Back
             </button>
           </div>
-
           <div className="ac-dock-scroll">
             {step === 'characters' && <CharacterDisplayTab config={config} set={set} />}
             {step === 'outfit' && <OutfitTab config={config} set={set} />}
             {step === 'accessories' && <AccessoryTab config={config} set={set} />}
-          </div>
-
-          <div className="ac-dock-foot">
-            <button className="ac-reset" onClick={() => reset()}>
-              Reset
-            </button>
-            <button className="ac-back" onClick={goBack} disabled={stepIndex === 0}>
-              ‹ Back
-            </button>
-            {step !== 'accessories' ? (
-              <button className="ac-next" onClick={goNext} disabled={step === 'characters' && !hasChar}>
-                Next ›
-              </button>
-            ) : (
-              <button className="ac-save" onClick={onSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Avatar'}
-              </button>
-            )}
           </div>
         </aside>
       </div>
@@ -166,12 +143,45 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
   const characters = CHARACTERS
   const tabs = ['Owned', 'EPIC', 'LEGENDARY']
   const [activeTab, setActiveTab] = useState('Owned')
+  const [previewing, setPreviewing] = useState<string | null>(null)
   const current = config.characterId || 'james'
+  const isOwned = useShop((s) => s.isOwned)
+  const canAfford = useShop((s) => s.canAfford)
+  const purchase = useShop((s) => s.purchase)
+  const userXp = useProfile((s) => s.xp)
 
-  const ownedIds = ['james', 'claire', 'mia']
   const filtered = activeTab === 'Owned'
-    ? characters.filter(c => ownedIds.includes(c.id))
+    ? characters.filter(c => isOwned(c.id))
     : characters.filter(c => (c.rarity ?? '').toLowerCase() === activeTab.toLowerCase())
+
+  // Click = preview (show 3D model), but don't equip
+  const handlePreview = (ch: typeof characters[0]) => {
+    setPreviewing(ch.id)
+    set({ ...characterById(ch.id).fallback, characterId: ch.id })
+  }
+
+  // Buy = purchase + equip
+  const handleBuy = (ch: typeof characters[0], e: React.MouseEvent) => {
+    e.stopPropagation()
+    const price = ch.price ?? 0
+    if (price <= 0 || !canAfford(price, userXp)) return
+    const newXp = purchase(ch.id, price, userXp)
+    if (newXp !== userXp) {
+      useProfile.setState({ xp: newXp })
+      const userId = useProfile.getState().userId
+      if (userId) {
+        import('../lib/insforge').then(({ insforge }) =>
+          insforge.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
+        ).catch(() => {})
+      }
+    }
+  }
+
+  // Equip = select an already-owned character
+  const handleEquip = (ch: typeof characters[0], e: React.MouseEvent) => {
+    e.stopPropagation()
+    set({ ...characterById(ch.id).fallback, characterId: ch.id })
+  }
 
   return (
     <div className="ac-char-section">
@@ -188,22 +198,52 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
         ))}
       </div>
       <div className="ac-char-grid">
-        {filtered.map((ch) => (
-          <button
-            key={ch.id}
-            className={`ac-char-tile ${current === ch.id ? 'selected' : ''}`}
-            onClick={() => set({ ...characterById(ch.id).fallback, characterId: ch.id })}
-          >
-            <div className="ac-char-avatar" style={{ background: ch.bg }}>
-              <img className="ac-char-img" src={ch.icon} alt={ch.name} />
+        {filtered.map((ch) => {
+          const owned = isOwned(ch.id)
+          const price = ch.price ?? 0
+          const affordable = canAfford(price, userXp)
+          const isSelected = current === ch.id && owned
+          return (
+            <div
+              key={ch.id}
+              className={`ac-char-tile ${isSelected ? 'selected' : ''} ${!owned ? 'locked' : ''}`}
+              onClick={() => handlePreview(ch)}
+            >
+              <div className="ac-char-avatar" style={{ background: ch.bg }}>
+                <img className="ac-char-img" src={ch.icon} alt={ch.name} />
+                {!owned && price > 0 && (
+                  <div className={`ac-char-price ${affordable ? 'affordable' : ''}`}>
+                    🍃 {price}
+                  </div>
+                )}
+              </div>
+              {isSelected && <div className="ac-char-selected-label">SELECTED</div>}
+              <div className="ac-char-info">
+                <span className="ac-char-tile-name">{ch.name}</span>
+                <span className="ac-char-rarity" style={{ color: ch.color }}>{ch.rarity}</span>
+              </div>
+              {/* Buy button for locked characters */}
+              {!owned && (
+                <button
+                  className={`ac-char-buy-btn ${affordable ? 'affordable' : ''}`}
+                  onClick={(e) => handleBuy(ch, e)}
+                  disabled={!affordable}
+                >
+                  {affordable ? `Buy 🍃${price}` : `Need 🍃${price}`}
+                </button>
+              )}
+              {/* Equip button for owned but not selected */}
+              {owned && !isSelected && (
+                <button
+                  className="ac-char-equip-btn"
+                  onClick={(e) => handleEquip(ch, e)}
+                >
+                  Equip
+                </button>
+              )}
             </div>
-            {current === ch.id && <div className="ac-char-selected-label">SELECTED</div>}
-            <div className="ac-char-info">
-              <span className="ac-char-tile-name">{ch.name}</span>
-              <span className="ac-char-rarity" style={{ color: ch.color }}>{ch.rarity}</span>
-            </div>
-          </button>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -37,6 +37,7 @@ import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
+import { TableAccessories } from './TableAccessories'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
   state = { failed: false, msg: '' }
@@ -94,7 +95,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   // First-person only for the Ultra depth-of-field (blurring the avatar in
   // third-person looks wrong).
   const cameraMode = useSettings((s) => s.cameraMode)
-  // Bloom lives ONLY during the Cinematic Tour (key 5) — the rest of the time the
+  // Bloom lives ONLY during the Cinematic Tour (key 9) — the rest of the time the
   // stack is bloom-free, because even a subtle always-on bloom used to cause the
   // angle-specific black blink at seated presets 3/4.
   const cinematic = useWorld((s) => s.cinematic)
@@ -146,6 +147,8 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [frameloop])
+  // Sync when the parent changes frameloop (e.g. demand→always after seat pick)
+  useEffect(() => { setLoop(frameloop) }, [frameloop])
 
   // Once the scene is ready, settle the quality: step up from the Low opening
   // preset (auto-detect) or restore the player's manual choice.
@@ -228,6 +231,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
         <LibraryShell />
         <Bookshelves />
         <StudyTables />
+        <TableAccessories />
         <Decor />
         <KnowledgeTree />
       </ToggleGroup>
@@ -539,7 +543,7 @@ if (typeof window !== 'undefined') (window as any).__sysToggles = _sysToggles
 // EffectComposer pass is causing the angle-specific blink at seated presets 3/4.
 //   Alt+W = Vignette   Alt+E = GodRays   Alt+R = N8AO
 // Bloom is no longer a kill-switch: it only renders during the Cinematic Tour
-// (key 5), so it can't flicker the seated presets anymore.
+// (key 9), so it can't flicker the seated presets anymore.
 const _postToggles: Record<string, boolean> = {
   vignette: true, godrays: true, n8ao: true,
 }

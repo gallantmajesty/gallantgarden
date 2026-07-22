@@ -20,7 +20,7 @@ import { rankForTotalXp } from './ranks'
 // Tasks/habits/milestones award 0 — leaves are study-only currency
 export const XP_VALUES = {
   task: 0,
-  focusMin: 1,
+  focusMin: 1.32, // ~33 leaves per 25 min session (5hrs = 400 leaves = Epic skin)
   habit: 0,
   milestone: 0,
   tree: 15,
@@ -61,6 +61,30 @@ export const XP_VALUES = {
   firstTree: 10,
   blueprintMaster: 12,
 } as const
+
+// Pomodoro session rewards — the main study currency engine
+// Epic skin = 400 leaves = ~5 hours (12 × 25min sessions)
+// Legendary skin = 2000 leaves = ~25 hours (60 × 25min sessions)
+export const POMO_REWARDS = {
+  // Base leaves per minute of study (33 leaves / 25 min = 1.32)
+  basePerMin: 1.32,
+  // Bonus: no tab switching during focus (deep work quality)
+  noTabBonusPct: 0.30, // +30% of base
+  // Bonus: subject tag entered
+  subjectBonusFlat: 5,
+} as const
+
+/** Calculate leaves earned for a pomodoro session. */
+export function calcPomoLeaves(
+  durationMin: number,
+  tabAlwaysVisible: boolean,
+  hasSubject: boolean,
+): { base: number; noTabBonus: number; subjectBonus: number; total: number } {
+  const base = Math.round(durationMin * POMO_REWARDS.basePerMin)
+  const noTabBonus = tabAlwaysVisible ? Math.round(base * POMO_REWARDS.noTabBonusPct) : 0
+  const subjectBonus = hasSubject ? POMO_REWARDS.subjectBonusFlat : 0
+  return { base, noTabBonus, subjectBonus, total: base + noTabBonus + subjectBonus }
+}
 
 // ---- Daily cap for train journeys (anti-spam) --------------------------------
 export const DAILY_CAPS = {

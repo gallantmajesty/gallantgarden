@@ -31,6 +31,8 @@ export interface Character {
   gender?: 'male' | 'female'
   /** costume characters (dino, bunny…) render no shoes and no human face */
   isAnimal?: boolean
+  /** price in green leaves (0 = free/owned) */
+  price?: number
 }
 
 /** Build a fixed procedural look for a character's fallback rig. */
@@ -69,10 +71,11 @@ export const CHARACTERS: Character[] = [
       topColor: '#cc2222', bottomColor: '#1a1a1a',
     }),
     description: 'Friendly student with a cool black outfit',
-    icon: '/icons/characters/james.svg',
+    icon: '/icons/characters/james.webp',
     rarity: 'Common',
     color: '#8a8a8a',
     bg: '#e8f0ff',
+    price: 0,
   },
   {
     id: 'claire',
@@ -87,10 +90,11 @@ export const CHARACTERS: Character[] = [
       topColor: '#e87ca0', bottomColor: '#2d1f3d',
     }),
     description: 'Cheerful girl with a cute ponytail and pink dress',
-    icon: '/icons/characters/lily.svg',
+    icon: '/icons/characters/lily.webp',
     rarity: 'Common',
     color: '#8a8a8a',
     bg: '#ffe8f0',
+    price: 0,
   },
   {
     id: 'mia',
@@ -109,6 +113,7 @@ export const CHARACTERS: Character[] = [
     rarity: 'Common',
     color: '#8a8a8a',
     bg: '#fff0e0',
+    price: 0,
   },
   {
     id: 'ruslan',
@@ -123,10 +128,11 @@ export const CHARACTERS: Character[] = [
       topColor: '#b4202f', bottomColor: '#1a2a3a',
     }),
     description: 'Cheerful scholar from the snowy north in an embroidered red sarafan, a pearl kokoshnik and a long braid',
-    icon: '/icons/characters/ruslan.svg',
+    icon: '/icons/characters/ruslan.webp',
     rarity: 'Common',
     color: '#8a8a8a',
     bg: '#eef3f8',
+    price: 0,
   },
   {
     id: 'dino',
@@ -140,11 +146,12 @@ export const CHARACTERS: Character[] = [
       top: 'tee', bottom: 'pants', shoes: 'sneakers',
     }),
     description: 'A cute green wild dinosaur costume — teeth, claws, plates and a spiky tail!',
-    icon: '/icons/characters/dino.svg',
+    icon: '/icons/characters/dino.webp',
     rarity: 'Epic',
     color: '#6cbf4a',
     bg: '#eaf7dd',
     isAnimal: true,
+    price: 400,
   },
   {
     id: 'rabbit',
@@ -158,11 +165,12 @@ export const CHARACTERS: Character[] = [
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
     }),
     description: 'An adorable white toy rabbit in a pink suit with a green rear flap and a fluffy cotton tail',
-    icon: '/icons/characters/rabbit.svg',
+    icon: '/icons/characters/rabbit.webp',
     rarity: 'Epic',
     color: '#f2a3c0',
     bg: '#fdeaf2',
     isAnimal: true,
+    price: 400,
   },
   {
     id: 'robot',
@@ -176,12 +184,13 @@ export const CHARACTERS: Character[] = [
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
     }),
     description: 'A sci-fi robot with a sleek black outfit and glowing blue sci-fi accent lines',
-    icon: '/icons/characters/robot.svg',
+    icon: '/icons/characters/robot.webp',
     rarity: 'Legendary',
     color: '#1a1a2e',
     bg: '#0c1322',
     special: true,
     isAnimal: true,
+    price: 2000,
   },
   {
     id: 'alien',
@@ -195,12 +204,13 @@ export const CHARACTERS: Character[] = [
       top: 'tee', bottom: 'pants', shoes: 'sneakers',
     }),
     description: 'A friendly green extraterrestrial with big black eyes and glowing antennae',
-    icon: '/icons/characters/alien.svg',
+    icon: '/icons/characters/alien.webp',
     rarity: 'Epic',
     color: '#52c64a',
     bg: '#0f2417',
     special: true,
     isAnimal: true,
+    price: 400,
   },
   {
     id: 'pig',
@@ -214,11 +224,12 @@ export const CHARACTERS: Character[] = [
       top: 'jacket', bottom: 'pants', shoes: 'sneakers',
     }),
     description: 'A cheerful pink piglet with a curly tail, floppy ears and a snout full of freckles',
-    icon: '/icons/characters/pig.svg',
+    icon: '/icons/characters/pig.webp',
     rarity: 'Epic',
     color: '#f29ac0',
     bg: '#fde6f1',
     isAnimal: true,
+    price: 400,
   },
   {
     id: 'angel',
@@ -232,12 +243,13 @@ export const CHARACTERS: Character[] = [
       top: 'robe', bottom: 'leggings', shoes: 'boots',
     }),
     description: 'A radiant white angel with feathered wings, a golden halo and a flowing robe of light',
-    icon: '/icons/characters/angel.svg',
+    icon: '/icons/characters/angel.webp',
     rarity: 'Legendary',
     color: '#f4ecd6',
     bg: '#11131f',
     special: true,
     isAnimal: true,
+    price: 2000,
   },
   {
     id: 'sunflower',
@@ -258,6 +270,7 @@ export const CHARACTERS: Character[] = [
     bg: '#1a3010',
     special: true,
     isAnimal: true,
+    price: 2000,
   },
   {
     id: 'grim',
@@ -277,6 +290,7 @@ export const CHARACTERS: Character[] = [
     bg: '#0a1a0a',
     special: true,
     isAnimal: true,
+    price: 2000,
   },
 ]
 

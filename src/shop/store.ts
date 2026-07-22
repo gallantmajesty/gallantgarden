@@ -7,7 +7,9 @@ import { insforge } from '../lib/insforge'
 import { STARTER_THEME_IDS } from '../lib/magnet/themes'
 
 const STORAGE_KEY = 'sf.shop.inventory'
-const ALL_STARTERS = [...STARTER_THEME_IDS]
+// Common characters are always owned (free starter characters)
+const STARTER_CHARACTER_IDS = ['james', 'claire', 'mia', 'ruslan']
+const ALL_STARTERS = [...STARTER_THEME_IDS, ...STARTER_CHARACTER_IDS]
 
 interface ShopState {
   userId: string | null

@@ -193,6 +193,11 @@ export type AccessoryId =
   | 'book'
   | 'piano'
   | 'mug'
+  | 'trading_laptop'
+  | 'flower_pot'
+  | 'chair_balloon'
+  | 'bento_box'
+  | 'hourglass'
 
 export interface AccessoryDef {
   id: AccessoryId
@@ -216,6 +221,11 @@ export const ACCESSORIES: AccessoryDef[] = [
   { id: 'book', name: 'Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook' },
   { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax' },
   { id: 'mug', name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip' },
+  { id: 'trading_laptop', name: 'Trading Workstation', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts' },
+  { id: 'flower_pot', name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life' },
+  { id: 'chair_balloon', name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy' },
+  { id: 'bento_box', name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack' },
+  { id: 'hourglass', name: 'Focus Hourglass', icon: '⏳', color: '#d4af37', blurb: 'Sands of flow state' },
 ]
 
 export function accessoryById(id: string): AccessoryDef | undefined {

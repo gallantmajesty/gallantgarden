@@ -4,24 +4,29 @@ import { getAmbient } from '../audio/ambient'
 
 export type PomoMode = 'idle' | 'study' | 'break' | 'long'
 
+export interface PomoReward {
+  base: number
+  noTabBonus: number
+  subjectBonus: number
+  total: number
+}
+
 interface PomodoroState {
   mode: PomoMode
   remaining: number // seconds
   running: boolean
   completed: number // finished study sessions
-  totalFocusMin: number // lifetime focused minutes (sum of completed study blocks)
-  subject: string // what the user is studying — tags auto-logged focus sessions
+  totalFocusMin: number // lifetime focused minutes
+  subject: string
+  lastReward: PomoReward | null
+  startedAt: number | null // timestamp when session started (for anti-spam)
   toggle: () => void
-  reset: () => void
-  skip: () => void
+  forfeit: () => void // stop early = lose all progress, no rewards
   tick: () => void
   setSubject: (subject: string) => void
+  clearReward: () => void
 }
 
-// A registered consumer for finished study blocks. The pomodoro store stays
-// dependency-light (it never imports Task Magnet directly); instead the app
-// wires this sink at sign-in so every completed block flows into analytics with
-// no circular import. See lib/appInit.ts.
 type FocusSink = (minutes: number, subject: string) => void
 let focusSink: FocusSink | null = null
 export function setPomodoroFocusSink(sink: FocusSink | null): void {
@@ -32,9 +37,6 @@ function mins(n: number) {
   return Math.max(1, Math.round(n)) * 60
 }
 
-// Persist the lifetime count of completed focus sessions ("study data") so a
-// refresh keeps the user's progress. The live timer itself is intentionally not
-// persisted (a half-finished countdown shouldn't resume on reload).
 const DONE_KEY = 'sg.pomo.completed'
 const MIN_KEY = 'sg.pomo.totalmin'
 const SUBJECT_KEY = 'sg.pomo.subject'
@@ -52,9 +54,7 @@ function loadNum(key: string): number {
 function saveNum(key: string, n: number) {
   try {
     localStorage.setItem(key, String(n))
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }
 
 function loadStr(key: string): string {
@@ -68,9 +68,7 @@ function loadStr(key: string): string {
 function saveStr(key: string, v: string) {
   try {
     localStorage.setItem(key, v)
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }
 
 const loadCompleted = () => loadNum(DONE_KEY)
@@ -86,13 +84,10 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     if (s.mode === 'study') {
       completed += 1
       saveCompleted(completed)
-      // credit the just-finished study block toward lifetime focus minutes
       const creditMin = Math.max(1, Math.round(pomo.study))
       totalFocusMin += creditMin
       saveNum(MIN_KEY, totalFocusMin)
-      // Flow the finished block into Task Magnet analytics (real focus data,
-      // tagged with whatever subject the user is studying). Decoupled via the
-      // sink so the pomodoro store never imports the magnet store.
+      // Only award leaves when session completes naturally (not on forfeit)
       focusSink?.(creditMin, s.subject)
       mode = completed % 4 === 0 ? 'long' : 'break'
     } else {
@@ -100,7 +95,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     }
     const remaining = mode === 'study' ? mins(pomo.study) : mode === 'long' ? mins(pomo.longBreak) : mins(pomo.break)
     if (pomo.sound) getAmbient().chime()
-    set({ mode, completed, totalFocusMin, remaining, running: pomo.autoStart })
+    set({ mode, completed, totalFocusMin, remaining, running: pomo.autoStart, startedAt: mode === 'study' ? Date.now() : null })
   }
 
   return {
@@ -110,26 +105,34 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     completed: loadCompleted(),
     totalFocusMin: loadNum(MIN_KEY),
     subject: loadStr(SUBJECT_KEY),
+    lastReward: null,
+    startedAt: null,
 
     setSubject: (subject) => {
       saveStr(SUBJECT_KEY, subject)
       set({ subject })
     },
 
+    clearReward: () => set({ lastReward: null }),
+
     toggle: () => {
       const s = get()
       if (s.mode === 'idle') {
-        set({ mode: 'study', remaining: mins(useSettings.getState().pomo.study), running: true })
+        // Start a new study session
+        const studyMin = useSettings.getState().pomo.study
+        set({ mode: 'study', remaining: mins(studyMin), running: true, startedAt: Date.now() })
       } else {
+        // Pause/resume (only allowed, no skip)
         set({ running: !s.running })
       }
     },
-    reset: () => {
-      saveCompleted(0)
-      saveNum(MIN_KEY, 0)
-      set({ mode: 'idle', remaining: 0, running: false, completed: 0, totalFocusMin: 0 })
+
+    // Forfeit = stop early, lose ALL progress, NO rewards
+    // This is the FocusTown mechanic: if you don't complete the session, you get nothing
+    forfeit: () => {
+      set({ mode: 'idle', remaining: 0, running: false, startedAt: null, lastReward: null })
     },
-    skip: () => advance(),
+
     tick: () => {
       const s = get()
       if (!s.running || s.mode === 'idle') return

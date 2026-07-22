@@ -401,8 +401,8 @@ const FocusLilySamuraiIntegration = () => {
       {/* Control Panel */}
       {showControls && (
         <div className="absolute bottom-4 left-4 right-4 z-10">
-          <div className="max-w-4xl mx-auto bg-black/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="max-w-4xl mx-auto bg-black/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+              <div className="grid md:grid-cols-3 gap-6">
               {/* Animation Controls */}
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-blue-400">Animation Controls</h3>

@@ -188,7 +188,21 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 16px 12px;
+  padding: 12px 16px 8px;
+}
+.ac-dock-back {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 130, 60, 0.3);
+  background: rgba(180, 130, 60, 0.15);
+  color: #c9a87c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ac-dock-back:hover {
+  background: rgba(180, 130, 60, 0.3);
 }
 .ac-dock-toggle {
   flex: 1;
@@ -790,19 +804,21 @@
   width: 100%;
   aspect-ratio: 1;
   border-radius: 8px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   position: relative;
+  background: #1a1a1a;
 }
 .ac-char-emoji {
   font-size: 36px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 .ac-char-img {
-  width: 80%;
-  height: 80%;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 .ac-char-selected-label {
   position: absolute;
@@ -832,6 +848,74 @@
   font-size: 9px;
   color: #9a8a6a;
   font-weight: 600;
+}
+
+/* Character price tag (bottom-right of avatar) */
+.ac-char-price {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a3a3a3;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+}
+.ac-char-price.affordable {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+/* Buy button for locked characters */
+.ac-char-buy-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ac-char-buy-btn:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.3);
+}
+.ac-char-buy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #a3a3a3;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Equip button for owned characters */
+.ac-char-equip-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(180, 130, 60, 0.3);
+  background: rgba(180, 130, 60, 0.15);
+  color: #c9a87c;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ac-char-equip-btn:hover {
+  background: rgba(180, 130, 60, 0.3);
+}
+
+/* Locked state */
+.ac-char-tile.locked {
+  opacity: 0.85;
 }
 
 /* ===================================================================== mind-map sidebar */

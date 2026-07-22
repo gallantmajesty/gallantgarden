@@ -46,6 +46,10 @@ const SEAT_PRESETS: { yaw: number; pitch: number; zoom: number }[] = [
   { yaw: -0.55, pitch: 0.18, zoom: 3.6 }, // 2 — front-left 3/4
   { yaw: Math.PI, pitch: 0.5, zoom: 4.4 }, // 3 — behind & above
   { yaw: Math.PI / 2, pitch: 0.2, zoom: 4.0 }, // 4 — side profile
+  { yaw: -Math.PI / 4, pitch: 0.35, zoom: 5.0 }, // 5 — low front-right
+  { yaw: Math.PI * 0.75, pitch: 0.6, zoom: 5.5 }, // 6 — high behind-left
+  { yaw: 0, pitch: 0.1, zoom: 3.0 }, // 7 — tight front close-up
+  { yaw: Math.PI * 1.25, pitch: 0.25, zoom: 4.8 }, // 8 — rear three-quarter
 ]
 
 /** Smooth ease so the cinematic glide never snaps (which would read as a flicker). */
@@ -103,7 +107,7 @@ export function PlayerController() {
   const [emote, setEmote] = useState<string | null>(null)
   const emoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cinematic tour (key 5 / overlay button): the camera glides between random
+  // Cinematic tour (key 9 / overlay button): the camera glides between random
   // vantage points across the whole hall. `from`/`to` are camera positions,
   // `lookFrom`/`lookTo` the aim points; we ease between them, dwell, then pick
   // a fresh random waypoint.
@@ -207,11 +211,11 @@ export function PlayerController() {
     }
     const keyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === '5') return // cinematic toggle is owned by Explore's key handler
+      if (e.key === '9') return // cinematic toggle is owned by Explore's key handler
       if (useWorld.getState().seat == null) return
       if (useWorld.getState().cinematic) useWorld.getState().setCinematic(false)
       const n = parseInt(e.key, 10)
-      if (n >= 1 && n <= 4) {
+      if (n >= 1 && n <= 8) {
         const cur = p.current.preset
         if (cur === n) {
           p.current.preset = 0 // re-press the active preset → free orbit

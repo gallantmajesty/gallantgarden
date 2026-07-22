@@ -56,7 +56,7 @@ function load(): Persisted {
     volume: 0.7,
     playing: false,
     expanded: false,
-    pos: null,
+    pos: null, // null = default bottom-left corner via CSS
   }
   try {
     const raw = localStorage.getItem(KEY)

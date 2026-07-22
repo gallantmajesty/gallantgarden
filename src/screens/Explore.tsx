@@ -150,7 +150,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
       ) : (
         <LibraryScene
           onReady={() => setReady(true)}
-          frameloop="always"
+          frameloop={seatFlowStage === 'selecting' ? 'demand' : 'always'}
         />
       )}
       <PomodoroTicker />
@@ -165,11 +165,11 @@ export function Explore({ defaultWorld }: ExploreProps) {
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
       {!isTrain && <CinematicEntry />}
 
-      {/* Cinematic Tour (key 5) runs full-screen with no letterbox bars, so the
+      {/* Cinematic Tour (key 9) runs full-screen with no letterbox bars, so the
           web viewport keeps its full height/width while the camera glides. */}
 
       {/* Every widget lives behind this gate. Tab / Performance Mode hides the
-          whole HUD; while the Cinematic Tour (key 5) runs we ALSO hide everything
+          whole HUD; while the Cinematic Tour (key 9) runs we ALSO hide everything
           except the timer, so the glide is an unbroken full-screen "video". */}
       {!hidden && !cinematic && (
         <>
@@ -243,10 +243,8 @@ export function Explore({ defaultWorld }: ExploreProps) {
           {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
           <LibraryFriendsPanel />
 
-          {/* Library Realm music widget (bottom-right) — local ambient presets +
-              a Spotify-connected mini player. Hidden during seat selection so the
-              picking screen stays uncluttered. */}
-          {!isTrain && seatFlowStage !== 'selecting' && <MusicPlayer />}
+          {/* Library Realm music widget moved outside HUD gate (line 289) so its
+              singleton engine keeps playing when HUD is hidden. */}
 
           {/* in-library calculator — a mini Basic calc docked lower-right, with a
               ⋮ menu that swaps in any other calculator (which opens quarter-screen) */}
@@ -282,26 +280,20 @@ export function Explore({ defaultWorld }: ExploreProps) {
         </button>
       )}
 
-      {/* Library-realm focus-music mini-player. Mounted outside the hide gate so
-          its singleton engine keeps playing when the HUD is hidden; the widget
-          itself hides on Tab/Performance Mode. Library realm only — never in the
-          train realm, and (by design) never in study rooms. */}
-      {!isTrain && !cinematic && <MusicPlayer />}
-
-      {/* Bottom-right manual controls: keys 1-4 = seated camera presets,
-          5 = Cinematic Tour. Hidden while the tour runs (it's a hands-off
-          full-screen "video" — exit with key 5); during the tour only the
+      {/* Bottom-right manual controls: keys 1-8 = seated camera presets,
+          9 = Cinematic Tour. Hidden while the tour runs (it's a hands-off
+          full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
       {!isTrain && !cinematic && (
         <div className="cine-controls">
-          <span className="magic-hint">Press <b>5</b> to see the magic ✨</span>
+          <span className="magic-hint">Press <b>9</b> to see the magic ✨</span>
           <div className="cine-keyrow">
-            {['1', '2', '3', '4', '5'].map((k) => (
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => (
               <button
                 key={k}
                 type="button"
-                className={`cine-key${k === '5' ? ' magic' : ''}`}
-                title={k === '5' ? 'Cinematic Tour (key 5)' : `Camera preset ${k}`}
+                className={`cine-key${k === '9' ? ' magic' : ''}`}
+                title={k === '9' ? 'Cinematic Tour (key 9)' : `Camera preset ${k}`}
                 onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }))}
               >
                 {k}
@@ -310,6 +302,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           </div>
         </div>
       )}
+      {!isTrain && !cinematic && <MusicPlayer />}
     </div>
   )
 }
@@ -342,10 +335,10 @@ function useExploreShortcuts() {
     }
 
     const onKey = (e: KeyboardEvent) => {
-      // Cinematic Tour (key 5) — handled here at the DOM level so it works
+      // Cinematic Tour (key 9) — handled here at the DOM level so it works
       // regardless of whether the 3D scene/PlayerController is mounted, and never
       // collides with the seated "any key exits cinematic" rule below.
-      if (e.key === '5') {
+      if (e.key === '9') {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
         e.preventDefault()
         useWorld.getState().setCinematic(!useWorld.getState().cinematic)
@@ -425,6 +418,17 @@ function RealmConnection() {
   const roomKey = active ? roomKeyOf(active) : null
   const id = networkId(user?.id)
   const name = displayName || user?.profile?.name || 'Explorer'
+
+  // Clear seat + stand up when switching rooms so users in different rooms
+  // don't share seat state. The multiplayer channel already isolates rosters,
+  // but the local seat persists across room changes without this.
+  const prevRoomRef = useRef(roomKey)
+  useEffect(() => {
+    if (prevRoomRef.current !== roomKey && roomKey != null) {
+      useWorld.getState().stand()
+    }
+    prevRoomRef.current = roomKey
+  }, [roomKey])
 
   // assign an instance → join its channel → heartbeat; leave + drop presence on exit
   useEffect(() => {
@@ -564,7 +568,7 @@ function CameraSwitch() {
       <button
         type="button"
         className={`explore-cam-btn cine-btn ${cinematic ? 'on' : ''}`}
-        title="Cinematic Tour (key 5)"
+        title="Cinematic Tour (key 9)"
         onClick={() => setCine(!cinematic)}
       >
         Cinematic
@@ -746,8 +750,8 @@ function SeatedPanel() {
         <button className="station-min-stand" onClick={() => { useSeatFlow.getState().unlock(); useSeatFlow.getState().clearSeat(); useWorld.getState().stand(); }} title="Stand up (leave chair)">
           ⤴ Stand up
         </button>
-      </div>
-    )
+    </div>
+  )
   }
 
   return (
@@ -879,24 +883,120 @@ function PomodoroTicker() {
   return null
 }
 
+/** SVG circular progress ring for the pomodoro timer. */
+function ProgressRing({ progress, size = 80, stroke = 4, color }: {
+  progress: number // 0..1
+  size?: number
+  stroke?: number
+  color: string
+}) {
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - progress)
+  return (
+    <svg className="pomo-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* Background track */}
+      <circle
+        cx={size / 2} cy={size / 2} r={radius}
+        fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={stroke}
+      />
+      {/* Progress arc */}
+      <circle
+        cx={size / 2} cy={size / 2} r={radius}
+        fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+      />
+    </svg>
+  )
+}
+
+/** Reward popup shown after completing a study session. */
+function RewardPopup() {
+  const lastReward = usePomodoro((s) => s.lastReward)
+  const clearReward = usePomodoro((s) => s.clearReward)
+  useEffect(() => {
+    if (lastReward) {
+      const t = setTimeout(clearReward, 4000)
+      return () => clearTimeout(t)
+    }
+  }, [lastReward, clearReward])
+  if (!lastReward) return null
+  return (
+    <div className="pomo-reward" onClick={clearReward}>
+      <div className="pomo-reward-leaf">🍃</div>
+      <div className="pomo-reward-amount">+{lastReward.total}</div>
+      <div className="pomo-reward-label">Leaves</div>
+      {lastReward.noTabBonus > 0 && (
+        <div className="pomo-reward-bonus">+{lastReward.noTabBonus} deep work</div>
+      )}
+      {lastReward.subjectBonus > 0 && (
+        <div className="pomo-reward-bonus">+{lastReward.subjectBonus} subject</div>
+      )}
+    </div>
+  )
+}
+
 function PomodoroChip() {
-  const { mode, remaining, running, toggle, skip, subject } = usePomodoro()
+  const { mode, remaining, running, toggle, forfeit, subject, completed } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
+  const pomo = useSettings((s) => s.pomo)
   if (!show) return null
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
+
+  const totalSec = mode === 'idle' ? pomo.study * 60
+    : mode === 'study' ? pomo.study * 60
+    : mode === 'long' ? pomo.longBreak * 60
+    : pomo.break * 60
+  const progress = mode === 'idle' ? 0 : 1 - (remaining / totalSec)
+
+  const ringColor = mode === 'study' ? '#4ade80'
+    : mode === 'long' ? '#a78bfa'
+    : mode === 'break' ? '#60a5fa'
+    : '#6b7280'
+
   const studying = mode === 'study' && subject ? subject : null
-  const label = studying ?? (mode === 'idle' ? 'Focus' : mode === 'study' ? 'Study' : mode === 'long' ? 'Long break' : 'Break')
+  const label = studying ?? (mode === 'idle' ? 'Start Studying' : mode === 'study' ? 'Focus' : mode === 'long' ? 'Long Break' : 'Break')
+
+  const isActive = mode === 'study' || mode === 'break' || mode === 'long'
+
   return (
-    <div className={`explore-pomo ${mode}`}>
-      <span className="explore-pomo-label">{label}</span>
-      <span className="explore-pomo-time">{mode === 'idle' ? '25:00' : `${mm}:${ss}`}</span>
-      <button className="explore-pomo-btn" onClick={toggle} title={running ? 'Pause' : 'Start'}>
-        <Icon name={running ? 'pause' : 'play'} size={15} />
-      </button>
-      <button className="explore-pomo-btn" onClick={skip} title="Skip">
-        <Icon name="skip" size={15} />
-      </button>
+    <div className="explore-pomo-wrap">
+      <RewardPopup />
+      <div className={`explore-pomo ${mode}`}>
+        {/* Forfeit button — only show during active session */}
+        {isActive && running && (
+          <button className="pomo-forfeit" onClick={forfeit} title="Forfeit session (lose all progress)">
+            <Icon name="close" size={12} />
+          </button>
+        )}
+        <div className="pomo-ring-wrap" onClick={mode === 'idle' ? toggle : undefined} title={mode === 'idle' ? 'Start session' : ''}>
+          <ProgressRing progress={progress} size={64} stroke={3} color={ringColor} />
+          <div className="pomo-center">
+            {mode === 'idle' ? (
+              <Icon name="play" size={18} />
+            ) : (
+              <span className="pomo-time">{mm}:{ss}</span>
+            )}
+          </div>
+        </div>
+        {isActive && (
+          <button className="pomo-play" onClick={toggle} title={running ? 'Pause' : 'Resume'}>
+            <Icon name={running ? 'pause' : 'play'} size={16} />
+          </button>
+        )}
+      </div>
+      {/* Session dots — below the timer */}
+      {isActive && (
+        <div className="pomo-dots">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className={`pomo-dot ${i <= (completed % 4) - 1 ? 'filled' : ''} ${i === (completed % 4) && mode === 'study' ? 'active' : ''}`} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1035,7 +1135,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
           </Section>
 
-          <Section title="Cinematic Tour (key 5)">
+          <Section title="Cinematic Tour (key 9)">
             <Toggle label="Enable cinematic tour" value={s.cinematicTour} onChange={(v) => s.set('cinematicTour', v)} />
             <Toggle label="Cinematic camera zoom (dolly between shots)" value={s.cinematicZoom} onChange={(v) => s.set('cinematicZoom', v)} />
             <Toggle label="Bloom during cinematic" value={s.bloom} onChange={(v) => s.set('bloom', v)} />
@@ -1060,7 +1160,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
 
           <Section title="Atmosphere">
             <Toggle
-              label="Night mode (Harry Potter night)"
+              label="Night Mode"
               value={s.nightMode}
               onChange={(v) => s.set('nightMode', v)}
             />
