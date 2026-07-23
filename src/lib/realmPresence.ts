@@ -15,7 +15,7 @@ import { insforge } from './insforge'
 
 /** Per-room player cap. The chooser shows N/CAPACITY and a room auto-instances
  *  once every existing instance is full. */
-export const REALM_CAPACITY = 50
+export const REALM_CAPACITY = 100
 
 /** Heartbeat cadence. Must be comfortably under the 30s active window the server
  *  uses to decide who still counts as present. */

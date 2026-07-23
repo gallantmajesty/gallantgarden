@@ -29,6 +29,8 @@ export interface PlayerState {
   speed: number
   grounded: boolean
   seated: boolean
+  /** seat id when seated (enables cross-client seat occupancy tracking) */
+  seatId?: number
   /** true while this player is driving / watching the shared Cinematic Tour — their
    *  avatar is hidden from everyone else so it doesn't fly through the shared shot. */
   cinematic: boolean

@@ -176,6 +176,38 @@
   white-space: nowrap;
 }
 
+/* XP progress bar (fly-in animation) */
+.lobby-xp-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 160px;
+  animation: xp-bar-in .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes xp-bar-in {
+  from { opacity: 0; transform: translateX(-20px) scaleX(0.6); }
+  to { opacity: 1; transform: translateX(0) scaleX(1); }
+}
+.lobby-xp-bar__track {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.lobby-xp-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #caa84a, #ffce54);
+  transition: width .6s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 0 6px rgba(255, 206, 84, 0.4);
+}
+.lobby-xp-bar__label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+
 .lobby-round {
   width: 44px;
   height: 44px;

@@ -155,7 +155,7 @@ function BreakWatcher() {
   useEffect(() => {
     if (phase !== 'playing') return
     const unsub = usePomodoro.subscribe((pomo) => {
-      if (pomo.mode === 'study' && phase === 'playing') {
+      if (pomo.phase === 'running' && phase === 'playing') {
         setPhase('finished')
       }
     })

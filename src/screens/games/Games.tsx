@@ -12,17 +12,17 @@ export function Games() {
   const navigate = useNavigate()
   const checkBreak = useBreakIntegration((s) => s.checkBreak)
   const breakTimeRemaining = useBreakIntegration((s) => s.breakTimeRemaining)
-  const [pomoMode, setPomoMode] = useState(usePomodoro.getState().mode)
+  const [pomoMode, setPomoMode] = useState(usePomodoro.getState().phase)
 
   useEffect(() => {
     const unsub = usePomodoro.subscribe((s) => {
-      setPomoMode(s.mode)
+      setPomoMode(s.phase)
       checkBreak()
     })
     return () => unsub()
   }, [])
 
-  const isOnBreak = pomoMode === 'break' || pomoMode === 'long'
+  const isOnBreak = pomoMode === 'break' || pomoMode === 'paused'
   const breakMin = Math.floor(breakTimeRemaining / 60)
   const breakSec = breakTimeRemaining % 60
 

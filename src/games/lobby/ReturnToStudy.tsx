@@ -22,14 +22,14 @@ export function ReturnToStudy({ onReturn }: ReturnToStudyProps) {
   const currentMatchSurvivalTime = useBreakIntegration((s) => s.currentMatchSurvivalTime)
   const currentMatchPlacement = useBreakIntegration((s) => s.currentMatchPlacement)
 
-  const pomoMode = usePomodoro((s) => s.mode)
+  const pomoMode = usePomodoro((s) => s.phase)
   const results = useLavaPadStore((s) => s.results)
 
   const [showSummary, setShowSummary] = useState(false)
 
   // Auto-return when break expires
   useEffect(() => {
-    if (pomoMode === 'study') {
+    if (pomoMode === 'running') {
       const timer = setTimeout(() => {
         onReturn()
         navigate('/realm')
@@ -81,7 +81,7 @@ export function ReturnToStudy({ onReturn }: ReturnToStudyProps) {
 
         {/* Status message */}
         <div className="return-study-message">
-          {phase === 'break-ending' || pomoMode === 'study' ? (
+          {phase === 'break-ending' || pomoMode === 'running' ? (
             <p>{t('games.session.breakAlmostOver')}</p>
           ) : (
             <p>{t('games.session.breakRemaining', { time: `${Math.floor(breakTimeRemaining / 60)}:${(breakTimeRemaining % 60).toString().padStart(2, '0')}` })}</p>

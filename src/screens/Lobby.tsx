@@ -8,7 +8,7 @@ import { ComingSoonModal } from '../components/ComingSoonModal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
 import { ResourceBar } from '../components/ResourceBar'
-import { getRank, rankProgress } from '../lib/ranks'
+import { getRank, rankProgress, xpToNextRank } from '../lib/ranks'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
@@ -106,6 +106,7 @@ export function Lobby() {
   const totalXp = userXp + userPremiumXp
   const { pct: xpPctRaw, nextRank } = rankProgress(totalXp)
   const xpPct = Math.round(xpPctRaw * 100)
+  const xpNeeded = xpToNextRank(totalXp)
 
   useEffect(() => {
     return () => {
@@ -215,6 +216,13 @@ export function Lobby() {
             </span>
             <span className="lobby-xp__name">{displayName}</span>
           </button>
+          {/* XP progress bar */}
+          <div className="lobby-xp-bar" title={`${xpNeeded} leaves to next rank`}>
+            <div className="lobby-xp-bar__track">
+              <div className="lobby-xp-bar__fill" style={{ width: `${xpPct}%` }} />
+            </div>
+            <span className="lobby-xp-bar__label">{xpPct}% to {nextRank?.name ?? 'Max'}</span>
+          </div>
           <button className="sf-btn lobby-iconbtn" onClick={() => setPanel('interact')}>
             <Glyph name="people" />{t('lobby.interact')}
             {incomingCount > 0 && <span className="lobby-dot" />}

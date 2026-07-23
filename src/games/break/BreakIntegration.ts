@@ -37,8 +37,8 @@ export const useBreakIntegration = create<BreakState>((set, get) => ({
     const pomo = usePomodoro.getState()
     const settings = useSettings.getState()
 
-    if (pomo.mode === 'break' || pomo.mode === 'long') {
-      const breakTotalSec = (pomo.mode === 'long' ? settings.pomo.longBreak : settings.pomo.break) * 60
+    if (pomo.phase === 'break') {
+      const breakTotalSec = settings.pomo.break * 60
       const remaining = pomo.remaining
       const elapsed = breakTotalSec - remaining
 
@@ -50,7 +50,7 @@ export const useBreakIntegration = create<BreakState>((set, get) => ({
         showBreakNotification: elapsed < 5,
         showEndingWarning: remaining <= 30,
       })
-    } else if (pomo.mode === 'study' || pomo.mode === 'idle') {
+    } else if (pomo.phase === 'running' || pomo.phase === 'idle') {
       set({
         phase: 'focus',
         showBreakNotification: false,
@@ -81,7 +81,7 @@ export const useBreakIntegration = create<BreakState>((set, get) => ({
 /** Check if the game can be played right now. Re-exported for convenience. */
 export function isBreakActive(): boolean {
   const pomo = usePomodoro.getState()
-  return pomo.mode === 'break' || pomo.mode === 'long'
+  return pomo.phase === 'break'
 }
 
 /** Seconds remaining in the current break. */

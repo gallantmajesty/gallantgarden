@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { useSeatFlow } from './seatFlow'
+import { setLocalSeatId, publishSeatClaim, publishSeatRelease } from '../multiplayer/net'
+import { useProfile } from './profile'
 
 /** Runtime world interaction state (which seat the player occupies, and which
  *  seat they're standing close enough to sit on). */
@@ -18,13 +20,18 @@ export const useWorld = create<WorldState>((set) => ({
   near: null,
   cinematic: false,
   sit: (id) => {
-    // Lock seat-changing for 10 min from now — see SEAT_LOCK_MS in seatFlow.
-    // Applies to the first sit and every re-sit, so the "change seat in MM:SS"
-    // timer next to Stand up is enforced, not decorative.
     useSeatFlow.getState().lockSeat()
+    setLocalSeatId(id)
+    const name = useProfile.getState().displayName || 'Explorer'
+    publishSeatClaim(id, name)
     set({ seat: id, near: null, cinematic: false })
   },
   stand: () => {
+    const prevSeat = useWorld.getState().seat
+    if (prevSeat != null) {
+      publishSeatRelease(prevSeat)
+      setLocalSeatId(undefined)
+    }
     useSeatFlow.getState().unlock()
     useSeatFlow.getState().clearSeat()
     set({ seat: null, cinematic: false })

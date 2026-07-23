@@ -20,7 +20,7 @@ export const STEP_DEPTH = 0.6
 
 // Generously spaced so the wide nave never feels crowded.
 const TABLE_COLS = [-13, 13]
-const TABLE_ROWS = [-36, -18, 0, 18, 36] // 2 × 5 = 10 tables × 8 seats = 80
+const TABLE_ROWS = [-36, -18, 0, 18, 36] // 2 × 5 = 10 ground tables × 8 = 80
 
 export interface Seat {
   id: number
@@ -56,7 +56,7 @@ export function groundTables(): Placement[] {
 /** Upper-floor tables on the deep side balconies, clear of the staircases. */
 export function upperTables(): Placement[] {
   const x = HALL.halfW - HALL.balconyDepth / 2 - 0.5
-  const zs = [-32, -14, 4] // staircases occupy z ≈ 21…34, so keep tables away from there
+  const zs = [-20] // 1 table per side × 2 sides = 2 upper tables × 8 = 16 seats → total 96
   const out: Placement[] = []
   for (const sx of [-1, 1]) for (const z of zs) out.push({ pos: [sx * x, HALL.balconyY + 0.25, z], rotY: 0 })
   return out

@@ -18,7 +18,9 @@ import {
 } from '../store/settings'
 import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
-import { usePomodoro } from '../store/pomodoro'
+import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro'
+import type { TimerType } from '../store/pomodoro'
+import { getRemoteOccupied } from '../multiplayer/net'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
@@ -118,6 +120,18 @@ export function Explore({ defaultWorld }: ExploreProps) {
   useEffect(() => {
     const t = window.setTimeout(() => setHint(false), 8000)
     return () => window.clearTimeout(t)
+  }, [])
+
+  // Sync remote seat occupancy into the local seat picker every 2 seconds.
+  // This keeps the "Occupied" / "Free" labels accurate across all clients.
+  useEffect(() => {
+    const sync = () => {
+      const occupied = getRemoteOccupied()
+      useSeatFlow.getState().setOccupied(occupied)
+    }
+    sync()
+    const id = window.setInterval(sync, 2000)
+    return () => window.clearInterval(id)
   }, [])
 
   // Enter a realm in Third-person so the player always sees their own character —
@@ -664,7 +678,7 @@ function SeatPrompt() {
  *  on the E hotkey (which is also a typing key) to get up. */
 function SeatedPanel() {
   const seat = useWorld((s) => s.seat)
-  const { mode, remaining, running, toggle, skip, reset } = usePomodoro()
+  const { phase, remaining, running, toggle, forfeit } = usePomodoro()
   // What the student is studying — tags every completed focus block so analytics
   // can break focus time down by subject. Options come from Task Magnet.
   const subject = usePomodoro((s) => s.subject)
@@ -718,7 +732,7 @@ function SeatedPanel() {
 
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
-  const label = mode === 'idle' ? 'Ready' : mode === 'study' ? 'Studying' : mode === 'long' ? 'Long break' : 'Break'
+  const label = phase === 'idle' ? 'Ready' : phase === 'running' ? 'Studying' : phase === 'break' ? 'Break' : phase === 'paused' ? 'Paused' : 'Done'
 
   // minimized → a small unobtrusive chip so the world is fully visible, with a
   // compact stand-up beside it (the panel header isn't shown while minimized)
@@ -726,7 +740,7 @@ function SeatedPanel() {
     return (
       <div className="station-min">
         <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
-          <span className="station-chip-dot" /> {mode === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
+          <span className="station-chip-dot" /> {phase === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
         </button>
         <span className="station-seat-input-wrap">
           <input
@@ -775,16 +789,13 @@ function SeatedPanel() {
         <div className="station-sect">
           <div className="station-timer">
             <span className="station-time-label">{label}</span>
-            <span className="station-time">{mode === 'idle' ? '25:00' : `${mm}:${ss}`}</span>
+            <span className="station-time">{phase === 'idle' ? '--:--' : `${mm}:${ss}`}</span>
             <div className="station-timer-actions">
               <button className="station-timer-btn primary" onClick={toggle}>
-                {running ? 'Pause' : 'Start'}
+                {phase === 'idle' ? 'Start' : running ? 'Pause' : 'Resume'}
               </button>
-              <button className="station-timer-btn" onClick={skip}>
-                Skip
-              </button>
-              <button className="station-timer-btn" onClick={reset}>
-                Reset
+              <button className="station-timer-btn" onClick={forfeit}>
+                Forfeit
               </button>
             </div>
           </div>
@@ -913,7 +924,7 @@ function ProgressRing({ progress, size = 80, stroke = 4, color }: {
   )
 }
 
-/** Reward popup shown after completing a study session. */
+/** Reward popup shown after completing a study segment. */
 function RewardPopup() {
   const lastReward = usePomodoro((s) => s.lastReward)
   const clearReward = usePomodoro((s) => s.clearReward)
@@ -927,7 +938,7 @@ function RewardPopup() {
   return (
     <div className="pomo-reward" onClick={clearReward}>
       <div className="pomo-reward-leaf">🍃</div>
-      <div className="pomo-reward-amount">+{lastReward.total}</div>
+      <div className="pomo-reward-amount">+{lastReward.leaves}</div>
       <div className="pomo-reward-label">Leaves</div>
       {lastReward.noTabBonus > 0 && (
         <div className="pomo-reward-bonus">+{lastReward.noTabBonus} deep work</div>
@@ -940,43 +951,57 @@ function RewardPopup() {
 }
 
 function PomodoroChip() {
-  const { mode, remaining, running, toggle, forfeit, subject, completed } = usePomodoro()
+  const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, segmentsCompleted, totalSessionLeaves } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
-  const pomo = useSettings((s) => s.pomo)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [pickType, setPickType] = useState<TimerType>(timerType)
+  const [pickDur, setPickDur] = useState(sessionMinutes)
+  const [pickBreaks, setPickBreaks] = useState(breakCount)
   if (!show) return null
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
 
-  const totalSec = mode === 'idle' ? pomo.study * 60
-    : mode === 'study' ? pomo.study * 60
-    : mode === 'long' ? pomo.longBreak * 60
-    : pomo.break * 60
-  const progress = mode === 'idle' ? 0 : 1 - (remaining / totalSec)
+  const totalSec = sessionMinutes * 60
+  const progress = phase === 'idle' ? 0 : 1 - (remaining / totalSec)
 
-  const ringColor = mode === 'study' ? '#4ade80'
-    : mode === 'long' ? '#a78bfa'
-    : mode === 'break' ? '#60a5fa'
+  const ringColor = phase === 'running' ? '#4ade80'
+    : phase === 'break' ? '#60a5fa'
+    : phase === 'paused' ? '#fbbf24'
     : '#6b7280'
 
-  const studying = mode === 'study' && subject ? subject : null
-  const label = studying ?? (mode === 'idle' ? 'Start Studying' : mode === 'study' ? 'Focus' : mode === 'long' ? 'Long Break' : 'Break')
+  const studying = (phase === 'running' || phase === 'break') && subject ? subject : null
+  const label = studying ?? (phase === 'idle' ? 'Start Studying' : phase === 'running' ? 'Focus' : phase === 'break' ? 'Break' : phase === 'paused' ? 'Paused' : 'Done')
 
-  const isActive = mode === 'study' || mode === 'break' || mode === 'long'
+  const isActive = phase === 'running' || phase === 'break' || phase === 'paused'
+
+  const handleStart = () => {
+    configure(pickType, pickDur, pickType === 'pomodoro' ? pickBreaks : 0)
+    setConfigOpen(false)
+    toggle()
+  }
+
+  const handleConfigOpen = () => {
+    if (phase !== 'idle') return
+    setPickType(timerType)
+    setPickDur(sessionMinutes)
+    setPickBreaks(breakCount)
+    setConfigOpen(!configOpen)
+  }
 
   return (
     <div className="explore-pomo-wrap">
       <RewardPopup />
-      <div className={`explore-pomo ${mode}`}>
+      <div className={`explore-pomo ${phase}`}>
         {/* Forfeit button — only show during active session */}
         {isActive && running && (
           <button className="pomo-forfeit" onClick={forfeit} title="Forfeit session (lose all progress)">
             <Icon name="close" size={12} />
           </button>
         )}
-        <div className="pomo-ring-wrap" onClick={mode === 'idle' ? toggle : undefined} title={mode === 'idle' ? 'Start session' : ''}>
+        <div className="pomo-ring-wrap" onClick={handleConfigOpen} title={phase === 'idle' ? 'Configure & start session' : ''}>
           <ProgressRing progress={progress} size={64} stroke={3} color={ringColor} />
           <div className="pomo-center">
-            {mode === 'idle' ? (
+            {phase === 'idle' ? (
               <Icon name="play" size={18} />
             ) : (
               <span className="pomo-time">{mm}:{ss}</span>
@@ -988,12 +1013,59 @@ function PomodoroChip() {
             <Icon name={running ? 'pause' : 'play'} size={16} />
           </button>
         )}
+        {/* Session leaves counter */}
+        {phase !== 'idle' && totalSessionLeaves > 0 && (
+          <div className="pomo-session-xp">🍃 {totalSessionLeaves}</div>
+        )}
       </div>
-      {/* Session dots — below the timer */}
+
+      {/* Configuration panel */}
+      {configOpen && phase === 'idle' && (
+        <div className="pomo-config">
+          <div className="pomo-config-row">
+            <span className="pomo-config-label">Mode</span>
+            <div className="pomo-config-btns">
+              <button className={`pomo-config-btn ${pickType === 'focus' ? 'active' : ''}`} onClick={() => setPickType('focus')}>Focus</button>
+              <button className={`pomo-config-btn ${pickType === 'pomodoro' ? 'active' : ''}`} onClick={() => setPickType('pomodoro')}>Pomodoro</button>
+            </div>
+          </div>
+          <div className="pomo-config-row">
+            <span className="pomo-config-label">Duration</span>
+            <div className="pomo-config-btns">
+              {SESSION_OPTIONS.map((m) => (
+                <button key={m} className={`pomo-config-btn ${pickDur === m ? 'active' : ''}`} onClick={() => setPickDur(m)}>
+                  {m >= 60 ? `${m / 60}h` : `${m}m`}
+                </button>
+              ))}
+            </div>
+          </div>
+          {pickType === 'pomodoro' && (
+            <div className="pomo-config-row">
+              <span className="pomo-config-label">Breaks</span>
+              <div className="pomo-config-btns">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const segs = computeSegments(pickDur, n)
+                  const segMin = segs[0]
+                  return (
+                    <button key={n} className={`pomo-config-btn ${pickBreaks === n ? 'active' : ''}`} onClick={() => setPickBreaks(n)}>
+                      {n} <span className="pomo-config-sub">({segMin}m)</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          <button className="pomo-config-start" onClick={handleStart}>
+            Start {pickType === 'pomodoro' && pickBreaks > 0 ? `• ${pickBreaks} break${pickBreaks > 1 ? 's' : ''}` : ''} Session
+          </button>
+        </div>
+      )}
+
+      {/* Segment progress dots */}
       {isActive && (
-        <div className="pomo-dots">
-          {[0, 1, 2, 3].map((i) => (
-            <span key={i} className={`pomo-dot ${i <= (completed % 4) - 1 ? 'filled' : ''} ${i === (completed % 4) && mode === 'study' ? 'active' : ''}`} />
+        <div className="pomo-segments">
+          {computeSegments(sessionMinutes, breakCount).map((_, i) => (
+            <span key={i} className={`pomo-seg-dot ${i < segmentsCompleted ? 'filled' : ''} ${i === segmentsCompleted && phase === 'running' ? 'active' : ''}`} />
           ))}
         </div>
       )}

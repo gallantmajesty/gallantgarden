@@ -151,7 +151,7 @@ export const CHARACTERS: Character[] = [
     color: '#6cbf4a',
     bg: '#eaf7dd',
     isAnimal: true,
-    price: 400,
+    price: 500,
   },
   {
     id: 'rabbit',
@@ -170,7 +170,7 @@ export const CHARACTERS: Character[] = [
     color: '#f2a3c0',
     bg: '#fdeaf2',
     isAnimal: true,
-    price: 400,
+    price: 500,
   },
   {
     id: 'robot',
@@ -190,7 +190,7 @@ export const CHARACTERS: Character[] = [
     bg: '#0c1322',
     special: true,
     isAnimal: true,
-    price: 2000,
+    price: 8500,
   },
   {
     id: 'alien',
@@ -210,7 +210,7 @@ export const CHARACTERS: Character[] = [
     bg: '#0f2417',
     special: true,
     isAnimal: true,
-    price: 400,
+    price: 500,
   },
   {
     id: 'pig',
@@ -229,7 +229,7 @@ export const CHARACTERS: Character[] = [
     color: '#f29ac0',
     bg: '#fde6f1',
     isAnimal: true,
-    price: 400,
+    price: 500,
   },
   {
     id: 'angel',
@@ -249,7 +249,7 @@ export const CHARACTERS: Character[] = [
     bg: '#11131f',
     special: true,
     isAnimal: true,
-    price: 2000,
+    price: 8500,
   },
   {
     id: 'sunflower',
@@ -270,7 +270,7 @@ export const CHARACTERS: Character[] = [
     bg: '#1a3010',
     special: true,
     isAnimal: true,
-    price: 2000,
+    price: 8500,
   },
   {
     id: 'grim',
@@ -290,7 +290,7 @@ export const CHARACTERS: Character[] = [
     bg: '#0a1a0a',
     special: true,
     isAnimal: true,
-    price: 2000,
+    price: 8500,
   },
 ]
 

@@ -191,6 +191,7 @@ function handleMove(payload: { payload: Record<string, unknown> }) {
     speed: Number(body.speed) || 0,
     grounded: body.grounded !== false,
     seated: body.seated === true,
+    seatId: typeof body.seatId === 'number' ? body.seatId : undefined,
     cinematic: body.cinematic === true,
   })
   touch(id, Date.now())
@@ -273,8 +274,22 @@ function moved(a: PlayerState, b: PlayerState): boolean {
     Math.abs(a.speed - b.speed) > 0.05 ||
     a.grounded !== b.grounded ||
     a.seated !== b.seated ||
+    a.seatId !== b.seatId ||
     a.cinematic !== b.cinematic
   )
+}
+
+/** Build a seat-id → display-name map from all known remote targets.
+ *  Call this periodically or on move events to keep the seat picker updated. */
+export function getRemoteOccupied(): Record<number, string> {
+  const roster = useRealmNet.getState().roster
+  const out: Record<number, string> = {}
+  for (const [id, st] of targets.entries()) {
+    if (!st.seated || st.seatId == null) continue
+    const name = roster[id]?.name ?? 'Student'
+    out[st.seatId] = name
+  }
+  return out
 }
 
 function tickMove() {
@@ -316,6 +331,11 @@ export function publishSeatRelease(seatIndex: number): void {
 
 export function setLocalState(s: PlayerState): void {
   localState = s
+}
+
+/** Set the seat id for the local player (called when sitting in the library). */
+export function setLocalSeatId(seatId: number | undefined): void {
+  localState = { ...localState, seatId }
 }
 
 export async function joinRealm(channel: string, identity: PlayerIdentity): Promise<void> {

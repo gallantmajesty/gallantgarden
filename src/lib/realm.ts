@@ -17,7 +17,7 @@
 // Per-room capacity. A room auto-instances (Forest Hall #1, #2, …) once every
 // existing instance is full — see src/lib/realmPresence.ts (REALM_CAPACITY is the
 // runtime value passed to assign_realm_instance; keep these in sync).
-export const ROOM_CAPACITY = 50
+export const ROOM_CAPACITY = 100
 export type RealmKind = 'global' | 'custom'
 
 /** Which flagship world a global room renders. */

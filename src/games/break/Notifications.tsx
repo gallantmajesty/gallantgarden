@@ -24,7 +24,7 @@ export function Notifications() {
   const dismissBreakNotification = useBreakIntegration((s) => s.dismissBreakNotification)
   const showBreakNotification = useBreakIntegration((s) => s.showBreakNotification)
 
-  const pomoMode = usePomodoro((s) => s.mode)
+  const pomoMode = usePomodoro((s) => s.phase)
 
   // Break started notification
   useEffect(() => {
@@ -60,7 +60,7 @@ export function Notifications() {
 
   // Break over — time to study
   useEffect(() => {
-    if (pomoMode === 'study' && phase !== 'focus') {
+    if (pomoMode === 'running' && phase !== 'focus') {
       const id = `study-${++notifId}`
       setNotifications((prev) => [...prev, {
         id,

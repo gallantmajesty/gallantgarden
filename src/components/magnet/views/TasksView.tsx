@@ -239,12 +239,12 @@ export function TasksView({
           onChange={(e) => pomo.setSubject(e.target.value)}
           placeholder={t('tasks.subjectLabel')}
         />
-        {pomo.mode !== 'idle' && <span className="mg-pomo-time">{fmtTime(pomo.remaining)}</span>}
+        {pomo.phase !== 'idle' && <span className="mg-pomo-time">{fmtTime(pomo.remaining)}</span>}
         <button className="mg-btn primary small" onClick={pomo.toggle}>
-          {pomo.mode === 'idle' ? t('tasks.startFocus') : pomo.running ? t('explore.pause') : t('explore.start')}
+          {pomo.phase === 'idle' ? t('tasks.startFocus') : pomo.running ? t('explore.pause') : t('explore.start')}
         </button>
-        {pomo.mode !== 'idle' && (
-          <button className="mg-btn glass small" onClick={pomo.reset}>
+        {pomo.phase !== 'idle' && (
+          <button className="mg-btn glass small" onClick={pomo.forfeit}>
             {t('explore.reset')}
           </button>
         )}
