@@ -1,5 +1,6 @@
 import { Html } from '@react-three/drei'
 import { PlayerNameTag } from '../../components/PlayerNameTag'
+import { getTarget } from '../../multiplayer/net'
 
 // Anchors the magical name plate above a player's head in world space.
 // Scale follows distance so far players shrink naturally, and the whole thing
@@ -12,6 +13,8 @@ export function PlayerNameTag3D({
   self,
   headY = 2.55,
   hidden = false,
+  showAll = false,
+  playerId_net,
 }: {
   name: string
   rank: string
@@ -20,8 +23,28 @@ export function PlayerNameTag3D({
   self?: boolean
   headY?: number
   hidden?: boolean
+  showAll?: boolean
+  /** Network id of the player — used to read live timer state from targets. */
+  playerId_net?: string
 }) {
   if (hidden) return null
+
+  // Read live timer state from the multiplayer target (only for remote players)
+  let timerRemaining: number | undefined
+  let timerTotal: number | undefined
+  if (playerId_net && !self) {
+    const target = getTarget(playerId_net)
+    if (target && target.timerStartedAt > 0 && target.timerDurationMs > 0) {
+      const elapsed = Date.now() - target.timerStartedAt
+      const totalSec = Math.round(target.timerDurationMs / 1000)
+      const remainSec = Math.max(0, Math.round((target.timerDurationMs - elapsed) / 1000))
+      if (remainSec > 0 && remainSec < totalSec) {
+        timerRemaining = remainSec
+        timerTotal = totalSec
+      }
+    }
+  }
+
   return (
     <Html
       position={[0, headY, 0]}
@@ -30,7 +53,16 @@ export function PlayerNameTag3D({
       zIndexRange={[30, 0]}
       style={{ pointerEvents: 'none' }}
     >
-      <PlayerNameTag name={name} rank={rank} country={country} playerId={playerId} self={self} />
+      <PlayerNameTag
+        name={name}
+        rank={rank}
+        country={country}
+        playerId={playerId}
+        self={self}
+        showAll={showAll}
+        timerRemaining={timerRemaining}
+        timerTotal={timerTotal}
+      />
     </Html>
   )
 }

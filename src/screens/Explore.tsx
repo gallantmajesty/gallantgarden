@@ -1070,15 +1070,6 @@ function PomodoroChip() {
           </button>
         </div>
       )}
-
-      {/* Segment progress dots */}
-      {isActive && (
-        <div className="pomo-segments">
-          {computeSegments(sessionMinutes, breakCount).map((_, i) => (
-            <span key={i} className={`pomo-seg-dot ${i < segmentsCompleted ? 'filled' : ''} ${i === segmentsCompleted && phase === 'running' ? 'active' : ''}`} />
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -1221,15 +1212,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle label="Enable cinematic tour" value={s.cinematicTour} onChange={(v) => s.set('cinematicTour', v)} />
             <Toggle label="Cinematic camera zoom (dolly between shots)" value={s.cinematicZoom} onChange={(v) => s.set('cinematicZoom', v)} />
             <Toggle label="Bloom during cinematic" value={s.bloom} onChange={(v) => s.set('bloom', v)} />
-          </Section>
-
-          <Section title="Focus timer">
-            <FocusLength value={s.pomo.study} onChange={(v) => s.setPomo({ study: v })} />
-            <Stepper label="Break (min)" value={s.pomo.break} onChange={(v) => s.setPomo({ break: v })} min={1} max={60} step={1} />
-            <Stepper label="Long break (min)" value={s.pomo.longBreak} onChange={(v) => s.setPomo({ longBreak: v })} min={5} max={90} step={5} />
-            <Toggle label="Auto-start next session" value={s.pomo.autoStart} onChange={(v) => s.setPomo({ autoStart: v })} />
-            <Toggle label="Notification sound" value={s.pomo.sound} onChange={(v) => s.setPomo({ sound: v })} />
-            <Toggle label="Show timer on screen" value={s.pomo.showTimer} onChange={(v) => s.setPomo({ showTimer: v })} />
           </Section>
 
           {/* The "Audio" section was removed — all sound is controlled from the

@@ -222,6 +222,9 @@ interface SettingsState {
   cinematicZoom: boolean // let the cinematic camera dolly-zoom between waypoints
   bloom: boolean // bloom effect (only ever shows during the cinematic tour)
   nightMode: boolean // instant day/night mood switch for the library realm
+  /** When ON, player name tags always show full info (name + rank).
+   *  When OFF (default), only the country flag is shown; tap to expand. */
+  showAllUserInfo: boolean
   // lobby
   waitForLobbyReady: boolean // keep intro veil until lobby icons are loaded
   // audio (0..1)
@@ -365,6 +368,7 @@ const DEFAULTS: SettingsData = {
   timeSpeed: 1,
   timePaused: false,
   pomo: { study: 25, break: 5, longBreak: 15, autoStart: false, sound: true, showTimer: true },
+  showAllUserInfo: false,
 }
 
 export const useSettings = create<SettingsState>((set, get) => {
