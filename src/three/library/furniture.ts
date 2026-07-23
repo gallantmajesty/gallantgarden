@@ -56,7 +56,7 @@ export function groundTables(): Placement[] {
 /** Upper-floor tables on the deep side balconies, clear of the staircases. */
 export function upperTables(): Placement[] {
   const x = HALL.halfW - HALL.balconyDepth / 2 - 0.5
-  const zs = [-20] // 1 table per side × 2 sides = 2 upper tables × 8 = 16 seats → total 96
+  const zs = [-32, -14, 4] // staircases occupy z ≈ 21…34, so keep tables away from there
   const out: Placement[] = []
   for (const sx of [-1, 1]) for (const z of zs) out.push({ pos: [sx * x, HALL.balconyY + 0.25, z], rotY: 0 })
   return out

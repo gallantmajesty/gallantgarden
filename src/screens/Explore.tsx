@@ -251,14 +251,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
             </button>
           </div>
 
-          {hint && (
-            <div className="explore-hint" onPointerDown={() => setHint(false)}>
-              {isTouch
-                ? 'Drag to look · joystick to walk · tap Jump'
-                : 'Drag to look · WASD move · 1/2/3 view · Tab hide UI · Ctrl+F performance'}
-            </div>
-          )}
-
           <RoomRoster />
 
           <CameraSwitch />
