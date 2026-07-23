@@ -268,19 +268,14 @@ export function PlayerController() {
       cam.fov = CINE_FOV_BASE
       cam.updateProjectionMatrix()
     }
-  if (!wasCinematic.current && cinematic) {
-    setLocalCineActive(true)
-    publishCineState(true)
-    cineStateSent.current = true
-    cinePosSent.current = false
-  }
-  wasCinematic.current = cinematic
-
-  if (cinematic) {
-    if (!cinePosSent.current) {
-      cinePosSent.current = true
-      setLocalState({ x: cam.position.x, y: cam.position.y, z: cam.position.z, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: true })
+    if (!wasCinematic.current && cinematic) {
+      setLocalCineActive(true)
+      publishCineState(true)
+      cineStateSent.current = true
     }
+    wasCinematic.current = cinematic
+
+    if (cinematic) {
       const c = cine.current
       if (!c.active) {
         c.from.copy(cam.position)

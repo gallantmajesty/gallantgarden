@@ -140,13 +140,7 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
       setTagShown(wantTag)
     }
 
-    // A player in the shared Cinematic Tour has their avatar hidden for everyone
-    // else — their camera is broadcast as the tour feed, so showing their body
-    // would have it flying through the shared shot.
-    if (t.cinematic) {
-      if (g.visible) g.visible = false
-      return
-    }
+
     if (!render.current) {
       render.current = { x: t.x, y: t.y, z: t.z, yaw: t.yaw }
     }
