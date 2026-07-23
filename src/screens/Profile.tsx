@@ -582,6 +582,7 @@ function EditOverlay({
   const savePublic = useProfile((s) => s.savePublic)
   const setStudyGoals = useProfile((s) => s.setStudyGoals)
   const canChange = useProfile((s) => s.canChangeDisplayName())
+  const nameWarning = useProfile((s) => s.nameWarning)
   const changesUsed = useProfile((s) => s.displayNameChanges)
   const goals = useProfile((s) => s.data.studyGoals)
   const rank = getRank(view.rankId)
@@ -603,7 +604,7 @@ function EditOverlay({
     if (!trimmed || trimmed === view.displayName) return
     const check = checkDisplayName(trimmed)
     if (!check.ok) { setNameStatus({ ok: false, error: check.error }); return }
-    if (!canChange) { setNameStatus({ ok: false, error: 'Changes used up — buy a Name Card' }); return }
+    if (!canChange && !nameWarning) { setNameStatus({ ok: false, error: 'Changes used up — buy a Name Card' }); return }
     setNameStatus({ ok: true })
     const ok = await setDisplayName(trimmed)
     if (!ok) setNameStatus({ ok: false, error: 'Could not save' })
@@ -665,14 +666,16 @@ function EditOverlay({
               <input
                 className="sf-input"
                 value={name}
-                maxLength={40}
-                placeholder="Display name"
-                onChange={(e) => { setName(e.target.value); if (!nameStatus.ok) setNameStatus({ ok: true }) }}
+                maxLength={20}
+                placeholder="e.g. john_smith"
+                onChange={(e) => { const v = e.target.value; if (/^[a-zA-Z0-9_]*$/.test(v)) { setName(v); if (!nameStatus.ok) setNameStatus({ ok: true }) } }}
                 style={{ width: '100%', fontSize: 18, fontWeight: 700, padding: '12px 14px' }}
               />
               <div style={{ marginTop: 6, fontSize: 13, color: nameStatus.ok ? '#d4a843' : '#e25b4b' }}>
                 {nameStatus.ok
-                  ? `${remaining} free change${remaining === 1 ? '' : 's'} left`
+                  ? nameWarning
+                    ? 'Free rename — update to letters, numbers and _ only'
+                    : `${remaining} free change${remaining === 1 ? '' : 's'} left`
                   : nameStatus.error}
               </div>
 

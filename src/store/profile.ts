@@ -17,6 +17,7 @@ import {
 } from '../lib/types'
 import { checkDailyLogin } from '../lib/xpEngine'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
+import { isNameValid } from '../lib/displayName'
 
 // Per-user public/onboarding profile state. Distinct from `useSettings` (UI
 // prefs): this holds identity-ish fields set during onboarding — country (the
@@ -53,6 +54,8 @@ interface ProfileState {
   xp: number
   /** total golden leaves (premium XP) */
   premiumXp: number
+  /** true when the current display name violates the new naming rules */
+  nameWarning: boolean
 
   /** Load onboarding data for a user from the (already-fetched) profile cache. */
   hydrate: (userId: string, fallbackName?: string, isGuest?: boolean) => Promise<void>
@@ -89,6 +92,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   pub: { ...EMPTY_PROFILE_PUBLIC },
   xp: 0,
   premiumXp: 0,
+  nameWarning: false,
 
   hydrate: async (userId, fallbackName, isGuest = false) => {
     // Guests have no real Supabase session — skip all DB reads.
@@ -151,7 +155,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       displayName = fallbackName || 'Explorer'
     }
 
-    set({ userId, data, onboarded: data.completed, ready: true, playerId, displayName, displayNameChanges, avatarUrl, pub, xp, premiumXp })
+    set({ userId, data, onboarded: data.completed, ready: true, playerId, displayName, displayNameChanges, avatarUrl, pub, xp, premiumXp, nameWarning: !isNameValid(displayName) })
 
     // Award daily login golden leaves (first open of the day)
     try {
@@ -209,20 +213,22 @@ export const useProfile = create<ProfileState>((set, get) => ({
     return true
   },
 
-  canChangeDisplayName: () => get().displayNameChanges < DISPLAY_NAME_CHANGES_MAX,
+  canChangeDisplayName: () => get().nameWarning || get().displayNameChanges < DISPLAY_NAME_CHANGES_MAX,
 
   setDisplayName: async (raw) => {
     const userId = get().userId
-    const name = raw.trim().slice(0, 40)
+    const name = raw.trim().slice(0, 20)
     if (!userId || !name) return false
     const changes = get().displayNameChanges
-    if (changes >= DISPLAY_NAME_CHANGES_MAX) return false
-    if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1 }); return true }
+    const warningActive = get().nameWarning
+    // Block only if no warning AND changes used up
+    if (!warningActive && changes >= DISPLAY_NAME_CHANGES_MAX) return false
+    if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false }); return true }
     const { error } = await insforge
       .from('profiles')
       .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
     if (error) return false
-    set({ displayName: name, displayNameChanges: changes + 1 })
+    set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false })
     return true
   },
 
@@ -295,5 +301,6 @@ export const useProfile = create<ProfileState>((set, get) => ({
       pub: { ...EMPTY_PROFILE_PUBLIC },
       xp: 0,
       premiumXp: 0,
+      nameWarning: false,
     }),
 }))

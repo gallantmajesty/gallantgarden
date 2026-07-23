@@ -95,6 +95,7 @@ export function Lobby() {
   const rankTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const profileName = useProfile((s) => s.displayName)
+  const nameWarning = useProfile((s) => s.nameWarning)
   const displayName =
     profileName && profileName !== 'Explorer'
       ? profileName
@@ -236,6 +237,27 @@ export function Lobby() {
             <h1>Welcome back, <span className="lobby-welcome__name">{displayName}</span></h1>
             <p>{t('lobby.pickWhere')}</p>
           </div>
+          {nameWarning && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(230, 50, 50, 0.15), rgba(200, 40, 40, 0.1))',
+              border: '1px solid rgba(230, 80, 80, 0.4)',
+              borderRadius: 12,
+              padding: '12px 18px',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              cursor: 'pointer',
+            }} onClick={() => setPanel('profile')}>
+              <span style={{ fontSize: 22 }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#ff6b6b' }}>Your name needs updating</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
+                  Names must use only letters, numbers and _. Free rename available now.
+                </div>
+              </div>
+            </div>
+          )}
           <div className="lobby-objects">
             {OBJECTS.map((o, i) => {
               const isTransitioning = transition?.active

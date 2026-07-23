@@ -334,30 +334,18 @@ function FullNameStep({
 
   // Validate inline and report via callback — no setState in effect needed.
   const trimmed = value.trim()
-  const words = trimmed.split(/\s+/).filter(Boolean)
   let valid = false
 
   if (!trimmed) {
     valid = false
-  } else if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
-    valid = false
-  } else if (words.length < 2) {
-    valid = false
-  } else if (trimmed.length > 50) {
-    valid = false
   } else {
-    valid = true
+    const check = checkDisplayName(trimmed)
+    valid = check.ok
   }
 
   const errorMsg = !trimmed
     ? ''
-    : !/^[a-zA-Z0-9 ]+$/.test(trimmed)
-      ? 'Only letters, numbers and spaces allowed'
-      : words.length < 2
-        ? 'Please enter your full name (at least 2 words)'
-        : trimmed.length > 50
-          ? 'Name must be 50 characters or less'
-          : ''
+    : checkDisplayName(trimmed).error || ''
 
   // Report validity on every render (safe — no cascading setState).
   useEffect(() => {
@@ -367,16 +355,16 @@ function FullNameStep({
   return (
     <div className="ob-step">
       <h2 className="ob-q">{t('onboarding.fullNameTitle')}</h2>
-      <p className="ob-hint">{t('onboarding.fullNameHint')}</p>
+      <p className="ob-hint">Letters, numbers and _ only. Use _ instead of spaces. Max 20 characters.</p>
       <input
         className="sf-input ob-username-input"
         value={value}
-        maxLength={50}
-        placeholder={t('onboarding.fullNamePlaceholder')}
+        maxLength={20}
+        placeholder="e.g. john_smith"
         autoFocus
         onChange={(e) => {
           const v = e.target.value
-          if (/^[a-zA-Z0-9 ]*$/.test(v)) onChange(v)
+          if (/^[a-zA-Z0-9_]*$/.test(v)) onChange(v)
         }}
       />
       {errorMsg && <p className="ob-username-status bad">{errorMsg}</p>}
