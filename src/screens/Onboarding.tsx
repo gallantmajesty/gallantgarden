@@ -565,7 +565,6 @@ function CharacterStep({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const dragStart = useRef({ x: 0, scrollLeft: 0 })
-  const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([])
 
   function handleMouseDown(e: React.MouseEvent) {
     if (!scrollRef.current) return
@@ -578,23 +577,6 @@ function CharacterStep({
     scrollRef.current.scrollLeft = dragStart.current.scrollLeft - dx
   }
   function handleMouseUp() { setDragging(false) }
-
-  function handleCardClick(e: React.MouseEvent, id: string) {
-    // Create sparkle burst on click
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const newSparkles = Array.from({ length: 8 }, (_, i) => ({
-      id: Date.now() + i,
-      x: x + (Math.random() - 0.5) * 40,
-      y: y + (Math.random() - 0.5) * 40,
-    }))
-    setSparkles(prev => [...prev, ...newSparkles])
-    setTimeout(() => {
-      setSparkles(prev => prev.filter(s => !newSparkles.find(ns => ns.id === s.id)))
-    }, 800)
-    onCharacter(id)
-  }
 
   return (
     <div className="ob-step">
@@ -615,50 +597,9 @@ function CharacterStep({
             key={c.id}
             type="button"
             className={`ob-char-card ${characterId === c.id ? 'selected' : ''}`}
-            onClick={(e) => handleCardClick(e, c.id)}
+            onClick={() => onCharacter(c.id)}
           >
-            {/* Shimmer sweep effect */}
-            <div className="ob-shimmer" />
-
-            {/* Magical floating candles background */}
-            <div className="ob-magic-bg">
-              <div className="ob-candle" />
-              <div className="ob-candle" />
-              <div className="ob-candle" />
-              <div className="ob-candle" />
-              <div className="ob-candle" />
-            </div>
-
-            {/* Selection burst effect */}
-            <div className="ob-select-burst">
-              <div className="ob-burst-ring" />
-            </div>
-
-            {/* Sparkles on click */}
-            <div className="ob-char-sparkles">
-              {sparkles.map(s => (
-                <div
-                  key={s.id}
-                  className="ob-sparkle"
-                  style={{ left: s.x, top: s.y }}
-                />
-              ))}
-            </div>
-
-            <div className="ob-char-3d">
-              {/* Floating magical particles inside 3D area */}
-              <div className="ob-particles">
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-                <div className="ob-char-particle" />
-              </div>
-              <CharPreview3D config={c.fallback} skinId={characterId === c.id ? skinId : undefined} />
-            </div>
+            <CharPreview3D config={c.fallback} skinId={characterId === c.id ? skinId : undefined} />
             <span className="ob-char-name">{c.name}</span>
             {characterId === c.id && <span className="ob-char-check">✓</span>}
           </button>
