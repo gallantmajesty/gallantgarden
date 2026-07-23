@@ -64,7 +64,7 @@ export function Lobby() {
   const { t } = useTranslation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends'>(null)
+  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends' | 'inbox'>(null)
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
   const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
@@ -232,6 +232,40 @@ export function Lobby() {
           <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
             <Glyph name="gear" />
           </button>
+          {/* Inbox dropdown */}
+          <div className="lobby-inbox-wrap">
+            <button className="lobby-inbox-btn" onClick={() => setPanel(p => p === 'inbox' ? null : 'inbox')}>
+              <Glyph name="mail" />
+              {(incomingCount > 0 || unreadCount > 0) && <span className="lobby-inbox-badge" />}
+            </button>
+            {panel === 'inbox' && (
+              <div className="lobby-inbox-dropdown">
+                <div className="lobby-inbox-header">
+                  <span>Inbox</span>
+                  <button className="lobby-inbox-close" onClick={() => setPanel(null)}>✕</button>
+                </div>
+                <div className="lobby-inbox-list">
+                  <button className="lobby-inbox-item" onClick={() => setPanel(null)}>
+                    <Glyph name="info" className="lobby-inbox-icon" />
+                    <span>About</span>
+                  </button>
+                  <button className="lobby-inbox-item" onClick={() => { setPanel(null); setPanel('friends'); }}>
+                    <Glyph name="users" className="lobby-inbox-icon" />
+                    <span>Friend Requests</span>
+                    {incomingCount > 0 && <span className="lobby-inbox-count">{incomingCount}</span>}
+                  </button>
+                  <button className="lobby-inbox-item" onClick={() => setPanel(null)}>
+                    <Glyph name="life-buoy" className="lobby-inbox-icon" />
+                    <span>Team Support</span>
+                  </button>
+                  <button className="lobby-inbox-item" onClick={() => setPanel(null)}>
+                    <Glyph name="newspaper" className="lobby-inbox-icon" />
+                    <span>News</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className={`lobby-stage ${transition?.active ? 'lobby-stage--transitioning' : ''}`}>
           <div className="lobby-welcome">
@@ -241,17 +275,6 @@ export function Lobby() {
           </div>
 
           {/* Inbox bar */}
-          {(incomingCount > 0 || unreadCount > 0) && (
-            <div className="lobby-inbox" onClick={() => setPanel('friends')}>
-              <span className="lobby-inbox-icon">📬</span>
-              <span className="lobby-inbox-text">
-                {incomingCount > 0 && <span>{incomingCount} friend request{incomingCount > 1 ? 's' : ''}</span>}
-                {incomingCount > 0 && unreadCount > 0 && <span> · </span>}
-                {unreadCount > 0 && <span>{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</span>}
-              </span>
-              <span className="lobby-inbox-arrow">›</span>
-            </div>
-          )}
           {nameWarning && (
             <div style={{
               background: 'linear-gradient(135deg, rgba(230, 50, 50, 0.15), rgba(200, 40, 40, 0.1))',
@@ -402,10 +425,43 @@ export function Lobby() {
           <img src="/icons/focus-lily-logo.png" alt="FocusLily" width={28} height={28} />
           <span className="lm-logo-text">FocusLily</span>
         </div>
-        <button className="lm-bell" onClick={() => setPanel('friends')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-          {incomingCount > 0 && <span className="lm-bell-dot" />}
-        </button>
+        <div className="lm-header-actions">
+          <button className="lm-inbox-btn" onClick={() => setPanel(p => p === 'inbox' ? null : 'inbox')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+            {(incomingCount > 0 || unreadCount > 0) && <span className="lm-inbox-badge" />}
+          </button>
+          <button className="lm-bell" onClick={() => setPanel('friends')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            {incomingCount > 0 && <span className="lm-bell-dot" />}
+          </button>
+        </div>
+        {panel === 'inbox' && (
+          <div className="lm-inbox-dropdown">
+            <div className="lm-inbox-header">
+              <span>Inbox</span>
+              <button className="lm-inbox-close" onClick={() => setPanel(null)}>✕</button>
+            </div>
+            <div className="lm-inbox-list">
+              <button className="lm-inbox-item" onClick={() => setPanel(null)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>About</span>
+              </button>
+              <button className="lm-inbox-item" onClick={() => { setPanel(null); setPanel('friends'); }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>Friend Requests</span>
+                {incomingCount > 0 && <span className="lm-inbox-count">{incomingCount}</span>}
+              </button>
+              <button className="lm-inbox-item" onClick={() => setPanel(null)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>Team Support</span>
+              </button>
+              <button className="lm-inbox-item" onClick={() => setPanel(null)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/><path d="M8 14h8"/><path d="M8 18h8"/><path d="M8 10h3"/></svg>
+                <span>News</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* User card */}
