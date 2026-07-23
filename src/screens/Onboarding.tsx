@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Canvas } from '@react-three/fiber'
 import { useAuth } from '../store/auth'
@@ -15,6 +15,91 @@ import { RankBadge } from '../components/RankBadge'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import { SparklesText } from '../components/SparklesText'
 import './Onboarding.css'
+
+/* ------------------------------------------------------------------ magical particles */
+
+function MagicalParticles() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    let animFrame: number
+    const particles: { x: number; y: number; vx: number; vy: number; size: number; alpha: number; color: string }[] = []
+    
+    function resize() {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    
+    // Create particles
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: -Math.random() * 0.5 - 0.1,
+        size: Math.random() * 3 + 1,
+        alpha: Math.random() * 0.5 + 0.2,
+        color: Math.random() > 0.5 ? '#ffd700' : '#ff9500',
+      })
+    }
+    
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
+      particles.forEach(p => {
+        p.x += p.vx
+        p.y += p.vy
+        p.alpha -= 0.002
+        
+        if (p.alpha <= 0 || p.y < -10) {
+          p.x = Math.random() * canvas.width
+          p.y = canvas.height + 10
+          p.alpha = Math.random() * 0.5 + 0.2
+        }
+        
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx.fillStyle = p.color
+        ctx.globalAlpha = p.alpha
+        ctx.fill()
+        
+        // Glow effect
+        ctx.shadowBlur = 10
+        ctx.shadowColor = p.color
+      })
+      
+      ctx.globalAlpha = 1
+      ctx.shadowBlur = 0
+      animFrame = requestAnimationFrame(animate)
+    }
+    
+    animate()
+    
+    return () => {
+      window.removeEventListener('resize', resize)
+      cancelAnimationFrame(animFrame)
+    }
+  }, [])
+  
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 1,
+      }}
+    />
+  )
+}
 
 type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 const LAST_STEP: StepId = 7
@@ -99,6 +184,9 @@ export function Onboarding() {
 
   return (
     <div className="ob-root">
+      {/* Magical floating particles */}
+      <MagicalParticles />
+      
       {/* Decorative vines on fullscreen bg */}
       <div className="ob-vines">
         {/* Top-left vine */}
@@ -477,6 +565,7 @@ function CharacterStep({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const dragStart = useRef({ x: 0, scrollLeft: 0 })
+  const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([])
 
   function handleMouseDown(e: React.MouseEvent) {
     if (!scrollRef.current) return
@@ -489,6 +578,23 @@ function CharacterStep({
     scrollRef.current.scrollLeft = dragStart.current.scrollLeft - dx
   }
   function handleMouseUp() { setDragging(false) }
+
+  function handleCardClick(e: React.MouseEvent, id: string) {
+    // Create sparkle burst on click
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const newSparkles = Array.from({ length: 8 }, (_, i) => ({
+      id: Date.now() + i,
+      x: x + (Math.random() - 0.5) * 40,
+      y: y + (Math.random() - 0.5) * 40,
+    }))
+    setSparkles(prev => [...prev, ...newSparkles])
+    setTimeout(() => {
+      setSparkles(prev => prev.filter(s => !newSparkles.find(ns => ns.id === s.id)))
+    }, 800)
+    onCharacter(id)
+  }
 
   return (
     <div className="ob-step">
@@ -509,9 +615,50 @@ function CharacterStep({
             key={c.id}
             type="button"
             className={`ob-char-card ${characterId === c.id ? 'selected' : ''}`}
-            onClick={() => onCharacter(c.id)}
+            onClick={(e) => handleCardClick(e, c.id)}
           >
-            <CharPreview3D config={c.fallback} skinId={characterId === c.id ? skinId : undefined} />
+            {/* Shimmer sweep effect */}
+            <div className="ob-shimmer" />
+
+            {/* Magical floating candles background */}
+            <div className="ob-magic-bg">
+              <div className="ob-candle" />
+              <div className="ob-candle" />
+              <div className="ob-candle" />
+              <div className="ob-candle" />
+              <div className="ob-candle" />
+            </div>
+
+            {/* Selection burst effect */}
+            <div className="ob-select-burst">
+              <div className="ob-burst-ring" />
+            </div>
+
+            {/* Sparkles on click */}
+            <div className="ob-char-sparkles">
+              {sparkles.map(s => (
+                <div
+                  key={s.id}
+                  className="ob-sparkle"
+                  style={{ left: s.x, top: s.y }}
+                />
+              ))}
+            </div>
+
+            <div className="ob-char-3d">
+              {/* Floating magical particles inside 3D area */}
+              <div className="ob-particles">
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+                <div className="ob-char-particle" />
+              </div>
+              <CharPreview3D config={c.fallback} skinId={characterId === c.id ? skinId : undefined} />
+            </div>
             <span className="ob-char-name">{c.name}</span>
             {characterId === c.id && <span className="ob-char-check">✓</span>}
           </button>
@@ -560,7 +707,7 @@ function TermsStep({
   const [expanded, setExpanded] = useState(false)
   return (
     <div className="ob-step ob-terms">
-      <h2 className="ob-q">{t('onboarding.termsTitle')}</h2>
+      <h2 className="ob-q">{t('onboarding.referralTitle')}</h2>
 
       {/* Referral question */}
       <div className="ob-referrals">

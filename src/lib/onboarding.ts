@@ -10,7 +10,7 @@ import { DEFAULT_RANK_ID } from './ranks'
 // in any public component, lobby, leaderboard, chat, or summary shown to others.
 
 export const REFERRAL_OPTIONS = [
-  'YouTube', 'Instagram', 'TikTok', 'X (Twitter)', 'Reddit', 'Discord', 'Google Search',
+  'YouTube', 'Instagram', 'TikTok', 'X (Twitter)', 'Reddit', 'Discord', 'GitHub', 'Google Search',
   'Friend', 'School / College', 'Teacher', 'Blog / Article', 'Advertisement', 'Other',
 ] as const
 
