@@ -802,7 +802,7 @@
 }
 .ac-char-avatar {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 3 / 4;
   border-radius: 8px;
   overflow: hidden;
   display: grid;
@@ -817,7 +817,7 @@
 .ac-char-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 8px;
 }
 .ac-char-selected-label {
