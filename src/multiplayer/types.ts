@@ -31,6 +31,10 @@ export interface PlayerState {
   seated: boolean
   /** seat id when seated (enables cross-client seat occupancy tracking) */
   seatId?: number
+  /** timestamp (ms) when the study timer started — 0 when no timer is running */
+  timerStartedAt: number
+  /** total session duration in ms (e.g. 3600000 for 1 hour) — 0 when no timer */
+  timerDurationMs: number
   /** true while this player is driving / watching the shared Cinematic Tour — their
    *  avatar is hidden from everyone else so it doesn't fly through the shared shot. */
   cinematic: boolean

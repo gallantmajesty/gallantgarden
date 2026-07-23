@@ -7,6 +7,7 @@ import type { AvatarConfig } from '../../avatar/config'
 import type { Lod } from '../../avatar/AvatarAnimator'
 import { getTarget, useRealmNet } from '../../multiplayer/net'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
+import { PlayerTimerBar } from './PlayerTimerBar'
 
 // Every OTHER player in the realm, rendered from the live roster. The set of
 // avatars only changes on join/leave (cheap React work); each avatar then drives
@@ -198,6 +199,9 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
       <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
       {tagShown && (
         <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} />
+      )}
+      {tagShown && (
+        <PlayerTimerBar playerId={id} headY={2.9} />
       )}
     </group>
   )

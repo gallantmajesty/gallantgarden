@@ -129,7 +129,7 @@ export const useRealmNet = create<NetStore>(() => ({
 let currentChannel: string | null = null
 let selfId: string | null = null
 let selfIdentity: PlayerIdentity | null = null
-let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false }
+let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0 }
 let supabaseChannel: RealtimeChannel | null = null
 let moveTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -192,6 +192,8 @@ function handleMove(payload: { payload: Record<string, unknown> }) {
     grounded: body.grounded !== false,
     seated: body.seated === true,
     seatId: typeof body.seatId === 'number' ? body.seatId : undefined,
+    timerStartedAt: Number(body.timerStartedAt) || 0,
+    timerDurationMs: Number(body.timerDurationMs) || 0,
     cinematic: body.cinematic === true,
   })
   touch(id, Date.now())
@@ -275,6 +277,8 @@ function moved(a: PlayerState, b: PlayerState): boolean {
     a.grounded !== b.grounded ||
     a.seated !== b.seated ||
     a.seatId !== b.seatId ||
+    a.timerStartedAt !== b.timerStartedAt ||
+    a.timerDurationMs !== b.timerDurationMs ||
     a.cinematic !== b.cinematic
   )
 }
@@ -336,6 +340,11 @@ export function setLocalState(s: PlayerState): void {
 /** Set the seat id for the local player (called when sitting in the library). */
 export function setLocalSeatId(seatId: number | undefined): void {
   localState = { ...localState, seatId }
+}
+
+/** Set the local player's timer state (called when starting/stopping a study session). */
+export function setLocalTimer(startedAt: number, durationMs: number): void {
+  localState = { ...localState, timerStartedAt: startedAt, timerDurationMs: durationMs }
 }
 
 export async function joinRealm(channel: string, identity: PlayerIdentity): Promise<void> {

@@ -20,7 +20,7 @@ import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
 import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro'
 import type { TimerType } from '../store/pomodoro'
-import { getRemoteOccupied } from '../multiplayer/net'
+import { getRemoteOccupied, setLocalTimer } from '../multiplayer/net'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
@@ -132,6 +132,24 @@ export function Explore({ defaultWorld }: ExploreProps) {
     sync()
     const id = window.setInterval(sync, 2000)
     return () => window.clearInterval(id)
+  }, [])
+
+  // Sync local pomodoro timer state into multiplayer so other players can see
+  // your live study progress as a small bar above your head.
+  useEffect(() => {
+    const unsub = usePomodoro.subscribe((s) => {
+      if (s.phase === 'running' && s.startedAt) {
+        setLocalTimer(s.startedAt, s.sessionMinutes * 60 * 1000)
+      } else {
+        setLocalTimer(0, 0)
+      }
+    })
+    // Set initial state
+    const s = usePomodoro.getState()
+    if (s.phase === 'running' && s.startedAt) {
+      setLocalTimer(s.startedAt, s.sessionMinutes * 60 * 1000)
+    }
+    return unsub
   }, [])
 
   // Enter a realm in Third-person so the player always sees their own character —

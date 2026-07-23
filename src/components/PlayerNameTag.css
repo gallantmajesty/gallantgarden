@@ -70,3 +70,38 @@
 .pnt-rank {
   display: inline-flex;
 }
+
+/* Player Timer Bar — small live progress bar above seated players */
+.ptb-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+.ptb-track {
+  width: 48px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ptb-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  transition: width 1s linear;
+  box-shadow: 0 0 4px rgba(74, 222, 128, 0.5);
+}
+.ptb-time {
+  font-size: 9px;
+  font-weight: 700;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-family: var(--sans, system-ui, sans-serif);
+}
