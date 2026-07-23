@@ -483,7 +483,7 @@ export function PlayerController() {
           tour the local avatar stays visible to the player, but RemotePlayers hides
           it from everyone else (via the `cinematic` flag) so the broadcast feed is
           clean. */}
-      <group visible={seatWorld != null && cameraModeR !== 'first'}>
+      <group visible={cinematic || (seatWorld != null && cameraModeR !== 'first')}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
         <PlayerNameTag3D name={localName} rank={rank} country={country} playerId={playerId} self headY={2.55} hidden={cinematic} />
       </group>
