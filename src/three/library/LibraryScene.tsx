@@ -138,17 +138,21 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const [dpr, setDpr] = useState(targetDpr)
   useEffect(() => setDpr(targetDpr), [targetDpr])
 
-  // Pause the render loop entirely while the tab/canvas is hidden so we spend
-  // zero GPU/battery in the background. Visibility restores the original
-  // frameloop — the rendered look is identical (no quality/state change).
+  const renderPaused = useWorld((s) => s.renderPaused)
+  // Pause the render loop entirely while the tab/canvas is hidden or renderPaused is true so we spend
+  // zero GPU/battery in the background.
   const [loop, setLoop] = useState<'always' | 'demand' | 'never'>(frameloop)
   useEffect(() => {
+    if (renderPaused) {
+      setLoop('never')
+      return
+    }
     const onVis = () => setLoop(document.hidden ? 'never' : frameloop)
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
-  }, [frameloop])
+  }, [frameloop, renderPaused])
   // Sync when the parent changes frameloop (e.g. demand→always after seat pick)
-  useEffect(() => { setLoop(frameloop) }, [frameloop])
+  useEffect(() => { if (!renderPaused) setLoop(frameloop) }, [frameloop, renderPaused])
 
   // Once the scene is ready, settle the quality: step up from the Low opening
   // preset (auto-detect) or restore the player's manual choice.

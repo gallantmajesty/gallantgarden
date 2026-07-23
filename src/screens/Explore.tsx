@@ -38,7 +38,7 @@ import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
-import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
+import { FullscreenPomodoro } from '../components/FullscreenPomodoro'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { useSeatFlow } from '../store/seatFlow'
@@ -63,6 +63,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const [hint, setHint] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
+  const [fpOpen, setFpOpen] = useState(false)
   const fps = useSettings((s) => s.fps)
   const brightness = useSettings((s) => s.brightness)
   const set = useSettings((s) => s.set)
@@ -327,6 +328,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
         </div>
       )}
       {!isTrain && !cinematic && <MusicPlayer />}
+      <FullscreenPomodoro isOpen={fpOpen} onClose={() => setFpOpen(false)} />
     </div>
   )
 }
@@ -806,6 +808,16 @@ function SeatedPanel() {
               </button>
               <button className="station-timer-btn" onClick={forfeit}>
                 Forfeit
+              </button>
+              <button 
+                className="station-timer-btn fullscreen-btn"
+                onClick={() => setFpOpen(true)}
+                disabled={phase === 'idle'}
+                title="Fullscreen Focus Mode (pauses 3D rendering)"
+              >
+                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path d="M8 3v2m8-2v2M3 8h2m16 0h2M3 16h2m16 0h2M8 21v-2m8 2v-2M5 5l.5.5m13.5-5.5L21 5m-13 14l.5.5m13.5-5.5L21 19" />
+                </svg>
               </button>
             </div>
           </div>

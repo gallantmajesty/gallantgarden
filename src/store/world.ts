@@ -9,16 +9,22 @@ interface WorldState {
   seat: number | null
   near: number | null
   cinematic: boolean
+  renderPaused: boolean
+  wakeLock: boolean
   sit: (id: number) => void
   stand: () => void
   setNear: (id: number | null) => void
   setCinematic: (v: boolean) => void
+  setRenderPaused: (v: boolean) => void
+  setWakeLock: (v: boolean) => void
 }
 
 export const useWorld = create<WorldState>((set) => ({
   seat: null,
   near: null,
   cinematic: false,
+  renderPaused: false,
+  wakeLock: false,
   sit: (id) => {
     useSeatFlow.getState().lockSeat()
     setLocalSeatId(id)
@@ -38,4 +44,6 @@ export const useWorld = create<WorldState>((set) => ({
   },
   setNear: (id) => set((s) => (s.near === id ? s : { near: id })),
   setCinematic: (v) => set({ cinematic: v }),
+  setRenderPaused: (v) => set({ renderPaused: v }),
+  setWakeLock: (v) => set({ wakeLock: v }),
 }))
