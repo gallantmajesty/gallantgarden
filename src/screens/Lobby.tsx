@@ -12,6 +12,7 @@ import { getRank, rankProgress } from '../lib/ranks'
 import { LobbySettings } from '../components/settings/LobbySettings'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
+import { useChat } from '../store/chat'
 import { useIsDesktop } from '../components/DesktopOnly'
 import './Lobby.css'
 
@@ -66,6 +67,7 @@ export function Lobby() {
   const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends'>(null)
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
+  const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
   const userXp = useProfile((s) => s.xp)
   const isDesktop = useIsDesktop()
   const userPremiumXp = useProfile((s) => s.premiumXp)
@@ -237,6 +239,19 @@ export function Lobby() {
             <h1>Welcome back, <span className="lobby-welcome__name">{displayName}</span></h1>
             <p>{t('lobby.pickWhere')}</p>
           </div>
+
+          {/* Inbox bar */}
+          {(incomingCount > 0 || unreadCount > 0) && (
+            <div className="lobby-inbox" onClick={() => setPanel('friends')}>
+              <span className="lobby-inbox-icon">📬</span>
+              <span className="lobby-inbox-text">
+                {incomingCount > 0 && <span>{incomingCount} friend request{incomingCount > 1 ? 's' : ''}</span>}
+                {incomingCount > 0 && unreadCount > 0 && <span> · </span>}
+                {unreadCount > 0 && <span>{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</span>}
+              </span>
+              <span className="lobby-inbox-arrow">›</span>
+            </div>
+          )}
           {nameWarning && (
             <div style={{
               background: 'linear-gradient(135deg, rgba(230, 50, 50, 0.15), rgba(200, 40, 40, 0.1))',
@@ -434,6 +449,19 @@ export function Lobby() {
           </div>
         </button>
       </div>
+
+      {/* Inbox bar — mobile */}
+      {(incomingCount > 0 || unreadCount > 0) && (
+        <div className="lm-inbox" onClick={() => setPanel('friends')}>
+          <span className="lm-inbox-icon">📬</span>
+          <span className="lm-inbox-text">
+            {incomingCount > 0 && <span>{incomingCount} friend request{incomingCount > 1 ? 's' : ''}</span>}
+            {incomingCount > 0 && unreadCount > 0 && <span> · </span>}
+            {unreadCount > 0 && <span>{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</span>}
+          </span>
+          <span className="lm-inbox-arrow">›</span>
+        </div>
+      )}
 
       {/* Quick stats ring */}
       <div className="lm-stats-row">
