@@ -75,8 +75,8 @@
 }
 .ob-card--wide {
   width: min(880px, 94vw);
-  aspect-ratio: 16 / 9;
   max-height: calc(100svh - 48px);
+  overflow-y: auto;
 }
 .ob-card::before {
   content: '';
@@ -520,20 +520,22 @@
   gap: 12px;
 }
 .ob-swatch {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   border-radius: 50%;
-  border: 2.5px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: border-color 0.15s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
-.ob-swatch:hover { transform: scale(1.2); }
+.ob-swatch:hover { transform: scale(1.15); }
 .ob-swatch.on {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(212,175,55,0.5), 0 0 12px rgba(212,175,55,0.3);
-  transform: scale(1.2);
+  transform: scale(1.15);
 }
 
 /* birthdate */
