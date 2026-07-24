@@ -14,52 +14,34 @@ import { MusicPlayer } from './library/MusicPlayer'
 import { PublicPlayerTag } from './PublicPlayerTag'
 import './FullscreenPomodoro.css'
 
-const HOUSES = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff'] as const
-type House = typeof HOUSES[number]
+const QUOTES = [
+  '"Discipline today, destiny tomorrow."',
+  '"A little progress each day adds up to big results."',
+  '"The secret of getting ahead is getting started."',
+  '"Focus on being productive instead of busy."',
+  '"Small steps every day lead to big changes."',
+]
 
-const HOUSE_EMOJI: Record<House, string> = {
-  gryffindor: '🦁',
-  slytherin: '🐍',
-  ravenclaw: '🦅',
-  hufflepuff: '🦡',
-}
+const DAILY_TASKS = [
+  { text: 'Solve Mathematics Problems', minutes: 60, done: true },
+  { text: 'Physics Revision', minutes: 45, done: true },
+  { text: 'Read Chapter 5', minutes: 30, done: false },
+  { text: 'Chemistry Notes', minutes: 45, done: true },
+  { text: 'Mock Test', minutes: 60, done: false },
+]
 
-const RUNE_CHARS = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ', 'ᛈ', 'ᛊ', 'ᛋ', 'ᛏ', 'ᛒ', 'ᛖ', 'ᛗ', 'ᛚ', 'ᛜ', 'ᛞ', 'ᛟ']
+const STREAK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-function getStreakKey() {
-  const d = new Date()
-  return `fp.streak.${d.getFullYear()}.${d.getMonth()}`
-}
-
-function getDailyKey() {
-  return `fp.daily.${new Date().toISOString().slice(0, 10)}`
-}
-
-function loadStreak(): { count: number; lastDate: string } {
+function loadStreak(): { count: number; lastDate: string; days: boolean[] } {
   try {
-    const raw = localStorage.getItem('fp.streak')
-    return raw ? JSON.parse(raw) : { count: 0, lastDate: '' }
-  } catch { return { count: 0, lastDate: '' } }
+    const raw = localStorage.getItem('fp.streak.v2')
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return { count: 0, lastDate: '', days: [false, false, false, false, false, false, false] }
 }
 
-function saveStreak(count: number) {
-  const today = new Date().toISOString().slice(0, 10)
-  localStorage.setItem('fp.streak', JSON.stringify({ count, lastDate: today }))
-}
-
-function loadDaily(): number {
-  try {
-    return Number(localStorage.getItem(getDailyKey()) || '0')
-  } catch { return 0 }
-}
-
-function saveDaily(min: number) {
-  localStorage.setItem(getDailyKey(), String(min))
-}
-
-function loadHouse(): House {
-  try { return (localStorage.getItem('fp.house') as House) || 'gryffindor' }
-  catch { return 'gryffindor' }
+function saveStreak(data: { count: number; lastDate: string; days: boolean[] }) {
+  localStorage.setItem('fp.streak.v2', JSON.stringify(data))
 }
 
 interface FullscreenPomodoroProps {
@@ -75,40 +57,30 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
   } = usePomodoro()
 
   const { user } = useAuth()
-  const profile = useProfile((s) => s.data)
   const xp = useProfile((s) => s.xp)
   const displayName = useProfile((s) => s.displayName)
-  const magnet = useMagnet()
   const { set: setSetting } = useSettings()
   const { setWakeLock } = useWorld()
   const clockStore = useClockStore()
   const { activeClock, clockColor, showSeconds, animationSpeed, particleDensity } = clockStore
 
-  const [showOccupants, setShowOccupants] = useState(true)
-  const [showCalculator, setShowCalculator] = useState(true)
-  const [showDesk, setShowDesk] = useState(true)
-  const [showMusic, setShowMusic] = useState(true)
-  const [clockSettingsOpen, setClockSettingsOpen] = useState(false)
-  const [layout, setLayout] = useState<'left' | 'right'>('right')
-
   const wakeLockRef = useRef<{ release: () => void } | null>(null)
   const renderPausedRef = useRef(false)
+  const [activeNav, setActiveNav] = useState('focus')
+  const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
 
-  const house = useMemo(() => loadHouse(), [])
   const streak = useMemo(() => loadStreak(), [])
-  const dailyMin = useMemo(() => loadDaily(), [])
   const level = useMemo(() => Math.floor(Math.sqrt(xp / 50)) + 1, [xp])
   const xpInLevel = useMemo(() => {
-    const current = Math.floor(Math.sqrt(xp / 50))
-    const prev = current * current * 50
-    return xp - prev
+    const c = Math.floor(Math.sqrt(xp / 50))
+    return xp - c * c * 50
   }, [xp])
   const xpForNext = useMemo(() => {
-    const current = Math.floor(Math.sqrt(xp / 50))
-    return (current + 1) * (current + 1) * 50 - current * current * 50
+    const c = Math.floor(Math.sqrt(xp / 50))
+    return (c + 1) * (c + 1) * 50 - c * c * 50
   }, [xp])
+  const questsDone = DAILY_TASKS.filter(t => t.done).length
 
-  // Pause 3D rendering when fullscreen opens
   useEffect(() => {
     if (isOpen) {
       renderPausedRef.current = true
@@ -150,18 +122,6 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [isOpen])
 
-  // Track daily study time
-  useEffect(() => {
-    if (phase === 'running') {
-      const interval = setInterval(() => saveDaily(loadDaily() + 1), 60000)
-      return () => clearInterval(interval)
-    }
-  }, [phase])
-
-  const roster = useRealmNet((s) => s.roster)
-  const channel = useRealmNet((s) => s.channel)
-  const realmPlayers = getRemotePlayers().filter(p => p.realmId === channel)
-
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60)
     const s = sec % 60
@@ -188,271 +148,265 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
     ? ((currentSegment * 60 - remaining) / (currentSegment * 60)) * 100
     : 100
 
+  // SVG ring
+  const ringSize = 320
+  const ringStroke = 3
+  const ringRadius = (ringSize - ringStroke) / 2
+  const ringCircumference = 2 * Math.PI * ringRadius
+  const ringOffset = ringCircumference * (1 - progress / 100)
+
+  // Sun position on ring (based on progress)
+  const sunAngle = (progress / 100) * 360 - 90
+  const sunRad = (sunAngle * Math.PI) / 180
+  const sunX = 50 + 46 * Math.cos(sunRad)
+  const sunY = 50 + 46 * Math.sin(sunRad)
+
   if (!isOpen) return null
 
   return (
     <div className="fullscreen-pomodoro" role="dialog" aria-modal="true" aria-label="Fullscreen Focus Mode">
-      {/* ── Magical Background ── */}
-      <div className="fp-bg">
-        <div className="fp-bg-layer fp-bg-layer-1" />
-        <div className="fp-bg-layer fp-bg-layer-2" />
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div key={`candle-${i}`} className="fp-candle" />
-        ))}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={`particle-${i}`} className="fp-particle" />
-        ))}
-      </div>
+      <div className="fp-bg"><div className="fp-bg-glow" /></div>
 
-      {/* ── Main Content: Left Clock + Right Panel ── */}
-      <div className="fp-layout">
-        {/* ── LEFT: Big Clock Area ── */}
-        <div className="fp-left">
-          {/* Top bar */}
-          <div className="fp-left-top">
-            <button className="fp-btn fp-btn-icon fp-tooltip" data-tip="Exit" onClick={onClose}>
-              <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
-                <polyline points="14,2 22,2 22,10" /><line x1="14" y1="2" x2="14" y2="8" />
-              </svg>
-            </button>
-            <div className="fp-session-info">
-              <span className="fp-session-type">{timerType === 'focus' ? '⚗️ Focus' : '📖 Pomodoro'}</span>
-              <span className="fp-session-duration">{sessionMinutes}min · {breakCount} breaks</span>
-            </div>
-            <div style={{ flex: 1 }} />
-            <div className={`fp-hud-house ${house}`}>{HOUSE_EMOJI[house]} {house}</div>
-            <button className={`fp-btn fp-btn-icon fp-tooltip ${clockSettingsOpen ? 'active' : ''}`} data-tip="Clock Style" onClick={() => setClockSettingsOpen(!clockSettingsOpen)}>
-              <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2}>
-                <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" fill="currentColor" />
-              </svg>
-            </button>
-            <button className="fp-btn fp-btn-icon fp-tooltip" data-tip="Switch Panel" onClick={() => setLayout(l => l === 'left' ? 'right' : 'left')}>
-              <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2}>
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="9" y1="9" x2="15" y2="9" /><line x1="9" y1="15" x2="15" y2="15" />
-              </svg>
-            </button>
+      {/* ── Top Bar ── */}
+      <header className="fp-topbar">
+        <div className="fp-topbar-brand">
+          <div className="fp-topbar-logo">🪷</div>
+          <div>
+            <div className="fp-topbar-title">Study Focus</div>
+            <div className="fp-topbar-subtitle">Focus · Learn · Grow</div>
           </div>
+        </div>
+        <div className="fp-topbar-right">
+          <div className="fp-topbar-stat">
+            <span className="fp-topbar-stat-icon">🔥</span>
+            <span>{streak.count}</span>
+            <span style={{ fontSize: '10px', opacity: 0.5 }}>day streak</span>
+          </div>
+          <div className="fp-topbar-stat">
+            <span className="fp-topbar-stat-icon">💎</span>
+            <span>{xp.toLocaleString()}</span>
+            <span style={{ fontSize: '10px', opacity: 0.5 }}>Magic Crystals</span>
+          </div>
+          <div className="fp-topbar-avatar">{(displayName || 'W')[0].toUpperCase()}</div>
+        </div>
+      </header>
 
-          {/* Clock Settings */}
-          {clockSettingsOpen && (
-            <div className="fp-clock-settings-panel">
-              <div className="fp-settings-header">
-                <h3>✨ Clock Style</h3>
-                <button className="fp-btn fp-btn-icon" onClick={() => setClockSettingsOpen(false)}>
-                  <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              </div>
-              <div className="fp-clock-grid">
-                {CLOCK_THEMES.map(theme => (
-                  <button key={theme.id}
-                    className={`fp-clock-option ${clockStore.activeClock === theme.id ? 'active' : ''} ${!clockStore.isClockUnlocked(theme.id) ? 'locked' : ''}`}
-                    onClick={() => { if (clockStore.isClockUnlocked(theme.id)) clockStore.setActiveClock(theme.id) }}
-                    disabled={!clockStore.isClockUnlocked(theme.id)}>
-                    <span className="fp-clock-preview">{theme.previewIcon}</span>
-                    <span className="fp-clock-name">{theme.name}</span>
-                    <span className="fp-clock-rarity">{theme.rarity}</span>
-                    {!clockStore.isClockUnlocked(theme.id) && theme.price && <span className="fp-clock-price">🍃 {theme.price}</span>}
-                  </button>
-                ))}
-              </div>
-              <div className="fp-clock-customize">
-                <h4>Customize</h4>
-                <div className="fp-customize-row">
-                  <label><input type="color" value={clockColor} onChange={(e) => clockStore.setClockColor(e.target.value)} /><span>Color</span></label>
-                  <label><input type="checkbox" checked={showSeconds} onChange={(e) => clockStore.setShowSeconds(e.target.checked)} /><span>Seconds</span></label>
-                </div>
-                <div className="fp-customize-row">
-                  <label style={{ flex: 1 }}><span style={{ fontSize: '10px' }}>Speed: {animationSpeed.toFixed(1)}x</span>
-                    <input type="range" min="0.1" max="3" step="0.1" value={animationSpeed} onChange={(e) => clockStore.setAnimationSpeed(Number(e.target.value))} /></label>
-                  <label style={{ flex: 1 }}><span style={{ fontSize: '10px' }}>Particles: {particleDensity.toFixed(1)}x</span>
-                    <input type="range" min="0" max="2" step="0.1" value={particleDensity} onChange={(e) => clockStore.setParticleDensity(Number(e.target.value))} /></label>
-                </div>
-              </div>
-            </div>
-          )}
+      {/* ── Body ── */}
+      <div className="fp-body">
+        {/* Left Nav */}
+        <nav className="fp-nav">
+          {[
+            { id: 'focus', icon: '🏠', label: 'Focus' },
+            { id: 'tasks', icon: '☑️', label: 'Tasks' },
+            { id: 'quests', icon: '📋', label: 'Quests' },
+            { id: 'stats', icon: '📊', label: 'Stats' },
+            { id: 'profile', icon: '👤', label: 'Profile' },
+          ].map(item => (
+            <button
+              key={item.id}
+              className={`fp-nav-item ${activeNav === item.id ? 'active' : ''}`}
+              onClick={() => setActiveNav(item.id)}
+            >
+              <span className="fp-nav-icon">{item.icon}</span>
+              <span className="fp-nav-label">{item.label}</span>
+            </button>
+          ))}
+        </nav>
 
-          {/* Big Clock + Timer */}
-          <div className="fp-clock-area">
-            <div className="fp-spell-ring">
-              {RUNE_CHARS.slice(0, 12).map((rune, i) => (
-                <span key={i} className="fp-rune" style={{
-                  top: `${50 + 46 * Math.sin((i * 30 * Math.PI) / 180)}%`,
-                  left: `${50 + 46 * Math.cos((i * 30 * Math.PI) / 180)}%`,
-                  transform: 'translate(-50%, -50%)',
-                }}>{rune}</span>
-              ))}
-            </div>
-            <div className="fp-clock-display" style={{ '--clock-color': clockColor } as React.CSSProperties}>
-              <ClockDisplay
-                type={activeClock}
-                phase={phase}
-                remaining={remaining}
-                totalElapsed={totalElapsed}
-                sessionMinutes={sessionMinutes}
-                segmentProgress={segmentProgress}
-                settings={{ color: clockColor, showSeconds, animationSpeed, particleDensity }}
+        {/* Center Timer */}
+        <div className="fp-center">
+          <div className="fp-quote">{quote}</div>
+
+          <div className="fp-timer-ring-wrap">
+            {/* SVG Ring */}
+            <svg className="fp-timer-ring-svg" viewBox={`0 0 ${ringSize} ${ringSize}`}>
+              <defs>
+                <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#d4a843" />
+                  <stop offset="50%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#a78bfa" />
+                </linearGradient>
+              </defs>
+              <circle className="fp-timer-ring-track" cx={ringSize/2} cy={ringSize/2} r={ringRadius} />
+              <circle
+                className="fp-timer-ring-progress"
+                cx={ringSize/2} cy={ringSize/2} r={ringRadius}
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={ringOffset}
               />
-            </div>
-            <div className="fp-timer-inline">
-              <span className="fp-time-remaining">{formatTime(remaining)}</span>
-              <span className="fp-time-total">/ {formatTime(currentSegment * 60)}</span>
+              {/* Progress dot */}
+              <circle className="fp-timer-ring-dot" cx={ringSize/2 + ringRadius * Math.cos(sunRad)} cy={ringSize/2 + ringRadius * Math.sin(sunRad)} r={4} />
+            </svg>
+
+            {/* Sun on ring */}
+            <span className="fp-timer-sun" style={{
+              left: `${sunX}%`, top: `${sunY}%`,
+              transform: 'translate(-50%, -50%)',
+            }}>☀️</span>
+
+            {/* Moon opposite */}
+            <span className="fp-timer-moon" style={{
+              left: `${50 - (sunX - 50)}%`, top: `${50 - (sunY - 50)}%`,
+              transform: 'translate(-50%, -50%)',
+            }}>🌙</span>
+
+            {/* Timer content */}
+            <div className="fp-timer-content">
+              <div className="fp-timer-label">
+                {phase === 'idle' && 'Ready to Focus'}
+                {phase === 'running' && 'Focus Time'}
+                {phase === 'break' && 'Break Time'}
+                {phase === 'paused' && 'Paused'}
+                {phase === 'finished' && 'Session Complete'}
+              </div>
+              <div className="fp-timer-time">{formatTime(remaining)}</div>
+              <div className="fp-timer-total">
+                <span className="fp-timer-total-icon">✏️</span>
+                {formatTime(currentSegment * 60)}
+              </div>
             </div>
           </div>
 
-          {/* Phase + Controls */}
-          <div className="fp-left-bottom">
-            <div className={`fp-phase-indicator fp-phase-${phase}`}>
-              {phase === 'idle' && 'READY YOUR WAND'}
-              {phase === 'running' && '⚗️ DEEP FOCUS'}
-              {phase === 'break' && '☕ RESTORATION'}
-              {phase === 'paused' && '⏸ SPELL PAUSED'}
-              {phase === 'finished' && '✨ SPELL COMPLETE'}
-            </div>
-
-            <div className="fp-segments">
-              {segments.map((segMin, i) => (
-                <div key={i} className={`fp-segment ${i === segmentIndex ? 'active' : ''} ${i < segmentsCompleted ? 'completed' : ''}`}>
-                  <div className="fp-segment-bar">
-                    <div className="fp-segment-fill" style={{ width: `${i === segmentIndex ? segmentProgress : (i < segmentsCompleted ? 100 : 0)}%` }} />
-                  </div>
-                  <span className="fp-segment-label">{segMin}min</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="fp-controls">
-              {phase === 'idle' ? (
-                <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={toggle}>
-                  <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Begin Study
+          {/* Controls */}
+          <div className="fp-controls">
+            {phase === 'idle' ? (
+              <button className="fp-btn-lg fp-btn-primary" onClick={toggle}>
+                ▶ Start Focus
+              </button>
+            ) : phase === 'running' ? (
+              <>
+                <button className="fp-btn-lg fp-btn-secondary" onClick={toggle}>
+                  ❚❚ Pause Focus
                 </button>
-              ) : phase === 'running' ? (
-                <>
-                  <button className="fp-btn fp-btn-secondary fp-btn-lg" onClick={toggle}>
-                    <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg> Pause Spell
-                  </button>
-                  <button className="fp-btn fp-btn-danger fp-btn-lg" onClick={forfeit}>
-                    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg> Dispel
-                  </button>
-                </>
-              ) : phase === 'break' ? (
-                <>
-                  <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={toggle}>
-                    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg> Skip Rest
-                  </button>
-                  <button className="fp-btn fp-btn-secondary fp-btn-lg" onClick={toggle}>
-                    <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg> Pause
-                  </button>
-                </>
-              ) : phase === 'paused' ? (
-                <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={toggle}>
-                  <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Resume
+                <button className="fp-btn-lg fp-btn-danger" onClick={forfeit}>
+                  ✕ End Session
                 </button>
-              ) : phase === 'finished' ? (
-                <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={forfeit}>
-                  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg> Collect Rewards
+              </>
+            ) : phase === 'break' ? (
+              <>
+                <button className="fp-btn-lg fp-btn-primary" onClick={toggle}>
+                  ▶ Skip Break
                 </button>
-              ) : null}
-            </div>
+                <button className="fp-btn-lg fp-btn-secondary" onClick={toggle}>
+                  ❚❚ Pause
+                </button>
+              </>
+            ) : phase === 'paused' ? (
+              <button className="fp-btn-lg fp-btn-primary" onClick={toggle}>
+                ▶ Resume
+              </button>
+            ) : phase === 'finished' ? (
+              <button className="fp-btn-lg fp-btn-primary" onClick={forfeit}>
+                ✓ Complete
+              </button>
+            ) : null}
+          </div>
 
-            {pendingRewards.length > 0 && (
-              <div className="fp-rewards">
-                <h4>🏆 Session Loot</h4>
-                <div className="fp-rewards-list">
-                  {pendingRewards.map(r => (
-                    <div key={r.segmentIndex} className="fp-reward">
-                      <span>Scroll {r.segmentIndex + 1}: {r.minutes}min</span>
-                      <span className="fp-reward-leaves">+{r.leaves} 🍃</span>
-                    </div>
-                  ))}
-                  <div className="fp-reward fp-reward-total">
-                    <span>Total Loot</span>
-                    <span className="fp-reward-leaves">+{totalSessionLeaves} 🍃</span>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Quick actions */}
+          <div className="fp-quick-actions">
+            <button className={`fp-quick-btn ${activeClock === 'analog' ? 'active' : ''}`} onClick={() => clockStore.setActiveClock('analog')}>
+              🕐 Analog Clock
+            </button>
+            <button className={`fp-quick-btn ${activeClock === 'sand' ? 'active' : ''}`} onClick={() => clockStore.setActiveClock('sand')}>
+              ⏳ Desert Glass
+            </button>
+            <button className="fp-quick-btn" onClick={() => {}}>
+              🎵 White Noise
+            </button>
           </div>
         </div>
 
-        {/* ── RIGHT: Side Panel ── */}
-        <aside className="fp-side-panel">
-          {showOccupants && (
-            <section className="fp-panel-section">
-              <div className="fp-section-header"><h3>👥 Scholars</h3><button className="fp-btn fp-btn-sm" onClick={() => setShowOccupants(false)}>×</button></div>
-              <div className="fp-occupants-list">
-                {realmPlayers.length === 0 ? (
-                  <p className="fp-empty">Studying alone in the library…</p>
-                ) : realmPlayers.map(p => (
-                  <div key={p.id} className="fp-occupant">
-                    <PublicPlayerTag player={{ id: p.id, displayName: p.name, country: p.country, rank: p.rank, timerStartedAt: p.timerStartedAt, timerDurationMs: p.timerDurationMs }} self={p.id === user?.id} showAll={true} />
-                    <span className="fp-occupant-status">{p.id === user?.id ? 'You' : 'Focused'}</span>
+        {/* Right Panel */}
+        <aside className="fp-panel">
+          {/* Today's Tasks */}
+          <div className="fp-card">
+            <div className="fp-card-header">
+              <div className="fp-card-title">
+                <span className="fp-card-title-icon">📋</span>
+                Today's Tasks
+              </div>
+              <div className="fp-card-badge">→ {questsDone} / {DAILY_TASKS.length}</div>
+            </div>
+            <div className="fp-task-list">
+              {DAILY_TASKS.map((task, i) => (
+                <div key={i} className="fp-task">
+                  <div className={`fp-task-check ${task.done ? 'done' : ''}`}>
+                    {task.done ? '✓' : ''}
                   </div>
-                ))}
+                  <span className={`fp-task-text ${task.done ? 'done' : ''}`}>{task.text}</span>
+                  <span className="fp-task-time">{task.minutes} min</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Daily Quest */}
+          <div className="fp-card">
+            <div className="fp-card-header">
+              <div className="fp-card-title">
+                <span className="fp-card-title-icon">⭐</span>
+                Daily Quest
               </div>
-            </section>
-          )}
-          {showDesk && (
-            <section className="fp-panel-section">
-              <div className="fp-section-header"><h3>📚 Study Desk</h3><button className="fp-btn fp-btn-sm" onClick={() => setShowDesk(false)}>×</button></div>
-              <div className="fp-desk-content">
-                <div className="fp-desk-subject">
-                  <label>Subject</label>
-                  <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="What are you studying?" maxLength={50} />
-                </div>
-                <div className="fp-desk-progress">
-                  <div className="fp-progress-bar"><div className="fp-progress-fill" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
-                  <span className="fp-progress-text">{Math.round(progress)}% complete</span>
-                </div>
-                <div className="fp-desk-stats">
-                  <div className="fp-stat"><span className="fp-stat-value">{formatFullTime(totalElapsed)}</span><span className="fp-stat-label">Studied</span></div>
-                  <div className="fp-stat"><span className="fp-stat-value">{segmentsCompleted}/{segments.length}</span><span className="fp-stat-label">Spells</span></div>
-                  <div className="fp-stat"><span className="fp-stat-value">🍃 {totalSessionLeaves}</span><span className="fp-stat-label">Earned</span></div>
-                </div>
+            </div>
+            <div className="fp-quest-progress">
+              <span>Complete 3 Focus Sessions</span>
+              <span style={{ fontWeight: 700 }}>{Math.min(segmentsCompleted, 3)} / 3</span>
+            </div>
+            <div className="fp-quest-bar">
+              <div className="fp-quest-fill" style={{ width: `${Math.min((segmentsCompleted / 3) * 100, 100)}%` }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="fp-quest-xp">
+                <span className="fp-quest-xp-icon">💎</span>
+                +50 XP
               </div>
-            </section>
-          )}
-          {showCalculator && (
-            <section className="fp-panel-section">
-              <div className="fp-section-header"><h3>🔢 Calculator</h3><button className="fp-btn fp-btn-sm" onClick={() => setShowCalculator(false)}>×</button></div>
-              <LibraryCalc />
-            </section>
-          )}
-          {showMusic && (
-            <section className="fp-panel-section fp-music-section">
-              <div className="fp-section-header"><h3>🎵 Ambient</h3><button className="fp-btn fp-btn-sm" onClick={() => setShowMusic(false)}>×</button></div>
-              <MusicPlayer compact />
-            </section>
-          )}
-          {!showOccupants && <button className="fp-restore-btn" onClick={() => setShowOccupants(true)}>👥 Scholars</button>}
-          {!showDesk && <button className="fp-restore-btn" onClick={() => setShowDesk(true)}>📚 Desk</button>}
-          {!showCalculator && <button className="fp-restore-btn" onClick={() => setShowCalculator(true)}>🔢 Calc</button>}
-          {!showMusic && <button className="fp-restore-btn" onClick={() => setShowMusic(true)}>🎵 Music</button>}
+              <span className="fp-quest-reward">🎁</span>
+            </div>
+          </div>
+
+          {/* Daily Streak */}
+          <div className="fp-card">
+            <div className="fp-card-header">
+              <div className="fp-card-title">
+                <span className="fp-card-title-icon">🔥</span>
+                Daily Streak
+              </div>
+            </div>
+            <div className="fp-streak-number">{streak.count}</div>
+            <div className="fp-streak-days">days</div>
+            <div className="fp-streak-calendar">
+              {STREAK_DAYS.map((day, i) => (
+                <div key={i} className="fp-streak-day">
+                  <div className={`fp-streak-dot ${streak.days[i] ? 'done' : ''} ${i === new Date().getDay() - 1 ? 'today' : ''}`}>
+                    {streak.days[i] ? '✓' : ''}
+                  </div>
+                  <span className="fp-streak-label">{day}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </aside>
       </div>
 
-      {/* ── Bottom HUD ── */}
-      <div className="fp-hud">
-        <div className="fp-hud-left">
-          <div className="fp-hud-player">
-            <div className="fp-hud-avatar">{(displayName || 'W')[0].toUpperCase()}</div>
-            <div><div className="fp-hud-name">{displayName || 'Wizard'}</div><div className="fp-hud-level">Level {level}</div></div>
+      {/* ── Bottom Bar ── */}
+      <div className="fp-bottom">
+        <div className="fp-player-card">
+          <div className="fp-player-avatar">🧙</div>
+          <div className="fp-player-info">
+            <div className="fp-player-level">Lv. {level}</div>
+            <div className="fp-player-name">{displayName || 'Apprentice Scholar'}</div>
+            <div className="fp-player-xp-bar">
+              <div className="fp-player-xp-fill" style={{ width: `${(xpInLevel / xpForNext) * 100}%` }} />
+            </div>
+            <div className="fp-player-xp-text">{xpInLevel.toLocaleString()} / {xpForNext.toLocaleString()} XP</div>
           </div>
-          <div className="fp-hud-xp">
-            <div className="fp-hud-xp-bar"><div className="fp-hud-xp-fill" style={{ width: `${(xpInLevel / xpForNext) * 100}%` }} /></div>
-            <span className="fp-hud-xp-text">{xpInLevel}/{xpForNext} XP</span>
-          </div>
+          <div className="fp-player-rank">Apprentice Scholar</div>
         </div>
-        <div className="fp-hud-center">
-          <div className="fp-hud-streak"><span className="fp-hud-streak-flame">🔥</span><span>{streak.count} day streak</span></div>
-        </div>
-        <div className="fp-hud-right">
-          <div className="fp-hud-quest"><span className="fp-hud-quest-label">Daily:</span><span className="fp-hud-quest-progress">{Math.min(dailyMin, 120)}/120 min</span></div>
-          <div className="fp-hud-leaves">🍃 {xp.toLocaleString()}</div>
+
+        <div className="fp-bottom-quote">
+          <span className="fp-bottom-quote-icon">🧪</span>
+          {quote}
+          <span className="fp-bottom-quote-pen">🪶</span>
         </div>
       </div>
     </div>
