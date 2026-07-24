@@ -64,7 +64,7 @@ export function Lobby() {
   const { t } = useTranslation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [panel, setPanel] = useState<null | 'interact' | 'settings' | 'friends' | 'inbox'>(null)
+  const [panel, setPanel] = useState<null | 'settings' | 'friends' | 'inbox'>(null)
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
   const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
@@ -217,10 +217,7 @@ export function Lobby() {
             </span>
             <span className="lobby-xp__name">{displayName}</span>
           </button>
-          <button className="sf-btn lobby-iconbtn" onClick={() => setPanel('interact')}>
-            <Glyph name="people" />{t('lobby.interact')}
-            {incomingCount > 0 && <span className="lobby-dot" />}
-          </button>
+
         </div>
         <div className="lobby-bottomleft">
           <button className="lobby-exit sf-btn water" onClick={() => { signOut(); navigate('/') }}>Exit</button>
@@ -359,30 +356,7 @@ export function Lobby() {
             <div className="rank-transition-rank">{rankObj.name}</div>
           </div>
         )}
-        <Modal open={panel === 'interact'} title={t('lobby.interact')} onClose={() => setPanel(null)}>
-          <div className="menu-list">
-            <button className="menu-item" onClick={() => setPanel('friends')}>
-              <span className="menu-item-icon"><Glyph name="people" /></span>
-              <span><strong>{t('friendsPanel.tabFriends')}</strong><small>{t('lobby.friendsSub')}</small></span>
-              {incomingCount > 0 && <span className="menu-badge">{incomingCount}</span>}
-            </button>
-            <button className="menu-item" onClick={() => navigate('/profile')}>
-              <span className="menu-item-icon"><Glyph name="face" /></span>
-              <span><strong>{t('lobby.yourProfile')}</strong><small>{t('lobby.profileSub')}</small></span>
-            </button>
-            {[
-              { t: t('lobby.menuControls'), s: t('lobby.menuControlsSub'), g: 'gear', soon: true },
-              { t: t('lobby.menuInfo'), s: t('lobby.menuInfoSub'), g: 'star', route: '/info' },
-              { t: t('lobby.menuHelp'), s: t('lobby.menuHelpSub'), g: 'book', soon: true },
-            ].map((it) => (
-              <button key={it.t} className="menu-item" onClick={() => { setPanel(null); if (it.route) navigate(it.route) }}>
-                <span className="menu-item-icon"><Glyph name={it.g} /></span>
-                <span><strong>{it.t}</strong><small>{it.s}</small></span>
-                {it.soon && <span className="menu-soon">Soon</span>}
-              </button>
-            ))}
-          </div>
-        </Modal>
+
         {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
         {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
         <ResourceBar />
@@ -418,9 +392,6 @@ export function Lobby() {
 
       {/* Header */}
       <div className="lm-header">
-        <button className="lm-hamburger" onClick={() => setPanel('interact')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
         <div className="lm-logo">
           <img src="/icons/focus-lily-logo.png" alt="FocusLily" width={28} height={28} />
           <span className="lm-logo-text">FocusLily</span>
@@ -645,27 +616,6 @@ export function Lobby() {
       </nav>
 
       {/* Panels */}
-      <Modal open={panel === 'interact'} title={t('lobby.interact')} onClose={() => setPanel(null)}>
-        <div className="menu-list">
-          <button className="menu-item" onClick={() => setPanel('friends')}>
-            <span className="menu-item-icon"><Glyph name="people" /></span>
-            <span><strong>{t('friendsPanel.tabFriends')}</strong><small>{t('lobby.friendsSub')}</small></span>
-            {incomingCount > 0 && <span className="menu-badge">{incomingCount}</span>}
-          </button>
-          <button className="menu-item" onClick={() => navigate('/profile')}>
-            <span className="menu-item-icon"><Glyph name="face" /></span>
-            <span><strong>{t('lobby.yourProfile')}</strong><small>{t('lobby.profileSub')}</small></span>
-          </button>
-          <button className="menu-item" onClick={() => { setPanel(null); navigate('/info') }}>
-            <span className="menu-item-icon"><Glyph name="star" /></span>
-            <span><strong>{t('lobby.menuInfo')}</strong><small>{t('lobby.menuInfoSub')}</small></span>
-          </button>
-          <button className="menu-item" onClick={() => { signOut(); navigate('/') }}>
-            <span className="menu-item-icon"><Glyph name="gear" /></span>
-            <span><strong>Exit</strong><small>Sign out of FocusLily</small></span>
-          </button>
-        </div>
-      </Modal>
       {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
       <ComingSoonModal
