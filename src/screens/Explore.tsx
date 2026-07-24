@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
@@ -65,6 +65,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
   const [fpOpen, setFpOpen] = useState(false)
+  const [numHintDismissed, setNumHintDismissed] = useState(false)
   const fps = useSettings((s) => s.fps)
   const brightness = useSettings((s) => s.brightness)
   const set = useSettings((s) => s.set)
@@ -77,14 +78,14 @@ export function Explore({ defaultWorld }: ExploreProps) {
   // Determine which world to render: use worldFromUrl if available, otherwise use defaultWorld prop, otherwise use realm.world
   const isTrain = worldFromUrl === 'train-station' || defaultWorld === 'train-station' || realm?.world === 'train-station'
 
-  // Auto-minimize the desk whenever the player sits down, so the seated avatar (and
-  // its sitting animation) stays visible behind a small chip rather than the full
-  // Study Station panel. The player taps the chip to expand the desk when studying.
+  // Auto-collapse the desk whenever the player sits down, so the seated avatar (and
+  // its sitting animation) stays visible behind a small header rather than the full
+  // Study Station panel. The player taps the header to expand the desk when studying.
   const seat = useWorld((s) => s.seat)
   const cinematic = useWorld((s) => s.cinematic)
   const wasSeated = useRef(false)
   useEffect(() => {
-    if (seat != null && !wasSeated.current) useDesk.getState().setView('min')
+    if (seat != null && !wasSeated.current) useDesk.getState().setView('collapsed')
     wasSeated.current = seat != null
   }, [seat])
 
@@ -312,7 +313,9 @@ export function Explore({ defaultWorld }: ExploreProps) {
           timer stays visible. */}
       {!isTrain && !cinematic && (
         <div className="cine-controls">
-          <span className="magic-hint">Press <b>9</b> to see the magic ✨</span>
+          {!numHintDismissed && (
+            <span className="magic-hint">Press any number</span>
+          )}
           <div className="cine-keyrow">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => (
               <button
@@ -320,7 +323,10 @@ export function Explore({ defaultWorld }: ExploreProps) {
                 type="button"
                 className={`cine-key${k === '9' ? ' magic' : ''}`}
                 title={k === '9' ? 'Cinematic Tour (key 9)' : `Camera preset ${k}`}
-                onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }))}
+                onClick={() => {
+                  if (!numHintDismissed) setNumHintDismissed(true)
+                  window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }))
+                }}
               >
                 {k}
               </button>
@@ -551,8 +557,6 @@ function RoomRoster() {
           ))}
           {others.length === 0 && (
             <p className="room-roster-empty">
-              You’re the only one here right now.
-              <br />
               <span>Others studying in this realm will appear here live.</span>
             </p>
           )}
@@ -705,6 +709,49 @@ function SeatedPanel() {
   const view = useDesk((s) => s.view)
   const desk = useDesk.getState
 
+  // Draggable position for the desk panel
+  const stationRef = useRef<HTMLDivElement>(null)
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
+  const dragAbortRef = useRef<AbortController | null>(null)
+
+  // Reset drag position when user stands up
+  useEffect(() => {
+    if (seat == null) setDragPos(null)
+  }, [seat])
+
+  const startDrag = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button,input,textarea,select')) return
+    const el = stationRef.current
+    if (!el) return
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = el.getBoundingClientRect()
+    const sx = e.clientX
+    const sy = e.clientY
+    const bx = rect.left
+    const by = rect.top
+    let last = { x: bx, y: by }
+    const ac = new AbortController()
+    dragAbortRef.current = ac
+    const move = (ev: PointerEvent) => {
+      const x = Math.max(10, Math.min(bx + (ev.clientX - sx), window.innerWidth - el.offsetWidth - 10))
+      const y = Math.max(10, Math.min(by + (ev.clientY - sy), window.innerHeight - el.offsetHeight - 10))
+      last = { x, y }
+      el.style.left = `${x}px`
+      el.style.top = `${y}px`
+      el.style.right = 'auto'
+      el.style.bottom = 'auto'
+    }
+    const finish = () => {
+      ac.abort()
+      dragAbortRef.current = null
+      setDragPos(last)
+    }
+    window.addEventListener('pointermove', move, { signal: ac.signal })
+    window.addEventListener('pointerup', finish, { signal: ac.signal })
+    window.addEventListener('pointercancel', finish, { signal: ac.signal })
+  }, [])
+
   // Change-seat cooldown: 10 minutes from when the user sat down
   const seatLockUntil = useSeatFlow((s) => s.seatLockUntil)
   const [seatCooldown, setSeatCooldown] = useState(0)
@@ -724,6 +771,7 @@ function SeatedPanel() {
   const [seatInput, setSeatInput] = useState('')
 
   const handleChangeSeatToNumber = () => {
+    if (!canChangeSeat) return
     const num = parseInt(seatInput, 10)
     const seats = useSeatFlow.getState().seats
     const occupied = useSeatFlow.getState().occupied
@@ -732,7 +780,8 @@ function SeatedPanel() {
     useWorld.getState().stand()
     useSeatFlow.getState().pickSeat(num)
     useSeatFlow.getState().startWalk()
-    useSeatFlow.getState().arrive()
+    const roomKey = realm ? roomKeyOf(realm) : undefined
+    useSeatFlow.getState().arrive(roomKey)
     useWorld.getState().sit(num)
     useSeatFlow.getState().markEntrancePlayed()
     setSeatInput('')
@@ -743,17 +792,17 @@ function SeatedPanel() {
 
   if (seat == null) return null
 
-  const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
+  const hh = String(Math.floor(remaining / 3600)).padStart(2, '0')
+  const mm = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
   const label = phase === 'idle' ? 'Ready' : phase === 'running' ? 'Studying' : phase === 'break' ? 'Break' : phase === 'paused' ? 'Paused' : 'Done'
 
-  // minimized → a small unobtrusive chip so the world is fully visible, with a
-  // compact stand-up beside it (the panel header isn't shown while minimized)
+  // minimized → compact bar with stand-up and seat input
   if (view === 'min') {
     return (
       <div className="station-min">
         <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
-          <span className="station-chip-dot" /> {phase === 'idle' ? 'Your desk' : `${mm}:${ss}`} ▸
+          <span className="station-chip-dot" /> {phase === 'idle' ? 'Your desk' : `${hh}:${mm}:${ss}`} ▸
         </button>
         <span className="station-seat-input-wrap">
           <input
@@ -764,26 +813,36 @@ function SeatedPanel() {
             value={seatInput}
             onChange={(e) => setSeatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
-            title={canChangeSeat ? 'Enter seat number to change' : `You sat ${seatMm}:${seatSs} ago — switch anytime`}
+            title={canChangeSeat ? 'Enter seat number to change' : `Room locked — ${seatMm}:${seatSs} left`}
+            disabled={!canChangeSeat}
           />
           <button
-            className={`station-change-seat ${seatInput ? 'ready' : ''}`}
+            className={`station-change-seat ${seatInput && canChangeSeat ? 'ready' : ''}`}
             onClick={handleChangeSeatToNumber}
-            disabled={!seatInput}
+            disabled={!seatInput || !canChangeSeat}
           >
             ↕
           </button>
         </span>
-        <button className="station-min-stand" onClick={() => { useSeatFlow.getState().unlock(); useSeatFlow.getState().clearSeat(); useWorld.getState().stand(); }} title="Stand up (leave chair)">
+        <button className="station-min-stand" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }} title="Stand up (leave chair)">
           ⤴ Stand up
         </button>
     </div>
   )
   }
 
+  const stationStyle = dragPos
+    ? { left: dragPos.x, top: dragPos.y, right: 'auto' as const, bottom: 'auto' as const, position: 'fixed' as const }
+    : undefined
+
   return (
-    <div className={`station ${view === 'collapsed' ? 'collapsed' : ''}`} data-no-hotkeys>
-      <div className="station-head">
+    <div
+      ref={stationRef}
+      className={`station ${view === 'collapsed' ? 'collapsed' : ''}`}
+      style={stationStyle}
+      data-no-hotkeys
+    >
+      <div className="station-head" onPointerDown={startDrag} style={{ cursor: 'grab' }}>
         <div className="station-head-left">
           <h2>Your desk</h2>
         </div>
@@ -791,7 +850,7 @@ function SeatedPanel() {
           <button className="station-head-btn" title={view === 'collapsed' ? 'Expand' : 'Collapse'} onClick={() => desk().setView(view === 'collapsed' ? 'open' : 'collapsed')}>
             {view === 'collapsed' ? '▴' : '▾'}
           </button>
-          <button className="station-head-btn" title="Minimize" onClick={() => desk().setView('min')}>
+          <button className="station-head-btn" title="Collapse" onClick={() => desk().setView('collapsed')}>
             –
           </button>
         </div>
@@ -802,7 +861,7 @@ function SeatedPanel() {
         <div className="station-sect">
           <div className="station-timer">
             <span className="station-time-label">{label}</span>
-            <span className="station-time">{phase === 'idle' ? '--:--' : `${mm}:${ss}`}</span>
+            <span className="station-time">{phase === 'idle' ? '--:--:--' : `${hh}:${mm}:${ss}`}</span>
             <div className="station-timer-actions">
               <button className="station-timer-btn primary" onClick={toggle}>
                 {phase === 'idle' ? 'Start' : running ? 'Pause' : 'Resume'}
@@ -981,7 +1040,8 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const [pickDur, setPickDur] = useState(sessionMinutes)
   const [pickBreaks, setPickBreaks] = useState(breakCount)
   if (!show) return null
-  const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
+  const hh = String(Math.floor(remaining / 3600)).padStart(2, '0')
+  const mm = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
 
   const totalSec = sessionMinutes * 60
@@ -1027,7 +1087,7 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
             {phase === 'idle' ? (
               <Icon name="play" size={18} />
             ) : (
-              <span className="pomo-time">{mm}:{ss}</span>
+              <span className="pomo-time">{hh}:{mm}:{ss}</span>
             )}
           </div>
         </div>

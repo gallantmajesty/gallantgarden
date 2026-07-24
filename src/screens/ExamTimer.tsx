@@ -33,11 +33,12 @@ export function ExamTimer() {
   const questionStartRef = useRef<number>(0)
   const pausedRef = useRef(false)
 
-  // Format seconds → mm:ss
+  // Format seconds → hh:mm:ss
   const fmt = useCallback((s: number) => {
-    const m = Math.floor(s / 60)
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
     const sec = s % 60
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   }, [])
 
   // ─── Setup helpers ───

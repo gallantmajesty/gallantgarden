@@ -32,6 +32,8 @@ interface SeatFlowState {
   stage: FlowStage
   selectedSeatId: number | null
   seatLockUntil: number | null
+  /** Room ID that is currently locked (can't re-sit here until cooldown expires). */
+  lockedRoomId: string | null
   seats: Seat[]
   /** Map from seat id to occupant name */
   occupied: Record<number, string>
@@ -42,7 +44,9 @@ interface SeatFlowState {
   startWalk: () => void
   /** Lock seat-changing for SEAT_LOCK_MS from now (called on every sit). */
   lockSeat: () => void
-  arrive: () => void
+  arrive: (roomId?: string) => void
+  /** Stand up but keep the room lock active — user must wait or change rooms. */
+  standUp: () => void
   unlock: () => void
   setOccupied: (map: Record<number, string>) => void
   markEntrancePlayed: () => void
@@ -58,10 +62,11 @@ function getInitialSeat(): number | null {
   return null
 }
 
-export const useSeatFlow = create<SeatFlowState>((set) => ({
+export const useSeatFlow = create<SeatFlowState>((set, get) => ({
   stage: getInitialStage(),
   selectedSeatId: getInitialSeat(),
   seatLockUntil: getInitialStage() === 'seated' ? Date.now() + 10 * 60 * 1000 : null,
+  lockedRoomId: null,
   seats: seatAnchors(),
   occupied: {},
   entrancePlayed: getInitialStage() === 'seated',
@@ -74,18 +79,24 @@ export const useSeatFlow = create<SeatFlowState>((set) => ({
     set({
       stage: 'selecting',
       selectedSeatId: null,
-      seatLockUntil: null,
+      // NOTE: intentionally do NOT clear seatLockUntil here — the room stays locked
     })
   },
   startWalk: () => set({ stage: 'walking' }),
-  arrive: () => {
+  arrive: (roomId) => {
     const lockUntil = Date.now() + SEAT_LOCK_MS
-    set({ stage: 'seated', seatLockUntil: lockUntil })
+    set({ stage: 'seated', seatLockUntil: lockUntil, lockedRoomId: roomId ?? get().lockedRoomId })
   },
   lockSeat: () => set({ seatLockUntil: Date.now() + SEAT_LOCK_MS }),
+  /** Stand up but keep the room locked — user must wait 10 min or change rooms. */
+  standUp: () => {
+    saveSeat(null)
+    set({ stage: 'selecting', selectedSeatId: null })
+    // seatLockUntil and lockedRoomId are intentionally preserved
+  },
   unlock: () => {
     saveSeat(null)
-    set({ stage: 'selecting', selectedSeatId: null, seatLockUntil: null })
+    set({ stage: 'selecting', selectedSeatId: null, seatLockUntil: null, lockedRoomId: null })
   },
   setOccupied: (map) => set({ occupied: map }),
   markEntrancePlayed: () => set({ entrancePlayed: true }),

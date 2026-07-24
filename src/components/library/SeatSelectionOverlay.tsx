@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, memo, type CSSProperties } from 'react'
-import { useSeatFlow } from '../../store/seatFlow'
+import { useSeatFlow, SEAT_LOCK_MS } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
+import { useRealm } from '../../store/realm'
 import { HALL, windowZs } from '../../three/library/layout'
 import { seatAnchors, TABLE, groundShelves, upperShelves, balconyPlatforms, columns, staircases } from '../../three/library/furniture'
 import type { Seat } from '../../three/library/furniture'
@@ -45,6 +46,16 @@ export function SeatSelectionOverlay() {
   const audio = useAudioCues()
   const cinematic = useWorld((s) => s.cinematic)
   const wasSeated = flow.entrancePlayed
+  const realm = useRealm((s) => s.active)
+  const roomId = realm?.roomId ?? null
+
+  // Check if this room is locked (can't re-sit until cooldown expires)
+  const lockedRoomId = useSeatFlow((s) => s.lockedRoomId)
+  const seatLockUntil = useSeatFlow((s) => s.seatLockUntil)
+  const isRoomLocked = lockedRoomId != null && roomId != null && lockedRoomId === roomId && seatLockUntil != null && Date.now() < seatLockUntil
+  const cooldownSec = isRoomLocked ? Math.ceil((seatLockUntil! - Date.now()) / 1000) : 0
+  const cooldownMin = Math.floor(cooldownSec / 60)
+  const cooldownS = cooldownSec % 60
 
   const seats = useMemo(() => seatAnchors(), [])
 
@@ -61,24 +72,26 @@ export function SeatSelectionOverlay() {
   const sitDown = useCallback((seatId: number) => {
     pickSeat(seatId)
     startWalk()
-    useSeatFlow.getState().arrive()
+    useSeatFlow.getState().arrive(roomId ?? undefined)
     useWorld.getState().sit(seatId)
     useSeatFlow.getState().markEntrancePlayed()
-  }, [pickSeat, startWalk])
+  }, [pickSeat, startWalk, roomId])
 
   const handleSelect = useCallback((id: number) => {
+    if (isRoomLocked) return
     setSelected(id)
     audio.playSelect()
     pickSeat(id)
-  }, [audio, pickSeat])
+  }, [audio, pickSeat, isRoomLocked])
 
   const handleRandom = useCallback(() => {
+    if (isRoomLocked) return
     const free = seatPositions.filter((s) => !occupied[s.id])
     if (free.length === 0) return
     const pick = free[Math.floor(Math.random() * free.length)]
     audio.playSelect()
     sitDown(pick.id)
-  }, [seatPositions, occupied, audio, sitDown])
+  }, [seatPositions, occupied, audio, sitDown, isRoomLocked])
 
   const handleCancel = useCallback(() => {
     useSeatFlow.getState().unlock()
@@ -122,6 +135,16 @@ export function SeatSelectionOverlay() {
           <span className="sso-legend-item"><span className="sso-dot selected" /> Selected</span>
         </div>
 
+        {isRoomLocked && (
+          <div className="sso-cooldown">
+            <span className="sso-cooldown-icon">🔒</span>
+            <div className="sso-cooldown-text">
+              <strong>This room is locked</strong>
+              <span>Wait {cooldownMin}:{String(cooldownS).padStart(2, '0')} or change rooms for a fresh seat.</span>
+            </div>
+          </div>
+        )}
+
         <div className="sso-body">
           <MapLayer
             seats={seatPositions}
@@ -135,7 +158,8 @@ export function SeatSelectionOverlay() {
           <button
             className="sso-btn-secondary"
             onClick={handleRandom}
-            title="Pick a random available seat and sit down"
+            title={isRoomLocked ? 'Room is locked — wait or change rooms' : 'Pick a random available seat and sit down'}
+            disabled={isRoomLocked}
           >
             <span className="sso-btn-icon">🎲</span>
             <span>Random Seat</span>
@@ -144,6 +168,7 @@ export function SeatSelectionOverlay() {
             <button
               className="sso-btn-primary"
               onClick={() => sitDown(selected)}
+              disabled={isRoomLocked}
             >
               <span className="sso-btn-icon">🪑</span>
               <span>Join Study Session</span>

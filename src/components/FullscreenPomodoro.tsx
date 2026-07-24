@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { usePomodoro, SESSION_OPTIONS, computeSegments, type TimerType, type PomoPhase } from '../store/pomodoro'
+import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro'
 import { useWorld } from '../store/world'
-import { useRealmNet, getRemotePlayers } from '../multiplayer/net'
-import { useSettings } from '../store/settings'
 import { useProfile } from '../store/profile'
-import { useAuth } from '../store/auth'
-import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
-import { ClockDisplay } from './clock/ClockDisplay'
-import { useClockStore, CLOCK_THEMES } from '../store/clock'
-import { LibraryCalc } from '../calc/ui/LibraryCalc'
-import { MusicPlayer } from './library/MusicPlayer'
-import { PublicPlayerTag } from './PublicPlayerTag'
+import { levelProgress } from '../lib/magnet/types'
 import './FullscreenPomodoro.css'
 
 const QUOTES = [
@@ -22,28 +14,6 @@ const QUOTES = [
   '"Small steps every day lead to big changes."',
 ]
 
-const DAILY_TASKS = [
-  { text: 'Solve Mathematics Problems', minutes: 60, done: true },
-  { text: 'Physics Revision', minutes: 45, done: true },
-  { text: 'Read Chapter 5', minutes: 30, done: false },
-  { text: 'Chemistry Notes', minutes: 45, done: true },
-  { text: 'Mock Test', minutes: 60, done: false },
-]
-
-const STREAK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-
-function loadStreak(): { count: number; lastDate: string; days: boolean[] } {
-  try {
-    const raw = localStorage.getItem('fp.streak.v2')
-    if (raw) return JSON.parse(raw)
-  } catch {}
-  return { count: 0, lastDate: '', days: [false, false, false, false, false, false, false] }
-}
-
-function saveStreak(data: { count: number; lastDate: string; days: boolean[] }) {
-  localStorage.setItem('fp.streak.v2', JSON.stringify(data))
-}
-
 interface FullscreenPomodoroProps {
   isOpen: boolean
   onClose: () => void
@@ -51,35 +21,26 @@ interface FullscreenPomodoroProps {
 
 export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps) {
   const {
-    phase, remaining, sessionMinutes, breakCount, timerType, running,
-    subject, segmentIndex, segmentsCompleted, totalSessionLeaves,
-    totalElapsed, pendingRewards, toggle, forfeit, setSubject,
+    phase, remaining, sessionMinutes, breakCount,
+    subject, segmentIndex, segmentsCompleted,
+    totalElapsed, toggle, forfeit, setSubject, configure,
   } = usePomodoro()
 
-  const { user } = useAuth()
   const xp = useProfile((s) => s.xp)
   const displayName = useProfile((s) => s.displayName)
-  const { set: setSetting } = useSettings()
   const { setWakeLock } = useWorld()
-  const clockStore = useClockStore()
-  const { activeClock, clockColor, showSeconds, animationSpeed, particleDensity } = clockStore
+  const tasks = useMagnet((s) => s.data.tasks)
+  const toggleTask = useMagnet((s) => s.toggleTask)
 
   const wakeLockRef = useRef<{ release: () => void } | null>(null)
   const renderPausedRef = useRef(false)
-  const [activeNav, setActiveNav] = useState('focus')
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
-  const streak = useMemo(() => loadStreak(), [])
-  const level = useMemo(() => Math.floor(Math.sqrt(xp / 50)) + 1, [xp])
-  const xpInLevel = useMemo(() => {
-    const c = Math.floor(Math.sqrt(xp / 50))
-    return xp - c * c * 50
-  }, [xp])
-  const xpForNext = useMemo(() => {
-    const c = Math.floor(Math.sqrt(xp / 50))
-    return (c + 1) * (c + 1) * 50 - c * c * 50
-  }, [xp])
-  const questsDone = DAILY_TASKS.filter(t => t.done).length
+  const activeTasks = useMemo(() => tasks.filter((t) => !t.done), [tasks])
+  const doneTasks = useMemo(() => tasks.filter((t) => t.done), [tasks])
+
+  const lp = useMemo(() => levelProgress(xp), [xp])
 
   useEffect(() => {
     if (isOpen) {
@@ -123,17 +84,10 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
   }, [isOpen])
 
   const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60)
-    const s = sec % 60
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-  }
-
-  const formatFullTime = (sec: number) => {
     const h = Math.floor(sec / 3600)
     const m = Math.floor((sec % 3600) / 60)
     const s = sec % 60
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-    return `${m}:${s.toString().padStart(2, '0')}`
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   const progress = (totalElapsed / (sessionMinutes * 60)) * 100
@@ -149,17 +103,31 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
     : 100
 
   // SVG ring
-  const ringSize = 320
-  const ringStroke = 3
+  const ringSize = 380
+  const ringStroke = 4
   const ringRadius = (ringSize - ringStroke) / 2
   const ringCircumference = 2 * Math.PI * ringRadius
   const ringOffset = ringCircumference * (1 - progress / 100)
 
-  // Sun position on ring (based on progress)
   const sunAngle = (progress / 100) * 360 - 90
   const sunRad = (sunAngle * Math.PI) / 180
-  const sunX = 50 + 46 * Math.cos(sunRad)
-  const sunY = 50 + 46 * Math.sin(sunRad)
+  const sunX = 50 + 47 * Math.cos(sunRad)
+  const sunY = 50 + 47 * Math.sin(sunRad)
+
+  const selectTask = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
+    setSelectedTaskId(taskId)
+    setSubject(task.subject || task.title)
+    if (phase === 'idle' && task.estimateMin > 0) {
+      configure('focus', task.estimateMin, 0)
+    }
+  }
+
+  const startWithTask = (taskId: string) => {
+    selectTask(taskId)
+    if (phase === 'idle') toggle()
+  }
 
   if (!isOpen) return null
 
@@ -178,11 +146,6 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
         </div>
         <div className="fp-topbar-right">
           <div className="fp-topbar-stat">
-            <span className="fp-topbar-stat-icon">🔥</span>
-            <span>{streak.count}</span>
-            <span style={{ fontSize: '10px', opacity: 0.5 }}>day streak</span>
-          </div>
-          <div className="fp-topbar-stat">
             <span className="fp-topbar-stat-icon">💎</span>
             <span>{xp.toLocaleString()}</span>
             <span style={{ fontSize: '10px', opacity: 0.5 }}>Magic Crystals</span>
@@ -193,32 +156,11 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
 
       {/* ── Body ── */}
       <div className="fp-body">
-        {/* Left Nav */}
-        <nav className="fp-nav">
-          {[
-            { id: 'focus', icon: '🏠', label: 'Focus' },
-            { id: 'tasks', icon: '☑️', label: 'Tasks' },
-            { id: 'quests', icon: '📋', label: 'Quests' },
-            { id: 'stats', icon: '📊', label: 'Stats' },
-            { id: 'profile', icon: '👤', label: 'Profile' },
-          ].map(item => (
-            <button
-              key={item.id}
-              className={`fp-nav-item ${activeNav === item.id ? 'active' : ''}`}
-              onClick={() => setActiveNav(item.id)}
-            >
-              <span className="fp-nav-icon">{item.icon}</span>
-              <span className="fp-nav-label">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
         {/* Center Timer */}
         <div className="fp-center">
           <div className="fp-quote">{quote}</div>
 
           <div className="fp-timer-ring-wrap">
-            {/* SVG Ring */}
             <svg className="fp-timer-ring-svg" viewBox={`0 0 ${ringSize} ${ringSize}`}>
               <defs>
                 <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -226,31 +168,62 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
                   <stop offset="50%" stopColor="#f59e0b" />
                   <stop offset="100%" stopColor="#a78bfa" />
                 </linearGradient>
+                <filter id="ring-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter id="sun-glow" x="-100%" y="-100%" width="300%" height="300%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
               </defs>
+              {/* Track */}
               <circle className="fp-timer-ring-track" cx={ringSize/2} cy={ringSize/2} r={ringRadius} />
+              {/* Glow behind progress */}
+              <circle
+                cx={ringSize/2} cy={ringSize/2} r={ringRadius}
+                fill="none"
+                stroke="url(#timer-gradient)"
+                strokeWidth={ringStroke + 8}
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={ringOffset}
+                opacity={0.15}
+                strokeLinecap="round"
+              />
+              {/* Main progress */}
               <circle
                 className="fp-timer-ring-progress"
                 cx={ringSize/2} cy={ringSize/2} r={ringRadius}
                 strokeDasharray={ringCircumference}
                 strokeDashoffset={ringOffset}
+                filter="url(#ring-glow)"
               />
-              {/* Progress dot */}
-              <circle className="fp-timer-ring-dot" cx={ringSize/2 + ringRadius * Math.cos(sunRad)} cy={ringSize/2 + ringRadius * Math.sin(sunRad)} r={4} />
+              {/* Progress dot with glow */}
+              <circle
+                cx={ringSize/2 + ringRadius * Math.cos(sunRad)}
+                cy={ringSize/2 + ringRadius * Math.sin(sunRad)}
+                r={5}
+                fill="#f59e0b"
+                filter="url(#sun-glow)"
+              />
             </svg>
 
-            {/* Sun on ring */}
             <span className="fp-timer-sun" style={{
               left: `${sunX}%`, top: `${sunY}%`,
               transform: 'translate(-50%, -50%)',
             }}>☀️</span>
 
-            {/* Moon opposite */}
             <span className="fp-timer-moon" style={{
               left: `${50 - (sunX - 50)}%`, top: `${50 - (sunY - 50)}%`,
               transform: 'translate(-50%, -50%)',
             }}>🌙</span>
 
-            {/* Timer content */}
             <div className="fp-timer-content">
               <div className="fp-timer-label">
                 {phase === 'idle' && 'Ready to Focus'}
@@ -260,14 +233,18 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
                 {phase === 'finished' && 'Session Complete'}
               </div>
               <div className="fp-timer-time">{formatTime(remaining)}</div>
+              {subject && (
+                <div className="fp-timer-subject">
+                  <span className="fp-timer-subject-dot" />
+                  {subject}
+                </div>
+              )}
               <div className="fp-timer-total">
-                <span className="fp-timer-total-icon">✏️</span>
                 {formatTime(currentSegment * 60)}
               </div>
             </div>
           </div>
 
-          {/* Controls */}
           <div className="fp-controls">
             {phase === 'idle' ? (
               <button className="fp-btn-lg fp-btn-primary" onClick={toggle}>
@@ -276,10 +253,10 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
             ) : phase === 'running' ? (
               <>
                 <button className="fp-btn-lg fp-btn-secondary" onClick={toggle}>
-                  ❚❚ Pause Focus
+                  ❚❚ Pause
                 </button>
                 <button className="fp-btn-lg fp-btn-danger" onClick={forfeit}>
-                  ✕ End Session
+                  ✕ End
                 </button>
               </>
             ) : phase === 'break' ? (
@@ -301,88 +278,105 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
               </button>
             ) : null}
           </div>
-
-          {/* Quick actions */}
-          <div className="fp-quick-actions">
-            <button className={`fp-quick-btn ${activeClock === 'analog' ? 'active' : ''}`} onClick={() => clockStore.setActiveClock('analog')}>
-              🕐 Analog Clock
-            </button>
-            <button className={`fp-quick-btn ${activeClock === 'sand' ? 'active' : ''}`} onClick={() => clockStore.setActiveClock('sand')}>
-              ⏳ Desert Glass
-            </button>
-            <button className="fp-quick-btn" onClick={() => {}}>
-              🎵 White Noise
-            </button>
-          </div>
         </div>
 
         {/* Right Panel */}
         <aside className="fp-panel">
-          {/* Today's Tasks */}
+          {/* Tasks from Task Magnet */}
           <div className="fp-card">
             <div className="fp-card-header">
               <div className="fp-card-title">
                 <span className="fp-card-title-icon">📋</span>
-                Today's Tasks
+                My Tasks
               </div>
-              <div className="fp-card-badge">→ {questsDone} / {DAILY_TASKS.length}</div>
+              <div className="fp-card-badge">{activeTasks.length} active</div>
             </div>
-            <div className="fp-task-list">
-              {DAILY_TASKS.map((task, i) => (
-                <div key={i} className="fp-task">
-                  <div className={`fp-task-check ${task.done ? 'done' : ''}`}>
-                    {task.done ? '✓' : ''}
+            {activeTasks.length === 0 ? (
+              <div className="fp-empty-state">
+                <span className="fp-empty-icon">📝</span>
+                <span>No tasks yet. Add tasks in Task Magnet.</span>
+              </div>
+            ) : (
+              <div className="fp-task-list">
+                {activeTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`fp-task ${selectedTaskId === task.id ? 'selected' : ''}`}
+                    onClick={() => selectTask(task.id)}
+                  >
+                    <div
+                      className={`fp-task-check ${task.done ? 'done' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); toggleTask(task.id) }}
+                    >
+                      {task.done ? '✓' : ''}
+                    </div>
+                    <div className="fp-task-info">
+                      <span className="fp-task-text">{task.title}</span>
+                      {task.subject && <span className="fp-task-subject">{task.subject}</span>}
+                    </div>
+                    {task.estimateMin > 0 && (
+                      <span className="fp-task-time">{task.estimateMin}m</span>
+                    )}
+                    {selectedTaskId === task.id && phase === 'idle' && (
+                      <button
+                        className="fp-task-start"
+                        onClick={(e) => { e.stopPropagation(); startWithTask(task.id) }}
+                      >
+                        ▶
+                      </button>
+                    )}
                   </div>
-                  <span className={`fp-task-text ${task.done ? 'done' : ''}`}>{task.text}</span>
-                  <span className="fp-task-time">{task.minutes} min</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Daily Quest */}
-          <div className="fp-card">
+          {/* Completed */}
+          {doneTasks.length > 0 && (
+            <div className="fp-card">
+              <div className="fp-card-header">
+                <div className="fp-card-title">
+                  <span className="fp-card-title-icon">✅</span>
+                  Done
+                </div>
+                <div className="fp-card-badge">{doneTasks.length}</div>
+              </div>
+              <div className="fp-task-list">
+                {doneTasks.slice(0, 5).map((task) => (
+                  <div key={task.id} className="fp-task done">
+                    <div className="fp-task-check done">✓</div>
+                    <span className="fp-task-text done">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Coming Soon: Daily Quest */}
+          <div className="fp-card fp-card-coming-soon">
             <div className="fp-card-header">
               <div className="fp-card-title">
                 <span className="fp-card-title-icon">⭐</span>
                 Daily Quest
               </div>
             </div>
-            <div className="fp-quest-progress">
-              <span>Complete 3 Focus Sessions</span>
-              <span style={{ fontWeight: 700 }}>{Math.min(segmentsCompleted, 3)} / 3</span>
-            </div>
-            <div className="fp-quest-bar">
-              <div className="fp-quest-fill" style={{ width: `${Math.min((segmentsCompleted / 3) * 100, 100)}%` }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div className="fp-quest-xp">
-                <span className="fp-quest-xp-icon">💎</span>
-                +50 XP
-              </div>
-              <span className="fp-quest-reward">🎁</span>
+            <div className="fp-coming-soon">
+              <span className="fp-coming-soon-icon">🚧</span>
+              <span>Coming Soon</span>
             </div>
           </div>
 
-          {/* Daily Streak */}
-          <div className="fp-card">
+          {/* Coming Soon: Daily Streak */}
+          <div className="fp-card fp-card-coming-soon">
             <div className="fp-card-header">
               <div className="fp-card-title">
                 <span className="fp-card-title-icon">🔥</span>
                 Daily Streak
               </div>
             </div>
-            <div className="fp-streak-number">{streak.count}</div>
-            <div className="fp-streak-days">days</div>
-            <div className="fp-streak-calendar">
-              {STREAK_DAYS.map((day, i) => (
-                <div key={i} className="fp-streak-day">
-                  <div className={`fp-streak-dot ${streak.days[i] ? 'done' : ''} ${i === new Date().getDay() - 1 ? 'today' : ''}`}>
-                    {streak.days[i] ? '✓' : ''}
-                  </div>
-                  <span className="fp-streak-label">{day}</span>
-                </div>
-              ))}
+            <div className="fp-coming-soon">
+              <span className="fp-coming-soon-icon">🚧</span>
+              <span>Coming Soon</span>
             </div>
           </div>
         </aside>
@@ -393,14 +387,13 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
         <div className="fp-player-card">
           <div className="fp-player-avatar">🧙</div>
           <div className="fp-player-info">
-            <div className="fp-player-level">Lv. {level}</div>
+            <div className="fp-player-level">Lv. {lp.level}</div>
             <div className="fp-player-name">{displayName || 'Apprentice Scholar'}</div>
             <div className="fp-player-xp-bar">
-              <div className="fp-player-xp-fill" style={{ width: `${(xpInLevel / xpForNext) * 100}%` }} />
+              <div className="fp-player-xp-fill" style={{ width: `${lp.pct * 100}%` }} />
             </div>
-            <div className="fp-player-xp-text">{xpInLevel.toLocaleString()} / {xpForNext.toLocaleString()} XP</div>
+            <div className="fp-player-xp-text">{lp.into.toLocaleString()} / {lp.span.toLocaleString()} XP</div>
           </div>
-          <div className="fp-player-rank">Apprentice Scholar</div>
         </div>
 
         <div className="fp-bottom-quote">
