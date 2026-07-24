@@ -107,11 +107,9 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
   }, [isOpen])
 
   // Get occupants in same realm
-  const realmPlayers = useRealmNet((s) => {
-    const active = s.active
-    if (!active) return []
-    return getRemotePlayers().filter(p => p.realmId === active.id)
-  })
+  const roster = useRealmNet((s) => s.roster)
+  const channel = useRealmNet((s) => s.channel)
+  const realmPlayers = getRemotePlayers().filter(p => p.realmId === channel)
 
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60)
