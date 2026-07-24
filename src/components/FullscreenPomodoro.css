@@ -32,10 +32,10 @@
 .fullscreen-pomodoro {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
-  background: var(--fp-bg-dark);
+  background: rgba(6, 4, 12, 0.985);
   color: var(--fp-text);
   overflow: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -177,10 +177,12 @@
 
 /* ── Clock in header ────────────────────────────────────────── */
 .fp-main-clock {
-  font-size: 3rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--clock-color, var(--fp-gold));
-  filter: drop-shadow(0 0 12px var(--fp-gold-glow));
+  filter: drop-shadow(0 0 8px var(--fp-gold-glow));
+  max-height: 80px;
+  overflow: hidden;
 }
 
 /* ── Buttons ────────────────────────────────────────────────── */
@@ -400,20 +402,33 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
-.fp-main[data-layout="right"] { flex-direction: row-reverse; }
+.fp-main[data-layout="left"] {
+  flex-direction: row;
+}
+.fp-main[data-layout="right"] {
+  flex-direction: row;
+}
+.fp-main[data-layout="right"] .fp-side-panel {
+  order: 2;
+}
+.fp-main[data-layout="left"] .fp-side-panel {
+  order: -1;
+}
 
 /* ── Side Panel ─────────────────────────────────────────────── */
 .fp-side-panel {
-  width: 320px;
+  width: 300px;
   min-width: 280px;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 16px;
   overflow-y: auto;
-  border-right: 1px solid var(--fp-border);
-  background: rgba(10, 8, 18, 0.45);
+  border-left: 1px solid var(--fp-border);
+  background: rgba(10, 8, 18, 0.6);
   backdrop-filter: blur(10px);
 }
 .fp-panel-section {
@@ -594,6 +609,7 @@
   justify-content: center;
   gap: 20px;
   padding: 32px;
+  min-width: 0;
 }
 
 /* ── Segment Indicators (spell progress) ────────────────────── */
@@ -685,8 +701,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 280px;
-  height: 280px;
+  width: 220px;
+  height: 220px;
   border: 1px solid rgba(212, 168, 67, 0.08);
   border-radius: 50%;
   animation: fp-spin-slow 60s linear infinite;
@@ -987,11 +1003,12 @@
 
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .fp-side-panel { width: 100%; min-width: unset; }
-  .fp-main[data-layout="right"] { flex-direction: column-reverse; }
-  .fp-main { flex-direction: column-reverse; }
+  .fp-side-panel { width: 100%; min-width: unset; max-width: unset; }
+  .fp-main[data-layout="right"],
+  .fp-main[data-layout="left"] { flex-direction: column-reverse; }
   .fp-time-remaining { font-size: 3.5rem; }
-  .fp-spell-ring { width: 200px; height: 200px; }
+  .fp-spell-ring { width: 180px; height: 180px; }
   .fp-hud { flex-wrap: wrap; justify-content: center; gap: 8px; }
   .fp-btn-lg { min-width: 140px; padding: 14px 24px; font-size: 13px; }
+  .fp-main-clock { font-size: 1.2rem; max-height: 60px; }
 }
