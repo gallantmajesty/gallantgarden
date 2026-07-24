@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useClockStore, CLOCK_THEMES } from '../store/clock'
+import { useClockStore, CLOCK_THEMES, type ClockType } from '../../store/clock'
 import './ClockDisplay.css'
-
-export type ClockType = 
-  | 'analog'           // Classic analog with hands
-  | 'digital'          // Clean digital HH:MM:SS
-  | 'sand'             // Hourglass/sand timer visualization
-  | 'magical-rune'     // Genshin-style elemental rune clock
-  | 'crystal'          // Floating crystal with time particles
-  | 'moon-phase'       // Lunar cycle clock
-  | 'steampunk'        // Gear-based mechanical clock
-  | 'ethereal'         // Glowing ethereal rings
 
 interface ClockDisplayProps {
   size?: 'small' | 'medium' | 'large' | 'fullscreen'

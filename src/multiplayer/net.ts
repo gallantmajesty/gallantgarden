@@ -296,6 +296,37 @@ export function getRemoteOccupied(): Record<number, string> {
   return out
 }
 
+export interface RemotePlayer {
+  id: string
+  name: string
+  country: string | null
+  rank: string
+  realmId: string | null
+  timerStartedAt: number
+  timerDurationMs: number
+}
+
+export type PublicPlayer = RemotePlayer
+
+export function getRemotePlayers(): RemotePlayer[] {
+  const roster = useRealmNet.getState().roster
+  const channel = useRealmNet.getState().channel
+  const result: RemotePlayer[] = []
+  for (const [id, entry] of Object.entries(roster)) {
+    const st = targets.get(id)
+    result.push({
+      id,
+      name: entry.name,
+      country: entry.country,
+      rank: entry.rank,
+      realmId: channel,
+      timerStartedAt: st?.timerStartedAt ?? 0,
+      timerDurationMs: st?.timerDurationMs ?? 0,
+    })
+  }
+  return result
+}
+
 function tickMove() {
   const now = Date.now()
   if (lastPub && !moved(lastPub, localState) && now - lastPubTime < 1000) return

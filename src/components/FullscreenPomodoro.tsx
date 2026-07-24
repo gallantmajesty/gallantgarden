@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { usePomodoro, SESSION_OPTIONS, type TimerType, type PomoPhase } from '../../store/pomodoro'
-import { useWorld } from '../../store/world'
-import { useRealmNet, getRemotePlayers, type PublicPlayer } from '../../multiplayer/net'
-import { useSettings } from '../../store/settings'
-import { useProfile } from '../../store/profile'
-import { useAuth } from '../../store/auth'
-import { useDesk } from '../../store/desk'
-import { useMagnet } from '../../store/magnet'
-import { useAudio } from '../../audio/useAudio'
-import { ClockDisplay } from '../clock/ClockDisplay'
-import { useClockStore } from '../../store/clock'
-import { LibraryCalc } from '../../calc/ui/LibraryCalc'
-import { MusicPlayer } from '../library/MusicPlayer'
-import { PublicPlayerTag } from '../PublicPlayerTag'
+import { usePomodoro, SESSION_OPTIONS, type TimerType, type PomoPhase } from '../store/pomodoro'
+import { useWorld } from '../store/world'
+import { useRealmNet, getRemotePlayers, type PublicPlayer } from '../multiplayer/net'
+import { useSettings } from '../store/settings'
+import { useProfile } from '../store/profile'
+import { useAuth } from '../store/auth'
+import { useDesk } from '../store/desk'
+import { useMagnet } from '../store/magnet'
+import { useAudio } from '../audio/useAudio'
+import { ClockDisplay } from './clock/ClockDisplay'
+import { useClockStore } from '../store/clock'
+import { LibraryCalc } from '../calc/ui/LibraryCalc'
+import { MusicPlayer } from './library/MusicPlayer'
+import { PublicPlayerTag } from './PublicPlayerTag'
 import './FullscreenPomodoro.css'
 
 interface FullscreenPomodoroProps {
@@ -131,7 +131,7 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
 
   const segments = SESSION_OPTIONS.includes(sessionMinutes) 
     ? sessionMinutes === 60 && breakCount === 0 ? [60] 
-    : require('../../store/pomodoro').computeSegments(sessionMinutes, breakCount)
+    : require('../store/pomodoro').computeSegments(sessionMinutes, breakCount)
     : [sessionMinutes]
 
   const currentSegment = segments[segmentIndex] || sessionMinutes
@@ -222,7 +222,7 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
             </button>
           </div>
           <div className="fp-clock-grid">
-            {require('../clock/ClockDisplay').CLOCK_THEMES.map(theme => (
+            {require('./clock/ClockDisplay').CLOCK_THEMES.map(theme => (
               <button
                 key={theme.id}
                 className={`fp-clock-option ${clockStore.activeClock === theme.id ? 'active' : ''} ${!clockStore.isClockUnlocked(theme.id) ? 'locked' : ''}`}

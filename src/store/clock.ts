@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ClockType } from '../components/clock/ClockDisplay'
+
+export type ClockType = 
+  | 'analog'
+  | 'digital'
+  | 'sand'
+  | 'magical-rune'
+  | 'crystal'
+  | 'moon-phase'
+  | 'steampunk'
+  | 'ethereal'
 
 export interface ClockSettings {
   activeClock: ClockType
@@ -74,6 +83,25 @@ export const useClockStore = create<ClockStore>()(
     }
   )
 )
+
+export interface ClockTheme {
+  id: ClockType
+  name: string
+  previewIcon: string
+  rarity: string
+  price: number
+}
+
+export const CLOCK_THEMES: ClockTheme[] = [
+  { id: 'analog', name: 'Classic Analog', previewIcon: '🕐', rarity: 'Common', price: 0 },
+  { id: 'digital', name: 'Digital', previewIcon: '🔢', rarity: 'Common', price: 0 },
+  { id: 'sand', name: 'Hourglass', previewIcon: '⏳', rarity: 'Common', price: 0 },
+  { id: 'magical-rune', name: 'Magical Rune', previewIcon: '🔮', rarity: 'Common', price: 0 },
+  { id: 'crystal', name: 'Crystal', previewIcon: '💎', rarity: 'Rare', price: 150 },
+  { id: 'moon-phase', name: 'Moon Phase', previewIcon: '🌙', rarity: 'Rare', price: 200 },
+  { id: 'steampunk', name: 'Steampunk', previewIcon: '⚙️', rarity: 'Epic', price: 300 },
+  { id: 'ethereal', name: 'Ethereal', previewIcon: '✨', rarity: 'Legendary', price: 500 },
+]
 
 export function addLeaves(amount: number) {
   useClockStore.setState((state) => ({ leaves: state.leaves + amount }))
