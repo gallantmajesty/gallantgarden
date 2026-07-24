@@ -28,7 +28,11 @@ export function ClockDisplay({
   settings: externalSettings
 }: ClockDisplayProps) {
   const activeClock = type || useClockStore(s => s.activeClock)
-  const storeSettings = useClockStore(s => s.clockSettings[activeClock])
+  const clockColor = useClockStore(s => s.clockColor)
+  const showSeconds = useClockStore(s => s.showSeconds)
+  const animationSpeed = useClockStore(s => s.animationSpeed)
+  const particleDensity = useClockStore(s => s.particleDensity)
+  const storeSettings = { color: clockColor, showSeconds, animationSpeed, particleDensity }
   const settings = externalSettings || storeSettings
   const theme = CLOCK_THEMES.find(t => t.id === activeClock)!
   const [currentTime, setCurrentTime] = useState(new Date())
