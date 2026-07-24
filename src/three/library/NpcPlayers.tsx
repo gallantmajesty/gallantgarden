@@ -227,6 +227,7 @@ function NpcAvatar({ npc, seat, config, remainingTime }: {
 }) {
   const group = useRef<Group>(null)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
+  const nearLod = useRef<'near' | 'far' | 'cull'>('near')
   
   // NPCs are seated and facing their desk
   useFrame(() => {
@@ -248,7 +249,7 @@ function NpcAvatar({ npc, seat, config, remainingTime }: {
       <CharacterAvatar
         config={config}
         locomotion={loco.current}
-        lod="near"
+        lod={nearLod}
         preview={false}
       />
       
