@@ -448,33 +448,33 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
           <div className="fp-controls">
             {phase === 'idle' ? (
               <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={toggle}>
-                <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Start Session
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Start Session
               </button>
             ) : phase === 'running' ? (
               <>
                 <button className="fp-btn fp-btn-secondary fp-btn-lg" onClick={toggle}>
-                  <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg> Pause
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg> Pause
                 </button>
                 <button className="fp-btn fp-btn-danger fp-btn-lg" onClick={forfeit}>
-                  <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M18 6L6 18M6 6l12 12"/></svg> Forfeit
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg> Forfeit
                 </button>
               </>
             ) : phase === 'break' ? (
               <>
                 <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={toggle}>
-                  <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M18 13.333v6.666H6v-6.666m12-4H6v-2h12v2z"/></svg> Skip Break
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Skip Break
                 </button>
                 <button className="fp-btn fp-btn-secondary fp-btn-lg" onClick={toggle}>
-                  <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg> Pause Break
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg> Pause Break
                 </button>
               </>
             ) : phase === 'paused' ? (
               <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={toggle}>
-                <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Resume
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Resume
               </button>
             ) : phase === 'finished' ? (
               <button className="fp-btn fp-btn-primary fp-btn-lg" onClick={forfeit}>
-                <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Complete
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg> Complete
               </button>
             ) : null}
           </div>
