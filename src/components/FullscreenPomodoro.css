@@ -1,4 +1,4 @@
-.fullscreen-pomodoro{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:#0a0a12;color:#e0e0e0;overflow:hidden}
+.fullscreen-pomodoro{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:rgba(10,10,18,0.88);color:#e0e0e0;overflow:hidden;backdrop-filter:blur(8px)}
 .fp-bg{position:absolute;inset:0;pointer-events:none;z-index:0}
 .fp-bg-layer{position:absolute;inset:0}
 .fp-bg-particles{position:absolute;inset:0}

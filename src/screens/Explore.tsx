@@ -219,7 +219,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           </div>
 
           {/* top-center: pomodoro */}
-          <PomodoroChip />
+          <PomodoroChip onFullscreen={() => setFpOpen(true)} />
 
           {/* top-right: compact bar — brightness · menu. (Audio volume now lives
               in the Library Realm music widget, bottom-right.) */}
@@ -973,7 +973,7 @@ function RewardPopup() {
   )
 }
 
-function PomodoroChip() {
+function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, segmentsCompleted, totalSessionLeaves } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
   const [configOpen, setConfigOpen] = useState(false)
@@ -1037,8 +1037,8 @@ function PomodoroChip() {
           </button>
         )}
         {/* Fullscreen Focus Mode button */}
-        {isActive && (
-          <button className="pomo-fullscreen" onClick={() => setFpOpen(true)} title="Fullscreen Focus Mode (pauses 3D rendering)">
+        {isActive && onFullscreen && (
+          <button className="pomo-fullscreen" onClick={onFullscreen} title="Fullscreen Focus Mode (pauses 3D rendering)">
             <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
             </svg>
