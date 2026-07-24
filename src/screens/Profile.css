@@ -146,20 +146,6 @@
   border: 5px solid var(--pf-bg);
   box-shadow: 0 0 20px rgba(212, 168, 67, 0.2);
 }
-.pf-avatar-edit-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-  cursor: pointer;
-  border: 5px solid var(--pf-bg);
-}
-.pf-avatar-wrap:hover .pf-avatar-edit-overlay { opacity: 1; }
-.pf-avatar-edit-overlay span { font-size: 24px; }
 
 /* --- channel info --- */
 .pf-channel-info { flex: 1; min-width: 0; padding-top: 8px; }

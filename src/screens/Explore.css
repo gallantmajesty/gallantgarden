@@ -279,6 +279,54 @@
   padding: 6px 2px;
   margin: 0;
 }
+.room-roster-row.clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  transition: background 0.15s;
+}
+.room-roster-row.clickable:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* Roster profile popup */
+.roster-profile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+}
+.roster-profile-card {
+  background: rgba(20, 20, 30, 0.95);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.roster-profile-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.roster-profile-close:hover { color: white; }
+.roster-profile-actions {
+  margin-top: 4px;
+}
 
 /* Camera switch */
 .explore-cam {
@@ -396,7 +444,8 @@
 }
 .station.collapsed {
   width: auto;
-  min-width: 260px;
+  min-width: 180px;
+  max-width: 220px;
 }
 .station-head {
   display: flex;
@@ -833,6 +882,10 @@
   align-items: center;
   gap: 6px;
   pointer-events: none;
+  cursor: grab;
+}
+.explore-pomo-wrap.dragging {
+  cursor: grabbing;
 }
 .explore-pomo-wrap > * { pointer-events: auto; }
 .explore-pomo {
@@ -1356,7 +1409,7 @@
 }
 .sso-dot.available { background: linear-gradient(135deg, #a8d86e, #7fb98a); box-shadow: 0 0 6px rgba(127, 185, 138, 0.3); }
 .sso-dot.occupied { background: linear-gradient(135deg, #d4728a, #b85a72); box-shadow: 0 0 6px rgba(212, 114, 138, 0.3); }
-.sso-dot.selected { background: linear-gradient(135deg, #e8c080, #c9a87c); box-shadow: 0 0 6px rgba(201, 168, 124, 0.3); }
+.sso-dot.selected { background: linear-gradient(135deg, #93c5fd, #3b82f6); box-shadow: 0 0 6px rgba(59, 130, 246, 0.3); }
 
 .sso-cooldown {
   display: flex;
@@ -1575,10 +1628,9 @@
 }
 
 .sso-seat.selected {
-  background: radial-gradient(circle at 35% 35%, #ffe8a8, #d4b060);
-  box-shadow: 0 0 0 6px rgba(201, 168, 124, .25), 0 4px 20px rgba(201, 168, 124, 0.35);
-  border-color: rgba(201, 168, 124, .5);
-  z-index: 5;
+  background: radial-gradient(circle at 35% 35%, #93c5fd, #3b82f6);
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, .25), 0 4px 20px rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, .5);
   animation: sso-seat-pulse 2s ease-in-out infinite;
 }
 

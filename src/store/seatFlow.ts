@@ -3,12 +3,12 @@ import { seatAnchors } from '../three/library/furniture'
 import type { Seat } from '../three/library/furniture'
 
 const STORAGE_KEY = 'library_last_seat'
+const SEAT_EXPIRY_KEY = 'library_seat_expiry'
 
-/** Once a student sits, they can't PICK A DIFFERENT seat for this long — the
- *  "change seat" box (top-right, next to Stand up) stays locked and counts down.
- *  This applies on the very first sit AND on every re-sit, so the rule is real
- *  rather than a decorative timer. */
-export const SEAT_LOCK_MS = 10 * 60 * 1000
+/** After sitting, user can't change seats for 30 seconds (anti-spam).
+ *  On tab leave, the seat is reserved for 30 seconds — if they return
+ *  in time AND the seat is still free, they resume automatically. */
+export const SEAT_LOCK_MS = 30 * 1000
 
 export type FlowStage = 'selecting' | 'spawning' | 'walking' | 'seated' | 'free'
 
@@ -26,6 +26,38 @@ function saveSeat(id: number | null) {
     if (id != null) localStorage.setItem(STORAGE_KEY, String(id))
     else localStorage.removeItem(STORAGE_KEY)
   } catch { /* ignore */ }
+}
+
+/** Save the seat with an expiry timestamp (for tab-leave reservation). */
+function saveSeatWithExpiry(id: number | null, expiryMs: number | null) {
+  try {
+    if (id != null && expiryMs != null) {
+      localStorage.setItem(STORAGE_KEY, String(id))
+      localStorage.setItem(SEAT_EXPIRY_KEY, String(expiryMs))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SEAT_EXPIRY_KEY)
+    }
+  } catch { /* ignore */ }
+}
+
+/** Load saved seat if it hasn't expired yet. Returns null if expired or missing. */
+function loadSavedSeatIfValid(): number | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const expiryRaw = localStorage.getItem(SEAT_EXPIRY_KEY)
+    if (raw == null || expiryRaw == null) return null
+    const id = Number(raw)
+    const expiry = Number(expiryRaw)
+    if (!Number.isFinite(id) || !Number.isFinite(expiry)) return null
+    if (Date.now() > expiry) {
+      // Expired — clear
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SEAT_EXPIRY_KEY)
+      return null
+    }
+    return id
+  } catch { return null }
 }
 
 interface SeatFlowState {
@@ -47,19 +79,22 @@ interface SeatFlowState {
   arrive: (roomId?: string) => void
   /** Stand up but keep the room lock active — user must wait or change rooms. */
   standUp: () => void
+  /** Reserve the current seat for 30 seconds (on tab leave). */
+  reserveSeat: () => void
   unlock: () => void
   setOccupied: (map: Record<number, string>) => void
   markEntrancePlayed: () => void
 }
 
 function getInitialStage(): FlowStage {
-  // Always show seat picker
+  const saved = loadSavedSeatIfValid()
+  if (saved != null) return 'seated' // Restore seat from tab leave
   saveSeat(null)
   return 'selecting'
 }
 
 function getInitialSeat(): number | null {
-  return null
+  return loadSavedSeatIfValid()
 }
 
 export const useSeatFlow = create<SeatFlowState>((set, get) => ({
@@ -93,6 +128,13 @@ export const useSeatFlow = create<SeatFlowState>((set, get) => ({
     saveSeat(null)
     set({ stage: 'selecting', selectedSeatId: null })
     // seatLockUntil and lockedRoomId are intentionally preserved
+  },
+  /** Reserve the current seat for 30 seconds (tab leave). */
+  reserveSeat: () => {
+    const seatId = get().selectedSeatId
+    if (seatId == null) return
+    const expiry = Date.now() + SEAT_LOCK_MS
+    saveSeatWithExpiry(seatId, expiry)
   },
   unlock: () => {
     saveSeat(null)

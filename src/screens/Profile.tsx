@@ -27,7 +27,6 @@ import { CharacterPortrait3D } from '../components/CharacterPortrait3D'
 import { Flag } from '../components/Flag'
 import { Icon } from '../components/magnet/Icon'
 import { ProfileAvatar } from '../components/ProfileAvatar'
-import { AvatarCropper } from '../components/AvatarCropper'
 import { FollowButton } from '../components/FollowButton'
 import { AddFriendButton } from '../components/AddFriendButton'
 import { UserListModal } from '../components/UserListModal'
@@ -177,7 +176,6 @@ function ProfileBody({
 }) {
   const myCounts = useSocial((s) => s.myCounts)
   const { signOut, user } = useAuth()
-  const setAvatarUrl = useProfile((s) => s.setAvatarUrl)
   const ownPlayerId = useProfile((s) => s.playerId)
   const onboardingGoals = useProfile((s) => s.data.studyGoals)
   const xp = useMagnet((s) => s.data.xp)
@@ -202,8 +200,6 @@ function ProfileBody({
   const [remoteCounts, setRemoteCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 })
   const [studyCounts, setStudyCounts] = useState<StudyCounts>({ blueprints: 0 })
   const [listModal, setListModal] = useState<null | 'followers' | 'following' | 'mutual'>(null)
-  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const counts = isOwn ? myCounts : remoteCounts
 
@@ -272,22 +268,6 @@ function ProfileBody({
               avatarUrl={view.avatarUrl}
               rankId={view.rankId}
               size={120}
-            />
-            {isOwn && (
-              <div className="pf-avatar-edit-overlay" onClick={() => avatarInputRef.current?.click()}>
-                <span>📷</span>
-              </div>
-            )}
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) setPendingAvatar(file)
-                if (avatarInputRef.current) avatarInputRef.current.value = ''
-              }}
             />
           </div>
 
@@ -469,17 +449,6 @@ function ProfileBody({
       {rankModal && (
         <RankRoadmap totalXp={totalXp} onClose={() => setRankModal(false)} />
       )}
-
-      {pendingAvatar && (
-        <AvatarCropper
-          file={pendingAvatar}
-          onCancel={() => setPendingAvatar(null)}
-          onDone={async (url) => {
-            await setAvatarUrl(url)
-            setPendingAvatar(null)
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -578,7 +547,6 @@ function EditOverlay({
   onClose: () => void
 }) {
   const setDisplayName = useProfile((s) => s.setDisplayName)
-  const setAvatarUrl = useProfile((s) => s.setAvatarUrl)
   const savePublic = useProfile((s) => s.savePublic)
   const setStudyGoals = useProfile((s) => s.setStudyGoals)
   const canChange = useProfile((s) => s.canChangeDisplayName())
@@ -592,8 +560,6 @@ function EditOverlay({
   const [bio, setBio] = useState(view.pub.bio)
   const [nameStatus, setNameStatus] = useState<{ ok: boolean; error?: string }>({ ok: true })
   const [draftGoals, setDraftGoals] = useState<string[]>(goals)
-  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const [saved, setSaved] = useState(false)
 
@@ -680,7 +646,20 @@ function EditOverlay({
               </div>
 
               <div className="pf-edit-label" style={{ marginTop: 20 }}>Banner</div>
-              <BannerPicker view={view} />
+              <div className="pf-banner-grid">
+                {BANNERS.map((b, i) => (
+                  <button
+                    key={i}
+                    className={`pf-banner-swatch ${view.pub.bannerIdx === i ? 'active' : ''}`}
+                    style={{ background: b.css }}
+                    onClick={() => savePublic({ bannerIdx: i, bannerImage: null })}
+                    title={b.name}
+                  />
+                ))}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(240,223,192,0.4)' }}>
+                Earn special banners through events and milestones.
+              </div>
             </div>
           )}
 
@@ -691,36 +670,14 @@ function EditOverlay({
               <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
                 <ProfileAvatar name={view.displayName} avatarUrl={view.avatarUrl} rankId={view.rankId} size={96} />
                 <div>
-                  <button
-                    className="pf-customize-btn"
-                    onClick={() => avatarInputRef.current?.click()}
-                    style={{ fontSize: 14 }}
-                  >
-                    Upload Photo
-                  </button>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) setPendingAvatar(file)
-                      if (avatarInputRef.current) avatarInputRef.current.value = ''
-                    }}
-                  />
+                  <div style={{ fontSize: 13, color: '#b8a88a' }}>
+                    Your avatar is based on your rank.
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(240,223,192,0.4)', marginTop: 4 }}>
+                    Earn special avatars through events and achievements.
+                  </div>
                 </div>
               </div>
-              {pendingAvatar && (
-                <AvatarCropper
-                  file={pendingAvatar}
-                  onCancel={() => setPendingAvatar(null)}
-                  onDone={async (url) => {
-                    await setAvatarUrl(url)
-                    setPendingAvatar(null)
-                  }}
-                />
-              )}
             </div>
           )}
 

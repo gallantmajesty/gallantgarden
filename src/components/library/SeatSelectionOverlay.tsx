@@ -161,7 +161,6 @@ export function SeatSelectionOverlay() {
             title={isRoomLocked ? 'Room is locked — wait or change rooms' : 'Pick a random available seat and sit down'}
             disabled={isRoomLocked}
           >
-            <span className="sso-btn-icon">🎲</span>
             <span>Random Seat</span>
           </button>
           {selected != null && (
@@ -170,7 +169,6 @@ export function SeatSelectionOverlay() {
               onClick={() => sitDown(selected)}
               disabled={isRoomLocked}
             >
-              <span className="sso-btn-icon">🪑</span>
               <span>Join Study Session</span>
             </button>
           )}

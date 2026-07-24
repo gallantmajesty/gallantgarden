@@ -36,6 +36,7 @@ import { DayNightWeather } from './DayNightWeather'
 
 import { PlayerController } from './PlayerController'
 import { RemotePlayers } from './RemotePlayers'
+import { NpcPlayers } from './NpcPlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
 import { TableAccessories } from './TableAccessories'
 
@@ -283,9 +284,10 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
       </ToggleGroup>
       )}
       <PlayerController />
-      <ToggleGroup group="remotePlayers">
-        <RemotePlayers />
-      </ToggleGroup>
+       <ToggleGroup group="remotePlayers">
+         <RemotePlayers />
+         <NpcPlayers />
+       </ToggleGroup>
       <PerfLogger />
       <DisableFrustumCulling />
       <SunTracker sunRef={sunRef} onVisible={setSunVisible} />

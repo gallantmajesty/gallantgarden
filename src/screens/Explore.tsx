@@ -33,11 +33,11 @@ import { enterRealmLowFirst } from '../three/realmQuality'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
+import { AddFriendButton } from '../components/AddFriendButton'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
-import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
 import { TrainHUD } from '../components/train/TrainHUD'
 import { FullscreenPomodoro } from '../components/FullscreenPomodoro'
 import { CinematicEntry } from '../components/library/CinematicEntry'
@@ -65,7 +65,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
   const [fpOpen, setFpOpen] = useState(false)
-  const [numHintDismissed, setNumHintDismissed] = useState(false)
   const fps = useSettings((s) => s.fps)
   const brightness = useSettings((s) => s.brightness)
   const set = useSettings((s) => s.set)
@@ -88,6 +87,16 @@ export function Explore({ defaultWorld }: ExploreProps) {
     if (seat != null && !wasSeated.current) useDesk.getState().setView('collapsed')
     wasSeated.current = seat != null
   }, [seat])
+
+  // Restore world seat from saved seatFlow on mount (tab return within 30s).
+  useEffect(() => {
+    if (isTrain) return
+    const flowSeat = useSeatFlow.getState().selectedSeatId
+    const worldSeat = useWorld.getState().seat
+    if (flowSeat != null && worldSeat == null) {
+      useWorld.getState().sit(flowSeat)
+    }
+  }, [isTrain])
 
   // Keep the display awake while the Cinematic Tour runs, so it plays like a
   // video and the monitor/screen doesn't sleep ("pc get off"). Released on exit
@@ -127,6 +136,32 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
   // Sync remote seat occupancy into the local seat picker every 2 seconds.
   // This keeps the "Occupied" / "Free" labels accurate across all clients.
+
+  // Seat persistence on tab leave: reserve the seat for 30 seconds when hidden.
+  // On return, check if the seat is still free — if taken, force re-selection.
+  useEffect(() => {
+    const onVis = () => {
+      if (!isTrain && seat != null) {
+        if (document.visibilityState === 'hidden') {
+          // Tab leaving — reserve seat for 30 seconds
+          useSeatFlow.getState().reserveSeat()
+        } else if (document.visibilityState === 'visible') {
+          // Tab returning — check if seat is still available
+          const mySeat = useWorld.getState().seat
+          if (mySeat != null) {
+            const occupied = useSeatFlow.getState().occupied
+            if (occupied[mySeat]) {
+              // Someone else took the seat — force re-selection
+              useWorld.getState().stand()
+              useSeatFlow.getState().unlock()
+            }
+          }
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [isTrain, seat])
   useEffect(() => {
     const sync = () => {
       const occupied = getRemoteOccupied()
@@ -195,7 +230,8 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
       {/* Library seat-selection overlay — shown before the player commits to a seat.
           Once a seat is chosen we fall through to the normal in-world HUD. */}
-      {!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
+          {/* Seat selection overlay - commented out per user request to remove brown script */}
+          {/* {!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />} */}
 
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
       {!isTrain && <CinematicEntry />}
@@ -259,7 +295,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           <CameraSwitch />
 
           <SeatPrompt />
-          <SeatedPanel />
+          <SeatedPanel onToggleCalc={() => setCalcOpen((v) => !v)} calcOpen={calcOpen} />
 
           {/* Train Station realm HUD — the boarding card, live journey dock and
               arrival/reward screen. It's the realm's primary interface, so it's
@@ -311,29 +347,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
           9 = Cinematic Tour. Hidden while the tour runs (it's a hands-off
           full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
-      {!isTrain && !cinematic && (
-        <div className="cine-controls">
-          {!numHintDismissed && (
-            <span className="magic-hint">Press any number</span>
-          )}
-          <div className="cine-keyrow">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={`cine-key${k === '9' ? ' magic' : ''}`}
-                title={k === '9' ? 'Cinematic Tour (key 9)' : `Camera preset ${k}`}
-                onClick={() => {
-                  if (!numHintDismissed) setNumHintDismissed(true)
-                  window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }))
-                }}
-              >
-                {k}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
       {!isTrain && !cinematic && <MusicPlayer />}
       <FullscreenPomodoro isOpen={fpOpen} onClose={() => setFpOpen(false)} />
     </div>
@@ -521,6 +534,7 @@ function RoomRoster() {
   const realm = useRealm((s) => s.active)
   const roster = useRealmNet((s) => s.roster)
   const [open, setOpen] = useState(true)
+  const [profileTarget, setProfileTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string } | null>(null)
 
   if (!realm) return null
 
@@ -530,12 +544,8 @@ function RoomRoster() {
     country,
     rank,
   }
-  const others: PublicPlayer[] = Object.values(roster).map((p) => ({
-    name: p.name,
-    country: p.country,
-    rank: p.rank,
-  }))
-  const total = others.length + 1
+  const rosterEntries = Object.entries(roster)
+  const total = rosterEntries.length + 1
 
   return (
     <div className={`room-roster ${open ? 'open' : ''}`}>
@@ -550,16 +560,31 @@ function RoomRoster() {
             <PublicPlayerTag player={self} size="sm" />
             <span className="room-roster-you">You</span>
           </div>
-          {others.map((p: PublicPlayer, i: number) => (
-            <div key={`${p.name}-${i}`} className="room-roster-row">
-              <PublicPlayerTag player={p} size="sm" />
+          {rosterEntries.map(([id, entry]) => (
+            <div
+              key={id}
+              className="room-roster-row clickable"
+              onClick={() => setProfileTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank })}
+            >
+              <PublicPlayerTag player={{ name: entry.name, country: entry.country, rank: entry.rank }} size="sm" />
             </div>
           ))}
-          {others.length === 0 && (
+          {rosterEntries.length === 0 && (
             <p className="room-roster-empty">
               <span>Others studying in this realm will appear here live.</span>
             </p>
           )}
+        </div>
+      )}
+      {profileTarget && (
+        <div className="roster-profile-overlay" onClick={() => setProfileTarget(null)}>
+          <div className="roster-profile-card" onClick={(e) => e.stopPropagation()}>
+            <button className="roster-profile-close" onClick={() => setProfileTarget(null)}>×</button>
+            <PublicPlayerTag player={{ name: profileTarget.name, country: profileTarget.country, rank: profileTarget.rank }} size="md" />
+            <div className="roster-profile-actions">
+              <AddFriendButton targetId={profileTarget.playerId} />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -693,14 +718,8 @@ function SeatPrompt() {
  *  header (a labelled "Stand up" button + an ✕). When the panel is minimized to
  *  a chip, a compact "Stand up" sits beside the chip so the user is never reliant
  *  on the E hotkey (which is also a typing key) to get up. */
-function SeatedPanel() {
+function SeatedPanel({ onToggleCalc, calcOpen }: { onToggleCalc: () => void; calcOpen: boolean }) {
   const seat = useWorld((s) => s.seat)
-  const { phase, remaining, running, toggle, forfeit } = usePomodoro()
-  // What the student is studying — tags every completed focus block so analytics
-  // can break focus time down by subject. Options come from Task Magnet.
-  const subject = usePomodoro((s) => s.subject)
-  const setSubject = usePomodoro((s) => s.setSubject)
-  const subjects = useMagnet((s) => s.data.subjects)
   // Goals / notes / view live in the persisted desk store so they survive
   // stand-up → sit-down and page refreshes (never cleared on stand up).
   const goals = useDesk((s) => s.goals)
@@ -711,119 +730,21 @@ function SeatedPanel() {
 
   // Draggable position for the desk panel
   const stationRef = useRef<HTMLDivElement>(null)
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
-  const dragAbortRef = useRef<AbortController | null>(null)
-
-  // Reset drag position when user stands up
-  useEffect(() => {
-    if (seat == null) setDragPos(null)
-  }, [seat])
-
-  const startDrag = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button,input,textarea,select')) return
-    const el = stationRef.current
-    if (!el) return
-    e.preventDefault()
-    e.stopPropagation()
-    const rect = el.getBoundingClientRect()
-    const sx = e.clientX
-    const sy = e.clientY
-    const bx = rect.left
-    const by = rect.top
-    let last = { x: bx, y: by }
-    const ac = new AbortController()
-    dragAbortRef.current = ac
-    const move = (ev: PointerEvent) => {
-      const x = Math.max(10, Math.min(bx + (ev.clientX - sx), window.innerWidth - el.offsetWidth - 10))
-      const y = Math.max(10, Math.min(by + (ev.clientY - sy), window.innerHeight - el.offsetHeight - 10))
-      last = { x, y }
-      el.style.left = `${x}px`
-      el.style.top = `${y}px`
-      el.style.right = 'auto'
-      el.style.bottom = 'auto'
-    }
-    const finish = () => {
-      ac.abort()
-      dragAbortRef.current = null
-      setDragPos(last)
-    }
-    window.addEventListener('pointermove', move, { signal: ac.signal })
-    window.addEventListener('pointerup', finish, { signal: ac.signal })
-    window.addEventListener('pointercancel', finish, { signal: ac.signal })
-  }, [])
-
-  // Change-seat cooldown: 10 minutes from when the user sat down
-  const seatLockUntil = useSeatFlow((s) => s.seatLockUntil)
-  const [seatCooldown, setSeatCooldown] = useState(0)
-  useEffect(() => {
-    if (seatLockUntil == null) { setSeatCooldown(0); return }
-    const tick = () => {
-      const sec = Math.max(0, Math.ceil((seatLockUntil - Date.now()) / 1000))
-      setSeatCooldown(sec)
-    }
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [seatLockUntil])
-  const canChangeSeat = seatCooldown === 0
-  const seatMm = String(Math.floor(seatCooldown / 60)).padStart(2, '0')
-  const seatSs = String(seatCooldown % 60).padStart(2, '0')
-  const [seatInput, setSeatInput] = useState('')
-
-  const handleChangeSeatToNumber = () => {
-    if (!canChangeSeat) return
-    const num = parseInt(seatInput, 10)
-    const seats = useSeatFlow.getState().seats
-    const occupied = useSeatFlow.getState().occupied
-    if (isNaN(num) || num < 0 || num >= seats.length) return
-    if (occupied[num]) return
-    useWorld.getState().stand()
-    useSeatFlow.getState().pickSeat(num)
-    useSeatFlow.getState().startWalk()
-    const roomKey = realm ? roomKeyOf(realm) : undefined
-    useSeatFlow.getState().arrive(roomKey)
-    useWorld.getState().sit(num)
-    useSeatFlow.getState().markEntrancePlayed()
-    setSeatInput('')
-  }
 
   const [goalsOpen, setGoalsOpen] = useState(true)
   const [notesOpen, setNotesOpen] = useState(true)
 
+  // Reset drag position when user stands up
+
   if (seat == null) return null
 
-  const hh = String(Math.floor(remaining / 3600)).padStart(2, '0')
-  const mm = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')
-  const ss = String(remaining % 60).padStart(2, '0')
-  const label = phase === 'idle' ? 'Ready' : phase === 'running' ? 'Studying' : phase === 'break' ? 'Break' : phase === 'paused' ? 'Paused' : 'Done'
-
-  // minimized → compact bar with stand-up and seat input
+  // minimized → compact bar with stand-up
   if (view === 'min') {
     return (
       <div className="station-min">
         <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
-          <span className="station-chip-dot" /> {phase === 'idle' ? 'Your desk' : `${hh}:${mm}:${ss}`} ▸
+          <span className="station-chip-dot" /> Your desk ▸
         </button>
-        <span className="station-seat-input-wrap">
-          <input
-            className="station-seat-input"
-            type="number"
-            min="0"
-            placeholder="Seat #"
-            value={seatInput}
-            onChange={(e) => setSeatInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
-            title={canChangeSeat ? 'Enter seat number to change' : `Room locked — ${seatMm}:${seatSs} left`}
-            disabled={!canChangeSeat}
-          />
-          <button
-            className={`station-change-seat ${seatInput && canChangeSeat ? 'ready' : ''}`}
-            onClick={handleChangeSeatToNumber}
-            disabled={!seatInput || !canChangeSeat}
-          >
-            ↕
-          </button>
-        </span>
         <button className="station-min-stand" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }} title="Stand up (leave chair)">
           ⤴ Stand up
         </button>
@@ -831,18 +752,13 @@ function SeatedPanel() {
   )
   }
 
-  const stationStyle = dragPos
-    ? { left: dragPos.x, top: dragPos.y, right: 'auto' as const, bottom: 'auto' as const, position: 'fixed' as const }
-    : undefined
-
   return (
     <div
       ref={stationRef}
       className={`station ${view === 'collapsed' ? 'collapsed' : ''}`}
-      style={stationStyle}
       data-no-hotkeys
     >
-      <div className="station-head" onPointerDown={startDrag} style={{ cursor: 'grab' }}>
+      <div className="station-head">
         <div className="station-head-left">
           <h2>Your desk</h2>
         </div>
@@ -857,48 +773,10 @@ function SeatedPanel() {
       </div>
 
       <div className="station-body">
-        {/* Focus Timer */}
-        <div className="station-sect">
-          <div className="station-timer">
-            <span className="station-time-label">{label}</span>
-            <span className="station-time">{phase === 'idle' ? '--:--:--' : `${hh}:${mm}:${ss}`}</span>
-            <div className="station-timer-actions">
-              <button className="station-timer-btn primary" onClick={toggle}>
-                {phase === 'idle' ? 'Start' : running ? 'Pause' : 'Resume'}
-              </button>
-              <button className="station-timer-btn" onClick={forfeit}>
-                Forfeit
-              </button>
-              <button 
-                className="station-timer-btn fullscreen-btn"
-                onClick={() => setFpOpen(true)}
-                disabled={phase === 'idle'}
-                title="Fullscreen Focus Mode (pauses 3D rendering)"
-              >
-                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path d="M8 3v2m8-2v2M3 8h2m16 0h2M3 16h2m16 0h2M8 21v-2m8 2v-2M5 5l.5.5m13.5-5.5L21 5m-13 14l.5.5m13.5-5.5L21 19" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <input
-            className="station-subject-input"
-            list="station-subjects"
-            placeholder="What are you studying?"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          />
-          <datalist id="station-subjects">
-            {subjects.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-        </div>
-
         {/* Daily Goals */}
         <div className="station-sect">
           <div className="station-sect-header">
-            <h3>Daily Goals</h3>
+            <h3>Goals</h3>
             <button className="station-sect-toggle" onClick={() => setGoalsOpen((v) => !v)}>
               {goalsOpen ? '▾' : '▸'}
             </button>
@@ -937,30 +815,14 @@ function SeatedPanel() {
         </div>
       </div>
 
-      {/* Footer — change seat + stand up */}
+      {/* Footer — stand up + calc */}
       <div className="station-footer">
-        <button className="station-footer-btn danger" onClick={() => useWorld.getState().stand()}>
+        <button className="station-footer-btn danger" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }}>
           Stand up
         </button>
-        <span className="station-seat-input-wrap">
-          <input
-            className="station-seat-input"
-            type="number"
-            min="0"
-            placeholder="Seat #"
-            value={seatInput}
-            onChange={(e) => setSeatInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleChangeSeatToNumber()}
-            title={canChangeSeat ? 'Enter seat number to change' : `You sat ${seatMm}:${seatSs} ago — switch anytime`}
-          />
-          <button
-            className={`station-footer-btn ${seatInput ? 'ready' : ''}`}
-            onClick={handleChangeSeatToNumber}
-            disabled={!seatInput}
-          >
-            Go
-          </button>
-        </span>
+        <button className="station-footer-btn" onClick={onToggleCalc} title={calcOpen ? 'Close calculator' : 'Calculator'}>
+          <CalcGlyph />
+        </button>
       </div>
     </div>
   )
@@ -1039,6 +901,9 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const [pickType, setPickType] = useState<TimerType>(timerType)
   const [pickDur, setPickDur] = useState(sessionMinutes)
   const [pickBreaks, setPickBreaks] = useState(breakCount)
+  const chipRef = useRef<HTMLDivElement>(null)
+  const [chipDrag, setChipDrag] = useState<{ x: number; y: number } | null>(null)
+  const chipDragAbort = useRef<AbortController | null>(null)
   if (!show) return null
   const hh = String(Math.floor(remaining / 3600)).padStart(2, '0')
   const mm = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')
@@ -1071,8 +936,57 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
     setConfigOpen(!configOpen)
   }
 
+  // Reset chip drag when config closes or phase starts
+  useEffect(() => {
+    if (phase !== 'idle') setChipDrag(null)
+  }, [phase])
+
+  const [chipDragging, setChipDragging] = useState(false)
+
+  const startChipDrag = useCallback(() => {
+    const el = chipRef.current
+    if (!el) return
+    setChipDragging(true)
+    const rect = el.getBoundingClientRect()
+    const bx = rect.left
+    const by = rect.top
+    const startX = bx
+    const startY = by
+    let last = { x: bx, y: by }
+    const ac = new AbortController()
+    chipDragAbort.current = ac
+    const move = (ev: PointerEvent) => {
+      const x = Math.max(10, Math.min(startX + (ev.clientX - startX), window.innerWidth - el.offsetWidth - 10))
+      const y = Math.max(10, Math.min(startY + (ev.clientY - startY), window.innerHeight - el.offsetHeight - 10))
+      last = { x, y }
+      el.style.left = `${x}px`
+      el.style.top = `${y}px`
+      el.style.right = 'auto'
+      el.style.bottom = 'auto'
+    }
+    const finish = () => {
+      ac.abort()
+      chipDragAbort.current = null
+      setChipDragging(false)
+      setChipDrag(last)
+    }
+    window.addEventListener('pointermove', move, { signal: ac.signal })
+    window.addEventListener('pointerup', finish, { signal: ac.signal })
+    window.addEventListener('pointercancel', finish, { signal: ac.signal })
+  }, [])
+
+  const chipStyle = chipDrag
+    ? { left: chipDrag.x, top: chipDrag.y, right: 'auto' as const, bottom: 'auto' as const, position: 'fixed' as const }
+    : undefined
+
   return (
-    <div className="explore-pomo-wrap">
+    <div
+      className={`explore-pomo-wrap ${chipDragging ? 'dragging' : ''}`}
+      ref={chipRef}
+      style={chipStyle}
+      onDoubleClick={startChipDrag}
+      data-no-hotkeys
+    >
       <RewardPopup />
       <div className={`explore-pomo ${phase}`}>
         {/* Forfeit button — only show during active session */}
