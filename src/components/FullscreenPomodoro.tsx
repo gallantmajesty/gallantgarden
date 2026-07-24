@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { usePomodoro, SESSION_OPTIONS, type TimerType, type PomoPhase } from '../store/pomodoro'
+import { usePomodoro, SESSION_OPTIONS, computeSegments, type TimerType, type PomoPhase } from '../store/pomodoro'
 import { useWorld } from '../store/world'
 import { useRealmNet, getRemotePlayers, type PublicPlayer } from '../multiplayer/net'
 import { useSettings } from '../store/settings'
@@ -9,7 +9,7 @@ import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
 import { useAudio } from '../audio/useAudio'
 import { ClockDisplay } from './clock/ClockDisplay'
-import { useClockStore } from '../store/clock'
+import { useClockStore, CLOCK_THEMES } from '../store/clock'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from './library/MusicPlayer'
 import { PublicPlayerTag } from './PublicPlayerTag'
@@ -129,7 +129,7 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
 
   const segments = SESSION_OPTIONS.includes(sessionMinutes) 
     ? sessionMinutes === 60 && breakCount === 0 ? [60] 
-    : require('../store/pomodoro').computeSegments(sessionMinutes, breakCount)
+    : computeSegments(sessionMinutes, breakCount)
     : [sessionMinutes]
 
   const currentSegment = segments[segmentIndex] || sessionMinutes
@@ -220,7 +220,7 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
             </button>
           </div>
           <div className="fp-clock-grid">
-            {require('./clock/ClockDisplay').CLOCK_THEMES.map(theme => (
+            {CLOCK_THEMES.map(theme => (
               <button
                 key={theme.id}
                 className={`fp-clock-option ${clockStore.activeClock === theme.id ? 'active' : ''} ${!clockStore.isClockUnlocked(theme.id) ? 'locked' : ''}`}

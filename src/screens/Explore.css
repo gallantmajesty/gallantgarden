@@ -910,6 +910,21 @@
 }
 .pomo-play:hover { background: rgba(74, 222, 128, 0.35); }
 
+.pomo-fullscreen {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(167, 139, 250, 0.2);
+  color: #a78bfa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+.pomo-fullscreen:hover { background: rgba(167, 139, 250, 0.35); }
+
 /* Session dots */
 .pomo-dots {
   display: flex;
