@@ -394,6 +394,31 @@
   white-space: nowrap;
 }
 
+/* ---- public realm: section cards ---- */
+.realm-public-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 500px;
+}
+.realm-section {
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  animation: pop-in 0.35s ease both;
+}
+.realm-section-title {
+  font-family: 'Wonderworld', var(--sans);
+  font-size: 16px;
+  color: var(--wood-dark);
+  margin: 0 0 12px;
+}
+
 .realm-mine {
   width: 100%;
   max-width: 560px;
@@ -478,9 +503,6 @@
 .realm-vis-opt.on {
   border-color: var(--grass-dark);
   background: rgba(107, 191, 79, 0.16);
-}
-.realm-join-form {
-  margin-top: 4px;
 }
 .realm-join-err {
   color: #b5562f;
@@ -690,6 +712,8 @@
   .realm-join { padding: 8px 16px; font-size: 14px; }
   .realm-create { flex-direction: column; gap: 8px; }
   .realm-create .sf-btn { width: 100%; }
+  .realm-section { padding: 16px; }
+  .realm-public-sections { gap: 12px; }
   .realm-vis { flex-direction: column; }
   .realm-mine-list { gap: 6px; }
   .realm-mine-item { padding: 8px 12px; font-size: 13px; }

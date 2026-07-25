@@ -489,79 +489,93 @@ function PublicRealm() {
         <p>Create a realm for you and your friends. Share the 7-digit code and password so they join the exact same world.</p>
       </header>
 
-      <form className="realm-create realm-create-col" onSubmit={create}>
-        <input
-          className="sf-input"
-          placeholder="Name your realm — e.g. Midnight Library"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={40}
-          autoFocus
-        />
-        <input
-          className="sf-input"
-          type="password"
-          placeholder="Set a password for friends to join"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          maxLength={32}
-        />
-        <div className="realm-create-note">Expires in 24 hours · One realm at a time</div>
-        <button className="sf-btn water" type="submit" disabled={busy}>
-          {busy ? 'Creating…' : 'Create realm'}
-        </button>
-      </form>
+      <div className="realm-public-sections">
 
-      {/* join by 7-digit code */}
-      <form className="realm-create realm-join-form" onSubmit={join}>
-        <input
-          className="sf-input"
-          placeholder="Enter 7-digit code — e.g. 3847291"
-          value={joinCode}
-          onChange={(e) => { setJoinCode(e.target.value); setNeedPassword(false); setPendingCode(''); setJoinPassword(''); setJoinErr(null) }}
-          maxLength={7}
-          inputMode="numeric"
-          pattern="[0-9]*"
-        />
-        {needPassword && (
-          <input
-            className="sf-input"
-            type="password"
-            placeholder="Enter realm password"
-            value={joinPassword}
-            onChange={(e) => setJoinPassword(e.target.value)}
-            maxLength={32}
-            autoFocus
-          />
-        )}
-        <button className="sf-btn water secondary" type="submit" disabled={joining}>
-          {joining ? 'Joining…' : 'Join'}
-        </button>
-      </form>
-      {joinErr && <p className="realm-join-err">{joinErr}</p>}
+        {/* ── Create ── */}
+        <div className="realm-section water-glass">
+          <h3 className="realm-section-title">Create a realm</h3>
+          <form className="realm-create realm-create-col" onSubmit={create}>
+            <input
+              className="sf-input"
+              placeholder="Name your realm — e.g. Midnight Library"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={40}
+              autoFocus
+            />
+            <input
+              className="sf-input"
+              type="password"
+              placeholder="Set a password for friends to join"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              maxLength={32}
+            />
+            <div className="realm-create-note">Expires in 24 hours · One realm at a time</div>
+            <button className="sf-btn water" type="submit" disabled={busy}>
+              {busy ? 'Creating…' : 'Create realm'}
+            </button>
+          </form>
+        </div>
 
-      {/* search public realms */}
-      <div className="realm-search">
-        <input
-          className="sf-input"
-          placeholder="Search public realms by name…"
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          maxLength={40}
-        />
-        {searching && <span className="realm-search-hint">Searching…</span>}
-        {searchResults.length > 0 && (
-          <div className="realm-search-results">
-            {searchResults.map((r) => (
-              <button key={r.id} className="realm-search-item" onClick={() => joinSearchResult(r)}>
-                <PngIcon name="realm" size={28} alt="" />
-                <span className="realm-search-name">{r.name}</span>
-                {r.password && <span className="realm-search-lock">🔒</span>}
-                <span className="realm-search-go">Join ›</span>
-              </button>
-            ))}
+        {/* ── Join ── */}
+        <div className="realm-section water-glass">
+          <h3 className="realm-section-title">Join a realm</h3>
+          <form className="realm-create realm-create-col" onSubmit={join}>
+            <input
+              className="sf-input"
+              placeholder="Enter 7-digit code — e.g. 3847291"
+              value={joinCode}
+              onChange={(e) => { setJoinCode(e.target.value); setNeedPassword(false); setPendingCode(''); setJoinPassword(''); setJoinErr(null) }}
+              maxLength={7}
+              inputMode="numeric"
+              pattern="[0-9]*"
+            />
+            {needPassword && (
+              <input
+                className="sf-input"
+                type="password"
+                placeholder="Enter realm password"
+                value={joinPassword}
+                onChange={(e) => setJoinPassword(e.target.value)}
+                maxLength={32}
+                autoFocus
+              />
+            )}
+            <button className="sf-btn water" type="submit" disabled={joining}>
+              {joining ? 'Joining…' : 'Join'}
+            </button>
+          </form>
+          {joinErr && <p className="realm-join-err">{joinErr}</p>}
+        </div>
+
+        {/* ── Search ── */}
+        <div className="realm-section water-glass">
+          <h3 className="realm-section-title">Search realms</h3>
+          <div className="realm-search">
+            <input
+              className="sf-input"
+              placeholder="Search by name…"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              maxLength={40}
+            />
+            {searching && <span className="realm-search-hint">Searching…</span>}
+            {searchResults.length > 0 && (
+              <div className="realm-search-results">
+                {searchResults.map((r) => (
+                  <button key={r.id} className="realm-search-item" onClick={() => joinSearchResult(r)}>
+                    <PngIcon name="realm" size={28} alt="" />
+                    <span className="realm-search-name">{r.name}</span>
+                    {r.password && <span className="realm-search-lock">🔒</span>}
+                    <span className="realm-search-go">Join ›</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
       </div>
 
       {custom.length > 0 && (

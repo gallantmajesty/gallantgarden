@@ -299,8 +299,8 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} nightMode={nightMode} />
         </CanvasBoundary>
       )}
+      <SceneReady onReady={handleReady} />
     </Canvas>
-    <SceneReady onReady={handleReady} />
     </>
   )
 }
