@@ -35,6 +35,10 @@ const CharacterSelection = lazy(() => import('./screens/CharacterSelection').the
 const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
 const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
 
+function isLocalhost() {
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]'
+}
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -69,37 +73,35 @@ export default function App() {
   const PUBLIC_PATHS = new Set(['/', '/about'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
 
-  // The opening scene plays over the boot. It cuts the moment the lobby (or auth
-  // screen) is ready to paint — i.e. auth has resolved and, if signed in, the
-  // profile has loaded — so the video stops "wherever it is" the instant we can
-  // open the lobby, just like Clash of Clans.
-  const appReady = !loading && (!user || profileReady)
-  const veilReady = appReady && (!waitForLobby || lobbyReady)
-
   // Public marketing pages render without WebBackground/IntroVeil
   // Show landing immediately — don't wait for auth to resolve.
   // But if auth is still loading, hold off — a logged-in user should land
   // straight in the Lobby without a flash of the Landing page.
-   if (isPublic && !user && !loading) {
+  if (isPublic && !user && !loading) {
     return (
-      <MobileBlocker>
-        <ErrorBoundary resetKeys={[location.pathname]}>
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/coming-soon" element={<ComingSoon />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
+      <ErrorBoundary resetKeys={[location.pathname]}>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/coming-soon" element={<ComingSoon />} />
+          </Routes>
+        </Suspense>
         <GlobalClickSpark />
-      </MobileBlocker>
+      </ErrorBoundary>
     )
+  }
+
+  // Non-localhost: redirect to landing page — the CTA there shows "Coming Soon"
+  if (!isLocalhost() && !user && !loading) {
+    return <Navigate to="/" replace />
   }
 
   // The background is mounted once, above the auth/loading/router branch, so it
   // persists across every navigation and never remounts (zero flash).
   // Blueprint route is accessible on mobile — no MobileBlocker wrapper for it.
+  const appReady = !loading && (!user || profileReady)
+  const veilReady = appReady && (!waitForLobby || lobbyReady)
   const isBlueprintRoute = location.pathname === '/blueprint'
 
   const appContent = (
