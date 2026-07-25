@@ -8,6 +8,15 @@ import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import { setLocalState, getCineHostId, getCineHostCam, publishCineCam, publishCineState, setLocalCineActive, getSelfId } from '../../multiplayer/net'
+
+/** Fisher-Yates shuffle — mutates and returns the array. */
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
 import { useSeatFlow } from '../../store/seatFlow'
 import { EmoteLabel } from './EmoteLabel'
 import { useAvatar } from '../../avatar/store'
@@ -51,12 +60,6 @@ const SEAT_PRESETS: { yaw: number; pitch: number; zoom: number }[] = [
   { yaw: 0, pitch: 0.1, zoom: 3.0 }, // 7 — tight front close-up
   { yaw: Math.PI * 1.25, pitch: 0.25, zoom: 4.8 }, // 8 — rear three-quarter
 ]
-
-/** Smooth ease so the cinematic glide never snaps (which would read as a flicker). */
-function smoothstep(x: number): number {
-  const t = MathUtils.clamp(x, 0, 1)
-  return t * t * (3 - 2 * t)
-}
 
 function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, number] {
   const savedId = useSeatFlow.getState().selectedSeatId
@@ -107,21 +110,25 @@ export function PlayerController() {
   const [emote, setEmote] = useState<string | null>(null)
   const emoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cinematic tour (key 9 / overlay button): the camera glides between random
-  // vantage points across the whole hall. `from`/`to` are camera positions,
-  // `lookFrom`/`lookTo` the aim points; we ease between them, dwell, then pick
-  // a fresh random waypoint.
+  // Cinematic tour (key 9 / overlay button): movie-style fade-cut-fade between
+  // random vantage points. The camera slowly drifts during each shot (gentle
+  // dolly/pan), fades to black, teleports, fades back in. The `phase` state
+  // machine drives the overlay opacity exposed via useWorld.cineFade.
+  type CinePhase = 'idle' | 'fadeOut' | 'fadeIn' | 'dwell'
   const cine = useRef({
-    from: new Vector3(),
-    to: new Vector3(),
-    lookFrom: new Vector3(),
-    lookTo: new Vector3(),
-    fovFrom: 68,
-    fovTo: 68,
+    phase: 'idle' as CinePhase,
+    target: new Vector3(),
+    lookTarget: new Vector3(),
+    orbitCenter: new Vector3(),
+    orbitLook: new Vector3(),
+    orbitRadius: 0,
+    orbitAngle: 0,
+    orbitSpeed: 0,
+    orbitTilt: 0,
+    orbitReady: false,
     t: 0,
-    dur: 1,
-    dwell: 0,
-    active: false,
+    dwellDur: 0,
+    fadeDur: 0,
   })
   const CINE_FOV_BASE = 68
   // Shared cinematic: scratch vectors + a publish throttle so the host only
@@ -132,41 +139,76 @@ export function PlayerController() {
   const cineStateSent = useRef(false)
   const wasCinematic = useRef(false)
 
+  // 50 hand-crafted cinematic positions covering the ENTIRE library —
+  // shuffled so there's no visible sequence. Includes heavy top-floor / balcony
+  // coverage as requested. Memoised once so the order is stable across renders.
+  const CINE_SHOTS = useMemo(() => shuffle([
+    // --- Wide establishing shots (ground floor centre) ---
+    { pos: new Vector3(0, 4, 0), look: new Vector3(0, 6, -30) },
+    { pos: new Vector3(0, 5, -15), look: new Vector3(0, 8, 20) },
+    { pos: new Vector3(3, 3.5, 10), look: new Vector3(-2, 6, -25) },
+    { pos: new Vector3(-3, 3.5, -10), look: new Vector3(2, 7, 15) },
+    { pos: new Vector3(0, 6, 20), look: new Vector3(0, 4, -20) },
+    // --- Knowledge Tree close-ups ---
+    { pos: new Vector3(5, 2, 3), look: new Vector3(0, 10, 0) },
+    { pos: new Vector3(-4, 1.8, -3), look: new Vector3(0, 11, 0) },
+    { pos: new Vector3(3, 3, -5), look: new Vector3(0, 8, 0) },
+    { pos: new Vector3(-6, 2.5, 4), look: new Vector3(0, 12, 0) },
+    { pos: new Vector3(0, 1.5, 6), look: new Vector3(0, 9, 0) },
+    // --- Table-level detail ---
+    { pos: new Vector3(13, 1.5, -10), look: new Vector3(11, 1.2, -15) },
+    { pos: new Vector3(-13, 1.5, 5), look: new Vector3(-11, 1.2, 10) },
+    { pos: new Vector3(12, 1.4, 20), look: new Vector3(10, 1.0, 25) },
+    { pos: new Vector3(-12, 1.6, -20), look: new Vector3(-10, 1.1, -25) },
+    // --- Top floor / balcony (heavy coverage) ---
+    { pos: new Vector3(22, 11, -20), look: new Vector3(0, 2, 0) },
+    { pos: new Vector3(-22, 11, 10), look: new Vector3(0, 3, 0) },
+    { pos: new Vector3(22, 10.5, 15), look: new Vector3(-5, 4, -10) },
+    { pos: new Vector3(-22, 10.8, -25), look: new Vector3(5, 3, 10) },
+    { pos: new Vector3(20, 11.5, 0), look: new Vector3(0, 5, -15) },
+    { pos: new Vector3(-20, 12, -35), look: new Vector3(0, 4, -10) },
+    { pos: new Vector3(22, 10, 35), look: new Vector3(-3, 2, 15) },
+    { pos: new Vector3(-22, 11.2, -5), look: new Vector3(4, 6, -20) },
+    { pos: new Vector3(21, 10.8, -40), look: new Vector3(-2, 3, -15) },
+    { pos: new Vector3(-21, 11, 40), look: new Vector3(3, 5, 10) },
+    { pos: new Vector3(23, 11.5, -10), look: new Vector3(-5, 8, 5) },
+    { pos: new Vector3(-23, 10.5, 25), look: new Vector3(5, 7, -5) },
+    // --- Top floor looking across atrium ---
+    { pos: new Vector3(22, 11, 0), look: new Vector3(-22, 10, -10) },
+    { pos: new Vector3(-22, 11, 0), look: new Vector3(22, 10, 10) },
+    { pos: new Vector3(22, 12, -30), look: new Vector3(-10, 6, -10) },
+    { pos: new Vector3(-22, 12, 30), look: new Vector3(10, 6, 10) },
+    // --- Shelf corridors ---
+    { pos: new Vector3(24, 2, -15), look: new Vector3(22, 3, -25) },
+    { pos: new Vector3(-24, 2, 10), look: new Vector3(-22, 3, 20) },
+    { pos: new Vector3(25, 1.8, 5), look: new Vector3(23, 2.5, -5) },
+    // --- Corner dramatics ---
+    { pos: new Vector3(26, 2, -42), look: new Vector3(0, 5, 0) },
+    { pos: new Vector3(-26, 2, 42), look: new Vector3(0, 6, 0) },
+    { pos: new Vector3(25, 2.5, 40), look: new Vector3(-10, 4, -20) },
+    // --- Low dramatic (floor level) ---
+    { pos: new Vector3(0, 0.4, 10), look: new Vector3(0, 12, 0) },
+    { pos: new Vector3(8, 0.3, -15), look: new Vector3(0, 10, 5) },
+    { pos: new Vector3(-6, 0.5, 20), look: new Vector3(0, 11, -5) },
+    { pos: new Vector3(3, 0.35, -30), look: new Vector3(0, 13, 10) },
+    { pos: new Vector3(-10, 0.4, -5), look: new Vector3(2, 9, 8) },
+    // --- High ceiling shots ---
+    { pos: new Vector3(0, 16, 0), look: new Vector3(0, 4, -10) },
+    { pos: new Vector3(5, 18, -10), look: new Vector3(-3, 3, 5) },
+    { pos: new Vector3(-5, 15, 8), look: new Vector3(2, 5, -8) },
+    // --- Lantern / window details ---
+    { pos: new Vector3(10, 5, -35), look: new Vector3(8, 3, -40) },
+    { pos: new Vector3(-10, 4.5, 30), look: new Vector3(-8, 3, 35) },
+    { pos: new Vector3(15, 6, -20), look: new Vector3(12, 4, -25) },
+    // --- Mid-hall cinematic angles ---
+    { pos: new Vector3(8, 3, -25), look: new Vector3(-4, 7, 10) },
+    { pos: new Vector3(-8, 4, 15), look: new Vector3(5, 6, -15) },
+    { pos: new Vector3(6, 2.5, 30), look: new Vector3(-3, 5, -10) },
+    { pos: new Vector3(-10, 3.5, -30), look: new Vector3(4, 8, 5) },
+  ]), [])
+
   const pickCine = () => {
-    const rnd = (a: number, b: number) => a + Math.random() * (b - a)
-    const side = Math.random() < 0.5 ? -1 : 1
-    const roll = Math.random()
-    // The tour lives on the UPPER FLOOR — the magical, meditative vantage points.
-    // We stand at a gallery rail and gaze across the Great Hall: the Knowledge
-    // Tree, the lantern glow, the opposite balcony. Waypoints are pulled well
-    // clear of any furniture (the reading tables are at x = ±13 on the ground
-    // floor and x = ±23.5 on the galleries) so the camera never dives into a
-    // desk or a chair.
-    if (roll < 0.5) {
-      // Balcony overlook — gaze down/across the nave from the OUTER rail, well
-      // clear of the upper-floor tables that sit at x = ±23.5.
-      const x = side * (HALL.halfW - 1.5)
-      const z = rnd(-HALL.halfL + 6, GALLERY_FRONT_Z - 3)
-      const pos = new Vector3(x, HALL.balconyY + rnd(1.2, 2.4), z)
-      const look = new Vector3(-side * rnd(2, 12), rnd(2, 7), rnd(-HALL.halfL + 6, HALL.halfL - 6))
-      return { pos, look }
-    }
-    if (roll < 0.78) {
-      // Upper-gallery stroll — roam the outer rail (x ≈ ±26.5), clear of tables.
-      const x = side * (HALL.halfW - 1.5)
-      const z = rnd(-HALL.halfL + 4, GALLERY_FRONT_Z)
-      const pos = new Vector3(x, HALL.balconyY + rnd(1.0, 1.8), z)
-      const look = new Vector3(side * rnd(4, 12), HALL.balconyY + rnd(0, 2.5), z + rnd(-10, 10))
-      return { pos, look }
-    }
-    // A gentle, pulled-back hall-level establishing shot, kept in the clear
-    // CENTRAL AISLE (|x| < 9 — the desk columns live only at x = ±13) so the
-    // camera never ends up inside a reading table.
-    const y = rnd(2.2, 4.5)
-    const x = rnd(-9, 9)
-    const z = rnd(-HALL.halfL * 0.35, HALL.halfL * 0.35)
-    const look = new Vector3(rnd(-5, 5), rnd(3, 8), rnd(-HALL.halfL + 4, HALL.halfL - 4))
-    return { pos: new Vector3(x, y, z), look }
+    return CINE_SHOTS[Math.floor(Math.random() * CINE_SHOTS.length)]
   }
 
   const far = useSettings((s) => (s as any).drawDistance === 'ultra' ? 500 : (s as any).drawDistance === 'high' ? 300 : 150)
@@ -260,11 +302,12 @@ export function PlayerController() {
     if (wasCinematic.current && !cinematic) {
       camSeeded.current = false
       st.preset = 0
-      cine.current.active = false
+      cine.current.phase = 'idle'
+      cine.current.orbitReady = false
       cineStateSent.current = false
       setLocalCineActive(false)
       publishCineState(false)
-      // restore the camera's normal field of view
+      useWorld.getState().setCineFade(0)
       cam.fov = CINE_FOV_BASE
       cam.updateProjectionMatrix()
     }
@@ -277,61 +320,117 @@ export function PlayerController() {
 
     if (cinematic) {
       const c = cine.current
-      if (!c.active) {
-        c.from.copy(cam.position)
-        c.lookFrom.copy(camTarget.current)
-        const wp = pickCine()
-        c.to.copy(wp.pos)
-        c.lookTo.copy(wp.look)
-        c.fovFrom = cam.fov
-        c.fovTo = cam.fov
-        c.t = 0
-        c.dur = 5 + Math.random() * 3
-        c.dwell = 0
-        c.active = true
-      }
-      // The player with the smallest id among those in cinematic drives + broadcasts
-      // the camera; every other cinematic viewer renders that same shared feed.
       const selfId = getSelfId()
       const isHost = selfId == null || getCineHostId() === selfId
+
+      // --- host: fade-out → cut → fade-in with slow orbit during dwell ---
       if (isHost) {
-        if (c.dwell > 0) {
-          c.dwell -= dt
-        } else {
-          c.t += dt / c.dur
+        const FADE_SPEED = 1 / 0.8 // fade over 0.8 seconds
+
+        if (c.phase === 'idle') {
+          const wp = pickCine()
+          c.target.copy(wp.pos)
+          c.lookTarget.copy(wp.look)
+          c.phase = 'fadeOut'
+          c.t = 0
+          // Set up orbit so camera moves during the first fade-out too
+          c.orbitCenter.copy(cam.position)
+          c.orbitLook.copy(camTarget.current)
+          c.orbitRadius = 2 + Math.random() * 3
+          c.orbitAngle = Math.random() * Math.PI * 2
+          c.orbitSpeed = 0.15 + Math.random() * 0.2
+          c.orbitTilt = 0.5 + Math.random() * 1.0
+          c.orbitReady = true
+        } else if (c.phase === 'fadeOut') {
+          c.t += dt * FADE_SPEED
+          // Keep orbiting while fading out — no sudden freeze
+          if (c.orbitReady) {
+            c.orbitAngle += c.orbitSpeed * dt
+            const ax = c.orbitCenter.x + Math.cos(c.orbitAngle) * c.orbitRadius
+            const ay = c.orbitCenter.y + Math.sin(c.orbitAngle * 0.7) * c.orbitTilt
+            const az = c.orbitCenter.z + Math.sin(c.orbitAngle) * c.orbitRadius
+            cam.position.set(
+              MathUtils.clamp(ax, -HALL.halfW + 0.6, HALL.halfW - 0.6),
+              MathUtils.clamp(ay, 0.6, HALL.wallH - 0.6),
+              MathUtils.clamp(az, -HALL.halfL + 0.6, HALL.halfL - 0.6),
+            )
+            camTarget.current.copy(c.orbitLook)
+            cam.lookAt(camTarget.current)
+          }
           if (c.t >= 1) {
             c.t = 1
-            c.dwell = 2 + Math.random() * 1
+            // Fully black — teleport camera to new shot while invisible
+            cam.position.set(
+              MathUtils.clamp(c.target.x, -HALL.halfW + 0.6, HALL.halfW - 0.6),
+              MathUtils.clamp(c.target.y, 0.6, HALL.wallH - 0.6),
+              MathUtils.clamp(c.target.z, -HALL.halfL + 0.6, HALL.halfL - 0.6),
+            )
+            camTarget.current.copy(c.lookTarget)
+            cam.lookAt(camTarget.current)
+            c.phase = 'fadeIn'
+            c.t = 1
+            c.orbitReady = false
           }
-          const e = smoothstep(c.t)
-          const px = c.from.x + (c.to.x - c.from.x) * e
-          const py = c.from.y + (c.to.y - c.from.y) * e
-          const pz = c.from.z + (c.to.z - c.from.z) * e
-          const lx = c.lookFrom.x + (c.lookTo.x - c.lookFrom.x) * e
-          const ly = c.lookFrom.y + (c.lookTo.y - c.lookFrom.y) * e
-          const lz = c.lookFrom.z + (c.lookTo.z - c.lookFrom.z) * e
-          cam.position.set(
-            MathUtils.clamp(px, -HALL.halfW + 0.6, HALL.halfW - 0.6),
-            MathUtils.clamp(py, 0.6, HALL.wallH - 0.6),
-            MathUtils.clamp(pz, -HALL.halfL + 0.6, HALL.halfL - 0.6),
-          )
-          camTarget.current.set(lx, ly, lz)
-          cam.lookAt(camTarget.current)
-          cam.fov = c.fovFrom + (c.fovTo - c.fovFrom) * e
-          cam.updateProjectionMatrix()
-          if (c.t >= 1 && c.dwell > 0) {
-            c.from.copy(cam.position)
-            c.lookFrom.copy(camTarget.current)
-            const wp = pickCine()
-            c.to.copy(wp.pos)
-            c.lookTo.copy(wp.look)
-            c.fovFrom = cam.fov
-            c.fovTo = cam.fov
+        } else if (c.phase === 'fadeIn') {
+          c.t -= dt * FADE_SPEED
+          // Start orbiting during fade-in so the camera is already moving
+          // when the screen becomes visible — no static frame flash.
+          if (c.t > 0.5 && !c.orbitReady) {
+            c.orbitCenter.copy(cam.position)
+            c.orbitLook.copy(camTarget.current)
+            c.orbitRadius = 2 + Math.random() * 3
+            c.orbitAngle = Math.random() * Math.PI * 2
+            c.orbitSpeed = 0.15 + Math.random() * 0.2
+            c.orbitTilt = 0.5 + Math.random() * 1.0
+            c.orbitReady = true
+          }
+          if (c.orbitReady) {
+            c.orbitAngle += c.orbitSpeed * dt * 0.6 // start slow, ramp up
+            const ax = c.orbitCenter.x + Math.cos(c.orbitAngle) * c.orbitRadius
+            const ay = c.orbitCenter.y + Math.sin(c.orbitAngle * 0.7) * c.orbitTilt
+            const az = c.orbitCenter.z + Math.sin(c.orbitAngle) * c.orbitRadius
+            cam.position.set(
+              MathUtils.clamp(ax, -HALL.halfW + 0.6, HALL.halfW - 0.6),
+              MathUtils.clamp(ay, 0.6, HALL.wallH - 0.6),
+              MathUtils.clamp(az, -HALL.halfL + 0.6, HALL.halfL - 0.6),
+            )
+            camTarget.current.copy(c.orbitLook)
+            cam.lookAt(camTarget.current)
+          }
+          if (c.t <= 0) {
             c.t = 0
-            c.dur = 5 + Math.random() * 3
+            c.phase = 'dwell'
+            c.dwellDur = 5 + Math.random() * 4
+            c.t = c.dwellDur
+            c.orbitReady = false
+          }
+        } else if (c.phase === 'dwell') {
+          c.t -= dt
+          // Slow orbit around the look target
+          c.orbitAngle += c.orbitSpeed * dt
+          const ax = c.orbitCenter.x + Math.cos(c.orbitAngle) * c.orbitRadius
+          const ay = c.orbitCenter.y + Math.sin(c.orbitAngle * 0.7) * c.orbitTilt
+          const az = c.orbitCenter.z + Math.sin(c.orbitAngle) * c.orbitRadius
+          cam.position.set(
+            MathUtils.clamp(ax, -HALL.halfW + 0.6, HALL.halfW - 0.6),
+            MathUtils.clamp(ay, 0.6, HALL.wallH - 0.6),
+            MathUtils.clamp(az, -HALL.halfL + 0.6, HALL.halfL - 0.6),
+          )
+          camTarget.current.copy(c.orbitLook)
+          cam.lookAt(camTarget.current)
+          if (c.t <= 0) {
+            const wp = pickCine()
+            c.target.copy(wp.pos)
+            c.lookTarget.copy(wp.look)
+            c.phase = 'fadeOut'
+            c.t = 0
           }
         }
-        // Stream the authoritative camera to the other cinematic viewers.
+
+        // Map phase+t → overlay opacity
+        useWorld.getState().setCineFade(c.phase === 'dwell' ? 0 : c.t)
+
+        // Stream camera to other viewers
         const now = performance.now()
         if (now - cineCamPub.current > 90) {
           cineCamPub.current = now
@@ -342,17 +441,16 @@ export function PlayerController() {
           )
         }
       } else {
-        // Receiver: glide toward the shared host camera.
+        // Receiver: smoothly glide to host camera
         const hostCam = getCineHostCam()
         if (hostCam) {
-          const k = 1 - Math.exp(-12 * dt)
           _cv.current.set(hostCam.pos[0], hostCam.pos[1], hostCam.pos[2])
           _cv2.current.set(hostCam.look[0], hostCam.look[1], hostCam.look[2])
-          cam.position.lerp(_cv.current, k)
-          camTarget.current.lerp(_cv2.current, k)
+          cam.position.lerp(_cv.current, 1 - Math.exp(-4 * dt))
+          camTarget.current.lerp(_cv2.current, 1 - Math.exp(-4 * dt))
           cam.lookAt(camTarget.current)
           if (typeof hostCam.fov === 'number') {
-            cam.fov = MathUtils.lerp(cam.fov, hostCam.fov, k)
+            cam.fov = hostCam.fov
             cam.updateProjectionMatrix()
           }
         }

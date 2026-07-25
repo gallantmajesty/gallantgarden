@@ -83,8 +83,8 @@ export function buildCollision(): Collision {
   // ---- columns (footprint matches the carved plinth) ----
   for (const c of columns()) blockers.push(box(c[0], c[2], 0.85, 0.85, 0, wallH))
 
-  // ---- knowledge tree trunk ----
-  blockers.push(box(0, 0, 1.4, 1.4, 0, 7))
+  // ---- knowledge tree trunk (tight fit — the old 1.4 box trapped the camera orbit) ----
+  blockers.push(box(0, 0, 0.9, 0.9, 0, 7))
 
   // ---- ground floor + balcony platforms (surfaces) ----
   surfaces.push({ minX: -halfW, maxX: halfW, minZ: -halfL, maxZ: halfL, y: 0 })

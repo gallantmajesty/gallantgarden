@@ -172,6 +172,7 @@ export function NpcPlayers() {
   // Assign NPCs to random seats
   const npcSeats = useMemo(() => {
     const result: Map<string, number> = new Map()
+    if (seats.length === 0) return result
     const availableSeats = [...seats]
     
     npcs.forEach((npc) => {
@@ -186,7 +187,7 @@ export function NpcPlayers() {
     return result
   }, [npcs, seats])
   
-  if (npcs.length === 0) return null
+  if (npcs.length === 0 || seats.length === 0) return null
   
   return (
     <>
@@ -221,7 +222,7 @@ export function NpcPlayers() {
 // Individual NPC avatar component
 function NpcAvatar({ npc, seat, config, remainingTime }: {
   npc: { id: string; name: string; rank: string }
-  seat: { id: number; pos: [number, number, number]; yaw: number }
+  seat: { id: number; pos: [number, number, number]; yaw: number } | null
   config: AvatarConfig
   remainingTime: number
 }) {
@@ -232,7 +233,7 @@ function NpcAvatar({ npc, seat, config, remainingTime }: {
   // NPCs are seated and facing their desk
   useFrame(() => {
     const g = group.current
-    if (!g) return
+    if (!g || !seat) return
     
     // Position at seat
     g.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
@@ -242,6 +243,8 @@ function NpcAvatar({ npc, seat, config, remainingTime }: {
     loco.current.seated = true
     loco.current.speed = 0
   })
+  
+  if (!seat) return null
   
   return (
     <group ref={group}>

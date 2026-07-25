@@ -3,7 +3,7 @@ import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro
 import { useWorld } from '../store/world'
 import { useProfile } from '../store/profile'
 import { useMagnet } from '../store/magnet'
-import { levelProgress } from '../lib/magnet/types'
+import { useRealmNet } from '../multiplayer/net'
 import './FullscreenPomodoro.css'
 
 const QUOTES = [
@@ -13,6 +13,30 @@ const QUOTES = [
   '"Focus on being productive instead of busy."',
   '"Small steps every day lead to big changes."',
 ]
+
+/** Read/write a daily streak counter persisted in localStorage. */
+function getStreak(): { count: number; lastDate: string } {
+  try {
+    const raw = localStorage.getItem('sg.focus.streak')
+    if (!raw) return { count: 0, lastDate: '' }
+    return JSON.parse(raw)
+  } catch { return { count: 0, lastDate: '' } }
+}
+function saveStreak(count: number, lastDate: string) {
+  localStorage.setItem('sg.focus.streak', JSON.stringify({ count, lastDate }))
+}
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+function bumpStreak(): number {
+  const s = getStreak()
+  const today = todayStr()
+  if (s.lastDate === today) return s.count
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const next = s.lastDate === yesterday ? s.count + 1 : 1
+  saveStreak(next, today)
+  return next
+}
 
 interface FullscreenPomodoroProps {
   isOpen: boolean
@@ -31,16 +55,27 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
   const { setWakeLock } = useWorld()
   const tasks = useMagnet((s) => s.data.tasks)
   const toggleTask = useMagnet((s) => s.toggleTask)
+  const roster = useRealmNet((s) => s.roster)
+
+  const onlineCount = useMemo(() => Object.keys(roster).length + 1, [roster])
 
   const wakeLockRef = useRef<{ release: () => void } | null>(null)
   const renderPausedRef = useRef(false)
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [streak, setStreak] = useState(() => getStreak().count)
 
   const activeTasks = useMemo(() => tasks.filter((t) => !t.done), [tasks])
   const doneTasks = useMemo(() => tasks.filter((t) => t.done), [tasks])
 
-  const lp = useMemo(() => levelProgress(xp), [xp])
+  // Bump streak when a session completes
+  const prevPhase = useRef(phase)
+  useEffect(() => {
+    if (prevPhase.current === 'running' && phase === 'finished') {
+      setStreak(bumpStreak())
+    }
+    prevPhase.current = phase
+  }, [phase])
 
   useEffect(() => {
     if (isOpen) {
@@ -82,6 +117,14 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [isOpen])
+
+  // Escape key to close
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, onClose])
 
   const formatTime = (sec: number) => {
     const h = Math.floor(sec / 3600)
@@ -146,16 +189,62 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
         </div>
         <div className="fp-topbar-right">
           <div className="fp-topbar-stat">
-            <span className="fp-topbar-stat-icon">💎</span>
+            <span className="fp-topbar-stat-icon">🍃</span>
             <span>{xp.toLocaleString()}</span>
-            <span style={{ fontSize: '10px', opacity: 0.5 }}>Magic Crystals</span>
+            <span style={{ fontSize: '10px', opacity: 0.5 }}>XP</span>
           </div>
+          {streak > 0 && (
+            <div className="fp-topbar-stat">
+              <span className="fp-topbar-stat-icon">🔥</span>
+              <span>{streak} day streak</span>
+            </div>
+          )}
           <div className="fp-topbar-avatar">{(displayName || 'W')[0].toUpperCase()}</div>
+          <button className="fp-close-btn" onClick={onClose} title="Exit Focus Mode (Esc)">✕</button>
         </div>
       </header>
 
       {/* ── Body ── */}
       <div className="fp-body">
+        {/* Left Panel — Online Users */}
+        <aside className="fp-left-panel">
+          <div className="fp-card">
+            <div className="fp-card-header">
+              <div className="fp-card-title">
+                <span className="fp-card-title-icon">🌿</span>
+                Library
+              </div>
+            </div>
+            <div className="fp-online-count">
+              <div className="fp-online-dot" />
+              <span className="fp-online-num">{onlineCount}</span>
+              <span className="fp-online-label">{onlineCount === 1 ? 'student' : 'students'} studying</span>
+            </div>
+            <div className="fp-online-subtitle">in this room right now</div>
+          </div>
+
+          <div className="fp-card">
+            <div className="fp-card-header">
+              <div className="fp-card-title">
+                <span className="fp-card-title-icon">📊</span>
+                Today
+              </div>
+            </div>
+            <div className="fp-stat-row">
+              <span className="fp-stat-label">Sessions</span>
+              <span className="fp-stat-value">{segmentsCompleted}</span>
+            </div>
+            <div className="fp-stat-row">
+              <span className="fp-stat-label">Focused</span>
+              <span className="fp-stat-value">{formatTime(totalElapsed)}</span>
+            </div>
+            <div className="fp-stat-row">
+              <span className="fp-stat-label">Streak</span>
+              <span className="fp-stat-value">{streak} days</span>
+            </div>
+          </div>
+        </aside>
+
         {/* Center Timer */}
         <div className="fp-center">
           <div className="fp-quote">{quote}</div>
@@ -183,9 +272,7 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
                   </feMerge>
                 </filter>
               </defs>
-              {/* Track */}
               <circle className="fp-timer-ring-track" cx={ringSize/2} cy={ringSize/2} r={ringRadius} />
-              {/* Glow behind progress */}
               <circle
                 cx={ringSize/2} cy={ringSize/2} r={ringRadius}
                 fill="none"
@@ -196,7 +283,6 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
                 opacity={0.15}
                 strokeLinecap="round"
               />
-              {/* Main progress */}
               <circle
                 className="fp-timer-ring-progress"
                 cx={ringSize/2} cy={ringSize/2} r={ringRadius}
@@ -204,7 +290,6 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
                 strokeDashoffset={ringOffset}
                 filter="url(#ring-glow)"
               />
-              {/* Progress dot with glow */}
               <circle
                 cx={ringSize/2 + ringRadius * Math.cos(sunRad)}
                 cy={ringSize/2 + ringRadius * Math.sin(sunRad)}
@@ -280,9 +365,8 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
           </div>
         </div>
 
-        {/* Right Panel */}
+        {/* Right Panel — Tasks */}
         <aside className="fp-panel">
-          {/* Tasks from Task Magnet */}
           <div className="fp-card">
             <div className="fp-card-header">
               <div className="fp-card-title">
@@ -331,7 +415,6 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
             )}
           </div>
 
-          {/* Completed */}
           {doneTasks.length > 0 && (
             <div className="fp-card">
               <div className="fp-card-header">
@@ -351,48 +434,15 @@ export function FullscreenPomodoro({ isOpen, onClose }: FullscreenPomodoroProps)
               </div>
             </div>
           )}
-
-          {/* Coming Soon: Daily Quest */}
-          <div className="fp-card fp-card-coming-soon">
-            <div className="fp-card-header">
-              <div className="fp-card-title">
-                <span className="fp-card-title-icon">⭐</span>
-                Daily Quest
-              </div>
-            </div>
-            <div className="fp-coming-soon">
-              <span className="fp-coming-soon-icon">🚧</span>
-              <span>Coming Soon</span>
-            </div>
-          </div>
-
-          {/* Coming Soon: Daily Streak */}
-          <div className="fp-card fp-card-coming-soon">
-            <div className="fp-card-header">
-              <div className="fp-card-title">
-                <span className="fp-card-title-icon">🔥</span>
-                Daily Streak
-              </div>
-            </div>
-            <div className="fp-coming-soon">
-              <span className="fp-coming-soon-icon">🚧</span>
-              <span>Coming Soon</span>
-            </div>
-          </div>
         </aside>
       </div>
 
       {/* ── Bottom Bar ── */}
       <div className="fp-bottom">
         <div className="fp-player-card">
-          <div className="fp-player-avatar">🧙</div>
+          <div className="fp-player-avatar">🍃</div>
           <div className="fp-player-info">
-            <div className="fp-player-level">Lv. {lp.level}</div>
-            <div className="fp-player-name">{displayName || 'Apprentice Scholar'}</div>
-            <div className="fp-player-xp-bar">
-              <div className="fp-player-xp-fill" style={{ width: `${lp.pct * 100}%` }} />
-            </div>
-            <div className="fp-player-xp-text">{lp.into.toLocaleString()} / {lp.span.toLocaleString()} XP</div>
+            <div className="fp-player-name">{displayName || 'Scholar'}</div>
           </div>
         </div>
 

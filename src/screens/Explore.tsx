@@ -70,7 +70,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const set = useSettings((s) => s.set)
   const hidden = useHud((s) => s.widgetsHidden)
   const perfMode = useHud((s) => s.perfMode)
-  const seatFlowStage = useSeatFlow((s) => s.stage)
   useAudio()
   useExploreShortcuts()
 
@@ -82,6 +81,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   // Study Station panel. The player taps the header to expand the desk when studying.
   const seat = useWorld((s) => s.seat)
   const cinematic = useWorld((s) => s.cinematic)
+  const cineFade = useWorld((s) => s.cineFade)
   const wasSeated = useRef(false)
   useEffect(() => {
     if (seat != null && !wasSeated.current) useDesk.getState().setView('collapsed')
@@ -89,12 +89,20 @@ export function Explore({ defaultWorld }: ExploreProps) {
   }, [seat])
 
   // Restore world seat from saved seatFlow on mount (tab return within 30s).
+  // When the seat overlay is removed (commented out), auto-seat into the first
+  // available seat so the player isn't stranded in the permanently-'selecting'
+  // stage with no way to interact.
   useEffect(() => {
     if (isTrain) return
     const flowSeat = useSeatFlow.getState().selectedSeatId
     const worldSeat = useWorld.getState().seat
     if (flowSeat != null && worldSeat == null) {
       useWorld.getState().sit(flowSeat)
+      useSeatFlow.getState().arrive()
+    } else if (worldSeat == null && useSeatFlow.getState().stage === 'selecting') {
+      // No saved seat and no overlay to pick one — auto-seat in seat 0
+      useWorld.getState().sit(0)
+      useSeatFlow.getState().arrive()
     }
   }, [isTrain])
 
@@ -220,11 +228,14 @@ export function Explore({ defaultWorld }: ExploreProps) {
       ) : (
         <LibraryScene
           onReady={() => setReady(true)}
-          frameloop={seatFlowStage === 'selecting' ? 'demand' : 'always'}
         />
       )}
       <PomodoroTicker />
       {!cinematic && <RealmConnection />}
+
+      {/* Cinematic fade-to-black overlay — driven by PlayerController's state
+          machine via useWorld.cineFade (0 = transparent, 1 = fully black). */}
+      <div className="cine-fade" style={{ opacity: cineFade }} />
 
       {!ready && <div className="explore-veil" />}
 
@@ -720,107 +731,121 @@ function SeatPrompt() {
  *  on the E hotkey (which is also a typing key) to get up. */
 function SeatedPanel({ onToggleCalc, calcOpen }: { onToggleCalc: () => void; calcOpen: boolean }) {
   const seat = useWorld((s) => s.seat)
-  // Goals / notes / view live in the persisted desk store so they survive
-  // stand-up → sit-down and page refreshes (never cleared on stand up).
   const goals = useDesk((s) => s.goals)
-  const draft = useDesk((s) => s.draft)
   const note = useDesk((s) => s.note)
   const view = useDesk((s) => s.view)
   const desk = useDesk.getState
 
-  // Draggable position for the desk panel
-  const stationRef = useRef<HTMLDivElement>(null)
-
   const [goalsOpen, setGoalsOpen] = useState(true)
   const [notesOpen, setNotesOpen] = useState(true)
-
-  // Reset drag position when user stands up
+  const [goalDraft, setGoalDraft] = useState('')
 
   if (seat == null) return null
 
-  // minimized → compact bar with stand-up
+  const progress = desk().goalProgress()
+
   if (view === 'min') {
     return (
-      <div className="station-min">
-        <button className="station-chip" onClick={() => desk().setView('open')} title="Open your desk">
-          <span className="station-chip-dot" /> Your desk ▸
+      <div className="desk-mini">
+        <button className="desk-mini-bar" onClick={() => desk().setView('open')} title="Open your desk">
+          <span className="desk-mini-icon">📋</span>
+          {progress.total > 0 ? (
+            <span className="desk-mini-progress">{progress.done}/{progress.total}</span>
+          ) : (
+            <span className="desk-mini-label">Goals</span>
+          )}
+          {note && <span className="desk-mini-dot" />}
         </button>
-        <button className="station-min-stand" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }} title="Stand up (leave chair)">
-          ⤴ Stand up
+        <button className="desk-mini-stand" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }} title="Stand up">
+          ⤴
         </button>
-    </div>
-  )
+      </div>
+    )
   }
 
   return (
     <div
-      ref={stationRef}
-      className={`station ${view === 'collapsed' ? 'collapsed' : ''}`}
+      className={`desk ${view === 'collapsed' ? 'desk--collapsed' : ''}`}
       data-no-hotkeys
     >
-      <div className="station-head">
-        <div className="station-head-left">
+      {/* Header */}
+      <div className="desk-head">
+        <div className="desk-head-left">
           <h2>Your desk</h2>
+          {progress.total > 0 && (
+            <span className="desk-progress-badge">{progress.done}/{progress.total}</span>
+          )}
         </div>
-        <div className="station-head-actions">
-          <button className="station-head-btn" title={view === 'collapsed' ? 'Expand' : 'Collapse'} onClick={() => desk().setView(view === 'collapsed' ? 'open' : 'collapsed')}>
+        <div className="desk-head-actions">
+          <button
+            className="desk-head-btn"
+            title={view === 'collapsed' ? 'Expand' : 'Collapse'}
+            onClick={() => desk().setView(view === 'collapsed' ? 'open' : 'collapsed')}
+          >
             {view === 'collapsed' ? '▴' : '▾'}
           </button>
-          <button className="station-head-btn" title="Collapse" onClick={() => desk().setView('collapsed')}>
+          <button className="desk-head-btn" title="Minimize" onClick={() => desk().setView('min')}>
             –
           </button>
         </div>
       </div>
 
-      <div className="station-body">
-        {/* Daily Goals */}
-        <div className="station-sect">
-          <div className="station-sect-header">
-            <h3>Goals</h3>
-            <button className="station-sect-toggle" onClick={() => setGoalsOpen((v) => !v)}>
-              {goalsOpen ? '▾' : '▸'}
-            </button>
-          </div>
-          {goalsOpen && (
-            <>
-              <div className="station-goals">
-                {goals.length === 0 && <p className="station-empty">Nothing yet</p>}
+      {view !== 'collapsed' && (
+        <div className="desk-body">
+          {/* Goals Section */}
+          <div className="desk-section">
+            <div className="desk-section-head">
+              <h3>🎯 Goals</h3>
+              <button className="desk-section-toggle" onClick={() => setGoalsOpen((v) => !v)}>
+                {goalsOpen ? '▾' : '▸'}
+              </button>
+            </div>
+            {goalsOpen && (
+              <div className="desk-section-content">
+                {goals.length === 0 && <p className="desk-empty">Start by adding a goal</p>}
                 {goals.map((g, i) => (
-                  <label key={i} className={`station-goal ${g.done ? 'done' : ''}`}>
+                  <label key={i} className={`desk-goal ${g.done ? 'desk-goal--done' : ''}`}>
                     <input type="checkbox" checked={g.done} onChange={() => desk().toggleGoal(i)} />
-                    <span>{g.t}</span>
-                    <button type="button" className="station-goal-x" title="Remove" onClick={(e) => { e.preventDefault(); desk().removeGoal(i) }}>×</button>
+                    <span className="desk-goal-text">{g.t}</span>
+                    <button type="button" className="desk-goal-x" title="Remove" onClick={(e) => { e.preventDefault(); desk().removeGoal(i) }}>×</button>
                   </label>
                 ))}
+                <form className="desk-goal-form" onSubmit={(e) => { e.preventDefault(); desk().addGoal(goalDraft); setGoalDraft('') }}>
+                  <input
+                    className="desk-goal-input"
+                    placeholder="New goal..."
+                    value={goalDraft}
+                    onChange={(e) => setGoalDraft(e.target.value)}
+                  />
+                  <button className="desk-goal-add" type="submit" disabled={!goalDraft.trim()}>+</button>
+                </form>
               </div>
-              <form className="station-goal-form" onSubmit={(e) => { e.preventDefault(); desk().addGoal(draft) }}>
-                <input className="station-goal-input" placeholder="Add a goal…" value={draft} onChange={(e) => desk().setDraft(e.target.value)} />
-                <button className="station-goal-add" type="submit">Add</button>
-              </form>
-            </>
-          )}
-        </div>
-
-        {/* Scratch Notes */}
-        <div className="station-sect">
-          <div className="station-sect-header">
-            <h3>Scratch Notes</h3>
-            <button className="station-sect-toggle" onClick={() => setNotesOpen((v) => !v)}>
-              {notesOpen ? '▾' : '▸'}
-            </button>
+            )}
           </div>
-          {notesOpen && (
-            <textarea className="station-notes" placeholder="Jot anything down…" value={note} onChange={(e) => desk().setNote(e.target.value)} />
-          )}
-        </div>
-      </div>
 
-      {/* Footer — stand up + calc */}
-      <div className="station-footer">
-        <button className="station-footer-btn danger" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }}>
+          {/* Scratch Notes Section */}
+          <div className="desk-section">
+            <div className="desk-section-head">
+              <h3>📝 Notes</h3>
+              <button className="desk-section-toggle" onClick={() => setNotesOpen((v) => !v)}>
+                {notesOpen ? '▾' : '▸'}
+              </button>
+            </div>
+            {notesOpen && (
+              <div className="desk-section-content">
+                <textarea className="desk-notes" placeholder="Jot anything down..." value={note} onChange={(e) => desk().setNote(e.target.value)} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="desk-footer">
+        <button className="desk-footer-btn" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }}>
           Stand up
         </button>
-        <button className="station-footer-btn" onClick={onToggleCalc} title={calcOpen ? 'Close calculator' : 'Calculator'}>
+        <button className="desk-footer-btn" onClick={onToggleCalc} title={calcOpen ? 'Close calculator' : 'Calculator'}>
           <CalcGlyph />
         </button>
       </div>

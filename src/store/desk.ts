@@ -20,6 +20,7 @@ interface DeskState {
   note: string
   draft: string
   view: DeskView
+  goalProgress: () => { done: number; total: number }
   addGoal: (text: string) => void
   toggleGoal: (index: number) => void
   removeGoal: (index: number) => void
@@ -61,6 +62,12 @@ export const useDesk = create<DeskState>((set, get) => {
     note: saved.note ?? '',
     draft: '', // in-progress text isn't persisted; the committed goals are
     view: saved.view ?? 'open',
+
+    goalProgress: () => {
+      const goals = get().goals
+      const done = goals.filter((g) => g.done).length
+      return { done, total: goals.length }
+    },
 
     addGoal: (text) => {
       const t = text.trim()
