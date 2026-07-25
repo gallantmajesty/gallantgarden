@@ -292,6 +292,25 @@ export const CHARACTERS: Character[] = [
     isAnimal: true,
     price: 8500,
   },
+  {
+    id: 'elephant',
+    name: 'Ellie',
+    gender: 'female',
+    model: 'elephant.glb',
+    scale: 1,
+    yOffset: 0,
+    fallback: look('female', {
+      skin: 'light', hair: 'none', hairColor: 'black', eyes: 'brown',
+      top: 'tee', bottom: 'pants', shoes: 'sneakers',
+    }),
+    description: 'A gentle gray elephant with big floppy ears, a long trunk and tiny tusks',
+    icon: '/icons/characters/elephant.svg',
+    rarity: 'Epic',
+    color: '#8a8f94',
+    bg: '#eef1f4',
+    isAnimal: true,
+    price: 500,
+  },
 ]
 
 // Remove gender-based filtering - all characters are available together

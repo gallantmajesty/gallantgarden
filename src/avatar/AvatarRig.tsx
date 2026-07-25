@@ -158,14 +158,23 @@ export function AvatarRig({
   const hackerGlow = glowMaterial('#39ff14', 3.0)
   const hackerVisorGlass = sharedMaterial('#0c2112', 0.2, 0.1)
 
-  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel || isSunflower || isGrim
+  // Elephant: a gentle gray elephant — big round head, floppy ears, a long
+  // trunk, tiny tusks and a thin tail with a tuft. No human face/hair/shoes.
+  const isElephant = config.characterId === 'elephant'
+  const elMain = sharedMaterial('#8a8f94', 0.65)
+  const elDark = sharedMaterial('#6e7378', 0.6)
+  const elBelly = sharedMaterial('#b8bcc0', 0.7)
+  const elInner = sharedMaterial('#c4a0a0', 0.55)
+  const elTusk = sharedMaterial('#f0ece0', 0.4)
+
+  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel || isSunflower || isGrim || isElephant
   const bunFur = sharedMaterial('#f8f5f0', 0.75)
   const bunPink = sharedMaterial('#f2a3c0', 0.6)
   const bunInner = sharedMaterial('#f6c2d6', 0.6)
   const bunGreen = sharedMaterial('#7cc47b', 0.6)
   const bunNose = sharedMaterial('#e488a6', 0.5)
 
-  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : isSunflower ? sfYellow : isGrim ? grimCloak : skinMaterial(config.skinColor ?? skinHex(config.skin))
+  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elMain : skinMaterial(config.skinColor ?? skinHex(config.skin))
   const hairM = hairMaterial(config.hairColorHex ?? hairHex(config.hairColor))
   const eyeCol = eyeHex(config.eyes)
 
@@ -179,13 +188,13 @@ export function AvatarRig({
   hairM.roughness = 0.5
   // Subtle skin micro-relief so the face isn't plastic-smooth (human only).
   const skinTex = skinReliefTex()
-  if (!isDino && !isRabbit && !isRobot && !isAlien && !isPig && !isAngel && !isSunflower && !isGrim) {
+  if (!isDino && !isRabbit && !isRobot && !isAlien && !isPig && !isAngel && !isSunflower && !isGrim && !isElephant) {
     skin.bumpMap = skinTex
     skin.bumpScale = 0.025
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
-  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : sharedMaterial(shoeHex(config.shoes), 0.5)
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
 
   const bind = (name: BoneName) => (g: Group | null) => {
@@ -342,6 +351,8 @@ export function AvatarRig({
                   <SunflowerHead P={P} yellow={sfYellow} dark={sfYellowDark} seed={sfSeed} green={sfGreen} petalEdge={sfPetalEdge} />
                 ) : isGrim ? (
                   <GrimHead P={P} bone={grimBone} boneDark={grimBoneDark} cloak={grimCloak} glow={grimGlow} gold={grimGold} />
+                ) : isElephant ? (
+                  <ElephantHead P={P} main={elMain} dark={elDark} belly={elBelly} inner={elInner} tusk={elTusk} />
                 ) : isHacker ? (
                   <HackerHead P={P} skin={skin} hairM={hairM} glow={hackerGlow} config={config} />
                 ) : (
@@ -404,6 +415,14 @@ export function AvatarRig({
             <mesh geometry={torusGeo(P.hipBoneW * 0.16, P.hipBoneW * 0.05, 8, 16)} material={pigMain} position={[0, 0, -P.hipBoneW * 0.1]} rotation={[Math.PI / 2, 0, 0.5]} />
             <mesh geometry={torusGeo(P.hipBoneW * 0.11, P.hipBoneW * 0.045, 8, 16)} material={pigMain} position={[P.hipBoneW * 0.05, P.hipBoneW * 0.16, -P.hipBoneW * 0.2]} rotation={[Math.PI / 2, 0, 0.9]} />
             <mesh geometry={torusGeo(P.hipBoneW * 0.07, P.hipBoneW * 0.04, 8, 16)} material={pigMain} position={[P.hipBoneW * 0.0, P.hipBoneW * 0.32, -P.hipBoneW * 0.28]} rotation={[Math.PI / 2, 0, 1.3]} />
+          </group>
+        )}
+
+        {/* Elephant costume — thin tail with a tuft on the lower back */}
+        {isElephant && (
+          <group position={[0, 0.02, -P.torsoD * 0.85]}>
+            <mesh geometry={taperGeo(P.hipBoneW * 0.025, P.hipBoneW * 0.015, P.upperLeg * 0.7)} material={elMain} position={[0, -P.upperLeg * 0.32, 0]} rotation={[0.8, 0, 0]} />
+            <mesh geometry={sphereGeo(1)} material={elDark} scale={[P.hipBoneW * 0.05, P.hipBoneW * 0.08, P.hipBoneW * 0.04]} position={[0, -P.upperLeg * 0.66, -P.hipBoneW * 0.12]} />
           </group>
         )}
 
@@ -1420,6 +1439,64 @@ function GrimHead({ P, bone, boneDark, cloak, glow, gold }: { P: Proportions; bo
         <mesh key={`gf${i}`} geometry={taperGeo(r * 0.02, r * 0.08, r * 0.4)} material={glow}
           position={[fx * r, r * 1.15 + i * r * 0.12, -r * 0.2]}
           rotation={[0.2, 0, fx * 0.3]} />
+      ))}
+    </group>
+  )
+}
+
+/* ================================================ ELEPHANT HEAD ================================================ */
+
+/** Cute gray elephant head: round head, big floppy ears with pink inner,
+ *  a long curving trunk, tiny white tusks, friendly eyes and rosy cheeks. */
+function ElephantHead({ P, main, dark, belly, inner, tusk }: { P: Proportions; main: Mat; dark: Mat; belly: Mat; inner: Mat; tusk: Mat }) {
+  const r = P.headR
+  const cy = r * 0.92
+
+  return (
+    <group position={[0, cy, 0]}>
+      {/* round head */}
+      <mesh geometry={sphereGeo(1)} material={main} scale={[r * 1.08, r * 1.04, r * 1.0]} castShadow />
+
+      {/* big floppy ears — flattened spheres tilted outward */}
+      {[-1, 1].map((sx) => (
+        <group key={`ear${sx}`} position={[sx * r * 0.92, r * 0.12, -r * 0.1]}>
+          <mesh geometry={sphereGeo(1)} material={main} scale={[r * 0.52, r * 0.68, r * 0.12]} rotation={[0, 0, sx * 0.15]} castShadow />
+          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.36, r * 0.5, r * 0.08]} position={[sx * r * 0.02, 0, r * 0.04]} />
+        </group>
+      ))}
+
+      {/* trunk — a series of overlapping spheres curving down then forward */}
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const t = i / 5
+        const sz = r * (0.22 - t * 0.08)
+        const y = -r * 0.2 - t * r * 0.7
+        const z = r * 0.52 + Math.sin(t * 1.8) * r * 0.28
+        return (
+          <mesh key={`tr${i}`} geometry={sphereGeo(1)} material={i < 4 ? main : dark}
+            scale={[sz, sz * 0.9, sz]} position={[0, y, z]} castShadow />
+        )
+      })}
+      {/* trunk tip — a slightly wider flat end */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.14, r * 0.1, r * 0.12]} position={[0, -r * 0.92, r * 0.78]} />
+
+      {/* tiny tusks flanking the trunk */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`tusk${sx}`} geometry={taperGeo(r * 0.015, r * 0.045, r * 0.28)} material={tusk}
+          position={[sx * r * 0.18, -r * 0.3, r * 0.6]} rotation={[0.5, 0, sx * 0.15]} />
+      ))}
+
+      {/* friendly eyes: white + pupil + catchlight */}
+      {[-1, 1].map((sx) => (
+        <group key={`eye${sx}`} position={[sx * r * 0.38, r * 0.22, r * 0.72]}>
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.3)} scale={[r * 0.18, r * 0.22, r * 0.14]} />
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#1a1a1e', 0.2)} scale={[r * 0.1, r * 0.14, r * 0.08]} position={[0, 0, r * 0.1]} />
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.3)} scale={[r * 0.035, r * 0.035, r * 0.02]} position={[sx * -r * 0.03, r * 0.06, r * 0.16]} />
+        </group>
+      ))}
+
+      {/* rosy cheeks */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={sharedMaterial('#d4908a', 0.55)} scale={[r * 0.1, r * 0.07, r * 0.04]} position={[sx * r * 0.52, -r * 0.06, r * 0.7]} />
       ))}
     </group>
   )
