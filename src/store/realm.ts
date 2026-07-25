@@ -25,10 +25,9 @@ export interface ActiveRealm {
 }
 
 /** A custom world, persisted server-side (src/lib/realms.ts → `realms` table) so
- *  its invite code/link resolves on any device. We keep a LOCAL cache of the
+ *  its invite code resolves on any device. We keep a LOCAL cache of the
  *  realms a user created or joined so the "Your realms" list renders instantly;
- *  the database is the source of truth. `code`/`visibility`/`ownerId` are absent
- *  only for legacy realms created before the server-backed system. */
+ *  the database is the source of truth. */
 export interface CustomRealm {
   id: string
   name: string
@@ -36,6 +35,8 @@ export interface CustomRealm {
   visibility?: RealmVisibility
   ownerId?: string
   createdAt: string
+  password?: string
+  expiresAt?: string
 }
 
 interface RealmState {

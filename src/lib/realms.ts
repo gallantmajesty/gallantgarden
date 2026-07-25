@@ -4,7 +4,7 @@ import { insforge } from './insforge'
 // (see migrations/..._add-realms.sql). Realms are persisted server-side so an
 // invite code/link resolves to the same realm on anyone's device.
 
-export type RealmVisibility = 'public' | 'private' | 'friends'
+export type RealmVisibility = 'public' | 'private'
 
 /** A realm row as returned by the RPCs (snake_case, straight from Postgres). */
 export interface Realm {
@@ -15,6 +15,8 @@ export interface Realm {
   world: string
   visibility: RealmVisibility
   player_limit: number
+  password: string | null
+  expires_at: string | null
   created_at: string
   closed_at: string | null
 }
@@ -30,12 +32,14 @@ export async function createRealm(
   name: string,
   visibility: RealmVisibility,
   playerLimit: number,
+  password?: string,
 ): Promise<Realm | null> {
   try {
     const { data, error } = await insforge.rpc('create_realm', {
       p_name: name,
       p_visibility: visibility,
       p_limit: playerLimit,
+      p_password: password || null,
     })
     if (error || !data) return null
     return data as Realm
@@ -45,10 +49,16 @@ export async function createRealm(
 }
 
 /** Resolve an invite code and join as a member. Returns the realm or an error
- *  string ('realm not found' | 'realm closed' | 'friends only' | 'banned' | …). */
-export async function getRealmByCode(code: string): Promise<{ realm?: Realm; error?: string }> {
+ *  string ('realm not found' | 'realm closed' | 'wrong password' | 'realm expired' | …). */
+export async function getRealmByCode(
+  code: string,
+  password?: string,
+): Promise<{ realm?: Realm; error?: string }> {
   try {
-    const { data, error } = await insforge.rpc('get_realm_by_code', { p_code: code })
+    const { data, error } = await insforge.rpc('get_realm_by_code', {
+      p_code: code,
+      p_password: password || null,
+    })
     if (error) return { error: error.message || 'could not open realm' }
     if (!data) return { error: 'realm not found' }
     return { realm: data as Realm }
@@ -60,7 +70,7 @@ export async function getRealmByCode(code: string): Promise<{ realm?: Realm; err
 /** Owner-only: rename / change visibility / change player limit. */
 export async function updateRealm(
   id: string,
-  patch: { name?: string; visibility?: RealmVisibility; playerLimit?: number },
+  patch: { name?: string; visibility?: RealmVisibility; playerLimit?: number; password?: string },
 ): Promise<Realm | null> {
   try {
     const { data, error } = await insforge.rpc('update_realm', {
@@ -68,6 +78,7 @@ export async function updateRealm(
       p_name: patch.name ?? null,
       p_visibility: patch.visibility ?? null,
       p_limit: patch.playerLimit ?? null,
+      p_password: patch.password !== undefined ? patch.password : undefined,
     })
     if (error || !data) return null
     return data as Realm
@@ -86,10 +97,23 @@ export async function closeRealm(id: string): Promise<boolean> {
   }
 }
 
-/** Open, public realms for the discovery feed. */
+/** Open, public realms for the discovery feed (excludes expired). */
 export async function listPublicRealms(): Promise<Realm[]> {
   try {
     const { data, error } = await insforge.rpc('list_public_realms', {})
+    if (error || !Array.isArray(data)) return []
+    return data as Realm[]
+  } catch {
+    return []
+  }
+}
+
+/** Search public realms by name (excludes expired). */
+export async function searchPublicRealms(query: string): Promise<Realm[]> {
+  try {
+    const { data, error } = await insforge.rpc('search_public_realms', {
+      p_query: query,
+    })
     if (error || !Array.isArray(data)) return []
     return data as Realm[]
   } catch {

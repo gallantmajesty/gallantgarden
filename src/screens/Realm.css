@@ -531,6 +531,124 @@
   border-radius: 10px;
 }
 
+/* ---- 7-digit code display (large) ---- */
+.realm-invite-code {
+  flex: 1;
+  font-family: var(--mono, monospace);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--grass-dark);
+  background: rgba(107, 191, 79, 0.1);
+  border: 2px solid rgba(79, 158, 60, 0.35);
+  padding: 10px 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+/* ---- create note (24h / one realm) ---- */
+.realm-create-note {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* ---- invite expiry badge ---- */
+.realm-invite-expiry {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: #b5562f;
+  background: rgba(226, 91, 75, 0.12);
+  border: 1px solid rgba(226, 91, 75, 0.3);
+  padding: 6px 14px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* ---- search ---- */
+.realm-search {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+}
+.realm-search .sf-input {
+  width: 100%;
+}
+.realm-search-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  text-align: center;
+}
+.realm-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 6px;
+  background: var(--glass-fill-strong, rgba(255, 255, 255, 0.92));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.realm-search-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.realm-search-item:hover {
+  background: rgba(107, 191, 79, 0.1);
+}
+.realm-search-name {
+  flex: 1;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--wood-dark);
+}
+.realm-search-lock {
+  font-size: 14px;
+}
+.realm-search-go {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--grass-dark);
+}
+
+/* ---- expiry badge on realm list ---- */
+.realm-mine-expiry {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--grass-dark);
+  background: rgba(107, 191, 79, 0.14);
+  border: 1px solid rgba(79, 158, 60, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.realm-mine-expiry.expired {
+  color: #b5562f;
+  background: rgba(226, 91, 75, 0.14);
+  border-color: rgba(226, 91, 75, 0.35);
+}
+
 /* ---- Coming Soon card state ---- */
 .realm-card--soon {
   opacity: 0.7;
@@ -577,5 +695,7 @@
   .realm-mine-item { padding: 8px 12px; font-size: 13px; }
   .realm-invite-row { flex-direction: column; align-items: flex-start; }
   .realm-invite-label { width: auto; }
+  .realm-invite-code { font-size: 22px; letter-spacing: 3px; }
   .realm-invite-value { width: 100%; }
+  .realm-search-results { position: static; box-shadow: none; border: 1px solid var(--glass-border); margin-top: 6px; }
 }
