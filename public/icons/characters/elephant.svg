@@ -1,66 +1,91 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
   <defs>
     <linearGradient id="elMain" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#a0a5aa"/>
-      <stop offset="100%" stop-color="#6e7378"/>
+      <stop offset="0%" stop-color="#a8acb0"/>
+      <stop offset="100%" stop-color="#7a7f84"/>
     </linearGradient>
     <linearGradient id="elInner" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#d4a0a0"/>
-      <stop offset="100%" stop-color="#b07878"/>
+      <stop offset="0%" stop-color="#e8b8b8"/>
+      <stop offset="100%" stop-color="#d49898"/>
+    </linearGradient>
+    <linearGradient id="elBelly" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e0e0e2"/>
+      <stop offset="100%" stop-color="#c0c4c8"/>
     </linearGradient>
   </defs>
 
-  <!-- BIG FLOPPY EARS -->
-  <ellipse cx="42" cy="80" rx="32" ry="48" fill="url(#elMain)"/>
-  <ellipse cx="42" cy="80" rx="22" ry="34" fill="url(#elInner)"/>
-  <ellipse cx="158" cy="80" rx="32" ry="48" fill="url(#elMain)"/>
-  <ellipse cx="158" cy="80" rx="22" ry="34" fill="url(#elInner)"/>
+  <!-- HUGE FLOPPY EARS -->
+  <ellipse cx="32" cy="70" rx="40" ry="54" fill="url(#elMain)"/>
+  <ellipse cx="32" cy="70" rx="28" ry="40" fill="url(#elInner)"/>
+  <ellipse cx="168" cy="70" rx="40" ry="54" fill="url(#elMain)"/>
+  <ellipse cx="168" cy="70" rx="28" ry="40" fill="url(#elInner)"/>
 
-  <!-- ROUND HEAD -->
-  <ellipse cx="100" cy="82" rx="46" ry="50" fill="url(#elMain)"/>
+  <!-- BIG ROUND HEAD -->
+  <ellipse cx="100" cy="74" rx="54" ry="52" fill="url(#elMain)"/>
 
-  <!-- TRUNK — series of overlapping circles curving down -->
-  <circle cx="100" cy="124" r="14" fill="url(#elMain)"/>
-  <circle cx="100" cy="140" r="12" fill="url(#elMain)"/>
-  <circle cx="100" cy="154" r="10" fill="url(#elMain)"/>
-  <circle cx="102" cy="166" r="9" fill="#6e7378"/>
-  <circle cx="104" cy="176" r="8" fill="#6e7378"/>
-  <circle cx="106" cy="184" r="7" fill="#6e7378"/>
-  <!-- trunk tip -->
-  <ellipse cx="106" cy="190" rx="8" ry="5" fill="#5a5e62"/>
+  <!-- LONG CURVED TRUNK -->
+  <path d="M100 118 Q90 140 96 160 Q102 178 108 192 Q112 200 106 208" stroke="url(#elMain)" stroke-width="30" fill="none" stroke-linecap="round"/>
+  <path d="M100 120 Q92 140 98 158 Q104 176 108 190" stroke="#7a7f84" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <!-- trunk tip flared -->
+  <ellipse cx="106" cy="204" rx="16" ry="11" fill="#5a5e62"/>
+  <ellipse cx="94" cy="200" rx="8" ry="6" fill="#5a5e62"/>
+  <ellipse cx="118" cy="200" rx="8" ry="6" fill="#5a5e62"/>
+  <!-- nostrils -->
+  <ellipse cx="100" cy="208" rx="3" ry="2" fill="#4a4e52"/>
+  <ellipse cx="110" cy="208" rx="3" ry="2" fill="#4a4e52"/>
+  <!-- wrinkle lines -->
+  <path d="M98 140 Q100 142 102 140" stroke="#6e7378" stroke-width="1" fill="none"/>
+  <path d="M96 158 Q100 160 104 158" stroke="#6e7378" stroke-width="1" fill="none"/>
+  <path d="M94 176 Q100 178 106 176" stroke="#6e7378" stroke-width="1" fill="none"/>
 
-  <!-- TINY TUSKS -->
-  <path d="M82 130 Q78 152 84 160" stroke="#f0ece0" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <path d="M118 130 Q122 152 116 160" stroke="#f0ece0" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- CURVED TUSKS -->
+  <path d="M76 132 Q66 152 78 168" stroke="#f0ece0" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M124 132 Q134 152 122 168" stroke="#f0ece0" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- tusk highlights -->
+  <path d="M78 138 Q70 150 80 162" stroke="#f8f4e8" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M122 138 Q130 150 120 162" stroke="#f8f4e8" stroke-width="2" fill="none" stroke-linecap="round"/>
 
-  <!-- FRIENDLY EYES -->
-  <circle cx="82" cy="76" r="10" fill="#ffffff"/>
-  <circle cx="82" cy="76" r="6" fill="#1a1a1e"/>
-  <circle cx="80" cy="73" r="2.5" fill="#ffffff"/>
-  <circle cx="118" cy="76" r="10" fill="#ffffff"/>
-  <circle cx="118" cy="76" r="6" fill="#1a1a1e"/>
-  <circle cx="116" cy="73" r="2.5" fill="#ffffff"/>
+  <!-- BIG SHINY BLACK EYES -->
+  <circle cx="78" cy="68" r="16" fill="#0a0a0c"/>
+  <circle cx="78" cy="68" r="14" fill="#ffffff"/>
+  <circle cx="76" cy="65" r="5" fill="#ffffff"/>
+  <circle cx="81" cy="63" r="2" fill="#ffffff"/>
+  <circle cx="122" cy="68" r="16" fill="#0a0a0c"/>
+  <circle cx="122" cy="68" r="14" fill="#ffffff"/>
+  <circle cx="120" cy="65" r="5" fill="#ffffff"/>
+  <circle cx="125" cy="63" r="2" fill="#ffffff"/>
 
   <!-- ROSY CHEEKS -->
-  <circle cx="66" cy="96" r="7" fill="#d4908a" opacity="0.5"/>
-  <circle cx="134" cy="96" r="7" fill="#d4908a" opacity="0.5"/>
+  <circle cx="58" cy="90" r="12" fill="#e8a090" opacity="0.4"/>
+  <circle cx="142" cy="90" r="12" fill="#e8a090" opacity="0.4"/>
 
-  <!-- BODY -->
-  <rect x="56" y="194" width="88" height="40" rx="16" fill="url(#elMain)"/>
+  <!-- HAPPY SMILE -->
+  <path d="M82 102 Q100 120 118 102" stroke="#1a1a1e" stroke-width="3" fill="none" stroke-linecap="round"/>
 
-  <!-- LEGS -->
-  <rect x="56" y="228" width="30" height="28" rx="10" fill="url(#elMain)"/>
-  <rect x="114" y="228" width="30" height="28" rx="10" fill="url(#elMain)"/>
+  <!-- CHUBBY BODY -->
+  <rect x="52" y="190" width="96" height="36" rx="16" fill="url(#elMain)"/>
 
-  <!-- FEET -->
-  <ellipse cx="71" cy="254" rx="18" ry="6" fill="#6e7378"/>
-  <ellipse cx="129" cy="254" rx="18" ry="6" fill="#6e7378"/>
+  <!-- BELLY PATCH -->
+  <ellipse cx="100" cy="204" rx="34" ry="16" fill="url(#elBelly)"/>
 
-  <!-- TOENAILS -->
-  <circle cx="62" cy="254" r="3" fill="#b8bcc0"/>
-  <circle cx="71" cy="255" r="3" fill="#b8bcc0"/>
-  <circle cx="80" cy="254" r="3" fill="#b8bcc0"/>
-  <circle cx="120" cy="254" r="3" fill="#b8bcc0"/>
-  <circle cx="129" cy="255" r="3" fill="#b8bcc0"/>
-  <circle cx="138" cy="254" r="3" fill="#b8bcc0"/>
+  <!-- STUBBY LEGS -->
+  <rect x="56" y="220" width="32" height="26" rx="12" fill="url(#elMain)"/>
+  <rect x="112" y="220" width="32" height="26" rx="12" fill="url(#elMain)"/>
+
+  <!-- ROUND FEET -->
+  <ellipse cx="72" cy="244" rx="20" ry="7" fill="#7a7f84"/>
+  <ellipse cx="128" cy="244" rx="20" ry="7" fill="#7a7f84"/>
+  <circle cx="58" cy="244" r="2.5" fill="#c0c4c8"/>
+  <circle cx="72" cy="245" r="2.5" fill="#c0c4c8"/>
+  <circle cx="86" cy="244" r="2.5" fill="#c0c4c8"/>
+  <circle cx="114" cy="244" r="2.5" fill="#c0c4c8"/>
+  <circle cx="128" cy="245" r="2.5" fill="#c0c4c8"/>
+  <circle cx="142" cy="244" r="2.5" fill="#c0c4c8"/>
+
+  <!-- STUBBY TAIL WITH TUFT -->
+  <path d="M84 216 Q74 230 80 236" stroke="#8a8f94" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <circle cx="72" cy="238" r="4.5" fill="#6e7378"/>
+  <circle cx="68" cy="240" r="2.5" fill="#6e7378"/>
+  <circle cx="78" cy="239" r="2.5" fill="#6e7378"/>
+  <circle cx="72" cy="243" r="2.5" fill="#6e7378"/>
 </svg>

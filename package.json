@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:strict": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
   },
   "dependencies": {
     "@insforge/sdk": "^1.3.1",

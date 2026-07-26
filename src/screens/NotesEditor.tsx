@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
+import { sanitizeHtml } from '../lib/sanitize'
 import './Notes.css'
 
 const STORAGE_KEY = (uid: string) => `sf.notes.doc:${uid}`
@@ -200,7 +201,7 @@ export function NotesEditor() {
             contentEditable
             suppressContentEditableWarning
             onInput={(e) => setHtml((e.target as HTMLDivElement).innerHTML)}
-            dangerouslySetInnerHTML={{ __html: html }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
           />
           {painting && (
             <canvas

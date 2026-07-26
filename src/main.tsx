@@ -3,11 +3,15 @@ import { BrowserRouter } from 'react-router-dom'
 import 'flag-icons/css/flag-icons.min.css'
 import './index.css'
 import App from './App.tsx'
-import { AuthProvider } from './store/auth'
+import { AuthProvider, useAuth } from './store/auth'
 import { supabaseConfigured } from './lib/insforge'
+import { initSentry } from './lib/sentry'
+import { SentryUserTracker } from './components/SentryUserTracker'
 import './i18n'
 
 const rootEl = document.getElementById('root')!
+
+initSentry()
 
 if (!supabaseConfigured) {
   rootEl.innerHTML = `
@@ -24,11 +28,17 @@ if (!supabaseConfigured) {
       </div>
     </div>`
 } else {
-  createRoot(rootEl).render(
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>,
-  )
+  function AppWithSentry() {
+    const { user } = useAuth()
+    return (
+      <BrowserRouter>
+        <AuthProvider>
+          <SentryUserTracker />
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    )
+  }
+
+  createRoot(rootEl).render(<AppWithSentry />)
 }

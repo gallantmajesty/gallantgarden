@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { supabase } from '../lib/insforge'
 import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
-import { initSession } from '../lib/session'
+import { initSession, claimSession, startHeartbeat } from '../lib/session'
 import { networkId } from '../multiplayer/net'
 
 export interface AuthUser {
@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
+    let stopHeartbeat: (() => void) | null = null
     initSession()
     void runGlobalInit()
 
@@ -94,6 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const enriched = await enrichWithProfile(u)
           setUser(enriched)
           await runUserInit(enriched)
+
+          // Claim session & start heartbeat
+          const claimed = await claimSession()
+          if (claimed) {
+            stopHeartbeat = startHeartbeat()
+          }
         } else {
           setUser(null)
         }
@@ -104,14 +111,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Handle session lost (another device claimed it)
+    const handleSessionLost = () => {
+      console.warn('[Auth] Session claimed elsewhere')
+      runUserTeardown()
+      setUser(null)
+      // Optionally show a modal to reclaim
+    }
+    window.addEventListener('session-lost', handleSessionLost)
+
     restoreSession()
     window.addEventListener('hashchange', restoreSession)
     window.addEventListener('popstate', restoreSession)
 
     return () => {
       cancelled = true
+      if (stopHeartbeat) stopHeartbeat()
       window.removeEventListener('hashchange', restoreSession)
       window.removeEventListener('popstate', restoreSession)
+      window.removeEventListener('session-lost', handleSessionLost)
     }
   }, [])
 
@@ -183,6 +201,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
+    // Release session on sign out
+    const { supabase: supabaseClient } = await import('../lib/insforge')
+    await supabaseClient.rpc('release_session')
     runUserTeardown()
     setUser(null)
   }, [])

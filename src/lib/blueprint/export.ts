@@ -9,11 +9,7 @@ import type { BoardDoc } from './types'
 import { resolveEdgeStyle } from './types'
 import { edgePath, nodesBounds, portPoint } from './geom'
 import { noteSurfaceStyle, PAPER_TEXTURE } from './style'
-import DOMPurify from 'dompurify'
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
+import { escapeHtml, sanitizeHtml } from '../sanitize'
 
 function cssText(style: Record<string, unknown>): string {
   return Object.entries(style)
@@ -84,7 +80,7 @@ export async function exportBoardPng(doc: BoardDoc, accentRgb = '138,108,255'): 
       return `<foreignObject x="${n.x - b.x}" y="${n.y - b.y}" width="${n.w}" height="${n.h}">
         <div xmlns="http://www.w3.org/1999/xhtml" style="${surfaceCss}${paper};position:relative">
           ${bgMedia}${icon}${sticker}${media}
-          <div style="position:relative;z-index:1">${DOMPurify.sanitize(n.html)}</div>
+          <div style="position:relative;z-index:1">${sanitizeHtml(n.html)}</div>
         </div>
       </foreignObject>`
     })

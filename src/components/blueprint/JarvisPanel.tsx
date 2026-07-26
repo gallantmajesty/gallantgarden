@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useBlueprint } from '../../store/blueprint'
 import { htmlToText } from '../../lib/blueprint/types'
 import { autoPorts } from '../../lib/blueprint/geom'
+import { escapeHtml } from '../../lib/sanitize'
 import {
   jarvisGenerateNotes,
   jarvisSummarize,
@@ -186,8 +187,4 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
       {children}
     </div>
   )
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

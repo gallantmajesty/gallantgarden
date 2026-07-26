@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '../lib/sanitize'
 import type { Editor } from '@tiptap/react'
 import {
   makeBoard,
@@ -314,7 +314,7 @@ newBoard: (title) => {
     // skip per-keystroke history so undo granularity stays coarse but smooth.
     // Sanitize HTML at the storage layer to prevent stored XSS.
     setNodeHtml: (id, html) => {
-      const clean = DOMPurify.sanitize(html)
+      const clean = sanitizeHtml(html)
       applyLight((d) => mapNode(d, id, (n) => ({ ...n, html: clean, updatedAt: nowIso() })))
     },
 

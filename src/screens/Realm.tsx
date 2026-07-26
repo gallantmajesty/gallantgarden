@@ -68,9 +68,9 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="study-rooms" size={72} alt="Private Realm" />
+            <PngIcon name="study-rooms" size={72} alt="Public Realm" />
           </div>
-          <h2>Private Realm</h2>
+          <h2>Public Realm</h2>
           <p>Join a shared study hall — Library halls or Train Station platforms alongside others.</p>
           <span className="realm-card-cta">Enter the realm ›</span>
         </button>
@@ -89,9 +89,9 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="realm" size={72} alt="Public Realm" />
+            <PngIcon name="realm" size={72} alt="Private Realm" />
           </div>
-          <h2>Public Realm</h2>
+          <h2>Private Realm</h2>
           <p>Create a realm for you and your friends. Share the code and password to join together.</p>
           <span className="realm-card-cta">Create or join ›</span>
         </button>

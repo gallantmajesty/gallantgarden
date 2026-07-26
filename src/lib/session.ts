@@ -28,5 +28,63 @@ export function getSessionId(): string | null {
 }
 
 export async function claimSession(): Promise<boolean> {
-  return false
+  const sid = getSessionId()
+  if (!sid) return false
+
+  const { supabase } = await import('./insforge')
+  const { data, error } = await supabase.rpc('claim_session', {
+    p_session_id: sid,
+    p_device_label: getDeviceLabel(),
+  })
+
+  if (error) {
+    console.error('[Session] claimSession failed:', error)
+    return false
+  }
+
+  return data === true
+}
+
+export async function heartbeatSession(): Promise<boolean> {
+  const sid = getSessionId()
+  if (!sid) return false
+
+  const { supabase } = await import('./insforge')
+  const { data, error } = await supabase.rpc('session_heartbeat', {
+    p_session_id: sid,
+  })
+
+  if (error) {
+    console.error('[Session] heartbeat failed:', error)
+    return false
+  }
+
+  return data === true
+}
+
+export async function releaseSession(): Promise<void> {
+  const { supabase } = await import('./insforge')
+  await supabase.rpc('release_session')
+}
+
+export function startHeartbeat(intervalMs = 10000): () => void {
+  let stopped = false
+
+  const tick = async () => {
+    if (stopped) return
+    const ok = await heartbeatSession()
+    if (!ok) {
+      stopped = true
+      // Emit event for UI to show "active elsewhere" overlay
+      window.dispatchEvent(new CustomEvent('session-lost'))
+    }
+  }
+
+  tick()
+  const id = setInterval(tick, intervalMs)
+
+  return () => {
+    stopped = true
+    clearInterval(id)
+  }
 }

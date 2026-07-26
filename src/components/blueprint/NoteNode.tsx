@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '../../lib/sanitize'
 import { useBlueprint } from '../../store/blueprint'
 import { mediaBackgroundStyle, mediaImageStyle, noteSurfaceStyle } from '../../lib/blueprint/style'
 import type { BlueprintNode } from '../../lib/blueprint/types'
@@ -158,7 +158,7 @@ export const NoteNode = memo(function NoteNode({ node, zoom, selected, dimmed, c
           {editing ? (
             <RichText html={node.html} onChange={(html) => useBlueprint.getState().setNodeHtml(node.id, html)} autoFocus />
           ) : (
-            <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.html) }} />
+            <div className="bp-node-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(node.html) }} />
           )}
         </div>
 

@@ -254,7 +254,6 @@ export function PlayerController() {
     const keyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === '9') return // cinematic toggle is owned by Explore's key handler
-      if (useWorld.getState().seat == null) return
       if (useWorld.getState().cinematic) useWorld.getState().setCinematic(false)
       const n = parseInt(e.key, 10)
       if (n >= 1 && n <= 8) {
@@ -266,10 +265,15 @@ export function PlayerController() {
         p.current.preset = n
         const seatId = useWorld.getState().seat
         const seat = seatId != null ? seats[seatId] : undefined
+        const pre = SEAT_PRESETS[n - 1]
         if (seat) {
-          const pre = SEAT_PRESETS[n - 1]
-          // Set the orbit target angles; the per-frame easing glides there.
+          // Seated preset — orbit around the seat
           p.current.yaw = seat.yaw + pre.yaw
+          p.current.pitch = pre.pitch
+          p.current.zoom = pre.zoom
+        } else {
+          // Standing preset — orbit around current player position
+          p.current.yaw = st.faceYaw + pre.yaw
           p.current.pitch = pre.pitch
           p.current.zoom = pre.zoom
         }
@@ -554,11 +558,51 @@ export function PlayerController() {
 
     st.seatedInit = false
     st.autoWalkInit = false
-    st.preset = 0
     camSeeded.current = false
     // Standing / choosing-a-seat: ensure the broadcast no longer claims we're in
     // the cinematic tour (so our avatar reappears for other players).
     if (st.x !== undefined) {
+      if (avatarRef.current) {
+        avatarRef.current.position.set(st.x, st.y, st.z)
+        avatarRef.current.rotation.y = st.faceYaw
+      }
+
+      // Apply camera preset orbit when standing (keys 1-8)
+      if (st.preset > 0) {
+        const pre = SEAT_PRESETS[st.preset - 1]
+        targetYaw.current = MathUtils.lerp(targetYaw.current, st.yaw + pre.yaw, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
+        targetPitch.current = MathUtils.lerp(targetPitch.current, pre.pitch, 1 - Math.exp(-ORBIT_SMOOTHNESS * dt))
+        const dist = MathUtils.clamp(pre.zoom, MIN_ZOOM, MAX_ZOOM)
+        const cp = Math.cos(targetPitch.current)
+        const sp = Math.sin(targetPitch.current)
+        const sy = Math.sin(targetYaw.current)
+        const cy = Math.cos(targetYaw.current)
+        const eyeY = st.y + 1.62
+        const a = 1 - Math.exp(-ORBIT_SMOOTHNESS * dt)
+        if (!camSeeded.current) {
+          camPos.current.set(
+            st.x + Math.sin(targetYaw.current) * dist * cp,
+            eyeY + sp * dist,
+            st.z + Math.cos(targetYaw.current) * dist * cp,
+          )
+          camSeeded.current = true
+        } else {
+          const idealX = st.x + sy * dist * cp
+          const idealY = eyeY + sp * dist
+          const idealZ = st.z + cy * dist * cp
+          camPos.current.x += (idealX - camPos.current.x) * a
+          camPos.current.y += (idealY - camPos.current.y) * a
+          camPos.current.z += (idealZ - camPos.current.z) * a
+        }
+        camPos.current.x = MathUtils.clamp(camPos.current.x, -HALL.halfW + 0.6, HALL.halfW - 0.6)
+        camPos.current.z = MathUtils.clamp(camPos.current.z, -HALL.halfL + 0.6, HALL.halfL - 0.6)
+        camPos.current.y = MathUtils.clamp(camPos.current.y, 0.2, HALL.wallH - 0.5)
+        cam.position.copy(camPos.current)
+        camLookTmp.current.set(st.x, eyeY - 0.1, st.z)
+        camTarget.current.lerp(camLookTmp.current, a)
+        cam.lookAt(camTarget.current)
+      }
+
       setLocalState({ x: st.x, y: st.y, z: st.z, yaw: st.faceYaw, speed: 0, grounded: true, seated: false, cinematic: false })
     }
   })
@@ -581,7 +625,7 @@ export function PlayerController() {
           tour the local avatar stays visible to the player, but RemotePlayers hides
           it from everyone else (via the `cinematic` flag) so the broadcast feed is
           clean. */}
-      <group visible={cinematic || (seatWorld != null && cameraModeR !== 'first')}>
+      <group visible={cinematic || cameraModeR !== 'first'}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
         <PlayerNameTag3D name={localName} rank={rank} country={country} playerId={playerId} self headY={2.55} hidden={cinematic} />
       </group>

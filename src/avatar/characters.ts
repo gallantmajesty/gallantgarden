@@ -299,9 +299,10 @@ export const CHARACTERS: Character[] = [
     model: 'elephant.glb',
     scale: 1,
     yOffset: 0,
-    fallback: look('female', {
+    fallback: look('animal', {
       skin: 'light', hair: 'none', hairColor: 'black', eyes: 'brown',
       top: 'tee', bottom: 'pants', shoes: 'sneakers',
+      buildOverrides: { height: 0.55, neckLen: 0.04, armLen: 0.2, headSize: 1.9, shoulderWidth: 0.45, torsoLen: 0.45 },
     }),
     description: 'A gentle gray elephant with big floppy ears, a long trunk and tiny tusks',
     icon: '/icons/characters/elephant.svg',
