@@ -3,7 +3,7 @@ import { BrowserRouter } from 'react-router-dom'
 import 'flag-icons/css/flag-icons.min.css'
 import './index.css'
 import App from './App.tsx'
-import { AuthProvider, useAuth } from './store/auth'
+import { AuthProvider } from './store/auth'
 import { supabaseConfigured } from './lib/insforge'
 import { initSentry } from './lib/sentry'
 import { SentryUserTracker } from './components/SentryUserTracker'
@@ -28,17 +28,12 @@ if (!supabaseConfigured) {
       </div>
     </div>`
 } else {
-  function AppWithSentry() {
-    const { user } = useAuth()
-    return (
-      <BrowserRouter>
-        <AuthProvider>
-          <SentryUserTracker />
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    )
-  }
-
-  createRoot(rootEl).render(<AppWithSentry />)
+  createRoot(rootEl).render(
+    <BrowserRouter>
+      <AuthProvider>
+        <SentryUserTracker />
+        <App />
+      </AuthProvider>
+    </BrowserRouter>,
+  )
 }

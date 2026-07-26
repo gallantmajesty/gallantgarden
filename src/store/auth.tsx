@@ -202,8 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
     // Release session on sign out
-    const { supabase: supabaseClient } = await import('../lib/insforge')
-    await supabaseClient.rpc('release_session')
+    await supabase.rpc('release_session').catch(() => {})
     runUserTeardown()
     setUser(null)
   }, [])
