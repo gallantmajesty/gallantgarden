@@ -53,6 +53,8 @@ export interface ProfilePublic {
   bannerImage: string | null
   /** vertical focus of the banner image, as object-position Y % (0–100). */
   bannerPos: number
+  /** selected logo id from the logo catalog (independent from banner). */
+  logo: string
   socialLinks: SocialLink[]
   /** total likes received on this profile (public counter). */
   likes: number
@@ -63,9 +65,10 @@ export const EMPTY_PROFILE_PUBLIC: ProfilePublic = {
   favoriteSubject: '',
   studySchedule: '',
   studyInterests: [],
-  banner: 'aurora',
+  banner: 'default_banner',
   bannerImage: null,
   bannerPos: 50,
+  logo: '',
   socialLinks: [],
   likes: 0,
 }
@@ -101,6 +104,7 @@ export function parseProfilePublic(raw: unknown): ProfilePublic {
     banner: str(o.banner) || EMPTY_PROFILE_PUBLIC.banner,
     bannerImage: str(o.bannerImage) || null,
     bannerPos: Math.min(100, Math.max(0, num(o.bannerPos, 50))),
+    logo: str(o.logo),
     socialLinks: links,
     likes: num(o.likes, 0),
   }

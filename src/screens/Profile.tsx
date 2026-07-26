@@ -13,11 +13,11 @@ import {
   getMutualIds,
 } from '../lib/social'
 import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '../lib/stats'
-import { BANNERS, getBanner } from '../lib/banners'
+import { BANNERS, getBanner, LOGOS } from '../lib/banners'
 import { checkDisplayName } from '../lib/displayName'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
-import { getRank, rankProgress, RANKS } from '../lib/ranks'
+import { getRank, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
 import { computeStreak } from '../lib/magnet/insights'
 import { generatePlayerId } from '../lib/playerId'
 import { studyGoalLabel } from '../lib/studyGoals'
@@ -226,7 +226,7 @@ function ProfileBody({
     return () => { cancelled = true }
   }, [view.id, isOwn])
 
-  const rank = getRank(view.rankId)
+  const rank = rankForTotalXp(totalXp)
   const levelData = levelProgress(totalXp)
   const banner = getBanner(view.pub.banner)
 
@@ -250,61 +250,80 @@ function ProfileBody({
       />
 
       <div className="pf-channel">
-        {/* ========== BANNER ========== */}
-        <div className="pf-banner">
+        {/* ========== FF-STYLE BANNER ========== */}
+        <div className="ff-banner">
+          {/* Banner background */}
           {view.pub.bannerImage ? (
-            <img src={view.pub.bannerImage} alt="" style={{ ['--pf-banner-pos' as string]: `${view.pub.bannerPos}%` }} />
+            <img src={view.pub.bannerImage} alt="" className="ff-banner-bg" style={{ ['--pf-banner-pos' as string]: `${view.pub.bannerPos}%` }} />
+          ) : banner.image ? (
+            <img src={banner.image} alt="" className="ff-banner-bg" />
           ) : (
-            <div className="pf-banner-gradient" style={{ background: banner.css }} />
+            <div className="ff-banner-bg" style={{ background: banner.css }} />
+          )}
+
+          {/* Dark overlay for readability */}
+          <div className="ff-banner-overlay" />
+
+          {/* Content ON the banner */}
+          <div className="ff-banner-content">
+            {/* Left: Avatar inside banner — logo overrides uploaded avatar when selected */}
+            <div className="ff-banner-avatar">
+              {(() => {
+                const selectedLogo = view.pub.logo ? LOGOS.find(l => l.id === view.pub.logo) : null
+                const logoUrl = selectedLogo?.image || null
+                return (
+                  <ProfileAvatar
+                    name={view.displayName}
+                    avatarUrl={logoUrl || view.avatarUrl}
+                    rankId={view.rankId}
+                    size={80}
+                    className={selectedLogo?.dim ? 'logo-dim' : ''}
+                  />
+                )
+              })()}
+            </div>
+
+            {/* Center: Name + ID + Bio */}
+            <div className="ff-banner-info">
+              <div className="ff-banner-name-row">
+                <span className="ff-banner-name">{view.displayName}</span>
+                {view.country && <Flag code={view.country} className="ff-banner-flag" />}
+              </div>
+              <div className="ff-banner-player-id">ID: {view.playerId ?? '—'}</div>
+              {view.pub.bio && <div className="ff-banner-bio">{view.pub.bio}</div>}
+            </div>
+
+            {/* Right: Rank badge */}
+            <button className="ff-banner-rank" onClick={() => setRankModal(true)}>
+              <img src={rank.badge} alt="" className="ff-banner-rank-img" />
+              <span className="ff-banner-rank-name">{rank.name}</span>
+            </button>
+          </div>
+
+          {/* Edit icon for own profile */}
+          {isOwn && (
+            <button className="ff-banner-edit" onClick={() => setEditing(true)} title="Customize profile">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
           )}
         </div>
 
-        {/* ========== CHANNEL HEADER ========== */}
-        <div className="pf-channel-header">
-          {/* Avatar — overlaps banner */}
-          <div className="pf-avatar-wrap">
-            <ProfileAvatar
-              name={view.displayName}
-              avatarUrl={view.avatarUrl}
-              rankId={view.rankId}
-              size={120}
-            />
+        {/* ========== FOLLOWER STATS + ACTIONS ========== */}
+        <div className="ff-meta-row">
+          <div className="ff-meta-stats">
+            <span><strong>{counts.followers}</strong> Followers</span>
+            <span><strong>{counts.following}</strong> Following</span>
           </div>
-
-          {/* Name + meta */}
-          <div className="pf-channel-info">
-            <div className="pf-channel-name-row">
-              <h1 className="pf-channel-name">{view.displayName}</h1>
-              {view.country && <Flag code={view.country} className="pf-flag" />}
-              <button className="pf-rank-badge" onClick={() => setRankModal(true)}>
-                <img src={rank.badge} alt="" />
-                {rank.name}
-              </button>
-            </div>
-            <div className="pf-channel-meta">
-              Player ID: {view.playerId ?? '—'} · {counts.followers} followers · {counts.following} following
-            </div>
-            {view.pub.bio && (
-              <div className="pf-channel-bio">{view.pub.bio}</div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="pf-channel-actions">
-            {!isOwn && (
-              <>
-                <AddFriendButton targetId={view.id} />
-                <FollowButton targetId={view.id} />
-              </>
-            )}
-            {isOwn ? (
-              <button className="pf-customize-btn" onClick={() => setEditing(true)}>
-                Customize
-              </button>
-            ) : (
+          {!isOwn && (
+            <div className="ff-meta-actions">
+              <AddFriendButton targetId={view.id} />
+              <FollowButton targetId={view.id} />
               <ShareButton playerId={view.playerId} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="pf-divider" />
@@ -553,9 +572,8 @@ function EditOverlay({
   const nameWarning = useProfile((s) => s.nameWarning)
   const changesUsed = useProfile((s) => s.displayNameChanges)
   const goals = useProfile((s) => s.data.studyGoals)
-  const rank = getRank(view.rankId)
 
-  const [tab, setTab] = useState<'identity' | 'avatar' | 'bio' | 'goals'>('identity')
+  const [tab, setTab] = useState<'identity' | 'bio' | 'goals'>('identity')
   const [name, setName] = useState(view.displayName)
   const [bio, setBio] = useState(view.pub.bio)
   const [nameStatus, setNameStatus] = useState<{ ok: boolean; error?: string }>({ ok: true })
@@ -618,9 +636,9 @@ function EditOverlay({
         {/* tab bar */}
         <div className="pf-edit-body">
           <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
-            {(['identity', 'avatar', 'bio', 'goals'] as const).map((t) => (
+            {(['identity', 'bio', 'goals'] as const).map((t) => (
               <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>
-                {t === 'identity' ? 'Name & Banner' : t === 'avatar' ? 'Avatar' : t === 'bio' ? 'Bio' : 'Goals'}
+                {t === 'identity' ? 'Name & Banner' : t === 'bio' ? 'Bio' : 'Goals'}
               </button>
             ))}
           </div>
@@ -650,33 +668,36 @@ function EditOverlay({
                 {BANNERS.map((b, i) => (
                   <button
                     key={i}
-                    className={`pf-banner-swatch ${view.pub.bannerIdx === i ? 'active' : ''}`}
-                    style={{ background: b.css }}
-                    onClick={() => savePublic({ bannerIdx: i, bannerImage: null })}
+                    className={`pf-banner-swatch ${view.pub.banner === b.id ? 'active' : ''}`}
+                    style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: b.css }}
+                    onClick={() => savePublic({ banner: b.id, bannerIdx: i, bannerImage: null })}
                     title={b.name}
                   />
                 ))}
               </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(240,223,192,0.4)' }}>
-                Earn special banners through events and milestones.
-              </div>
-            </div>
-          )}
 
-          {/* avatar tab */}
-          {tab === 'avatar' && (
-            <div className="pf-edit-section">
-              <div className="pf-edit-label">Profile Picture</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
-                <ProfileAvatar name={view.displayName} avatarUrl={view.avatarUrl} rankId={view.rankId} size={96} />
-                <div>
-                  <div style={{ fontSize: 13, color: '#b8a88a' }}>
-                    Your avatar is based on your rank.
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(240,223,192,0.4)', marginTop: 4 }}>
-                    Earn special avatars through events and achievements.
-                  </div>
-                </div>
+              <div className="pf-edit-label" style={{ marginTop: 20 }}>Logo</div>
+              <div className="pf-logo-grid">
+                {LOGOS.map((l) => (
+                  <button
+                    key={l.id}
+                    className={`pf-logo-swatch ${view.pub.logo === l.id ? 'active' : ''}`}
+                    onClick={() => savePublic({ logo: l.id })}
+                    title={l.name}
+                  >
+                    <img src={l.image} alt="" />
+                  </button>
+                ))}
+                <button
+                  className={`pf-logo-swatch ${view.pub.logo === '' ? 'active' : ''}`}
+                  onClick={() => savePublic({ logo: '' })}
+                  title="Use rank avatar"
+                >
+                  <span className="pf-logo-swatch-none">?</span>
+                </button>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(240,223,192,0.4)' }}>
+                Pick a logo or use your rank avatar.
               </div>
             </div>
           )}
@@ -771,7 +792,7 @@ function BannerPicker({ view }: { view: ProfileView }) {
           <button
             key={b.id}
             className={`pf-banner-preview ${!hasImage && view.pub.banner === b.id ? 'active' : ''}`}
-            style={{ background: b.css }}
+            style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: b.css }}
             title={b.name}
             onClick={() => savePublic({ banner: b.id, bannerImage: null })}
           >

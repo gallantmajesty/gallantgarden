@@ -74,8 +74,13 @@ export function MatchLobby({ onStartMatch, onBack }: MatchLobbyProps) {
               <div className="match-lobby-avatar">
                 {p.name.charAt(0).toUpperCase()}
               </div>
-              <span className="match-lobby-name">{p.name}</span>
-              <span className={`match-lobby-ready-dot ${p.ready ? 'ready' : ''}`} />
+              <div className="match-lobby-player-info">
+                <span className="match-lobby-name">{p.name}</span>
+                <span className="match-lobby-player-id">#{p.id.slice(0, 6)}</span>
+              </div>
+              <div className={`match-lobby-ready-badge ${p.ready ? 'ready' : ''}`}>
+                {p.ready ? '✓ Ready' : '...'}
+              </div>
             </div>
           ))}
           {Array.from({ length: MAX_ROOM_SIZE - players.length }).map((_, i) => (
@@ -162,37 +167,46 @@ export function MatchLobby({ onStartMatch, onBack }: MatchLobbyProps) {
           display: flex; align-items: center; gap: 10px;
           padding: 8px 12px; border-radius: 12px;
           background: var(--glass-fill); border: 1px solid var(--glass-border);
-          transition: background 0.15s;
+          transition: all 0.15s;
         }
         .match-lobby-player.self {
           outline: 2px solid var(--accent);
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), var(--glass-fill));
         }
         .match-lobby-player.empty {
           opacity: 0.3;
         }
         .match-lobby-avatar {
-          width: 32px; height: 32px; border-radius: 50%;
+          width: 36px; height: 36px; border-radius: 50%;
           background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000));
           display: grid; place-items: center;
-          color: white; font-weight: 700; font-size: 14px;
+          color: white; font-weight: 700; font-size: 15px;
           flex-shrink: 0;
+          border: 2px solid rgba(255, 255, 255, 0.15);
         }
         .match-lobby-avatar.empty {
           background: rgba(255,255,255,0.05);
           border: 1px dashed rgba(255,255,255,0.15);
         }
+        .match-lobby-player-info {
+          flex: 1; min-width: 0; display: flex; flex-direction: column;
+        }
         .match-lobby-name {
-          flex: 1; font-size: 14px; font-weight: 600; color: var(--ink);
-          text-align: left;
+          font-size: 14px; font-weight: 700; color: var(--ink);
+          text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .match-lobby-ready-dot {
-          width: 10px; height: 10px; border-radius: 50%;
-          background: rgba(255,255,255,0.15); flex-shrink: 0;
-          transition: background 0.2s;
+        .match-lobby-player-id {
+          font-size: 11px; color: var(--ink-soft); opacity: 0.6;
         }
-        .match-lobby-ready-dot.ready {
-          background: #4caf50;
-          box-shadow: 0 0 8px rgba(76,175,80,0.4);
+        .match-lobby-ready-badge {
+          flex-shrink: 0; font-size: 11px; font-weight: 700;
+          padding: 4px 10px; border-radius: 999px;
+          background: rgba(255,255,255,0.08); color: var(--ink-soft);
+          border: 1px solid var(--glass-border);
+        }
+        .match-lobby-ready-badge.ready {
+          background: rgba(76, 175, 80, 0.15); color: #4caf50;
+          border-color: rgba(76, 175, 80, 0.3);
         }
         .match-lobby-status {
           margin-bottom: 20px; min-height: 24px;

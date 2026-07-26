@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, Vector3 } from 'three'
 import { HALL } from './layout'
@@ -77,8 +77,9 @@ export function PlayerController() {
   const collision = useMemo(() => buildCollision(), [])
   const { gl, camera: camRef } = useThree() as any
 
-  const camPos = useRef(new Vector3())
-  const camTarget = useRef(new Vector3())
+  const initPos = getInitialPos(seats)
+  const camPos = useRef(new Vector3(initPos[0], initPos[1] + CHAIR_SEAT_Y + SEAT_EYE, initPos[2]))
+  const camTarget = useRef(new Vector3(initPos[0], initPos[1] + CHAIR_SEAT_Y + SEAT_EYE - 0.1, initPos[2]))
   const camLookTmp = useRef(new Vector3())
   const targetYaw = useRef(0)
   const targetPitch = useRef(0)
@@ -220,6 +221,23 @@ export function PlayerController() {
     cam.updateProjectionMatrix()
   }, [far, camRef])
 
+  // Immediately position the camera at the seat on mount — before the first
+  // paint — so the user never sees the default Canvas camera position [0, 1.7, 8]
+  // (which faces the exterior windows / country map). Without this, the veil
+  // lifts before the first useFrame seeds the camera, causing a flash of the
+  // wrong view that only resolves on page refresh.
+  useLayoutEffect(() => {
+    const cam = camRef
+    if (!cam) return
+    const seatId = useWorld.getState().seat ?? useSeatFlow.getState().selectedSeatId ?? 0
+    const seat = seats[seatId]
+    if (!seat) return
+    const eyeY = seat.pos[1] + CHAIR_SEAT_Y + SEAT_EYE
+    cam.position.set(seat.pos[0], eyeY, seat.pos[2])
+    camTarget.current.set(seat.pos[0], eyeY - 0.1, seat.pos[2])
+    cam.lookAt(camTarget.current)
+  }, [camRef, seats])
+
   useEffect(() => {
     const el = gl.domElement
     const down = (e: PointerEvent) => {
@@ -273,7 +291,7 @@ export function PlayerController() {
           p.current.zoom = pre.zoom
         } else {
           // Standing preset — orbit around current player position
-          p.current.yaw = st.faceYaw + pre.yaw
+          p.current.yaw = p.current.faceYaw + pre.yaw
           p.current.pitch = pre.pitch
           p.current.zoom = pre.zoom
         }

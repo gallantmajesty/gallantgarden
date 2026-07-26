@@ -33,6 +33,9 @@ import { enterRealmLowFirst } from '../three/realmQuality'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
+import { ProfileAvatar } from '../components/ProfileAvatar'
+import { RankBadge } from '../components/RankBadge'
+import { getRank } from '../lib/ranks'
 import { AddFriendButton } from '../components/AddFriendButton'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
@@ -567,17 +570,35 @@ function RoomRoster() {
       </button>
       {open && (
         <div className="room-roster-list">
-          <div className="room-roster-row me">
-            <PublicPlayerTag player={self} size="sm" />
-            <span className="room-roster-you">You</span>
+          <div className="room-roster-card me">
+            <div className="roster-card-banner" />
+            <div className="roster-card-content">
+              <div className="roster-card-avatar">
+                <ProfileAvatar name={self.name} avatarUrl={null} rankId={self.rank} size={36} />
+              </div>
+              <div className="roster-card-info">
+                <span className="roster-card-name">{self.name}</span>
+                <span className="roster-card-you">You</span>
+              </div>
+              <RankBadge rankId={self.rank} size={20} className="roster-card-rank" />
+            </div>
           </div>
           {rosterEntries.map(([id, entry]) => (
             <div
               key={id}
-              className="room-roster-row clickable"
+              className="room-roster-card clickable"
               onClick={() => setProfileTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank })}
             >
-              <PublicPlayerTag player={{ name: entry.name, country: entry.country, rank: entry.rank }} size="sm" />
+              <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
+              <div className="roster-card-content">
+                <div className="roster-card-avatar">
+                  <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={36} />
+                </div>
+                <div className="roster-card-info">
+                  <span className="roster-card-name">{entry.name}</span>
+                </div>
+                <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
+              </div>
             </div>
           ))}
           {rosterEntries.length === 0 && (

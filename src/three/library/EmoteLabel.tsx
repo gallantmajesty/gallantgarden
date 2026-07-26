@@ -16,13 +16,17 @@ interface EmoteLabelProps {
 export function EmoteLabel({ text, duration = 2000, onComplete }: EmoteLabelProps) {
   const ref = useRef<HTMLDivElement>(null)
   const start = useRef(Date.now())
+  const called = useRef(false)
 
   useFrame(() => {
     const elapsed = Date.now() - start.current
     if (!ref.current) return
     if (elapsed > duration) {
       ref.current.style.opacity = '0'
-      if (onComplete) setTimeout(onComplete, 300)
+      if (onComplete && !called.current) {
+        called.current = true
+        setTimeout(onComplete, 300)
+      }
     } else if (elapsed > duration - 500) {
       const t = (elapsed - (duration - 500)) / 500
       ref.current.style.opacity = String(1 - t)

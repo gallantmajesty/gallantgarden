@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useImperativeHandle, useMemo, useRef } from 'react'
-import { Color, Group, MeshStandardMaterial, CatmullRomCurve3, TubeGeometry, Vector3 } from 'three'
+import { Color, Group, MeshStandardMaterial, CatmullRomCurve3, TubeGeometry, Vector3, DoubleSide } from 'three'
 import {
   boxGeo,
   sphereGeo,
@@ -131,6 +131,7 @@ export function AvatarRig({
   const sfYellowDark = sharedMaterial('#e8b800', 0.55)
   const sfBrown = sharedMaterial('#8c6c30', 0.72)
   const sfGreen = sharedMaterial('#5caa3a', 0.65)
+  const sfGreenDouble = new MeshStandardMaterial({ color: '#5caa3a', roughness: 0.65, metalness: 0, flatShading: false, side: DoubleSide })
   const sfSeed = sharedMaterial('#603813', 0.6)
   const sfPetalEdge = sharedMaterial('#ffe680', 0.5)
 
@@ -202,7 +203,7 @@ export function AvatarRig({
     elBelly.roughness = 0.75
   }
   const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
   const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
 
@@ -226,6 +227,18 @@ export function AvatarRig({
               { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.3, hd: P.torsoD * 1.25 },
               { y: P.spineLen + P.chestLen, hw: P.shoulderW * 1.1, hd: P.torsoD * 1.1 },
               { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.5, hd: P.torsoD * 0.7 },
+            ])} material={topM} castShadow />
+          ) : isSunflower ? (
+            /* Sunflower: use default female torso — green dress bodice */
+            <mesh geometry={torsoGeo([
+              { y: -0.07, hw: P.hipBoneW * 1.1, hd: P.torsoD * 0.88 },
+              { y: -0.02, hw: P.hipBoneW * 1.02, hd: P.torsoD * 0.85 },
+              { y: P.spineLen * 0.5, hw: P.waistW * 0.98, hd: P.torsoD * 0.88 },
+              { y: P.spineLen, hw: P.chestW * 0.95, hd: P.torsoD * 0.95 },
+              { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW, hd: P.torsoD * 1.15 },
+              { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.08, hd: P.torsoD * 1.05 },
+              { y: P.spineLen + P.chestLen, hw: P.shoulderW * 0.82, hd: P.torsoD * 0.92 },
+              { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.2, hd: P.torsoD * 0.55 },
             ])} material={topM} castShadow />
           ) : (
             <mesh geometry={torsoGeo([
@@ -459,23 +472,28 @@ export function AvatarRig({
           </group>
         )}
 
-        {/* Sunflower costume — green leafy skirt around the hips, petal-like
-            ruffles at the waist, no shoes (bare brown root feet instead) */}
         {isSunflower && (
           <group>
-            {/* Green leafy skirt around the hips */}
+            {/* Flared A-line skirt — fitted at body hips, gentle flare to below knees */}
             <mesh geometry={latheGeo([
-              [P.waistW * 1.1, 0],
-              [P.hipBoneW * 1.35, -P.upperLeg * 0.25],
-              [P.hipBoneW * 1.6, -P.upperLeg * 0.5],
-              [P.hipBoneW * 1.4, -P.upperLeg * 0.65],
-            ])} material={sfGreen} castShadow />
-            {/* Leafy waistband */}
-            <mesh geometry={torusGeo(P.waistW * 1.05, P.hipBoneW * 0.1, 8, 24)} material={sfGreen} position={[0, 0.02, 0]} rotation={[Math.PI / 2, 0, 0]} />
-            {/* Petal-like bumps ringing the waist */}
-            {[0, Math.PI * 0.25, Math.PI * 0.5, Math.PI * 0.75, Math.PI, -Math.PI * 0.25, -Math.PI * 0.5, -Math.PI * 0.75].map((a, i) => (
-              <mesh key={`sp${i}`} geometry={sphereGeo(1)} material={sfYellow} scale={[P.hipBoneW * 0.22, P.hipBoneW * 0.18, P.torsoD * 0.14]}
-                position={[Math.sin(a) * P.hipBoneW * 1.3, -P.upperLeg * 0.1, Math.cos(a) * P.torsoD * 0.7]} />
+              [P.hipBoneW * 1.08, -P.upperLeg * 0.04],
+              [P.hipBoneW * 1.12, -P.upperLeg * 0.15],
+              [P.hipBoneW * 1.18, -P.upperLeg * 0.35],
+              [P.hipBoneW * 1.22, -P.upperLeg * 0.55],
+              [P.hipBoneW * 1.25, -P.upperLeg * 0.72],
+              [P.hipBoneW * 1.22, -P.upperLeg * 0.82],
+            ])} material={sfGreenDouble} castShadow />
+            {/* Yellow neckline ring */}
+            <mesh geometry={torusGeo(P.chestW * 0.35, P.chestW * 0.035, 8, 20)} material={sfYellow}
+              position={[0, P.chestLen * 0.85, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            {/* Leafy waist sash — sits at natural waist */}
+            <mesh geometry={torusGeo(P.waistW * 0.88, P.hipBoneW * 0.045, 8, 24)} material={sfGreen}
+              position={[0, -0.01, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            {/* Small yellow petals at waist */}
+            {[0, Math.PI * 0.33, Math.PI * 0.67, Math.PI, -Math.PI * 0.33, -Math.PI * 0.67].map((a, i) => (
+              <mesh key={`sp${i}`} geometry={sphereGeo(1)} material={sfYellow}
+                scale={[P.hipBoneW * 0.1, P.hipBoneW * 0.07, P.torsoD * 0.06]}
+                position={[Math.sin(a) * P.hipBoneW * 0.9, -P.upperLeg * 0.04, Math.cos(a) * P.torsoD * 0.5]} />
             ))}
           </group>
         )}

@@ -103,116 +103,172 @@
 }
 
 /* ============================================================
-   BANNER — big, rounded, magical border
+   FF-STYLE BANNER — full-bleed image with overlay + content
    ============================================================ */
-.pf-banner {
+.ff-banner {
   width: 100%;
-  height: 240px;
+  height: 220px;
   border-radius: 16px;
   overflow: hidden;
   position: relative;
   border: 2px solid var(--pf-border);
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.5),
-    0 0 40px rgba(212, 168, 67, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 40px rgba(212, 168, 67, 0.08);
 }
-.pf-banner-gradient { width: 100%; height: 100%; }
-.pf-banner img {
+.ff-banner-bg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center var(--pf-banner-pos, 50%);
-  display: block;
 }
-
-/* ============================================================
-   CHANNEL HEADER — avatar overlaps banner
-   ============================================================ */
-.pf-channel-header {
+.ff-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.5) 40%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  pointer-events: none;
+}
+.ff-banner-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
   display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  padding: 24px 0 20px;
-  position: relative;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 16px 20px;
 }
-
-/* --- avatar --- */
-.pf-avatar-wrap {
-  position: relative;
+.ff-banner-avatar {
   flex-shrink: 0;
-  margin-top: -56px;
 }
-.pf-avatar-wrap .profile-avatar {
-  border: 5px solid var(--pf-bg);
-  box-shadow: 0 0 20px rgba(212, 168, 67, 0.2);
+.ff-banner-avatar .profile-avatar {
+  border: 3px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
-
-/* --- channel info --- */
-.pf-channel-info { flex: 1; min-width: 0; padding-top: 8px; }
-.pf-channel-name-row {
+.logo-dim {
+  filter: brightness(0.65) saturate(0.85);
+}
+.ff-banner-info {
+  flex: 1;
+  min-width: 0;
+}
+.ff-banner-name-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
+  gap: 8px;
 }
-.pf-channel-name {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--pf-text);
-  margin: 0;
+.ff-banner-name {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-/* --- BIG rank badge (like the reference image) --- */
-.pf-rank-badge {
-  display: inline-flex;
+.ff-banner-flag {
+  font-size: 18px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+.ff-banner-player-id {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.ff-banner-bio {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ff-banner-rank {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 6px 16px 6px 10px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #3a2510, #2a1a10);
-  border: 2px solid var(--pf-gold);
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--pf-gold-bright);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  gap: 3px;
+  background: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.4));
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: 10px;
+  padding: 6px 10px 4px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow:
-    0 0 12px rgba(212, 168, 67, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
 }
-.pf-rank-badge:hover {
-  box-shadow: 0 0 20px rgba(212, 168, 67, 0.35);
-  border-color: var(--pf-gold-bright);
+.ff-banner-rank:hover {
+  border-color: rgba(255, 215, 0, 0.9);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+  transform: scale(1.05);
 }
-.pf-rank-badge img { width: 22px; height: 22px; }
+.ff-banner-rank-img {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+.ff-banner-rank-name {
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(255, 215, 0, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+/* Edit button (own profile) */
+.ff-banner-edit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+.ff-banner-edit:hover {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: rgba(255, 215, 0, 0.5);
+  color: #fff;
+}
 
-.pf-channel-meta {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--pf-text-soft);
-  margin-bottom: 10px;
-}
-.pf-channel-bio {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--pf-text-soft);
-}
-.pf-channel-bio:empty::before {
-  content: 'No bio yet.';
-  font-style: italic;
-  opacity: 0.5;
-}
-
-/* --- channel actions --- */
-.pf-channel-actions {
+/* --- meta row below banner --- */
+.ff-meta-row {
   display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-  padding-top: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+.ff-meta-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--pf-text-soft);
+}
+.ff-meta-stats strong {
+  color: var(--pf-text);
+  font-weight: 700;
+}
+.ff-meta-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 /* ============================================================
@@ -618,6 +674,81 @@
 /* ============================================================
    BANNER PICKER — show actual previews
    ============================================================ */
+.pf-banner-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.pf-banner-swatch {
+  height: 64px;
+  border-radius: 8px;
+  border: 2px solid var(--pf-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+  position: relative;
+}
+.pf-banner-swatch:hover {
+  border-color: var(--pf-border-glow);
+  transform: translateY(-1px);
+}
+.pf-banner-swatch.active {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.3);
+}
+.pf-banner-swatch-logo {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* Logo picker */
+.pf-logo-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pf-logo-swatch {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid var(--pf-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+.pf-logo-swatch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pf-logo-swatch:hover {
+  border-color: var(--pf-border-glow);
+  transform: scale(1.08);
+}
+.pf-logo-swatch.active {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 14px rgba(212, 168, 67, 0.4);
+  transform: scale(1.08);
+}
+.pf-logo-swatch-none {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+}
 .pf-banner-picker-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -830,18 +961,15 @@
    ============================================================ */
 @media (max-width: 720px) {
   .pf-channel { padding: 0 14px 60px; }
-  .pf-banner { height: 160px; border-radius: 12px; }
-  .pf-channel-header {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 14px;
-    padding-top: 14px;
-  }
-  .pf-avatar-wrap { margin-top: -44px; }
-  .pf-channel-name-row { justify-content: center; }
-  .pf-channel-meta, .pf-channel-bio { text-align: center; }
-  .pf-channel-actions { justify-content: center; }
+  .ff-banner { height: 180px; border-radius: 12px; }
+  .ff-banner-content { gap: 10px; padding: 12px 14px; }
+  .ff-banner-avatar .profile-avatar { width: 56px !important; height: 56px !important; }
+  .ff-banner-name { font-size: 18px; }
+  .ff-banner-rank { padding: 4px 8px 3px; }
+  .ff-banner-rank-img { width: 24px; height: 24px; }
+  .ff-banner-rank-name { font-size: 8px; }
+  .ff-banner-edit { width: 28px; height: 28px; top: 8px; right: 8px; }
+  .ff-meta-row { flex-direction: column; gap: 10px; align-items: flex-start; }
   .pf-stats-row { grid-template-columns: 1fr 1fr; }
   .pf-about-grid { grid-template-columns: 1fr; }
   .pf-social-row { flex-direction: column; }

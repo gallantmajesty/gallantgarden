@@ -77,6 +77,9 @@ export function buildProfileStats(i: StatsInput): StatCard[] {
   const totalXp = i.xp
   const rankObj = rankForTotalXp(totalXp)
   const rankIdx = Math.max(0, RANKS.findIndex((r) => r.id === rankObj.id))
+  // Compute tier name: Bronze I-III = "Bronze", Silver I-III = "Silver", etc.
+  const tierNames = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Crystal', 'Focuster']
+  const tierName = tierNames[Math.min(Math.floor(rankIdx / 3), tierNames.length - 1)]
   return [
     {
       id: 'study-hours',
@@ -110,7 +113,7 @@ export function buildProfileStats(i: StatsInput): StatCard[] {
       label: 'Current Rank',
       icon: 'trophy',
       value: rankObj.name,
-      sub: `Tier ${rankIdx + 1}`,
+      sub: `${tierName} Tier`,
       state: 'ready',
       accent: rankObj.accent,
     },

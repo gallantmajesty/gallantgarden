@@ -5,10 +5,12 @@
 export interface Banner {
   id: string
   name: string
-  /** CSS background for the banner strip. */
+  /** CSS background for the banner strip (used when no image). */
   css: string
   /** an accent used for the glowing rim / overlaid chips. */
   glow: string
+  /** optional image asset path (overrides css when set). */
+  image?: string
 }
 
 export const BANNERS: Banner[] = [
@@ -60,9 +62,49 @@ export const BANNERS: Banner[] = [
     css: 'linear-gradient(120deg, #1a0f2e 0%, #4a2b7a 42%, #c065e0 78%, #ff9ec4 100%)',
     glow: '#c065e0',
   },
+  {
+    id: 'neon_glitch',
+    name: 'Neon Glitch',
+    css: 'linear-gradient(120deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)',
+    glow: '#00ff88',
+    image: '/banners/neon_glitch_banner_1.webp',
+  },
+  {
+    id: 'heavenly_gold',
+    name: 'Heavenly Gold',
+    css: 'linear-gradient(120deg, #1a1408 0%, #4a3a10 40%, #c9a44a 80%, #ffe6b0 100%)',
+    glow: '#c9a44a',
+    image: '/banners/heavenly_banner_golden_halo.webp',
+  },
+  {
+    id: 'default_banner',
+    name: 'Default',
+    css: 'linear-gradient(120deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+    glow: '#e94560',
+    image: '/banners/Default banner.webp',
+  },
 ]
 
-export const DEFAULT_BANNER_ID = 'aurora'
+export const DEFAULT_BANNER_ID = 'default_banner'
+
+// ============================================================================
+//  LOGO CATALOG — profile picture options (independent from banner choice)
+// ============================================================================
+export interface Logo {
+  id: string
+  name: string
+  image: string
+  /** reduce brightness for overly bright logos */
+  dim?: boolean
+}
+
+export const LOGOS: Logo[] = [
+  { id: 'default_logo', name: 'Default', image: '/banners/default logo.webp' },
+  { id: 'neon_avatar', name: 'Neon', image: '/banners/neon_anime_avatar.webp' },
+  { id: 'angel_logo', name: 'Angel', image: '/banners/chibi_angel_logo_1.webp', dim: true },
+]
+
+export const DEFAULT_LOGO_ID = ''
 
 const BY_ID = new Map(BANNERS.map((b) => [b.id, b]))
 
