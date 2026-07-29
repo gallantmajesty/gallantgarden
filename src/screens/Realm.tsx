@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
 import { PngIcon } from '../components/PngIcon'
-import { ComingSoonModal } from '../components/ComingSoonModal'
 import { useRealm, type CustomRealm } from '../store/realm'
 import { useAvatar } from '../avatar/store'
 import { characterById } from '../avatar/characters'
@@ -105,7 +104,6 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
 
 function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
   const navigate = useNavigate()
-  const [comingSoon, setComingSoon] = useState<{ title: string; description: string; image: string } | null>(null)
 
   return (
     <>
@@ -138,12 +136,8 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
         </button>
 
         <button
-          className="realm-card water-glass realm-card--soon"
-          onClick={() => setComingSoon({
-            title: 'Train Station',
-            description: 'Board the FocusLily Express and study in magical train carriages as you journey through enchanted destinations.',
-            image: '/teasers/train-realms.png'
-          })}
+          className="realm-card water-glass"
+          onClick={() => onPick('train-station')}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -159,7 +153,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           </div>
           <h2>🚂 Train Station</h2>
           <p>Board a magical train and commit to a real study journey — from Express to Grand Journey.</p>
-          <span className="realm-card-cta">Coming Soon</span>
+          <span className="realm-card-cta">Enter the train ›</span>
         </button>
         
         <button
@@ -183,14 +177,6 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <span className="realm-card-cta">Enter the cafe ›</span>
         </button>
       </div>
-
-      <ComingSoonModal
-        open={!!comingSoon}
-        title={comingSoon?.title ?? ''}
-        description={comingSoon?.description ?? ''}
-        image={comingSoon?.image ?? ''}
-        onClose={() => setComingSoon(null)}
-      />
     </>
   )
 }
