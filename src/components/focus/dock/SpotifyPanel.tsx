@@ -12,9 +12,9 @@ export function SpotifyPanel() {
         </span>
       </div>
 
-      <div style={{ flex: 1, padding: "0.5rem" }}>
+      <div style={{ flex: 1, padding: "0.5rem", display: "flex", flexDirection: "column" }}>
         <iframe
-          style={{ width: "100%", borderRadius: 2, height: "100%", minHeight: 250, borderColor: "var(--color-genshin-divider)", borderWidth: 1, borderStyle: "solid" }}
+          style={{ width: "100%", borderRadius: 2, flex: 1, minHeight: 250, borderColor: "var(--color-genshin-divider)", borderWidth: 1, borderStyle: "solid" }}
           src="https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ"
           title="Spotify Study Player"
           allow="encrypted-media"

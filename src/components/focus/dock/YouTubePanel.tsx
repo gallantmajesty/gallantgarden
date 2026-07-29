@@ -68,9 +68,9 @@ export function YouTubePanel() {
         </button>
       </div>
 
-      <div style={{ flex: 1, padding: "0.5rem", minHeight: isPiP ? 120 : 200 }}>
+      <div style={{ flex: 1, padding: "0.5rem", display: "flex", flexDirection: "column" }}>
         <iframe
-          style={{ width: "100%", borderRadius: 2, height: isPiP ? 120 : "100%", maxHeight: 300, borderColor: "var(--color-genshin-divider)", borderWidth: 1, borderStyle: "solid" }}
+          style={{ width: "100%", borderRadius: 2, flex: 1, minHeight: isPiP ? 120 : 250, borderColor: "var(--color-genshin-divider)", borderWidth: 1, borderStyle: "solid" }}
           src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1`}
           title="YouTube Study Player"
           allow="autoplay; encrypted-media"

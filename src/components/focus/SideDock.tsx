@@ -156,7 +156,7 @@ export function SideDock({
         </div>
 
         {/* Tab content */}
-        <div style={{ flex: 1, overflow: "hidden" }}>
+        <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
           {activeTab === "ai" && <AiAssistantPanel />}
           {activeTab === "youtube" && <YouTubePanel />}
           {activeTab === "spotify" && <SpotifyPanel />}
