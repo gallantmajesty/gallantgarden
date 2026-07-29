@@ -7,6 +7,8 @@ interface MultiplayerBarProps {
 }
 
 export function MultiplayerBar({ scholars, activeCount, totalCount }: MultiplayerBarProps) {
+  const studying = scholars.filter((s) => s.isStudying);
+
   return (
     <div style={{
       display: "flex",
@@ -20,37 +22,46 @@ export function MultiplayerBar({ scholars, activeCount, totalCount }: Multiplaye
       <span style={{ color: "var(--color-genshin-gold)", fontFamily: "var(--font-serif-heading)" }}>
         LIBRARY REALM
       </span>
-      <span style={{ color: "var(--color-genshin-bronze)" }}>
-        {activeCount}/{totalCount} scholars studying
-      </span>
-      <div style={{ flex: 1 }} />
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        {scholars.filter((s) => s.isStudying).slice(0, 6).map((s) => (
-          <span
-            key={s.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.25rem",
-              padding: "0.125rem 0.5rem",
-              borderRadius: 4,
-              background: "rgba(201, 168, 76, 0.1)",
-              border: "1px solid rgba(201, 168, 76, 0.15)",
-              color: "var(--color-genshin-gold-light)",
-              fontFamily: "var(--font-serif-heading)",
-              fontSize: "0.65rem",
-            }}
-            title={`${s.name} · ${s.rank} · ${Math.floor(s.focusMinutes / 60)}h ${s.focusMinutes % 60}m`}
-          >
-            {s.rankBadge} {s.name}
+
+      {totalCount === 0 ? (
+        <span style={{ color: "var(--color-genshin-bronze)", fontSize: "0.7rem", opacity: 0.6 }}>
+          No other scholars online
+        </span>
+      ) : (
+        <>
+          <span style={{ color: "var(--color-genshin-bronze)" }}>
+            {activeCount}/{totalCount} studying
           </span>
-        ))}
-        {activeCount > 6 && (
-          <span style={{ color: "var(--color-genshin-bronze)", fontSize: "0.65rem" }}>
-            +{activeCount - 6} more
-          </span>
-        )}
-      </div>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {studying.slice(0, 6).map((s) => (
+              <span
+                key={s.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  padding: "0.125rem 0.5rem",
+                  borderRadius: 4,
+                  background: "rgba(201, 168, 76, 0.1)",
+                  border: "1px solid rgba(201, 168, 76, 0.15)",
+                  color: "var(--color-genshin-gold-light)",
+                  fontFamily: "var(--font-serif-heading)",
+                  fontSize: "0.65rem",
+                }}
+                title={`${s.name} · ${s.rank} · ${Math.floor(s.focusMinutes / 60)}h ${s.focusMinutes % 60}m`}
+              >
+                {s.rankBadge} {s.name}
+              </span>
+            ))}
+            {activeCount > 6 && (
+              <span style={{ color: "var(--color-genshin-bronze)", fontSize: "0.65rem" }}>
+                +{activeCount - 6} more
+              </span>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

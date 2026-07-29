@@ -99,6 +99,22 @@ function parseJSON<T>(raw: string): T {
 
 // ---- public Jarvis API -----------------------------------------------------
 
+export async function jarvisChat(
+  messages: { role: 'user' | 'assistant'; content: string }[],
+): Promise<string> {
+  const cfg = loadAIConfig()
+  if (!cfg) throw new Error('NO_API_KEY')
+  const sys =
+    'You are Jarvis, a helpful study assistant inside Focus Lily — a student productivity app. ' +
+    'Answer concisely and clearly. Use plain text, no markdown fences. ' +
+    'If the student asks about study techniques, focus methods, or academic topics, give practical advice.'
+  const allMessages: ChatMsg[] = [
+    { role: 'system', content: sys },
+    ...messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+  ]
+  return callLLM(cfg, allMessages, false)
+}
+
 export interface GeneratedNote {
   label: string
   html: string
