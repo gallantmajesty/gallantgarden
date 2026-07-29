@@ -1,0 +1,5 @@
+# Supabase Edge Functions Configuration
+
+[functions.ai-proxy]
+  verify_jwt = false
+  import_map = "./supabase/functions/import_map.json"

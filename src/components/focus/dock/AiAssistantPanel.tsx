@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { jarvisChat, loadAIConfig, saveAIConfig } from "../../../lib/ai/jarvis";
+import { supabase } from "../../../lib/insforge";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -11,10 +11,6 @@ export function AiAssistantPanel() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSetup, setShowSetup] = useState(!loadAIConfig());
-  const [provider, setProvider] = useState<"openai" | "anthropic">("openai");
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gpt-4o-mini");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,21 +19,9 @@ export function AiAssistantPanel() {
     }
   }, [messages]);
 
-  const handleSetup = () => {
-    if (!apiKey.trim()) return;
-    saveAIConfig({ provider, apiKey: apiKey.trim(), model });
-    setShowSetup(false);
-    setError(null);
-  };
-
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
-
-    if (!loadAIConfig()) {
-      setShowSetup(true);
-      return;
-    }
 
     const userMsg: ChatMessage = { role: "user", content: text };
     const updated = [...messages, userMsg];
@@ -47,99 +31,31 @@ export function AiAssistantPanel() {
     setError(null);
 
     try {
-      const reply = await jarvisChat(updated);
+      const { data, error: fnError } = await supabase.functions.invoke("ai-proxy", {
+        body: {
+          messages: [
+            {
+              role: "system",
+              content: "You are Jarvis, a helpful study assistant inside Focus Lily — a student productivity app. Answer concisely and clearly. Use plain text, no markdown fences. If the student asks about study techniques, focus methods, or academic topics, give practical advice."
+            },
+            ...updated.map(m => ({ role: m.role, content: m.content }))
+          ],
+          model: "gpt-4o-mini",
+          temperature: 0.7,
+          max_tokens: 2000,
+        },
+      });
+
+      if (fnError) throw fnError;
+
+      const reply = data?.content || "No response";
       setMessages([...updated, { role: "assistant", content: reply }]);
     } catch (e: any) {
-      if (e?.message === "NO_API_KEY") {
-        setShowSetup(true);
-      } else {
-        setError(e?.message ?? "Request failed");
-      }
+      setError(e?.message ?? "Request failed");
     } finally {
       setLoading(false);
     }
   };
-
-  if (showSetup) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "1rem", gap: "0.75rem" }}>
-        <div style={{ fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.05em", color: "var(--color-genshin-gold)", fontFamily: "var(--font-serif-heading)" }}>
-          SETUP AI ASSISTANT
-        </div>
-        <div style={{ fontSize: "0.7rem", color: "var(--color-genshin-bronze)", lineHeight: 1.5 }}>
-          Add your own API key to chat with AI. Your key stays in this browser only.
-        </div>
-
-        <div style={{ display: "flex", gap: 4 }}>
-          {(["openai", "anthropic"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => { setProvider(p); setModel(p === "openai" ? "gpt-4o-mini" : "claude-sonnet-4-20250514"); }}
-              style={{
-                flex: 1,
-                padding: "0.375rem",
-                borderRadius: 2,
-                fontSize: "0.7rem",
-                fontWeight: 500,
-                transition: "all 0.2s",
-                background: provider === p ? "rgba(201, 168, 76, 0.15)" : "transparent",
-                border: `1px solid ${provider === p ? "var(--color-genshin-gold)" : "rgba(139,109,46,0.2)"}`,
-                color: provider === p ? "var(--color-genshin-gold)" : "var(--color-genshin-bronze)",
-                cursor: "pointer",
-                fontFamily: "var(--font-serif-heading)",
-              }}
-            >
-              {p === "openai" ? "OpenAI" : "Anthropic"}
-            </button>
-          ))}
-        </div>
-
-        <input
-          className="genshin-input"
-          style={{ fontSize: "0.75rem" }}
-          type="password"
-          placeholder="Paste your API key..."
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSetup()}
-        />
-
-        <div style={{ display: "flex", gap: 4 }}>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "0.375rem 0.5rem",
-              borderRadius: 2,
-              fontSize: "0.7rem",
-              background: "rgba(26, 20, 16, 0.6)",
-              border: "1px solid rgba(139,109,46,0.2)",
-              color: "var(--color-genshin-gold-light)",
-              fontFamily: "var(--font-serif-heading)",
-            }}
-          >
-            {provider === "openai" ? (
-              <>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              </>
-            ) : (
-              <>
-                <option value="claude-sonnet-4-20250514">Claude Sonnet</option>
-                <option value="claude-3-5-haiku-20241022">Claude Haiku</option>
-              </>
-            )}
-          </select>
-        </div>
-
-        <button onClick={handleSetup} className="genshin-btn" style={{ fontSize: "0.75rem" }}>
-          Save & Start Chatting
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -147,19 +63,16 @@ export function AiAssistantPanel() {
         <span style={{ fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.05em", color: "var(--color-genshin-gold)", fontFamily: "var(--font-serif-heading)" }}>
           JARVIS AI
         </span>
-        <button
-          onClick={() => setShowSetup(true)}
-          style={{ fontSize: "0.6rem", color: "var(--color-genshin-bronze)", background: "transparent", border: "none", cursor: "pointer", fontFamily: "var(--font-serif-heading)" }}
-        >
-          Settings
-        </button>
+        <span style={{ fontSize: "0.6rem", color: "var(--color-genshin-bronze)", opacity: 0.6 }}>
+          Powered by OpenAI
+        </span>
       </div>
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {messages.length === 0 && (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
             <div style={{ fontSize: "0.75rem", color: "var(--color-genshin-bronze)", opacity: 0.6, lineHeight: 1.6 }}>
-              Ask me anything about your studies.
+              Ask me anything about your studies, focus techniques, or just chat.
             </div>
           </div>
         )}
