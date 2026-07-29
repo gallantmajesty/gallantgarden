@@ -946,6 +946,10 @@
   "webCustomization": {
     "theme": "Theme",
     "background": "Background",
+    "appearance": "Appearance",
+    "bgBrightness": "Background brightness",
+    "bgContrast": "Background contrast",
+    "bgSaturation": "Background saturation",
     "accent": "Accent",
     "fontColour": "Font colour",
     "fontColourDescription": "Override the text colour so it stays readable on any background.",

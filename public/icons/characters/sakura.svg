@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- body -->
+  <ellipse cx="50" cy="72" rx="18" ry="20" fill="#f4a0c8"/>
+  <!-- neck -->
+  <rect x="44" y="52" width="12" height="8" rx="3" fill="#f3d3bd"/>
+  <!-- head -->
+  <circle cx="50" cy="36" r="20" fill="#f3d3bd"/>
+  <!-- twintail left -->
+  <ellipse cx="22" cy="48" rx="8" ry="18" fill="#6e4bb0" transform="rotate(-15 22 48)"/>
+  <ellipse cx="22" cy="48" rx="5" ry="14" fill="#8b6cc7" transform="rotate(-15 22 48)"/>
+  <!-- twintail right -->
+  <ellipse cx="78" cy="48" rx="8" ry="18" fill="#6e4bb0" transform="rotate(15 78 48)"/>
+  <ellipse cx="78" cy="48" rx="5" ry="14" fill="#8b6cc7" transform="rotate(15 78 48)"/>
+  <!-- hair ties -->
+  <circle cx="22" cy="30" r="4" fill="#f4a0c8"/>
+  <circle cx="78" cy="30" r="4" fill="#f4a0c8"/>
+  <!-- bangs -->
+  <path d="M30,28 Q50,18 70,28 Q50,22 30,28Z" fill="#6e4bb0"/>
+  <!-- eyes -->
+  <ellipse cx="41" cy="37" rx="5" ry="6" fill="white"/>
+  <ellipse cx="59" cy="37" rx="5" ry="6" fill="white"/>
+  <circle cx="42" cy="38" r="3" fill="#6e4bb0"/>
+  <circle cx="58" cy="38" r="3" fill="#6e4bb0"/>
+  <!-- eye catchlights -->
+  <circle cx="43" cy="36.5" r="1.2" fill="white"/>
+  <circle cx="59" cy="36.5" r="1.2" fill="white"/>
+  <circle cx="41" cy="39" r="0.6" fill="white"/>
+  <circle cx="57" cy="39" r="0.6" fill="white"/>
+  <!-- eyebrows -->
+  <path d="M36,32 Q41,30 46,32" stroke="#5c3a8a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M64,32 Q59,30 54,32" stroke="#5c3a8a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- cute catmouth smile -->
+  <circle cx="44" cy="46" r="1.2" fill="#1a1a1a"/>
+  <circle cx="56" cy="46" r="1.2" fill="#1a1a1a"/>
+  <ellipse cx="50" cy="47" rx="2" ry="1.5" fill="#1a1a1a"/>
+  <!-- blush -->
+  <ellipse cx="36" cy="44" rx="4" ry="2.5" fill="#f4a0c8" opacity="0.4"/>
+  <ellipse cx="64" cy="44" rx="4" ry="2.5" fill="#f4a0c8" opacity="0.4"/>
+  <!-- collar -->
+  <path d="M40,56 L50,62 L60,56" stroke="white" stroke-width="1.5" fill="none"/>
+  <!-- arms -->
+  <path d="M34,62 Q24,70 26,82" stroke="#f3d3bd" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M66,62 Q76,70 74,82" stroke="#f3d3bd" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- skirt -->
+  <path d="M40,82 L32,96 L68,96 L60,82" fill="#2d1f3d"/>
+</svg>

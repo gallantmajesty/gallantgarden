@@ -28,7 +28,7 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <WebCustomizationContent />
+          <WebCustomizationContent showAppearance />
         </div>
       </nav>
     </div>

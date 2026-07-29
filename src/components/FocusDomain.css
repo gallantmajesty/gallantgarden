@@ -1,0 +1,98 @@
+:root {
+  --color-genshin-parchment: #FDF6E8;
+  --color-genshin-dark: #1A1410;
+  --color-genshin-gold: #C9A84C;
+  --color-genshin-gold-light: #E8D4A0;
+  --color-genshin-bronze: #8B6D2E;
+  --color-genshin-bronze-dark: #5C3D1E;
+  --color-genshin-ink: #2D1F12;
+  --color-genshin-ink-light: #4A3828;
+  --color-genshin-cream: #FFF8E7;
+  --color-genshin-divider: rgba(201, 168, 76, 0.3);
+  --color-genshin-overlay: rgba(26, 20, 16, 0.85);
+  --font-serif-heading: Georgia, "Times New Roman", serif;
+  --font-mono-display: "JetBrains Mono", "Fira Code", monospace;
+}
+
+.genshin-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.genshin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.genshin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-genshin-bronze);
+  border-radius: 2px;
+}
+
+.genshin-divider {
+  height: 1px;
+  background: var(--color-genshin-divider);
+}
+
+.genshin-card {
+  background: var(--color-genshin-parchment);
+  border: 1px solid var(--color-genshin-divider);
+  border-radius: 2px;
+  position: relative;
+}
+
+.genshin-card::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.genshin-btn {
+  background: linear-gradient(180deg, var(--color-genshin-gold) 0%, var(--color-genshin-bronze) 100%);
+  color: var(--color-genshin-dark);
+  font-family: var(--font-serif-heading);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--color-genshin-gold-light);
+  border-radius: 2px;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.1s;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.genshin-btn:hover {
+  filter: brightness(1.15);
+}
+
+.genshin-btn:active {
+  transform: scale(0.97);
+}
+
+.genshin-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--color-genshin-bronze);
+  color: var(--color-genshin-gold);
+}
+
+.genshin-input {
+  background: rgba(26, 20, 16, 0.6);
+  border: 1px solid var(--color-genshin-bronze);
+  color: var(--color-genshin-gold-light);
+  font-family: var(--font-mono-display);
+  padding: 0.5rem 0.75rem;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.genshin-input:focus {
+  border-color: var(--color-genshin-gold);
+}
+
+.genshin-input::placeholder {
+  color: var(--color-genshin-bronze);
+}

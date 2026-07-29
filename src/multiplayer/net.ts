@@ -22,6 +22,7 @@ const STALE_MS = 12000
 
 const targets = new Map<string, PlayerState>()
 export function getTarget(id: string): PlayerState | undefined {
+  if (id === selfId) return { ...localState, subject: localSubject }
   return targets.get(id)
 }
 
@@ -129,7 +130,8 @@ export const useRealmNet = create<NetStore>(() => ({
 let currentChannel: string | null = null
 let selfId: string | null = null
 let selfIdentity: PlayerIdentity | null = null
-let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0 }
+let localSubject = ''
+let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' }
 let supabaseChannel: RealtimeChannel | null = null
 let moveTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -146,7 +148,9 @@ function helloPayload() {
     country: selfIdentity?.country ?? null,
     rank: (selfIdentity?.rank ?? '').slice(0, 20),
     avatar: selfIdentity?.avatar,
-    state: localState,
+    banner: selfIdentity?.banner ?? '',
+    logo: selfIdentity?.logo ?? '',
+    state: { ...localState, subject: localSubject },
     device: getDeviceLabelForIdentity(),
   }
 }
@@ -172,9 +176,27 @@ function handleHello(payload: { payload: Record<string, unknown> }) {
     country: (body.country as string | null) ?? null,
     rank: ((body.rank as string) || '').slice(0, 20),
     avatar: normalizeAvatar(body.avatar as Partial<AvatarConfig>),
+    banner: (body.banner as string) || undefined,
+    logo: (body.logo as string) || undefined,
     lastSeen: now,
   })
-  if (body.state) targets.set(id, body.state as PlayerState)
+  if (body.state) {
+    const st = body.state as Record<string, unknown>
+    targets.set(id, {
+      x: Number(st.x) || 0,
+      y: Number(st.y) || 0,
+      z: Number(st.z) || 0,
+      yaw: Number(st.yaw) || 0,
+      speed: Number(st.speed) || 0,
+      grounded: st.grounded !== false,
+      seated: st.seated === true,
+      seatId: typeof st.seatId === 'number' ? st.seatId : undefined,
+      timerStartedAt: Number(st.timerStartedAt) || 0,
+      timerDurationMs: Number(st.timerDurationMs) || 0,
+      subject: (st.subject as string) || '',
+      cinematic: st.cinematic === true,
+    })
+  }
   if (!known) void publish('hello', helloPayload())
 }
 
@@ -194,6 +216,7 @@ function handleMove(payload: { payload: Record<string, unknown> }) {
     seatId: typeof body.seatId === 'number' ? body.seatId : undefined,
     timerStartedAt: Number(body.timerStartedAt) || 0,
     timerDurationMs: Number(body.timerDurationMs) || 0,
+    subject: (body.subject as string) || '',
     cinematic: body.cinematic === true,
   })
   touch(id, Date.now())
@@ -279,6 +302,7 @@ function moved(a: PlayerState, b: PlayerState): boolean {
     a.seatId !== b.seatId ||
     a.timerStartedAt !== b.timerStartedAt ||
     a.timerDurationMs !== b.timerDurationMs ||
+    a.subject !== b.subject ||
     a.cinematic !== b.cinematic
   )
 }
@@ -304,6 +328,7 @@ export interface RemotePlayer {
   realmId: string | null
   timerStartedAt: number
   timerDurationMs: number
+  subject: string
 }
 
 export type PublicPlayer = RemotePlayer
@@ -322,6 +347,7 @@ export function getRemotePlayers(): RemotePlayer[] {
       realmId: channel,
       timerStartedAt: st?.timerStartedAt ?? 0,
       timerDurationMs: st?.timerDurationMs ?? 0,
+      subject: st?.subject ?? '',
     })
   }
   return result
@@ -329,10 +355,11 @@ export function getRemotePlayers(): RemotePlayer[] {
 
 function tickMove() {
   const now = Date.now()
-  if (lastPub && !moved(lastPub, localState) && now - lastPubTime < 1000) return
-  lastPub = { ...localState }
+  const stateWithSubject = { ...localState, subject: localSubject }
+  if (lastPub && !moved(lastPub, stateWithSubject) && now - lastPubTime < 1000) return
+  lastPub = { ...stateWithSubject }
   lastPubTime = now
-  void publish('move', { id: selfId, ...localState })
+  void publish('move', { id: selfId, ...stateWithSubject })
 }
 
 
@@ -376,6 +403,11 @@ export function setLocalSeatId(seatId: number | undefined): void {
 /** Set the local player's timer state (called when starting/stopping a study session). */
 export function setLocalTimer(startedAt: number, durationMs: number): void {
   localState = { ...localState, timerStartedAt: startedAt, timerDurationMs: durationMs }
+}
+
+/** Set the local player's current study subject (broadcast to other players). */
+export function setLocalSubject(subject: string): void {
+  localSubject = subject
 }
 
 export async function joinRealm(channel: string, identity: PlayerIdentity): Promise<void> {

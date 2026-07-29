@@ -634,6 +634,8 @@ export function PlayerController() {
   const playerId = useProfile((s) => s.playerId)
   const rank = useProfile((s) => s.data.rank)
   const country = useProfile((s) => s.data.country)
+  const banner = useProfile((s) => s.pub.banner)
+  const logo = useProfile((s) => s.pub.logo)
   const localName = displayName || (playerId != null ? `#${playerId}` : 'Explorer')
 
   return (
@@ -645,7 +647,7 @@ export function PlayerController() {
           clean. */}
       <group visible={cinematic || cameraModeR !== 'first'}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
-        <PlayerNameTag3D name={localName} rank={rank} country={country} playerId={playerId} self headY={2.55} hidden={cinematic} />
+        <PlayerNameTag3D name={localName} rank={rank} country={country} playerId={playerId} self headY={2.55} hidden={cinematic} banner={banner} logo={logo} />
       </group>
     </group>
   )

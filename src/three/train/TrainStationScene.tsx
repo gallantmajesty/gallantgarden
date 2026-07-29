@@ -5,7 +5,6 @@ import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Texture } from 'three'
 
 import { useScenePreset } from '../../store/quality'
-import { settleRealmQuality } from '../realmQuality'
 import { useTrain } from '../../store/train'
 import { useAuth } from '../../store/auth'
 import { StationWorld } from './StationWorld'
@@ -27,7 +26,6 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
 
   const handleReady = () => {
     onReady?.()
-    settleRealmQuality()
   }
 
   const phase = useTrain((s) => s.phase)

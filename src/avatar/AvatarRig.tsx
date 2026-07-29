@@ -168,14 +168,24 @@ export function AvatarRig({
   const elInner = sharedMaterial('#c4a0a0', 0.55)
   const elTusk = sharedMaterial('#f0ece0', 0.4)
 
-  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel || isSunflower || isGrim || isElephant
+  // Monkey: a playful brown monkey — warm brown fur, lighter tan face/belly,
+  // big round ears, dark hands/feet, a long curly tail and a cheeky grin.
+  const isMonkey = config.characterId === 'monkey'
+  const monkeyFur = sharedMaterial('#8B5E3C', 0.62)
+  const monkeyFace = sharedMaterial('#F5D6B4', 0.68)
+  const monkeyFaceMask = new MeshStandardMaterial({ color: '#F5D6B4', roughness: 0.68, depthWrite: false, depthTest: true })
+  const monkeyDark = sharedMaterial('#5C3A21', 0.6)
+  const monkeyBelly = sharedMaterial('#F0D5B8', 0.7)
+  const monkeyEarInner = sharedMaterial('#E8C4A0', 0.65)
+
+  const isAnimal = isDino || isRabbit || isRobot || isAlien || isPig || isAngel || isSunflower || isGrim || isElephant || isMonkey
   const bunFur = sharedMaterial('#f8f5f0', 0.75)
   const bunPink = sharedMaterial('#f2a3c0', 0.6)
   const bunInner = sharedMaterial('#f6c2d6', 0.6)
   const bunGreen = sharedMaterial('#7cc47b', 0.6)
   const bunNose = sharedMaterial('#e488a6', 0.5)
 
-  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elMain : skinMaterial(config.skinColor ?? skinHex(config.skin))
+  const skin = isDino ? dinoMain : isRabbit ? bunFur : isRobot ? robotMetal : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelSkin : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : skinMaterial(config.skinColor ?? skinHex(config.skin))
   const hairM = hairMaterial(config.hairColorHex ?? hairHex(config.hairColor))
   const eyeCol = eyeHex(config.eyes)
 
@@ -189,7 +199,7 @@ export function AvatarRig({
   hairM.roughness = 0.5
   // Subtle skin micro-relief so the face isn't plastic-smooth (human only).
   const skinTex = skinReliefTex()
-  if (!isDino && !isRabbit && !isRobot && !isAlien && !isPig && !isAngel && !isSunflower && !isGrim && !isElephant) {
+  if (!isDino && !isRabbit && !isRobot && !isAlien && !isPig && !isAngel && !isSunflower && !isGrim && !isElephant && !isMonkey) {
     skin.bumpMap = skinTex
     skin.bumpScale = 0.025
   }
@@ -202,9 +212,9 @@ export function AvatarRig({
     elDark.roughness = 0.65
     elBelly.roughness = 0.75
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
-  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : sharedMaterial(shoeHex(config.shoes), 0.5)
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : isMonkey ? monkeyDark : sharedMaterial(shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
 
   const bind = (name: BoneName) => (g: Group | null) => {
@@ -388,6 +398,18 @@ export function AvatarRig({
                   <GrimHead P={P} bone={grimBone} boneDark={grimBoneDark} cloak={grimCloak} glow={grimGlow} gold={grimGold} />
                 ) : isElephant ? (
                   <ElephantHead P={P} main={elMain} dark={elDark} belly={elBelly} inner={elInner} tusk={elTusk} />
+                ) : isMonkey ? (
+                  <>
+                    <Head P={P} skin={monkeyFur} hairM={monkeyFur} bodyType={'male'} lidsRef={lidsRef} characterId={'james'} eyeHexVal={'#6b4423'} />
+                    <mesh geometry={sphereGeo(1)} material={monkeyFaceMask} scale={[P.headR * 0.8, P.headR * 0.8, P.headR * 0.65]} position={[0, -P.headR * 0.08, P.headR * 0.52]} />
+                    {[-1, 1].map((sx) => (
+                      <group key={`ear${sx}`} position={[sx * P.headR * 1.0, P.headR * 0.35, -P.headR * 0.05]}>
+                        <mesh geometry={sphereGeo(1)} material={monkeyFur} scale={[P.headR * 0.4, P.headR * 0.5, P.headR * 0.1]} />
+                        <mesh geometry={sphereGeo(1)} material={monkeyEarInner} scale={[P.headR * 0.26, P.headR * 0.34, P.headR * 0.06]} position={[sx * -P.headR * 0.02, -P.headR * 0.02, P.headR * 0.05]} />
+                      </group>
+                    ))}
+                    <mesh geometry={sphereGeo(1)} material={monkeyDark} scale={[P.headR * 0.14, P.headR * 0.14, P.headR * 0.14]} position={[0, P.headR * 1.85, P.headR * 0.05]} />
+                  </>
                 ) : isHacker ? (
                   <HackerHead P={P} skin={skin} hairM={hairM} glow={hackerGlow} config={config} />
                 ) : (
@@ -404,8 +426,8 @@ export function AvatarRig({
           </group>
         </group>
 
-        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} />
-        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} />
+        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} isMonkey={isMonkey} monkeyDark={monkeyDark} />
+        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} isMonkey={isMonkey} monkeyDark={monkeyDark} />
 
         {/* Dino tail — a thick tapering tail rooted at the lower back (overlapping
             the body so there's no gap), curving out and down, ridged with golden
@@ -468,6 +490,29 @@ export function AvatarRig({
                   <mesh key={i} geometry={sphereGeo(1)} material={elDark} scale={[P.hipBoneW * 0.055, P.hipBoneW * 0.07, P.hipBoneW * 0.045]} position={[dx * P.hipBoneW, dy * P.hipBoneW, P.hipBoneW * 0.02]} />
                 ))}
               </group>
+            </group>
+          </group>
+        )}
+
+        {/* Monkey costume — tan belly patch, darker hands/feet, and a long
+            curly tail on the lower back */}
+        {isMonkey && (
+          <group>
+            {/* tan belly patch */}
+            <mesh geometry={sphereGeo(1)} material={monkeyBelly} scale={[P.chestW * 0.55, P.chestLen * 0.38, P.torsoD * 0.22]} position={[0, P.spineLen + P.chestLen * 0.15, P.torsoD * 0.86]} />
+            {/* long curling tail — a graceful spiral curve starting from lower back */}
+            <group position={[0, -0.02, -P.torsoD * 0.85]} rotation={[0.8, 0, 0]}>
+              {/* tail base — thick root */}
+              <mesh geometry={taperGeo(P.hipBoneW * 0.1, P.hipBoneW * 0.07, P.upperLeg * 0.4)} material={monkeyFur} position={[0, -P.upperLeg * 0.2, 0]} castShadow />
+              {/* first curl — torus ring */}
+              <mesh geometry={torusGeo(P.hipBoneW * 0.22, P.hipBoneW * 0.045, 8, 20)} material={monkeyFur}
+                position={[0, -P.upperLeg * 0.45, P.hipBoneW * 0.15]} rotation={[Math.PI / 2, 0, 0]} />
+              {/* second curl — slightly smaller */}
+              <mesh geometry={torusGeo(P.hipBoneW * 0.16, P.hipBoneW * 0.035, 8, 18)} material={monkeyDark}
+                position={[0, -P.upperLeg * 0.55, P.hipBoneW * 0.3]} rotation={[Math.PI / 2, 0, 0.3]} />
+              {/* tail tip — little curl */}
+              <mesh geometry={torusGeo(P.hipBoneW * 0.1, P.hipBoneW * 0.028, 8, 14)} material={monkeyBelly}
+                position={[P.hipBoneW * 0.04, -P.upperLeg * 0.58, P.hipBoneW * 0.4]} rotation={[Math.PI / 2.5, 0.3, 0.4]} />
             </group>
           </group>
         )}
@@ -678,8 +723,8 @@ export function AvatarRig({
 
         {/* Arms rendered LAST inside hips — always on top of clothing. The
             sarafan wears a white blouse, so its sleeves render white. */}
-        <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} />
-        <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} />
+        <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} isMonkey={isMonkey} monkeyDark={monkeyDark} />
+        <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={glowBlue} isHacker={isHacker} isMonkey={isMonkey} monkeyDark={monkeyDark} />
 
         {/* Grim Reaper scythe — a long dark handle with a curved blade and
             a skull pommel, held in the right hand */}
@@ -854,6 +899,15 @@ function Head({
           <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.04, r * 0.024, r * 0.01]} position={[r * 0.11, -r * 0.45, r * 0.83]} />
           <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.03, r * 0.02, r * 0.01]} position={[-r * 0.16, -r * 0.42, r * 0.83]} />
           <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.03, r * 0.02, r * 0.01]} position={[r * 0.16, -r * 0.42, r * 0.83]} />
+        </>
+      ) : characterId === 'sakura' ? (
+        <>
+          {/* Sakura: cute anime cat-smile — small "w" shaped mouth with rosy cheeks */}
+          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.02, r * 0.02, r * 0.01]} position={[-r * 0.1, -r * 0.5, r * 0.83]} />
+          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.02, r * 0.02, r * 0.01]} position={[r * 0.1, -r * 0.5, r * 0.83]} />
+          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.05, r * 0.022, r * 0.01]} position={[0, -r * 0.48, r * 0.83]} />
+          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.028, r * 0.016, r * 0.01]} position={[-r * 0.06, -r * 0.47, r * 0.83]} />
+          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.028, r * 0.016, r * 0.01]} position={[r * 0.06, -r * 0.47, r * 0.83]} />
         </>
       ) : (
         <>
@@ -1578,7 +1632,82 @@ function ElephantHead({ P, main, dark, belly, inner, tusk }: { P: Proportions; m
     </group>
   )
 }
- 
+
+/* ================================================ MONKEY HEAD ================================================ */
+
+/** Cute monkey head: brown furry head, big tan face area like a mandrill,
+ *  James-style anime eyes, James smile, small brown nose, and big round ears
+ *  on the sides. Modeled after PigHead — features rendered at z values in front
+ *  of the head sphere so depth sorting works correctly. */
+function MonkeyHead({ P, fur, face, dark, inner, belly }: { P: Proportions; fur: Mat; face: Mat; dark: Mat; inner: Mat; belly: Mat }) {
+  const r = P.headR
+  const cy = r * 0.92
+  const fz = r * 0.88
+  const blackDot = sharedMaterial('#1a1a1a', 0.5)
+  const white = sharedMaterial('#ffffff', 0.3)
+  const blush = sharedMaterial('#f4a090', 0.55)
+
+  return (
+    <group position={[0, cy, 0]}>
+      {/* round furry head — slightly wider than tall for a cute monkey face */}
+      <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 1.1, r * 1.05, r * 1.02]} castShadow />
+
+      {/* lighter tan face mask — heart/oval shaped, centred on the front */}
+      <mesh geometry={sphereGeo(1)} material={face} scale={[r * 0.7, r * 0.7, r * 0.62]} position={[0, -r * 0.06, r * 0.5]} />
+
+      {/* big round ears on the sides — one of the most recognizable monkey features */}
+      {[-1, 1].map((sx) => (
+        <group key={`ear${sx}`} position={[sx * r * 1.0, r * 0.3, -r * 0.05]}>
+          {/* outer ear — big round disc */}
+          <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.4, r * 0.5, r * 0.1]} />
+          {/* inner ear — lighter pinkish/tan */}
+          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.26, r * 0.34, r * 0.06]} position={[sx * -r * 0.02, -r * 0.02, r * 0.05]} />
+        </group>
+      ))}
+
+      {/* big friendly eyes — wide-set, expressive with catchlights */}
+      {[-1, 1].map((sx) => (
+        <group key={`eye${sx}`} position={[sx * r * 0.3, r * 0.08, fz * 0.85]}>
+          {/* white sclera */}
+          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.22, r * 0.25, r * 0.12]} />
+          {/* dark iris */}
+          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.12, r * 0.14, r * 0.09]} position={[0, 0, r * 0.06]} />
+          {/* catchlights — two per eye for sparkle */}
+          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.05, r * 0.05, r * 0.02]} position={[sx * -r * 0.03, r * 0.06, r * 0.12]} />
+          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.03, r * 0.03, r * 0.02]} position={[sx * r * 0.02, -r * 0.04, r * 0.12]} />
+        </group>
+      ))}
+
+      {/* brow ridge — subtle fur ledge above the eyes */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.7, r * 0.08, r * 0.3]} position={[0, r * 0.22, fz * 0.7]} />
+
+      {/* small dark nose — slightly protruding */}
+      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.12, r * 0.09, r * 0.1]} position={[0, -r * 0.24, fz * 0.88]} />
+
+      {/* nostrils — two tiny dots */}
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#0a0a0a', 0.2)} scale={[r * 0.025, r * 0.025, r * 0.01]} position={[-r * 0.04, -r * 0.24, fz * 0.96]} />
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#0a0a0a', 0.2)} scale={[r * 0.025, r * 0.025, r * 0.01]} position={[r * 0.04, -r * 0.24, fz * 0.96]} />
+
+      {/* wide cheeky grin — a curved mouth line */}
+      <mesh geometry={torusGeo(r * 0.3, r * 0.03, 8, 20)} material={blackDot}
+        position={[0, -r * 0.46, fz * 0.82]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.55, 1]} />
+
+      {/* lower lip for a fuller smile */}
+      <mesh geometry={sphereGeo(1)} material={belly} scale={[r * 0.18, r * 0.05, r * 0.08]} position={[0, -r * 0.52, fz * 0.86]} />
+
+      {/* rosy cheeks */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.13, r * 0.09, r * 0.05]} position={[sx * r * 0.52, -r * 0.1, fz * 0.78]} />
+      ))}
+
+      {/* little tuft of fur on top of the head */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.14, r * 0.14, r * 0.14]} position={[0, r * 0.98, r * 0.05]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.1, r * 0.1]} position={[-r * 0.08, r * 1.06, r * 0.08]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.1, r * 0.1]} position={[r * 0.08, r * 1.06, r * 0.08]} />
+    </group>
+  )
+}
+
 /* ================================================ HACKER HEAD ================================================ */
 /** Hacker head: a normal human face (skin + black eyes, like James) with the
  *  hoodie hood DOWN around the neck/shoulders, and a pair of chunky neon-green
@@ -1883,15 +2012,15 @@ function WizardHat({ P }: { P: Proportions }) {
 
 /* ================================================ ARMS ================================================ */
 
-function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isRobot, glowM, isHacker }: {
+function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isRobot, glowM, isHacker, isMonkey, monkeyDark }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; topM: Mat; isSleeved: boolean; isDino?: boolean; isAngel?: boolean; clawM?: Mat; isRobot?: boolean; glowM?: Mat; isHacker?: boolean
+  P: Proportions; skin: Mat; topM: Mat; isSleeved: boolean; isDino?: boolean; isAngel?: boolean; clawM?: Mat; isRobot?: boolean; glowM?: Mat; isHacker?: boolean; isMonkey?: boolean; monkeyDark?: Mat
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'armUpperL' : 'armUpperR'
   const lower: BoneName = side === 'L' ? 'armLowerL' : 'armLowerR'
   const armM = isSleeved ? topM : skin
-  const gloveM = isHacker ? sharedMaterial('#0e0f13', 0.7, 0.05) : skin
+  const gloveM = isHacker ? sharedMaterial('#0e0f13', 0.7, 0.05) : isMonkey && monkeyDark ? monkeyDark : skin
 
   return (
     <group ref={bind(upper)} position={[sign * P.shoulderW, 0.04 + P.spineLen + P.chestLen * 0.65, 0]}>
@@ -1964,9 +2093,9 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
 
 /* ================================================ LEGS ================================================ */
 
-function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, isAngel, sashM, glowM, isHacker, hackerGlow, hackerAccent, isSunflower, sfBrown, sfGreen, isGrim, grimCloak, grimRedBoot, grimGold, grimGoldDark, isElephant }: {
+function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, isAngel, sashM, glowM, isHacker, hackerGlow, hackerAccent, isSunflower, sfBrown, sfGreen, isGrim, grimCloak, grimRedBoot, grimGold, grimGoldDark, isElephant, isMonkey, monkeyDark }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; isAngel?: boolean; sashM?: Mat; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat; isSunflower?: boolean; sfBrown?: Mat; sfGreen?: Mat; isGrim?: boolean; grimCloak?: Mat; grimRedBoot?: Mat; grimGold?: Mat; grimGoldDark?: Mat; isElephant?: boolean
+  P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; isAngel?: boolean; sashM?: Mat; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat; isSunflower?: boolean; sfBrown?: Mat; sfGreen?: Mat; isGrim?: boolean; grimCloak?: Mat; grimRedBoot?: Mat; grimGold?: Mat; grimGoldDark?: Mat; isElephant?: boolean; isMonkey?: boolean; monkeyDark?: Mat
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'legUpperL' : 'legUpperR'
@@ -2053,6 +2182,20 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               ))}
               <mesh geometry={torusGeo(P.ankleR * 1.1, P.ankleR * 0.08, 8, 18)} material={sfGreen}
                 position={[0, P.ankleR * 0.15, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            </group>
+          )}
+          {/* Monkey: darker brown feet like a real monkey's dark hands/feet */}
+          {isMonkey && (
+            <group>
+              <mesh geometry={sphereGeo(1)} material={monkeyDark}
+                scale={[P.ankleR * 1.15, P.ankleR * 0.9, P.footLen * 0.7]}
+                position={[0, -P.ankleR * 0.4, P.footLen * 0.25]} castShadow />
+              {/* toe bumps */}
+              {[-P.ankleR * 0.2, -P.ankleR * 0.07, P.ankleR * 0.07, P.ankleR * 0.2].map((tx, i) => (
+                <mesh key={`mt${i}`} geometry={sphereGeo(1)} material={monkeyDark}
+                  scale={[P.ankleR * 0.12, P.ankleR * 0.1, P.footLen * 0.12]}
+                  position={[tx, -P.ankleR * 0.55, P.footLen * 0.55]} />
+              ))}
             </group>
           )}
           {/* Grim Reaper: dark boots with gold buckles + red accents */}

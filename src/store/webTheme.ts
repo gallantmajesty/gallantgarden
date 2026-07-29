@@ -16,10 +16,16 @@ interface WebThemeState {
   bgId: string
   accent: string | null // null = use the theme's default accent
   fontColor: string | null // null = use the theme's default text colour
+  bgBrightness: number // 0.2 to 2.0 (default 1)
+  bgContrast: number // 0.2 to 2.0 (default 1)
+  bgSaturation: number // 0.0 to 2.0 (default 1)
   setTheme: (id: string) => void
   setBackground: (bgId: string) => void
   setAccent: (hex: string | null) => void
   setFontColor: (hex: string | null) => void
+  setBgBrightness: (val: number) => void
+  setBgContrast: (val: number) => void
+  setBgSaturation: (val: number) => void
 }
 
 const KEY = 'sg.webtheme.v1'
@@ -29,6 +35,9 @@ interface Persisted {
   bgId: string
   accent: string | null
   fontColor: string | null
+  bgBrightness: number
+  bgContrast: number
+  bgSaturation: number
 }
 
 function load(): Persisted {
@@ -37,6 +46,9 @@ function load(): Persisted {
     bgId: DEFAULT_WEB_BG_ID,
     accent: null,
     fontColor: null,
+    bgBrightness: 1,
+    bgContrast: 1,
+    bgSaturation: 1,
   }
   try {
     const raw = localStorage.getItem(KEY)
@@ -50,6 +62,9 @@ function load(): Persisted {
       bgId: bgOk ? (p.bgId as string) : theme.backgrounds[0].id,
       accent: p.accent ?? null,
       fontColor: p.fontColor ?? null,
+      bgBrightness: typeof p.bgBrightness === 'number' && Number.isFinite(p.bgBrightness) ? p.bgBrightness : 1,
+      bgContrast: typeof p.bgContrast === 'number' && Number.isFinite(p.bgContrast) ? p.bgContrast : 1,
+      bgSaturation: typeof p.bgSaturation === 'number' && Number.isFinite(p.bgSaturation) ? p.bgSaturation : 1,
     }
   } catch {
     return fallback
@@ -67,8 +82,8 @@ function save(s: Persisted) {
 export const useWebTheme = create<WebThemeState>((set, get) => {
   const init = load()
   const persist = () => {
-    const { themeId, bgId, accent, fontColor } = get()
-    save({ themeId, bgId, accent, fontColor })
+    const { themeId, bgId, accent, fontColor, bgBrightness, bgContrast, bgSaturation } = get()
+    save({ themeId, bgId, accent, fontColor, bgBrightness, bgContrast, bgSaturation })
   }
   return {
     ...init,
@@ -90,6 +105,18 @@ export const useWebTheme = create<WebThemeState>((set, get) => {
     },
     setFontColor: (hex) => {
       set({ fontColor: hex })
+      persist()
+    },
+    setBgBrightness: (val) => {
+      set({ bgBrightness: val })
+      persist()
+    },
+    setBgContrast: (val) => {
+      set({ bgContrast: val })
+      persist()
+    },
+    setBgSaturation: (val) => {
+      set({ bgSaturation: val })
       persist()
     },
   }

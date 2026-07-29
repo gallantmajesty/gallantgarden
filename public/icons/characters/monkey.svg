@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- body -->
+  <ellipse cx="50" cy="72" rx="22" ry="24" fill="#8B5E3C"/>
+  <!-- head -->
+  <circle cx="50" cy="36" r="22" fill="#8B5E3C"/>
+  <!-- face mask -->
+  <ellipse cx="50" cy="40" rx="14" ry="13" fill="#F5D6B4"/>
+  <!-- ears -->
+  <circle cx="26" cy="28" r="10" fill="#8B5E3C"/>
+  <circle cx="26" cy="28" r="6" fill="#E8C4A0"/>
+  <circle cx="74" cy="28" r="10" fill="#8B5E3C"/>
+  <circle cx="74" cy="28" r="6" fill="#E8C4A0"/>
+  <!-- eyes -->
+  <ellipse cx="42" cy="37" rx="5" ry="6" fill="white"/>
+  <ellipse cx="58" cy="37" rx="5" ry="6" fill="white"/>
+  <circle cx="43" cy="38" r="2.5" fill="#1a1a1a"/>
+  <circle cx="57" cy="38" r="2.5" fill="#1a1a1a"/>
+  <!-- eye catchlights -->
+  <circle cx="44" cy="36.5" r="1" fill="white"/>
+  <circle cx="58" cy="36.5" r="1" fill="white"/>
+  <!-- nose -->
+  <ellipse cx="50" cy="46" rx="3" ry="2" fill="#1a1a1a"/>
+  <!-- smile -->
+  <path d="M42,51 Q50,58 58,51" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="38" cy="46" r="3" fill="#f4a090" opacity="0.6"/>
+  <circle cx="62" cy="46" r="3" fill="#f4a090" opacity="0.6"/>
+  <!-- belly -->
+  <ellipse cx="50" cy="72" rx="12" ry="10" fill="#F0D5B8"/>
+  <!-- arms -->
+  <path d="M30,58 Q20,65 22,80" stroke="#8B5E3C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M70,58 Q80,65 78,80" stroke="#8B5E3C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- tail -->
+  <path d="M48,90 Q35,92 30,88 Q25,83 32,80 Q38,78 40,82" stroke="#5C3A21" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

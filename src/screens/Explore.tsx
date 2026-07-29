@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
+import { UkCafeScene } from '../three/ukcafe/UkCafeScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
 import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
@@ -20,7 +21,7 @@ import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
 import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro'
 import type { TimerType } from '../store/pomodoro'
-import { getRemoteOccupied, setLocalTimer } from '../multiplayer/net'
+import { getRemoteOccupied, setLocalTimer, setLocalSubject, getTarget, useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId, getSelfId } from '../multiplayer/net'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
@@ -28,30 +29,29 @@ import { useRealm, type ActiveRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
-import { trainStationEnabled } from '../lib/realm'
-import { enterRealmLowFirst } from '../three/realmQuality'
-import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
+import { trainStationEnabled, ukCafeEnabled } from '../lib/realm'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
-import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
+import { type PublicPlayer } from '../components/PublicPlayerTag'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
 import { getRank } from '../lib/ranks'
-import { AddFriendButton } from '../components/AddFriendButton'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
+import { UserDetailModal } from '../components/library/UserDetailModal'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
-import { FullscreenPomodoro } from '../components/FullscreenPomodoro'
+import { FocusDomain } from '../components/FocusDomain'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
+import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
 import { useSeatFlow } from '../store/seatFlow'
 import './Explore.css'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
 export interface ExploreProps {
-  defaultWorld?: 'library' | 'train-station'
+  defaultWorld?: 'library' | 'train-station' | 'uk-cafe'
 }
 
 export function Explore({ defaultWorld }: ExploreProps) {
@@ -60,7 +60,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   
   // Read world from URL query parameter, or fall back to defaultWorld prop
   const searchParams = new URLSearchParams(location.search)
-  const worldFromUrl = (searchParams.get('world') as 'library' | 'train-station') || defaultWorld
+  const worldFromUrl = (searchParams.get('world') as 'library' | 'train-station' | 'uk-cafe') || defaultWorld
 
   const realm = useRealm((s) => s.active)
   const [ready, setReady] = useState(false)
@@ -78,6 +78,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
   // Determine which world to render: use worldFromUrl if available, otherwise use defaultWorld prop, otherwise use realm.world
   const isTrain = worldFromUrl === 'train-station' || defaultWorld === 'train-station' || realm?.world === 'train-station'
+  const isUkCafe = worldFromUrl === 'uk-cafe' || defaultWorld === 'uk-cafe' || realm?.world === 'uk-cafe'
 
   // Auto-collapse the desk whenever the player sits down, so the seated avatar (and
   // its sitting animation) stays visible behind a small header rather than the full
@@ -85,16 +86,16 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const seat = useWorld((s) => s.seat)
   const cinematic = useWorld((s) => s.cinematic)
   const cineFade = useWorld((s) => s.cineFade)
+  const seatFlowStage = useSeatFlow((s) => s.stage)
   const wasSeated = useRef(false)
   useEffect(() => {
     if (seat != null && !wasSeated.current) useDesk.getState().setView('collapsed')
     wasSeated.current = seat != null
   }, [seat])
 
-  // Restore world seat from saved seatFlow on mount (tab return within 30s).
-  // When the seat overlay is removed (commented out), auto-seat into the first
-  // available seat so the player isn't stranded in the permanently-'selecting'
-  // stage with no way to interact.
+  // Restore saved seat on tab return (30s expiry). If no saved seat, auto-sit
+  // into seat 0, then reload so the 3D rendering boots fresh (workaround for
+  // R3F context init race when conditional scene content mounts mid-init).
   useEffect(() => {
     if (isTrain) return
     const flowSeat = useSeatFlow.getState().selectedSeatId
@@ -102,10 +103,17 @@ export function Explore({ defaultWorld }: ExploreProps) {
     if (flowSeat != null && worldSeat == null) {
       useWorld.getState().sit(flowSeat)
       useSeatFlow.getState().arrive()
+      // Refresh once per tab session so the 3D scene boots fresh
+      if (!sessionStorage.getItem('sf.seatBooted')) {
+        sessionStorage.setItem('sf.seatBooted', '1')
+        window.location.reload()
+      }
     } else if (worldSeat == null && useSeatFlow.getState().stage === 'selecting') {
-      // No saved seat and no overlay to pick one — auto-seat in seat 0
+      useSeatFlow.getState().pickSeat(0)
       useWorld.getState().sit(0)
       useSeatFlow.getState().arrive()
+      sessionStorage.setItem('sf.seatBooted', '1')
+      window.location.reload()
     }
   }, [isTrain])
 
@@ -201,17 +209,29 @@ export function Explore({ defaultWorld }: ExploreProps) {
     return unsub
   }, [])
 
+  // Sync local pomodoro subject into multiplayer so others can see what you're studying.
+  useEffect(() => {
+    const unsub = usePomodoro.subscribe((s) => {
+      setLocalSubject(s.subject)
+    })
+    setLocalSubject(usePomodoro.getState().subject)
+    return unsub
+  }, [])
+
   // Enter a realm in Third-person so the player always sees their own character —
   // never spawn body-less in First-person. (They can switch to First afterward.)
   useEffect(() => {
     if (useSettings.getState().cameraMode === 'first') set('cameraMode', 'third')
   }, [set])
 
-  // Realm-entry quality: open at Low for a fast settle, then auto-step up (or
-  // restore the manual choice) once the scene reports ready. See realmQuality.ts.
+  // DPR is fixed at mount time — no live step-up to avoid GPU stalls / context loss.
+
+  // Keep the cafe scene ready immediately since it has no async loading gate
+  // like the library scene does. This is set before the early-exit guards so
+  // the hook order stays consistent on every render (Rules of Hooks).
   useEffect(() => {
-    enterRealmLowFirst()
-  }, [])
+    if (isUkCafe) setReady(true)
+  }, [isUkCafe])
 
   // Experimental-realm route guard. If someone reaches a flagship route while it
   // is hidden (public build, no dev access) — e.g. a stale link or a manual
@@ -221,6 +241,9 @@ export function Explore({ defaultWorld }: ExploreProps) {
   if (isTrain && !trainStationEnabled()) {
     return <FlagshipUnavailable name="Train Station Realm" />
   }
+  if (isUkCafe && !ukCafeEnabled()) {
+    return <FlagshipUnavailable name="UK Cafe Realm" />
+  }
 
   return (
     <div className="explore-root">
@@ -228,10 +251,10 @@ export function Explore({ defaultWorld }: ExploreProps) {
       <RealmFullscreenGate />
       {isTrain ? (
         <TrainStationScene onReady={() => setReady(true)} />
+      ) : isUkCafe ? (
+        <UkCafeScene />
       ) : (
-        <LibraryScene
-          onReady={() => setReady(true)}
-        />
+        <LibraryScene onReady={() => setReady(true)} />
       )}
       <PomodoroTicker />
       {!cinematic && <RealmConnection />}
@@ -244,8 +267,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
       {/* Library seat-selection overlay — shown before the player commits to a seat.
           Once a seat is chosen we fall through to the normal in-world HUD. */}
-          {/* Seat selection overlay - commented out per user request to remove brown script */}
-          {/* {!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />} */}
+{!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
 
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
       {!isTrain && <CinematicEntry />}
@@ -361,8 +383,8 @@ export function Explore({ defaultWorld }: ExploreProps) {
           9 = Cinematic Tour. Hidden while the tour runs (it's a hands-off
           full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
-      {!isTrain && !cinematic && <MusicPlayer />}
-      <FullscreenPomodoro isOpen={fpOpen} onClose={() => setFpOpen(false)} />
+      {location.pathname === '/realm/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
+      <FocusDomain isOpen={fpOpen} onClose={() => setFpOpen(false)} />
     </div>
   )
 }
@@ -474,6 +496,8 @@ function RealmConnection() {
   const country = useProfile((s) => s.data.country)
   const rank = useProfile((s) => s.data.rank)
   const avatar = useAvatar((s) => s.config)
+  const banner = useProfile((s) => s.pub.banner)
+  const logo = useProfile((s) => s.pub.logo)
 
   const roomKey = active ? roomKeyOf(active) : null
   const id = networkId(user?.id)
@@ -503,7 +527,7 @@ function RealmConnection() {
         return
       }
       const channel = realmChannel(active, instance)
-      await joinRealm(channel, { id, name, country: country ?? null, rank: rank || '', avatar })
+      await joinRealm(channel, { id, name, country: country ?? null, rank: rank || '', avatar, banner, logo })
       if (cancelled) {
         void leaveRealm()
         void leavePresence()
@@ -548,9 +572,16 @@ function RoomRoster() {
   const realm = useRealm((s) => s.active)
   const roster = useRealmNet((s) => s.roster)
   const [open, setOpen] = useState(true)
-  const [profileTarget, setProfileTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string } | null>(null)
+  const [detailTarget, setDetailTarget] = useState<{ networkId: string; name: string; country: string | null; rank: string } | null>(null)
+  // Tick every second so timer / sitting info updates live
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!open) return
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [open])
 
-  if (!realm) return null
+  const realmName = realm?.name ?? 'Library'
 
   const self: PublicPlayer = {
     name: displayName || user?.profile?.name || 'You',
@@ -570,7 +601,13 @@ function RoomRoster() {
       </button>
       {open && (
         <div className="room-roster-list">
-          <div className="room-roster-card me">
+          <div
+            className="room-roster-card me clickable"
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer' }}
+            onClick={() => { const sid = getSelfId(); if (sid) setDetailTarget({ networkId: sid, name: self.name, country, rank }) }}
+          >
             <div className="roster-card-banner" />
             <div className="roster-card-content">
               <div className="roster-card-avatar">
@@ -583,24 +620,60 @@ function RoomRoster() {
               <RankBadge rankId={self.rank} size={20} className="roster-card-rank" />
             </div>
           </div>
-          {rosterEntries.map(([id, entry]) => (
-            <div
-              key={id}
-              className="room-roster-card clickable"
-              onClick={() => setProfileTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank })}
-            >
-              <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
-              <div className="roster-card-content">
-                <div className="roster-card-avatar">
-                  <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={36} />
+          {rosterEntries.map(([id, entry]) => {
+            const target = getTarget(id)
+            const subject = target?.subject || ''
+            const timerStartedAt = target?.timerStartedAt ?? 0
+            const timerDurationMs = target?.timerDurationMs ?? 0
+            let timerPct = 0
+            let timerLabel = ''
+            let sittingLabel = ''
+            if (timerStartedAt && timerDurationMs) {
+              const elapsed = Date.now() - timerStartedAt
+              timerPct = Math.min(1, Math.max(0, elapsed / timerDurationMs))
+              const remainMs = Math.max(0, timerDurationMs - elapsed)
+              const remainSec = Math.round(remainMs / 1000)
+              const mm = String(Math.floor(remainSec / 60)).padStart(2, '0')
+              const ss = String(remainSec % 60).padStart(2, '0')
+              timerLabel = `${mm}:${ss}`
+              const sitMin = Math.floor(elapsed / 60000)
+              const sitH = Math.floor(sitMin / 60)
+              const sitM = sitMin % 60
+              sittingLabel = sitH > 0 ? `${sitH}h ${sitM}m` : `${sitM}m`
+            }
+            return (
+              <div
+                key={id}
+                className="room-roster-card clickable"
+                onClick={() => setDetailTarget({ networkId: id, name: entry.name, country: entry.country, rank: entry.rank })}
+              >
+                <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
+                <div className="roster-card-content">
+                  <div className="roster-card-avatar">
+                    <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={36} />
+                  </div>
+                  <div className="roster-card-info">
+                    <span className="roster-card-name">{entry.name}</span>
+                    {subject && <span className="roster-card-subject">{subject}</span>}
+                    {!subject && timerStartedAt > 0 && <span className="roster-card-subject roster-card-subject--idle">Studying…</span>}
+                  </div>
+                  <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
                 </div>
-                <div className="roster-card-info">
-                  <span className="roster-card-name">{entry.name}</span>
-                </div>
-                <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
+                {/* Timer bar + sitting duration */}
+                {timerStartedAt > 0 && timerDurationMs > 0 && (
+                  <div className="roster-card-timer">
+                    <div className="roster-card-timer-track">
+                      <div className="roster-card-timer-fill" style={{ width: `${Math.round(timerPct * 100)}%` }} />
+                    </div>
+                    <div className="roster-card-timer-meta">
+                      <span className="roster-card-timer-time">{timerLabel}</span>
+                      {sittingLabel && <span className="roster-card-timer-sitting">🕐 {sittingLabel}</span>}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
           {rosterEntries.length === 0 && (
             <p className="room-roster-empty">
               <span>Others studying in this realm will appear here live.</span>
@@ -608,16 +681,14 @@ function RoomRoster() {
           )}
         </div>
       )}
-      {profileTarget && (
-        <div className="roster-profile-overlay" onClick={() => setProfileTarget(null)}>
-          <div className="roster-profile-card" onClick={(e) => e.stopPropagation()}>
-            <button className="roster-profile-close" onClick={() => setProfileTarget(null)}>×</button>
-            <PublicPlayerTag player={{ name: profileTarget.name, country: profileTarget.country, rank: profileTarget.rank }} size="md" />
-            <div className="roster-profile-actions">
-              <AddFriendButton targetId={profileTarget.playerId} />
-            </div>
-          </div>
-        </div>
+      {detailTarget && (
+        <UserDetailModal
+          networkId={detailTarget.networkId}
+          name={detailTarget.name}
+          country={detailTarget.country}
+          rank={detailTarget.rank}
+          onClose={() => setDetailTarget(null)}
+        />
       )}
     </div>
   )
@@ -1097,7 +1168,7 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
                 {[1, 2, 3, 4, 5].map((n) => {
                   const segs = computeSegments(pickDur, n)
                   const segMin = segs[0]
-                  return (
+  return (
                     <button key={n} className={`pomo-config-btn ${pickBreaks === n ? 'active' : ''}`} onClick={() => setPickBreaks(n)}>
                       {n} <span className="pomo-config-sub">({segMin}m)</span>
                     </button>

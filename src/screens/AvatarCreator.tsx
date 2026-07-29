@@ -10,6 +10,7 @@ import { useAvatar } from '../avatar/store'
 import { CHARACTERS, characterById } from '../avatar/characters'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
+import { BANNERS, LOGOS, type BannerCategory, type LogoCategory } from '../lib/banners'
 import {
   type AvatarConfig,
   type StyleOption,
@@ -20,6 +21,7 @@ import {
   skinHex,
 } from '../avatar/config'
 import { BigDiningTable } from '../avatar/Accessories'
+import { ResourceBar } from '../components/ResourceBar'
 import './AvatarCreator.css'
 
 // Roblox-style customizer for the ONE base body, laid out like the product
@@ -53,8 +55,8 @@ export function AvatarCreator() {
   }
 
   // Mind-map style wizard: Characters → Outfit → Accessories.
-  const [step, setStep] = useState<'characters' | 'outfit' | 'accessories'>('characters')
-  const steps = ['characters', 'outfit', 'accessories'] as const
+  const [step, setStep] = useState<'characters' | 'outfit' | 'accessories' | 'shop'>('characters')
+  const steps = ['characters', 'outfit', 'accessories', 'shop'] as const
   const stepIndex = steps.indexOf(step)
   const goNext = () => { if (stepIndex < steps.length - 1) setStep(steps[stepIndex + 1]) }
   const goBack = () => { if (stepIndex > 0) setStep(steps[stepIndex - 1]) }
@@ -74,7 +76,7 @@ export function AvatarCreator() {
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <div className="ac-stage-name">
-          {step === 'accessories' ? 'Accessory Studio' : characterById(config.characterId || 'james').name}
+          {step === 'accessories' ? 'Accessory Studio' : step === 'shop' ? 'Avatar Shop' : characterById(config.characterId || 'james').name}
         </div>
           <Suspense fallback={<div className="ac-stage-veil" />}>
             <AvatarCanvas
@@ -100,24 +102,27 @@ export function AvatarCreator() {
             {step === 'characters' && <CharacterDisplayTab config={config} set={set} />}
             {step === 'outfit' && <OutfitTab config={config} set={set} />}
             {step === 'accessories' && <AccessoryTab config={config} set={set} />}
+            {step === 'shop' && <ShopTab />}
           </div>
         </aside>
       </div>
+      <ResourceBar />
     </div>
   )
 }
 
 /* ----------------------------------------------------------- mind-map sidebar */
 
-function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'accessories'; onPick: (s: 'characters' | 'outfit' | 'accessories') => void; config: AvatarConfig }) {
+function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'accessories' | 'shop'; onPick: (s: 'characters' | 'outfit' | 'accessories' | 'shop') => void; config: AvatarConfig }) {
   const humanIds = ['james', 'claire', 'mia']
   const isHuman = humanIds.includes(config.characterId || 'james')
-  const nodes: { id: 'characters' | 'outfit' | 'accessories'; label: string; ico: 'body' | 'top' | 'bag' }[] = [
+  const nodes: { id: 'characters' | 'outfit' | 'accessories' | 'shop'; label: string; ico: 'body' | 'top' | 'bag' | 'shop' }[] = [
     { id: 'characters', label: 'Body', ico: 'body' },
     ...(isHuman ? [
       { id: 'outfit' as const, label: 'Outfit', ico: 'top' as const },
       { id: 'accessories' as const, label: 'Accessories', ico: 'bag' as const },
     ] : []),
+    { id: 'shop', label: 'Shop', ico: 'shop' as const },
   ]
   return (
     <aside className="ac-mindmap">
@@ -633,6 +638,122 @@ function CafePedestal() {
  *  to render the GLB model (the Blender schoolboy). */
 function PreviewAvatar({ config }: { config: AvatarConfig }) {
   return <CharacterAvatar config={config} static />
+}
+
+/* -------------------------------------------------------------------- shop tab */
+
+function ShopTab() {
+  const xp = useProfile((s) => s.xp)
+  const savePublic = useProfile((s) => s.savePublic)
+  const pub = useProfile((s) => s.pub)
+  const [shopTab, setShopTab] = useState<'banners' | 'logos'>('banners')
+  const [flash, setFlash] = useState<string | null>(null)
+
+  const buy = (id: string, price: number) => {
+    if (useShop.getState().isOwned(id)) return
+    if (!useShop.getState().canAfford(price, xp)) return
+    const newLeaves = useShop.getState().purchase(id, price, xp)
+    useProfile.setState({ xp: newLeaves })
+    setFlash(id)
+    setTimeout(() => setFlash(null), 800)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {(['banners', 'logos'] as const).map((t) => (
+          <button key={t} onClick={() => setShopTab(t)} style={{
+            flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid',
+            borderColor: shopTab === t ? 'rgba(212,168,67,0.4)' : 'rgba(255,255,255,0.08)',
+            background: shopTab === t ? 'rgba(212,168,67,0.1)' : 'rgba(255,255,255,0.03)',
+            color: shopTab === t ? '#d4a843' : 'rgba(255,255,255,0.5)',
+            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+          }}>
+            {t === 'banners' ? 'Banners' : 'Logos'}
+          </button>
+        ))}
+      </div>
+
+      {shopTab === 'banners' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {(['others'] as BannerCategory[]).map((cat) => {
+            const items = BANNERS.filter((b) => b.category === cat && !useShop.getState().isOwned(b.id))
+            if (items.length === 0) return null
+            return (
+              <div key={cat}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(240,223,192,0.35)', marginBottom: 6 }}>
+                  Premium Banners
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {items.map((b) => {
+                    return (
+                      <div key={b.id} style={{
+                        borderRadius: 8, overflow: 'hidden',
+                        border: '1.5px solid rgba(255,255,255,0.06)',
+                        background: 'rgba(255,255,255,0.03)',
+                        animation: flash === b.id ? 'ac-shop-flash 0.5s ease-out' : undefined,
+                      }}>
+                        <div style={{
+                          height: 48,
+                          background: b.image ? `url(${b.image})` : b.css,
+                          backgroundSize: 'cover', backgroundPosition: 'center',
+                        }} />
+                        <div style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#f6efe2' }}>{b.name}</span>
+                          <button onClick={() => buy(b.id, b.price)} disabled={!useShop.getState().canAfford(b.price, xp)} style={{
+                            background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
+                            borderRadius: 4, color: '#f0c840', fontSize: 10, fontWeight: 700,
+                            padding: '2px 6px', cursor: useShop.getState().canAfford(b.price, xp) ? 'pointer' : 'not-allowed',
+                            opacity: useShop.getState().canAfford(b.price, xp) ? 1 : 0.35,
+                            display: 'flex', alignItems: 'center', gap: 2,
+                          }}>
+                            🍃 {b.price}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {shopTab === 'logos' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {LOGOS.filter((l) => !useShop.getState().isOwned(l.id)).map((l) => {
+            return (
+              <div key={l.id} style={{
+                borderRadius: 8, overflow: 'hidden', padding: 10, textAlign: 'center',
+                border: '1.5px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.03)',
+                animation: flash === l.id ? 'ac-shop-flash 0.5s ease-out' : undefined,
+              }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', border: '2px solid rgba(255,255,255,0.08)' }}>
+                  {l.image ? (
+                    <img src={l.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: l.dim ? 'brightness(0.85)' : undefined }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: l.css || 'rgba(255,255,255,0.1)' }} />
+                  )}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#f6efe2', marginBottom: 4 }}>{l.name}</div>
+                <button onClick={() => buy(l.id, l.price)} disabled={!useShop.getState().canAfford(l.price, xp)} style={{
+                  background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
+                  borderRadius: 4, color: '#f0c840', fontSize: 10, fontWeight: 700,
+                  padding: '3px 8px', cursor: useShop.getState().canAfford(l.price, xp) ? 'pointer' : 'not-allowed',
+                  opacity: useShop.getState().canAfford(l.price, xp) ? 1 : 0.35,
+                  display: 'flex', alignItems: 'center', gap: 2, margin: '0 auto',
+                }}>
+                  🍃 {l.price}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /* -------------------------------------------------------------------- glyphs */

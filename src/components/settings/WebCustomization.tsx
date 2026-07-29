@@ -6,18 +6,25 @@ import {
   WEB_THEMES_SOON,
   getWebTheme,
 } from '../../lib/webThemes'
+import { Slider } from './controls'
 import './WebCustomization.css'
 
-export function WebCustomizationContent() {
+export function WebCustomizationContent({ showAppearance = false }: { showAppearance?: boolean }) {
   const { t } = useTranslation()
   const themeId = useWebTheme((s) => s.themeId)
   const bgId = useWebTheme((s) => s.bgId)
   const accent = useWebTheme((s) => s.accent)
   const fontColor = useWebTheme((s) => s.fontColor)
+  const bgBrightness = useWebTheme((s) => s.bgBrightness ?? 1)
+  const bgContrast = useWebTheme((s) => s.bgContrast ?? 1)
+  const bgSaturation = useWebTheme((s) => s.bgSaturation ?? 1)
   const setTheme = useWebTheme((s) => s.setTheme)
   const setBackground = useWebTheme((s) => s.setBackground)
   const setAccent = useWebTheme((s) => s.setAccent)
   const setFontColor = useWebTheme((s) => s.setFontColor)
+  const setBgBrightness = useWebTheme((s) => s.setBgBrightness)
+  const setBgContrast = useWebTheme((s) => s.setBgContrast)
+  const setBgSaturation = useWebTheme((s) => s.setBgSaturation)
 
   const theme = getWebTheme(themeId)
 
@@ -79,6 +86,41 @@ export function WebCustomizationContent() {
           <p className="wc-note">{t('webCustomization.moreBackgrounds', { theme: theme.name })}</p>
         )}
       </section>
+
+      {showAppearance && (
+        <section className="wc-section">
+          <h3 className="wc-h3">{t('webCustomization.appearance')}</h3>
+          <div className="wc-sliders">
+            <Slider
+              label={t('webCustomization.bgBrightness')}
+              value={bgBrightness}
+              min={0.2}
+              max={2.0}
+              step={0.05}
+              display={`×${bgBrightness.toFixed(2)}`}
+              onChange={setBgBrightness}
+            />
+            <Slider
+              label={t('webCustomization.bgContrast')}
+              value={bgContrast}
+              min={0.2}
+              max={2.0}
+              step={0.05}
+              display={`×${bgContrast.toFixed(2)}`}
+              onChange={setBgContrast}
+            />
+            <Slider
+              label={t('webCustomization.bgSaturation')}
+              value={bgSaturation}
+              min={0}
+              max={2.0}
+              step={0.05}
+              display={`×${bgSaturation.toFixed(2)}`}
+              onChange={setBgSaturation}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="wc-section">
         <h3 className="wc-h3">{t('webCustomization.accent')}</h3>

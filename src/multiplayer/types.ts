@@ -14,6 +14,10 @@ export interface PlayerIdentity {
   /** rank id (ranks.ts) */
   rank: string
   avatar: AvatarConfig
+  /** banner id for the nameplate strip */
+  banner?: string
+  /** logo id for the nameplate avatar */
+  logo?: string
 }
 
 /** A player's transform + motion, broadcast ~10×/sec on the `move` event. The
@@ -35,6 +39,8 @@ export interface PlayerState {
   timerStartedAt: number
   /** total session duration in ms (e.g. 3600000 for 1 hour) — 0 when no timer */
   timerDurationMs: number
+  /** current study subject / task name — empty string when not studying */
+  subject: string
   /** true while this player is driving / watching the shared Cinematic Tour — their
    *  avatar is hidden from everyone else so it doesn't fly through the shared shot. */
   cinematic: boolean

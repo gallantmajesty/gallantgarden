@@ -3,8 +3,8 @@ import { GLOBAL_ROOMS, type RealmKind } from '../lib/realm'
 import type { RealmVisibility } from '../lib/realms'
 
 /** Which 3D world a realm renders. Defaults to the great Library; the Train
- *  Station is the second flagship world. */
-export type RealmWorld = 'library' | 'train-station'
+// Station is the second flagship world. UK Cafe is the third flagship world. */
+export type RealmWorld = 'library' | 'train-station' | 'uk-cafe'
 
 /** Which world a global room renders, looked up from its definition. Train-station
  *  rooms (concourse + platforms) render the Train Station; everything else the

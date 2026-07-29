@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Flag } from './Flag'
 import { RankBadge } from './RankBadge'
 import { getRank } from '../lib/ranks'
+import { getBanner, LOGOS } from '../lib/banners'
 import './PlayerNameTag.css'
 
 // A magical floating name plate shown above each player's head in the realm.
@@ -19,12 +20,21 @@ export interface PlayerNameTagProps {
   /** Timer info from the multiplayer target — remaining seconds and total seconds. */
   timerRemaining?: number
   timerTotal?: number
+  /** Banner id for the mini banner strip */
+  banner?: string
+  /** Logo id for the mini avatar */
+  logo?: string
 }
 
-export function PlayerNameTag({ name, rank, country, playerId, self, showAll, timerRemaining, timerTotal }: PlayerNameTagProps) {
+export function PlayerNameTag({ name, rank, country, playerId, self, showAll, timerRemaining, timerTotal, banner, logo }: PlayerNameTagProps) {
   const [expanded, setExpanded] = useState(false)
   const r = getRank(rank)
   const visible = showAll || expanded
+  const b = getBanner(banner)
+  const logoData = logo ? LOGOS.find((l) => l.id === logo) : null
+
+  // Truncate name to 16 chars with ellipsis
+  const displayName = name.length > 16 ? name.slice(0, 16) + '…' : name
 
   // Auto-collapse after 6 seconds
   useEffect(() => {
@@ -46,12 +56,38 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
     )
   }
 
-  // Full expanded tag
+  // Full expanded tag with mini banner
   return (
     <div
       className={`pnt pnt-expanded${self ? ' pnt-self' : ''}`}
       style={{ ['--rank' as string]: r.accent } as React.CSSProperties}
     >
+      {/* Mini banner strip */}
+      <div
+        className="pnt-banner-strip"
+        style={b.image
+          ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : { background: b.css }
+        }
+      >
+        {logoData && (
+          logoData.image ? (
+            <img
+              className="pnt-banner-logo"
+              src={logoData.image}
+              alt=""
+              draggable={false}
+              style={logoData.dim ? { filter: 'brightness(0.85)' } : undefined}
+            />
+          ) : (
+            <span
+              className="pnt-banner-logo"
+              style={{ background: logoData.css || 'rgba(255,255,255,0.2)' }}
+            />
+          )
+        )}
+        <span className="pnt-banner-name">{displayName}</span>
+      </div>
       <span className="pnt-content">
         <span className="pnt-top">
           {country && <Flag code={country} className="pnt-flag" />}

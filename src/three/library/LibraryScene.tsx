@@ -6,17 +6,11 @@ import { EffectComposer, Vignette, N8AO, GodRays, Bloom, HueSaturation, Brightne
 import type { Material, Mesh, Object3D, Texture } from 'three'
 import { HalfFloatType, Vector3 } from 'three'
 
-// DPR is held FIXED at the quality ceiling (see `dpr` state below). Live DPR
-// re-scaling (e.g. via a PerformanceMonitor) forces the WebGL drawing buffer to
-// reallocate every time it changes, which on integrated GPUs shows as a black
-// "blink" — and a hard enough spike can drop the GL context entirely (the
-// "totally blank, doesn't work" report). Adaptive resolution is handled once, at
-// realm entry, by the auto-quality step-up instead — a single, safe adjustment.
+// DPR is fixed at mount time — no live re-scaling to avoid GPU stalls / context loss.
 import { useSettings } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
-import { settleRealmQuality } from '../realmQuality'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -71,6 +65,29 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean;
  * context loss) throws, we render `null` instead of a DOM node, so the scene
  * keeps running without post-FX rather than crashing the whole canvas.
  */
+/**
+ * Top-level guard inside the R3F Canvas. R3F v9 creates its own React sub-root.
+ * If ANY child throws during React reconciliation (not useFrame — those are
+ * caught by R3F), the *entire sub-root* crashes silently — the canvas DOM
+ * element stays, showing the last frame frozen, while the main React tree
+ * continues normally (FPS counter, DOM overlays all work). This guard prevents
+ * the sub-root crash by catching any error and rendering a no-op instead.
+ */
+class CanvasGuard extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
+  state = { failed: false, msg: '' }
+  static getDerivedStateFromError(error: Error) {
+    return { failed: true, msg: error?.message ?? 'Unknown error' }
+  }
+  componentDidCatch(error: Error) {
+    console.error('[LibraryScene] CanvasGuard caught — preventing R3F sub-root crash:', error)
+    ;(window as any).__libCanvasError = error.message
+  }
+  render() {
+    if (this.state.failed) return null
+    return this.props.children
+  }
+}
+
 class CanvasBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
   state = { failed: false, msg: '' }
   static getDerivedStateFromError(error: Error) {
@@ -127,72 +144,76 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   // contextrestored we remount the postprocessing composer so its lost render
   // targets are rebuilt (otherwise it stays black and the blink loops forever).
   const [composerKey, setComposerKey] = useState(0)
+  const [canvasKey, setCanvasKey] = useState(0)
 
-  // Runtime device-pixel-ratio. Fixed at the quality ceiling — no dynamic
-  // scaling. Re-allocating the WebGL drawing buffer (what a live DPR change
-  // does) is a multi-frame GPU stall on integrated GPUs and can drop the GL
-  // context — an attempted "adaptive" DPR stepper made FPS *worse* (9–10) and
-  // must never run, so DPR stays fixed here. Kept at full ceiling for a crisp
-  // (UHD-sharp) image; the night FPS win comes from skipping the exterior,
-  // cutting real lights and dropping the heavy particle/overdraw effects.
-  const targetDpr = preset.dpr
-  const [dpr, setDpr] = useState(targetDpr)
-  useEffect(() => setDpr(targetDpr), [targetDpr])
+  // Fixed DPR from mount — never changes at runtime. Live DPR changes reallocate
+  // the WebGL drawing buffer, which stalls integrated GPUs and can freeze the
+  // render loop. The preset value is determined at build/setting time and stays
+  // constant for the lifetime of this Canvas.
+  const dpr = preset.dpr
 
   const renderPaused = useWorld((s) => s.renderPaused)
-  // Pause the render loop entirely while the tab/canvas is hidden or renderPaused is true so we spend
-  // zero GPU/battery in the background.
-  const [loop, setLoop] = useState<'always' | 'demand' | 'never'>(frameloop)
-  useEffect(() => {
-    if (renderPaused) {
-      setLoop('never')
-      return
-    }
-    const onVis = () => setLoop(document.hidden ? 'never' : frameloop)
-    document.addEventListener('visibilitychange', onVis)
-    return () => document.removeEventListener('visibilitychange', onVis)
-  }, [frameloop, renderPaused])
-  // Sync when the parent changes frameloop (e.g. demand→always after seat pick)
-  useEffect(() => { if (!renderPaused) setLoop(frameloop) }, [frameloop, renderPaused])
 
-  // Once the scene is ready, settle the quality: step up from the Low opening
-  // preset (auto-detect) or restore the player's manual choice.
+  // Freeze the render loop during seat selection to save GPU. Since the seat
+  // selection triggers a page reload, the new Canvas boots fresh with 'always'
+  // — R3F v9's frameloop-restart bug never matters here.
+
   const handleReady = () => {
     onReady?.()
-    settleRealmQuality()
   }
+
+  // Canvas health check: monitors actual rendered frames via rAF.
+  // If no frame is rendered for 4 seconds, force-remounts the Canvas.
+  useEffect(() => {
+    let lastFrame = -1
+    let lastChange = performance.now()
+    let running = true
+
+    const check = () => {
+      if (!running) return
+      const currentFrame = (window as any).__libFrame ?? -1
+
+      if (currentFrame !== lastFrame) {
+        lastChange = performance.now()
+        lastFrame = currentFrame
+      } else if (lastFrame >= 0 && performance.now() - lastChange > 4000) {
+        console.warn('[LibraryScene] Canvas not rendering new frames — remounting')
+        setCanvasKey((k) => k + 1)
+        lastChange = performance.now()
+      }
+
+      requestAnimationFrame(check)
+    }
+    requestAnimationFrame(check)
+    return () => { running = false }
+  }, [canvasKey])
 
   return (
     <>
     <Canvas
-      frameloop={loop}
+      key={canvasKey}
+      frameloop={selecting ? 'never' : frameloop}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
       onCreated={(state) => {
         const canvas = state.gl.domElement
+        // Track context loss/restore with a recovery fallback. If contextrestored
+        // never fires within 3 seconds, force-remount the Canvas by bumping a key.
+        let restoreTimer: ReturnType<typeof setTimeout> | null = null
         canvas.addEventListener('webglcontextlost', (e) => {
-          // preventDefault is REQUIRED — without it the context is gone for good
-          // and the screen stays black forever. three/R3F handle the actual
-          // restore; we just must not let the browser abandon the context.
           e.preventDefault()
           console.warn('[LibraryScene] WebGL context lost — will restore')
-          // Drop the resolution hard on a context loss: a re-overloaded GPU is
-          // what dropped the context in the first place. Stepping down to 0.4
-          // gives the restore headroom so it doesn't immediately spike again and
-          // loop the black-screen blink. The user's look is unchanged — only the
-          // shaded pixel count drops further.
-          setDpr(0.4)
+          // If context isn't restored within 3s, force a full Canvas remount
+          restoreTimer = setTimeout(() => {
+            console.warn('[LibraryScene] WebGL context NOT restored in 3s — remounting Canvas')
+            setCanvasKey((k) => k + 1) // force full Canvas remount
+          }, 3000)
         })
         canvas.addEventListener('webglcontextrestored', () => {
+          if (restoreTimer) { clearTimeout(restoreTimer); restoreTimer = null }
           console.warn('[LibraryScene] WebGL context restored — rebuilding postprocessing')
-          // Force the EffectComposer(s) to remount so their render targets
-          // (lost with the context) are recreated; otherwise the screen
-          // stays black even after the context returns.
-          // Delay by several frames to let the GL context fully initialize
-          // before EffectComposer.addPass reads from it (prevents the
-          // "null (reading 'alpha')" crash when a render target is still null).
           let frames = 0
           const rebuild = () => {
             if (++frames >= 6) { setComposerKey((k) => k + 1); return }
@@ -202,6 +223,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
         })
       }}
     >
+      <CanvasGuard>
       <color attach="background" args={['#0c0a0a']} />
       <SystemToggles />
       <ShadowManager enabled={preset.shadows && !selecting} cinematic={cinematic} refreshInterval={8} />
@@ -289,6 +311,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
          <NpcPlayers />
        </ToggleGroup>
       <PerfLogger />
+      <RenderHeartbeat />
       <DisableFrustumCulling />
       <SunTracker sunRef={sunRef} onVisible={setSunVisible} />
 
@@ -300,7 +323,13 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
         </CanvasBoundary>
       )}
       <SceneReady onReady={handleReady} />
+      </CanvasGuard>
     </Canvas>
+    <div id="r3f-dot" style={{
+      position: 'fixed', bottom: 8, right: 8, width: 10, height: 10,
+      borderRadius: '50%', background: '#ff4444', zIndex: 99999,
+      transition: 'background 0.1s',
+    }} />
     </>
   )
 }
@@ -616,6 +645,35 @@ export function useSystemToggle(key: string): boolean {
     return () => clearInterval(iv)
   }, [key])
   return enabled
+}
+
+/**
+ * Minimal useFrame component that writes a timestamp to a global every frame.
+ * The watchdog outside the Canvas reads this to detect a frozen render loop.
+ * If 3 seconds pass without a new heartbeat, the Canvas is force-remounted.
+ */
+function RenderHeartbeat() {
+  const invalidate = useThree((s) => s.invalidate)
+  useFrame(() => {
+    ;(window as any).__libHeartbeat = Date.now()
+    ;(window as any).__libFrame = performance.now()
+    const dot = document.getElementById('r3f-dot')
+    if (dot) dot.style.background = '#44ff44'
+  })
+  useEffect(() => {
+    ;(window as any).__libHeartbeat = Date.now()
+    ;(window as any).__libFrame = 0
+    const dot = document.getElementById('r3f-dot')
+    if (dot) dot.style.background = '#ff4444'
+
+    const iv = setInterval(() => {
+      invalidate()
+      const dot2 = document.getElementById('r3f-dot')
+      if (dot2) dot2.style.background = '#ffff44'
+    }, 1000)
+    return () => clearInterval(iv)
+  }, [invalidate])
+  return null
 }
 
 /**

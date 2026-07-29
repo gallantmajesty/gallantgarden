@@ -4,12 +4,17 @@
 
 import { create } from 'zustand'
 import { insforge } from '../lib/insforge'
+import { useProfile } from '../store/profile'
 import { STARTER_THEME_IDS } from '../lib/magnet/themes'
 
 const STORAGE_KEY = 'sf.shop.inventory'
+const FREE_PLAYER_ID = -1
 // Common characters are always owned (free starter characters)
 const STARTER_CHARACTER_IDS = ['james', 'claire', 'mia', 'ruslan']
-const ALL_STARTERS = [...STARTER_THEME_IDS, ...STARTER_CHARACTER_IDS]
+// Free banners and logos are always owned
+const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'sakura', 'midnight', 'dawn', 'tide', 'mystic']
+const STARTER_LOGO_IDS = ['default_logo']
+const ALL_STARTERS = [...STARTER_THEME_IDS, ...STARTER_CHARACTER_IDS, ...STARTER_BANNER_IDS, ...STARTER_LOGO_IDS]
 
 interface ShopState {
   userId: string | null
@@ -100,9 +105,23 @@ export const useShop = create<ShopState>((set, get) => ({
 
   isOwned: (itemId) => get().ownedItems.includes(itemId),
 
-  canAfford: (price, currentLeaves) => currentLeaves >= price,
+  canAfford: (price, currentLeaves) => {
+    const playerId = useProfile.getState().playerId
+    if (playerId === FREE_PLAYER_ID) return true
+    return currentLeaves >= price
+  },
 
   purchase: (itemId, price, currentLeaves) => {
+    const playerId = useProfile.getState().playerId
+    if (playerId === FREE_PLAYER_ID) {
+      if (get().isOwned(itemId)) return currentLeaves
+      const newOwned = [...get().ownedItems, itemId]
+      set({ ownedItems: newOwned })
+      saveLocal(newOwned)
+      const userId = get().userId
+      if (userId) syncToDb(userId, newOwned)
+      return currentLeaves
+    }
     if (!get().canAfford(price, currentLeaves)) return currentLeaves
     if (get().isOwned(itemId)) return currentLeaves
 
@@ -111,8 +130,8 @@ export const useShop = create<ShopState>((set, get) => ({
     set({ ownedItems: newOwned })
     saveLocal(newOwned)
 
-    const userId = get().userId
-    if (userId) syncToDb(userId, newOwned)
+    const uid = get().userId
+    if (uid) syncToDb(uid, newOwned)
 
     return newLeaves
   },

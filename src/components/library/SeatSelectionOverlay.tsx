@@ -75,6 +75,8 @@ export function SeatSelectionOverlay() {
     useSeatFlow.getState().arrive(roomId ?? undefined)
     useWorld.getState().sit(seatId)
     useSeatFlow.getState().markEntrancePlayed()
+    sessionStorage.setItem('sf.seatBooted', '1')
+    window.location.reload()
   }, [pickSeat, startWalk, roomId])
 
   const handleSelect = useCallback((id: number) => {

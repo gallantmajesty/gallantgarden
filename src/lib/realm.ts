@@ -21,7 +21,7 @@ export const ROOM_CAPACITY = 100
 export type RealmKind = 'global' | 'custom'
 
 /** Which flagship world a global room renders. */
-export type GlobalRoomWorld = 'library' | 'train-station'
+export type GlobalRoomWorld = 'library' | 'train-station' | 'uk-cafe'
 
 export interface GlobalRoom {
   id: string
@@ -44,6 +44,25 @@ export const LIBRARY_ROOMS: GlobalRoom[] = [
   { id: 'starlit-wing', name: 'Starlit Wing', blurb: 'Night-owls and dawn risers.', world: 'library' },
 ]
 
+// Per-room capacities — allows different caps per room (defaults to ROOM_CAPACITY).
+export const ROOM_CAPACITIES: Record<string, number> = {
+  'forest-hall': 100,
+  'scholar-grove': 100,
+  'silent-valley': 100,
+  'mossy-archive': 100,
+  'lantern-court': 100,
+  'willow-study': 100,
+  'amber-loft': 100,
+  'fern-atrium': 100,
+  'oakwood-den': 100,
+  'starlit-wing': 100,
+  'station-concourse': 100,
+  'platform-1': 100,
+  'platform-2': 100,
+  'platform-3': 100,
+  'main-cafe': 100,
+}
+
 // Train Station global rooms — the station concourse and platforms as shared study spaces.
 export const TRAIN_ROOMS: GlobalRoom[] = [
   { id: 'station-concourse', name: 'Station Concourse', blurb: 'The grand hall — benches, departure board, coffee & books.', world: 'train-station' },
@@ -52,8 +71,13 @@ export const TRAIN_ROOMS: GlobalRoom[] = [
   { id: 'platform-3', name: 'Platform 3 — Grand Journey', blurb: 'Reserved platform for 8–12 hour grand study voyages.', world: 'train-station' },
 ]
 
+// UK Café global rooms — cozy British café experience.
+export const UK_CAFE_ROOMS: GlobalRoom[] = [
+  { id: 'main-cafe', name: 'The Great Hall Café', blurb: 'A cozy Edinburgh-style café — sizzling pans, warm lamps, and the aroma of fresh pastries.', world: 'uk-cafe' },
+]
+
 // Combined list for backward compatibility (legacy code paths).
-export const GLOBAL_ROOMS: GlobalRoom[] = [...LIBRARY_ROOMS, ...TRAIN_ROOMS]
+export const GLOBAL_ROOMS: GlobalRoom[] = [...LIBRARY_ROOMS, ...TRAIN_ROOMS, ...UK_CAFE_ROOMS]
 
 /** Realm multiplayer presence is live (see multiplayer/net.ts). Retained as a
  *  single kill-switch in case presence needs to be disabled in an incident. */
@@ -80,8 +104,20 @@ export function isDevAccess(): boolean {
  *  routes and scenes intact (developers still reach it via `?dev=1`). */
 export const ENABLE_TRAIN_STATION_REALM = true
 
+/** Master launch switch for the UK Cafe Realm — FocusLily's third flagship
+ *  world. Enabled by default so it appears in the chooser alongside the Library
+ *  and Train Station. Set to `false` to hide it from the public while keeping
+ *  all of its code, routes and scenes intact (developers still reach it via `?dev=1`). */
+export const ENABLE_UK_CAFE_REALM = true
+
 /** Whether the Train Station Realm may be shown and entered right now. Every
  *  place that exposes the card or guards the route reads this one helper. */
 export function trainStationEnabled(): boolean {
   return ENABLE_TRAIN_STATION_REALM || isDevAccess()
+}
+
+/** Whether the UK Cafe Realm may be shown and entered right now. Every
+ *  place that exposes the card or guards the route reads this one helper. */
+export function ukCafeEnabled(): boolean {
+  return ENABLE_UK_CAFE_REALM || isDevAccess()
 }

@@ -22,6 +22,9 @@ interface Layer {
 export function WebBackground() {
   const themeId = useWebTheme((s) => s.themeId)
   const bgId = useWebTheme((s) => s.bgId)
+  const bgBrightness = useWebTheme((s) => s.bgBrightness ?? 1)
+  const bgContrast = useWebTheme((s) => s.bgContrast ?? 1)
+  const bgSaturation = useWebTheme((s) => s.bgSaturation ?? 1)
   const theme = getWebTheme(themeId)
   const src = getWebBackground(theme, bgId).src
 
@@ -50,12 +53,15 @@ export function WebBackground() {
     })
   }
 
+  const filterStyle = { filter: `brightness(${bgBrightness}) contrast(${bgContrast}) saturate(${bgSaturation})` }
+
   return (
     <div className="web-bg" aria-hidden>
       {layers.map((l) => (
         <img
           key={l.key}
           className={`web-bg-img ${l.shown ? 'shown' : ''}`}
+          style={filterStyle}
           src={l.src}
           alt=""
           draggable={false}

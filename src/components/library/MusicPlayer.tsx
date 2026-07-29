@@ -291,6 +291,9 @@ export function MusicPlayer() {
   const style = pos ? { left: pos.x, top: pos.y, right: 'auto' as const, bottom: 'auto' as const } : { left: 16, bottom: 16 }
   const stop = (e: React.PointerEvent) => e.stopPropagation()
 
+  const portal = document.body
+  const portalStyle = { ...style, position: 'fixed' as const, zIndex: 9999 }
+
   // ─── Compact mode ──────────────────────────────────────────────────────
   if (!expanded) {
     if (source === 'spotify') {
@@ -298,7 +301,7 @@ export function MusicPlayer() {
         <div
           ref={rootRef}
           className="mp mp-compact mp-spotify-compact"
-          style={{ ...style, position: 'fixed' as const, zIndex: 9999 }}
+          style={portalStyle}
           data-no-hotkeys
           onPointerDown={stop}
         >
@@ -312,7 +315,7 @@ export function MusicPlayer() {
             </button>
           </div>
         </div>,
-        document.body,
+        portal,
       )
     }
 
@@ -320,7 +323,7 @@ export function MusicPlayer() {
       <div
         ref={rootRef}
         className={`mp mp-compact`}
-        style={{ ...style, position: 'fixed' as const, zIndex: 9999 }}
+        style={portalStyle}
         data-no-hotkeys
         onPointerDown={stop}
       >
@@ -345,7 +348,7 @@ export function MusicPlayer() {
           </button>
         </div>
       </div>,
-      document.body,
+      portal,
     )
   }
 

@@ -192,7 +192,7 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     <group ref={group}>
       <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
       {tagShown && (
-        <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} />
+        <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} banner={p.banner} logo={p.logo} />
       )}
       {tagShown && (
         <PlayerTimerBar playerId={id} headY={2.9} />

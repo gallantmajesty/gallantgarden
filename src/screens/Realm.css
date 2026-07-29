@@ -114,13 +114,14 @@
   font-family: 'Wonderworld', var(--sans);
   font-size: 34px;
   margin: 10px 0 4px;
-  text-shadow: 0 1px 14px rgba(255, 255, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.28);
+  text-shadow: 0 1px 14px rgba(255, 220, 160, 0.5), 0 2px 4px rgba(0, 0, 0, 0.28);
+  color: #f0d8a8;
 }
 .realm-head p {
-  color: var(--ink-soft);
+  color: #c8a882;
   font-weight: 600;
   max-width: 540px;
-  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 10px rgba(255, 220, 160, 0.5);
 }
 
 /* ---- choose: two big cards ---- */
@@ -356,7 +357,7 @@
 .realm-room-body p {
   margin: 3px 0 7px;
   font-size: 12.5px;
-  color: var(--ink-soft);
+  color: #c8a882;
 }
 .realm-room-bar {
   height: 6px;
@@ -388,10 +389,53 @@
 }
 .realm-create .sf-input {
   flex: 1;
+  background: rgba(50, 35, 20, 0.6);
+  border-color: rgba(160, 120, 70, 0.35);
+  color: #f0d8a8;
+  font-family: var(--sans);
+}
+.realm-create .sf-input::placeholder {
+  color: #a08060;
+  opacity: 0.7;
+}
+.realm-create .sf-input:focus {
+  border-color: rgba(200, 160, 100, 0.6);
+  box-shadow: 0 0 0 3px rgba(200, 160, 100, 0.2);
+  outline: none;
 }
 .realm-create .sf-btn {
   flex: none;
   white-space: nowrap;
+  background: rgba(80, 55, 30, 0.7);
+  border: 1px solid rgba(160, 120, 70, 0.35);
+  color: #f0d8a8;
+  text-shadow: none;
+}
+.realm-create .sf-btn:hover {
+  filter: brightness(1.15);
+}
+.realm-section .sf-btn.water {
+  background: rgba(80, 55, 30, 0.7);
+  border: 1px solid rgba(160, 120, 70, 0.35);
+  color: #f0d8a8;
+  text-shadow: none;
+}
+.realm-section .sf-btn.water:hover {
+  filter: brightness(1.15);
+}
+.realm-section .sf-input {
+  background: rgba(50, 35, 20, 0.6);
+  border-color: rgba(160, 120, 70, 0.35);
+  color: #f0d8a8;
+}
+.realm-section .sf-input::placeholder {
+  color: #a08060;
+  opacity: 0.7;
+}
+.realm-section .sf-input:focus {
+  border-color: rgba(200, 160, 100, 0.6);
+  box-shadow: 0 0 0 3px rgba(200, 160, 100, 0.2);
+  outline: none;
 }
 
 /* ---- public realm: section cards ---- */
@@ -405,17 +449,15 @@
 .realm-section {
   padding: 20px;
   border-radius: 18px;
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  background: linear-gradient(135deg, rgba(80,55,30,0.55), rgba(55,35,15,0.65));
+  border: 1.5px solid rgba(160,120,70,0.30);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,220,160,0.08);
   animation: pop-in 0.35s ease both;
 }
 .realm-section-title {
   font-family: 'Wonderworld', var(--sans);
   font-size: 16px;
-  color: var(--wood-dark);
+  color: #f0d8a8;
   margin: 0 0 12px;
 }
 
@@ -571,9 +613,9 @@
 /* ---- create note (24h / one realm) ---- */
 .realm-create-note {
   font-size: 12px;
-  color: var(--ink-soft);
+  color: #b09070;
   text-align: center;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 /* ---- invite expiry badge ---- */
@@ -597,11 +639,23 @@
 }
 .realm-search .sf-input {
   width: 100%;
+  background: rgba(50, 35, 20, 0.6);
+  border-color: rgba(160, 120, 70, 0.35);
+  color: #f0d8a8;
+}
+.realm-search .sf-input::placeholder {
+  color: #a08060;
+  opacity: 0.7;
+}
+.realm-search .sf-input:focus {
+  border-color: rgba(200, 160, 100, 0.6);
+  box-shadow: 0 0 0 3px rgba(200, 160, 100, 0.2);
+  outline: none;
 }
 .realm-search-hint {
   display: block;
   font-size: 12px;
-  color: var(--ink-soft);
+  color: #b09070;
   margin-top: 4px;
   text-align: center;
 }
@@ -612,12 +666,10 @@
   right: 0;
   z-index: 20;
   margin-top: 6px;
-  background: var(--glass-fill-strong, rgba(255, 255, 255, 0.92));
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, rgba(80,55,30,0.92), rgba(55,35,15,0.95));
+  border: 1px solid rgba(160,120,70,0.30);
   border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   max-height: 320px;
   overflow-y: auto;
@@ -635,14 +687,14 @@
   transition: background 0.12s;
 }
 .realm-search-item:hover {
-  background: rgba(107, 191, 79, 0.1);
+  background: rgba(200, 160, 100, 0.15);
 }
 .realm-search-name {
   flex: 1;
   font-family: var(--display);
   font-weight: 700;
   font-size: 14px;
-  color: var(--wood-dark);
+  color: #f0d8a8;
 }
 .realm-search-lock {
   font-size: 14px;
@@ -651,7 +703,7 @@
   font-family: var(--display);
   font-weight: 700;
   font-size: 13px;
-  color: var(--grass-dark);
+  color: #a8c068;
 }
 
 /* ---- expiry badge on realm list ---- */

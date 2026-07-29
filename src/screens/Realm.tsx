@@ -9,13 +9,13 @@ import { useAvatar } from '../avatar/store'
 import { characterById } from '../avatar/characters'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
-import { LIBRARY_ROOMS, TRAIN_ROOMS } from '../lib/realm'
+import { LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES } from '../lib/realm'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
 import { createRealm, getRealmByCode, searchPublicRealms, inviteLink, type Realm as DbRealm } from '../lib/realms'
 
 import './Realm.css'
 
-type Mode = 'choose' | 'private' | 'library' | 'train' | 'public'
+type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'public'
 
 export function Realm() {
   const navigate = useNavigate()
@@ -28,13 +28,14 @@ export function Realm() {
         </button>
       </div>
 
-      <div className="realm-stage">
-        {mode === 'choose' && <RealmChoose onPick={setMode} />}
-        {mode === 'private' && <PrivateChoose onPick={setMode} />}
-        {mode === 'library' && <LibraryRealm />}
-        {mode === 'train' && <TrainRealm />}
-        {mode === 'public' && <PublicRealm />}
-      </div>
+<div className="realm-stage">
+         {mode === 'choose' && <RealmChoose onPick={setMode} />}
+         {mode === 'private' && <PrivateChoose onPick={setMode} />}
+         {mode === 'library' && <LibraryRealm />}
+         {mode === 'train' && <TrainRealm />}
+         {mode === 'uk-cafe' && <UkCafeRealm />}
+         {mode === 'public' && <PublicRealm />}
+       </div>
     </div>
   )
 }
@@ -160,6 +161,27 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <p>Board a magical train and commit to a real study journey — from Express to Grand Journey.</p>
           <span className="realm-card-cta">Coming Soon</span>
         </button>
+        
+        <button
+          className="realm-card water-glass"
+          onClick={() => onPick('uk-cafe')}
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onPointerLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
+          <div className="realm-card-orb">
+            <PngIcon name="realm" size={72} alt="UK Cafe" />
+          </div>
+          <h2>☕ UK Cafe</h2>
+          <p>A cozy Edinburgh-style cafe with exposed brick, warm lighting, and fresh pastries.</p>
+          <span className="realm-card-cta">Enter the cafe ›</span>
+        </button>
       </div>
 
       <ComingSoonModal
@@ -258,17 +280,81 @@ function LibraryRealm() {
           const lead = rows.find((x) => x.instance === 1)?.count ?? 0
           const full = instances > 0 && rows.every((x) => x.count >= REALM_CAPACITY)
           return (
+<div key={r.id} className="realm-room water-glass">
+                <div className="realm-room-icon">
+                  <PngIcon name="study-rooms" size={40} alt="" />
+                </div>
+                <div className="realm-room-body">
+                  <div className="roomlet-room-top">
+                    <strong>{r.name}</strong>
+                    <span className="realm-room-count" title={`${here} studying now`}>
+                      <span className="roomlet-room-dot" />
+                      {Math.min(lead, REALM_CAPACITY)}/{REALM_CAPACITY}
+                      {instances > 1 && <span className="realm-room-inst"> · {instances} rooms · {here} total</span>}
+                    </span>
+                  </div>
+                  <p>{r.blurb}</p>
+                </div>
+                <button className="sf-btn water realm-join" onClick={() => join(r.id, r.name)}>
+                  {full ? 'Enter new room' : 'Enter'}
+                </button>
+              </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function UkCafeRealm() {
+  const navigate = useNavigate()
+  const enterGlobal = useRealm((s) => s.enterGlobal)
+  const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
+
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      const entries = await Promise.all(
+        UK_CAFE_ROOMS.map(async (r) => [r.id, await occupancy(`uk-cafe:${r.id}`)] as const),
+      )
+      if (alive) setOcc(Object.fromEntries(entries))
+    }
+    void load()
+    const t = window.setInterval(load, 15_000)
+    return () => { alive = false; window.clearInterval(t) }
+  }, [])
+
+  function join(roomId: string, name: string) {
+    enterGlobal(roomId, name)
+    navigate('/realm/explore?world=uk-cafe')
+  }
+
+  return (
+    <>
+      <header className="realm-head">
+        <span className="sf-pill">UK Cafe</span>
+        <h1>Pick a room</h1>
+        <p>Step into any UK cafe to study together — everyone who enters the same room sees each other live.</p>
+      </header>
+      <div className="realm-rooms">
+        {UK_CAFE_ROOMS.map((r) => {
+          const rows = occ[r.id] ?? []
+          const here = totalOccupants(rows)
+          const instances = rows.length
+          const lead = rows.find((x) => x.instance === 1)?.count ?? 0
+          const full = instances > 0 && rows.every((x) => x.count >= ROOM_CAPACITIES[r.id])
+          return (
             <div key={r.id} className="realm-room water-glass">
               <div className="realm-room-icon">
-                <PngIcon name="study-rooms" size={40} alt="" />
+                <PngIcon name="realm" size={40} alt="" />
               </div>
               <div className="realm-room-body">
-                <div className="realm-room-top">
+                <div className="roomlet-room-top">
                   <strong>{r.name}</strong>
                   <span className="realm-room-count" title={`${here} studying now`}>
-                    <span className="realm-room-dot" />
-                    {Math.min(lead, REALM_CAPACITY)}/{REALM_CAPACITY}
-                    {instances > 1 && <span className="realm-room-inst"> · {instances} rooms · {here} total</span>}
+                    <span className="roomlet-room-dot" />
+                    {Math.min(lead, ROOM_CAPACITIES[r.id])}/${ROOM_CAPACITIES[r.id]}
+                    {instances > 1 && <span className="roomlet-room-inst"> · {instances} rooms · {here} total</span>}
                   </span>
                 </div>
                 <p>{r.blurb}</p>

@@ -14,7 +14,7 @@ import {
 } from '../lib/social'
 import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '../lib/stats'
 import { BANNERS, getBanner, LOGOS } from '../lib/banners'
-import { checkDisplayName } from '../lib/displayName'
+import { RankBanner } from '../components/RankBanner'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { getRank, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
@@ -31,6 +31,7 @@ import { FollowButton } from '../components/FollowButton'
 import { AddFriendButton } from '../components/AddFriendButton'
 import { UserListModal } from '../components/UserListModal'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
+import { useShop } from '../shop/store'
 import './Profile.css'
 
 // YouTube-style profile. One component serves both the editable own profile
@@ -150,11 +151,11 @@ function TopBar({ onBack, right }: { onBack: () => void; right?: React.ReactNode
       </div>
       <div className="pf-topbar-right">
         <span className="pf-resource">
-          <img className="pf-resource-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
+          <img className="pf-resource-icon" src="/icons/leaf.png" alt="" draggable={false} />
           {goldenXp.toLocaleString()}
         </span>
         <span className="pf-resource">
-          <img className="pf-resource-icon" src="/icons/leaf.png" alt="" draggable={false} />
+          <img className="pf-resource-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
           {xp >= 1000 ? `${(xp / 1000).toFixed(1)}K` : xp.toLocaleString()}
         </span>
         {right}
@@ -272,13 +273,13 @@ function ProfileBody({
                 const selectedLogo = view.pub.logo ? LOGOS.find(l => l.id === view.pub.logo) : null
                 const logoUrl = selectedLogo?.image || null
                 return (
-                  <ProfileAvatar
-                    name={view.displayName}
-                    avatarUrl={logoUrl || view.avatarUrl}
-                    rankId={view.rankId}
-                    size={80}
-                    className={selectedLogo?.dim ? 'logo-dim' : ''}
-                  />
+              <ProfileAvatar
+                name={view.displayName}
+                avatarUrl={logoUrl || view.avatarUrl}
+                rankId={view.rankId}
+                size={130}
+                className={selectedLogo ? 'logo-dim' : ''}
+              />
                 )
               })()}
             </div>
@@ -293,11 +294,10 @@ function ProfileBody({
               {view.pub.bio && <div className="ff-banner-bio">{view.pub.bio}</div>}
             </div>
 
-            {/* Right: Rank badge */}
-            <button className="ff-banner-rank" onClick={() => setRankModal(true)}>
-              <img src={rank.badge} alt="" className="ff-banner-rank-img" />
-              <span className="ff-banner-rank-name">{rank.name}</span>
-            </button>
+            {/* Right: Rank banner — animated, rank-aware scene */}
+            <div className="ff-banner-rank">
+              <RankBanner rank={rank} />
+            </div>
           </div>
 
           {/* Edit icon for own profile */}
@@ -665,27 +665,34 @@ function EditOverlay({
 
               <div className="pf-edit-label" style={{ marginTop: 20 }}>Banner</div>
               <div className="pf-banner-grid">
-                {BANNERS.map((b, i) => (
+                {BANNERS.filter((b) => useShop.getState().isOwned(b.id)).map((b) => (
                   <button
-                    key={i}
+                    key={b.id}
                     className={`pf-banner-swatch ${view.pub.banner === b.id ? 'active' : ''}`}
                     style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: b.css }}
-                    onClick={() => savePublic({ banner: b.id, bannerIdx: i, bannerImage: null })}
+                    onClick={() => savePublic({ banner: b.id, bannerImage: null })}
                     title={b.name}
                   />
                 ))}
               </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(240,223,192,0.4)' }}>
+                Don't see a banner? <a href="/avatar" style={{ color: '#d4a843', textDecoration: 'underline' }}>Visit the Avatar Shop</a> to unlock more.
+              </div>
 
               <div className="pf-edit-label" style={{ marginTop: 20 }}>Logo</div>
               <div className="pf-logo-grid">
-                {LOGOS.map((l) => (
+                {LOGOS.filter((l) => useShop.getState().isOwned(l.id)).map((l) => (
                   <button
                     key={l.id}
                     className={`pf-logo-swatch ${view.pub.logo === l.id ? 'active' : ''}`}
                     onClick={() => savePublic({ logo: l.id })}
                     title={l.name}
                   >
-                    <img src={l.image} alt="" />
+                    {l.image ? (
+                      <img src={l.image} alt="" />
+                    ) : (
+                      <span style={{ display: 'block', width: '100%', height: '100%', background: l.css || 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
+                    )}
                   </button>
                 ))}
                 <button
@@ -697,7 +704,7 @@ function EditOverlay({
                 </button>
               </div>
               <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(240,223,192,0.4)' }}>
-                Pick a logo or use your rank avatar.
+                Pick a logo or use your rank avatar. <a href="/avatar" style={{ color: '#d4a843', textDecoration: 'underline' }}>Get more in the Avatar Shop</a>.
               </div>
             </div>
           )}

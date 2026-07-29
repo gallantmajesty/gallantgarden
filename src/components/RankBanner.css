@@ -1,0 +1,108 @@
+.rank-banner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0d0a08;
+  font-family: var(--display);
+}
+
+.rank-banner-loading {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #1a100a 0%, #2d1810 40%, #3d2414 70%, #5c3a1c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--sans);
+  font-size: 14px;
+}
+
+.rank-banner-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+  touch-action: none;
+}
+
+.rank-banner-gradient {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0.85;
+}
+
+.rank-banner-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 16px;
+  animation: rank-badge-glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes rank-badge-glow-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.rank-banner-content {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.rank-banner-badge {
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.7));
+  transition: transform 0.3s ease, filter 0.3s ease;
+  animation: rank-badge-float 5s ease-in-out infinite;
+}
+
+.rank-banner-badge:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 24px var(--tier-accent));
+}
+
+@keyframes rank-badge-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.rank-banner-name {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9), 0 0 2px var(--tier-accent);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  animation: rank-name-reveal 0.8s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes rank-name-reveal {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rank-banner-canvas,
+  .rank-banner-glow,
+  .rank-banner-badge,
+  .rank-banner-name {
+    animation: none;
+  }
+}

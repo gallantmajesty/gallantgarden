@@ -15,6 +15,8 @@ export function PlayerNameTag3D({
   hidden = false,
   showAll = false,
   playerId_net,
+  banner,
+  logo,
 }: {
   name: string
   rank: string
@@ -26,6 +28,10 @@ export function PlayerNameTag3D({
   showAll?: boolean
   /** Network id of the player — used to read live timer state from targets. */
   playerId_net?: string
+  /** Banner id for the mini banner strip */
+  banner?: string
+  /** Logo id for the mini avatar */
+  logo?: string
 }) {
   if (hidden) return null
 
@@ -62,6 +68,8 @@ export function PlayerNameTag3D({
         showAll={showAll}
         timerRemaining={timerRemaining}
         timerTotal={timerTotal}
+        banner={banner}
+        logo={logo}
       />
     </Html>
   )
