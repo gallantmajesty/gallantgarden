@@ -1,7 +1,6 @@
 import type { DockTab, LockerTask } from "../../hooks/focus/types";
 import { AiAssistantPanel } from "./dock/AiAssistantPanel";
 import { YouTubePanel } from "./dock/YouTubePanel";
-import { SpotifyPanel } from "./dock/SpotifyPanel";
 import { TaskPanel } from "./dock/TaskPanel";
 
 interface SideDockProps {
@@ -23,7 +22,6 @@ interface SideDockProps {
 const tabs: { id: DockTab; label: string; icon: string }[] = [
   { id: "ai", label: "AI", icon: "✦" },
   { id: "youtube", label: "YouTube", icon: "▶" },
-  { id: "spotify", label: "Spotify", icon: "♫" },
   { id: "tasks", label: "Tasks", icon: "☰" },
 ];
 
@@ -159,7 +157,6 @@ export function SideDock({
         <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
           {activeTab === "ai" && <AiAssistantPanel />}
           {activeTab === "youtube" && <YouTubePanel />}
-          {activeTab === "spotify" && <SpotifyPanel />}
           {activeTab === "tasks" && (
             <TaskPanel
               tasks={tasks}

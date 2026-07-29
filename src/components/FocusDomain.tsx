@@ -132,15 +132,21 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
   const [clockMode, setClockMode] = useState<ClockMode>("sand");
   const [streakDays, setStreakDays] = useState(7);
   const [momentumScore, setMomentumScore] = useState(65);
+  const [wallClock, setWallClock] = useState(new Date());
 
   const { phase, remaining, totalElapsed, toggle, forfeit } = usePomodoro();
   const hardcode = useHardcodeMode();
   const locker = useLockerTask();
   const multiplayer = useMultiplayerPresence();
   const astroLog = useAstronomicalLog();
-  const dock = useSideDock();
+   const dock = useSideDock();
 
-  const timerMode = phase === "finished" ? "completed" : phase === "break" ? "running" : phase;
+  useEffect(() => {
+    const id = setInterval(() => setWallClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+   const timerMode = phase === "finished" ? "completed" : phase === "break" ? "running" : phase;
   const totalSeconds = remaining + totalElapsed;
 
   const handleStart = useCallback(() => {
@@ -226,18 +232,27 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     <div style={S.root}>
       <CornerFiligree />
 
-      <div style={S.header}>
-        <div style={S.headerLeft}>
-          <span style={S.title}>✦ GENSHIN FOCUS DOMAIN ✦</span>
-          <span style={S.subtitle}>Scholar Sanctuary</span>
-        </div>
+       <div style={S.header}>
+         <div style={S.headerLeft}>
+           <span style={S.title}>✦ GENSHIN FOCUS DOMAIN ✦</span>
+           <span style={S.subtitle}>Scholar Sanctuary</span>
+         </div>
 
-        <div style={S.spacer} />
+         <div style={{ ...S.spacer }} />
 
-        <div style={S.stats}>
-          <span>Streak: {streakDays}d</span>
-          <span>Leaves: {astroLog.log.totalLeaves} ✦</span>
-        </div>
+         <div style={{
+           fontSize: "0.8rem",
+           fontFamily: "var(--font-mono-display)",
+           color: "var(--color-genshin-gold)",
+           letterSpacing: "0.05em",
+         }}>
+           {wallClock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+         </div>
+
+         <div style={S.stats}>
+           <span>Streak: {streakDays}d</span>
+           <span>Leaves: {astroLog.log.totalLeaves} ✦</span>
+         </div>
 
         <button onClick={handleHardcodeToggle} style={hcStyle}>
           {hardcode.hardcodeActive ? "HARDCODE ON" : "HARDCODE OFF"}

@@ -6,7 +6,7 @@ export type ClockMode =
   | "pendulum"
   | "digital";
 
-export type DockTab = "ai" | "youtube" | "spotify" | "tasks";
+export type DockTab = "ai" | "youtube" | "tasks";
 
 export interface LockerTask {
   id: string;

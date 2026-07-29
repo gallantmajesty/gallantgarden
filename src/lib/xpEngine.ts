@@ -60,6 +60,10 @@ export const XP_VALUES = {
   firstBlueprint: 20,
   firstTree: 10,
   blueprintMaster: 12,
+
+  // Inactivity penalty — deducted when daily focus < threshold
+  inactivityPenalty: 15,
+  inactivityThresholdMin: 60,
 } as const
 
 // Pomodoro session rewards — the main study currency engine
@@ -89,6 +93,8 @@ export function calcPomoLeaves(
 // ---- Daily cap for train journeys (anti-spam) --------------------------------
 export const DAILY_CAPS = {
   total: 999,
+  /** Max minutes of active XP earning per day (after this, no more XP) */
+  activeMinCap: 20,
 } as const
 
 // Focus minutes and train journeys are NOT capped — they require real time.
@@ -108,6 +114,12 @@ interface DailyRecord {
   blueprintsCreated: number
   firstTreeAwarded: boolean
   firstBlueprintAwarded: boolean
+  /** timestamp of last recorded activity (ISO ms) */
+  lastActive: number
+  /** whether the inactivity penalty has been applied today */
+  penaltyApplied: boolean
+  /** active XP-earning minutes today (capped at DAILY_CAPS.activeMinCap) */
+  activeMinToday: number
 }
 
 const DAILY_KEY = 'sf.xp.daily'
@@ -137,6 +149,9 @@ function loadDaily(): DailyRecord {
       blueprintsCreated: (parsed.blueprintsCreated as number) || 0,
       firstTreeAwarded: (parsed.firstTreeAwarded as boolean) || false,
       firstBlueprintAwarded: (parsed.firstBlueprintAwarded as boolean) || false,
+      lastActive: (parsed.lastActive as number) || 0,
+      penaltyApplied: (parsed.penaltyApplied as boolean) || false,
+      activeMinToday: (parsed.activeMinToday as number) || 0,
     }
   } catch {
     return freshDaily()
@@ -156,6 +171,9 @@ function freshDaily(): DailyRecord {
     blueprintsCreated: 0,
     firstTreeAwarded: false,
     firstBlueprintAwarded: false,
+    lastActive: 0,
+    penaltyApplied: false,
+    activeMinToday: 0,
   }
 }
 
@@ -166,7 +184,65 @@ function saveDaily(record: DailyRecord) {
   } catch { /* ignore */ }
 }
 
-// ---- Award result ------------------------------------------------------------
+// ---- Activity tracking ----------------------------------------------------
+
+/** Record a user activity event (call on any meaningful interaction). */
+export function recordActivity(): void {
+  const daily = loadDaily()
+  daily.lastActive = Date.now()
+  saveDaily(daily)
+}
+
+// ---- Inactivity penalty ----------------------------------------------------
+
+/**
+ * Check whether the user hit the daily inactivity threshold.
+ * Penalty applies when:
+ *   - The user has NOT been penalty-protected today (penaltyApplied === false)
+ *   - Last recorded activity was more than 1 hour ago AND before today's focus session started
+ *   - totalFocusMin today is below the inactivityThresholdMin (60 min)
+ *
+ * Call at the START of a new day (when the daily record flips).
+ * Returns negative leaves if penalty applies.
+ */
+export function checkInactivityPenalty(
+  currentLeaves: number,
+  currentGoldenLeaves: number,
+  currentRankId: string,
+): AwardResult {
+  const daily = loadDaily()
+  if (daily.penaltyApplied) {
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+
+  const now = Date.now()
+  const oneHourAgo = now - 60 * 60 * 1000
+
+  // If user was active in the last hour, no penalty.
+  if (daily.lastActive > 0 && daily.lastActive >= oneHourAgo) {
+    daily.penaltyApplied = true
+    saveDaily(daily)
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+
+  // If user has never been active today and has zero focus min, no penalty yet —
+  // give them a chance to start before the clock runs out.
+  if (daily.lastActive === 0 && daily.totalFocusMin === 0) {
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+
+  // If user hit the focus threshold, no penalty.
+  if (daily.totalFocusMin >= XP_VALUES.inactivityThresholdMin) {
+    daily.penaltyApplied = true
+    saveDaily(daily)
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+
+  // Penalty applies — user was inactive for 1hr+ AND didn't hit focus target.
+  daily.penaltyApplied = true
+  saveDaily(daily)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'focus', -XP_VALUES.inactivityPenalty, currentRankId)
+}
 export interface AwardResult {
   leaves: number
   goldenLeaves: number
@@ -178,45 +254,68 @@ export interface AwardResult {
 
 // ---- Award leaves (regular XP) — study sources only --------------------------
 export function awardLeaves(
-  currentLeaves: number,
-  currentGoldenLeaves: number,
-  source: 'focus' | 'train' | 'login' | 'tree' | 'note' | 'library',
-  baseAmount: number,
-  currentRankId: string,
-): AwardResult {
-  let actualLeaves = Math.max(0, Math.round(baseAmount))
-  let capped = false
+   currentLeaves: number,
+   currentGoldenLeaves: number,
+   source: 'focus' | 'train' | 'login' | 'tree' | 'note' | 'library',
+   baseAmount: number,
+   currentRankId: string,
+ ): AwardResult {
+   const isPenalty = baseAmount < 0
+   let actualLeaves = Math.round(baseAmount)
+   let capped = false
 
-  // Train journeys: soft diminishing returns after 60 min/day
-  if (source === 'train') {
-    const daily = loadDaily()
-    const journaled = daily.journeyMinutes
-    if (journaled >= 120) {
-      return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: true, onCooldown: false }
-    }
-    if (journaled >= 60) {
-      const overBy = journaled - 60
-      const factor = Math.max(0.25, 1 - (overBy / 60) * 0.75)
-      actualLeaves = Math.round(actualLeaves * factor)
-    }
-    daily.journeyMinutes += Math.round(baseAmount / XP_VALUES.journeyMin)
-    saveDaily(daily)
-  }
+   if (!isPenalty && source !== 'login') {
+     const daily = loadDaily()
 
-  // Check rank change
-  const newTotal = currentLeaves + actualLeaves + currentGoldenLeaves
-  const newRank = rankForTotalXp(newTotal)
-  const rankChanged = newRank.id !== currentRankId
+     // 20-min daily active cap — stop earning XP after the limit
+     if (daily.activeMinToday >= DAILY_CAPS.activeMinCap) {
+       return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: true, onCooldown: false }
+     }
 
-  return {
-    leaves: actualLeaves,
-    goldenLeaves: 0,
-    rankChanged,
-    newRankId: newRank.id,
-    capped,
-    onCooldown: false,
-  }
-}
+     // Convert baseAmount to active minutes for tracking
+     const minutesPerUnit = source === 'train' ? XP_VALUES.journeyMin : XP_VALUES.focusMin
+     const activeMinutes = Math.ceil(baseAmount / minutesPerUnit)
+     const remaining = DAILY_CAPS.activeMinCap - daily.activeMinToday
+
+     if (activeMinutes > remaining) {
+       actualLeaves = Math.round(remaining * minutesPerUnit)
+       capped = true
+     }
+
+     if (source === 'train') {
+       const journaled = daily.journeyMinutes
+       if (journaled >= 120) {
+         return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: true, onCooldown: false }
+       }
+       if (journaled >= 60) {
+         const overBy = journaled - 60
+         const factor = Math.max(0.25, 1 - (overBy / 60) * 0.75)
+         actualLeaves = Math.round(actualLeaves * factor)
+       }
+       daily.journeyMinutes += Math.round(baseAmount / XP_VALUES.journeyMin)
+     }
+
+     daily.activeMinToday += Math.min(activeMinutes, remaining)
+     saveDaily(daily)
+   }
+
+   // Prevent leaves from going below 0
+   const effectiveLeaves = Math.max(-currentLeaves, actualLeaves)
+
+   // Check rank change
+   const newTotal = currentLeaves + effectiveLeaves + currentGoldenLeaves
+   const newRank = rankForTotalXp(newTotal)
+   const rankChanged = newRank.id !== currentRankId
+
+   return {
+     leaves: effectiveLeaves,
+     goldenLeaves: 0,
+     rankChanged,
+     newRankId: newRank.id,
+     capped,
+     onCooldown: false,
+   }
+ }
 
 // ---- Award golden leaves (premium XP) — never capped, no cooldown -----------
 export function awardGoldenLeaves(
@@ -496,6 +595,11 @@ export function getDailyEngagement() {
     dailyTasksCompleted: daily.dailyTasksCompleted,
     focusSessionCount: daily.focusSessionCount,
     blueprintsCreated: daily.blueprintsCreated,
+    lastActive: daily.lastActive,
+    penaltyApplied: daily.penaltyApplied,
+    penaltyThresholdMin: XP_VALUES.inactivityThresholdMin,
+    activeMinToday: daily.activeMinToday,
+    activeMinCap: DAILY_CAPS.activeMinCap,
   }
 }
 

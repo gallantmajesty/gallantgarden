@@ -1,14 +1,17 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
+import { useMagnet } from '../store/magnet'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
 import { ResourceBar } from '../components/ResourceBar'
+import { ScorePanel } from '../components/ScorePanel'
+import { LoginPanel } from '../components/LoginPanel'
 import { getRank, rankProgress } from '../lib/ranks'
-import { LobbySettings } from '../components/settings/LobbySettings'
+import { getDailyEngagement } from '../lib/xpEngine'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
@@ -63,7 +66,8 @@ export function Lobby() {
   const { t } = useTranslation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [panel, setPanel] = useState<null | 'settings' | 'friends' | 'inbox'>(null)
+  const [panel, setPanel] = useState<null | 'settings' | 'friends' | 'inbox' | 'score' | 'login'>(null)
+  const [showLoginPanel, setShowLoginPanel] = useState(false)
   const rank = useProfile((s) => s.data.rank)
   const incomingCount = useFriends((s) => s.incoming.length)
   const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
@@ -111,6 +115,13 @@ export function Lobby() {
       rankTimersRef.current.forEach(clearTimeout)
     }
   }, [])
+
+  useEffect(() => {
+    const engagement = getDailyEngagement()
+    if (user && (engagement.penaltyApplied || engagement.activeMinToday < engagement.penaltyThresholdMin)) {
+      setShowLoginPanel(true)
+    }
+  }, [user])
 
   const pickProfile = useCallback((e: React.MouseEvent) => {
     if (transition?.active || rankTransition?.active) return
@@ -169,7 +180,7 @@ export function Lobby() {
         {user?.isGuest && (
           <div className="lobby-guest-banner">
             <span>You're browsing as a guest — your progress saves on this device only.</span>
-            <button className="sf-btn water" onClick={() => navigate('/')}>Sign Up to Save</button>
+            <button className="sf-btn water" onClick={() => navigate('/guest')}>Guest Info</button>
           </div>
         )}
         <div className="lobby-topleft">
@@ -190,12 +201,15 @@ export function Lobby() {
           <button className="lobby-exit sf-btn water" onClick={() => { signOut(); navigate('/') }}>Exit</button>
         </div>
         <div className="lobby-topright">
+          <button className="lobby-round" title="Score" onClick={() => setPanel('score')}>
+            <Glyph name="star" />
+          </button>
           <button className="lobby-round" title="Avatar" onClick={() => navigate('/avatar')}>
             <Glyph name="people" />
           </button>
-          <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
-            <Glyph name="gear" />
-          </button>
+           <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
+             <Glyph name="gear" />
+           </button>
           {/* Inbox dropdown */}
           <div className="lobby-inbox-wrap">
             <button className="lobby-inbox-btn" onClick={() => setPanel(p => p === 'inbox' ? null : 'inbox')}>
@@ -326,6 +340,9 @@ export function Lobby() {
 
         {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
         {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
+        {panel === 'score' && <ScorePanel onClose={() => setPanel(null)} />}
+        {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
+        {showLoginPanel && <LoginPanel onClose={() => setShowLoginPanel(false)} />}
         <ResourceBar />
       </div>
     )
@@ -343,12 +360,12 @@ export function Lobby() {
         <div className="lm-bg-orb lm-bg-orb--3" />
       </div>
 
-      {user?.isGuest && (
-        <div className="lobby-guest-banner">
-          <span>You're browsing as a guest</span>
-          <button className="sf-btn water" onClick={() => navigate('/')}>Sign Up</button>
-        </div>
-      )}
+        {user?.isGuest && (
+          <div className="lobby-guest-banner">
+            <span>You're browsing as a guest</span>
+            <button className="sf-btn water" onClick={() => navigate('/guest')}>Guest Info</button>
+          </div>
+        )}
 
       {/* Header */}
       <div className="lm-header">
@@ -364,6 +381,9 @@ export function Lobby() {
           <button className="lm-bell" onClick={() => setPanel('friends')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
             {incomingCount > 0 && <span className="lm-bell-dot" />}
+          </button>
+          <button className="lm-score-btn" onClick={() => setPanel('score')} title="Honour Score">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </button>
         </div>
         {panel === 'inbox' && (
@@ -578,6 +598,8 @@ export function Lobby() {
       {/* Panels */}
       {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
+      {panel === 'score' && <ScorePanel onClose={() => setPanel(null)} />}
+      {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
     </div>
   )
 }

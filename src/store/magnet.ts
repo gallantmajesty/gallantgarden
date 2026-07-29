@@ -20,6 +20,8 @@ import {
   awardDailyTaskCompletion,
   awardBlueprint,
   awardWeeklyWarrior,
+  checkInactivityPenalty,
+  recordActivity,
 } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
 import { pushMagnet, pullMagnet } from '../lib/magnet/sync'
@@ -306,43 +308,69 @@ export const useMagnet = create<MagnetState>((set, get) => {
     data: emptyData(),
     toast: null,
 
-    hydrate: (userId) => {
-      if (get().userId === userId && get().ready) return
-      const data = backfillPomodoro(load(userId))
-      const prevVisit = data.lastVisit
-      const withVisit: MagnetData = { ...data, lastVisit: prevVisit }
-      // record this visit time but remember the *previous* one for greetings
-      set({ userId, data: withVisit, ready: true })
-      const stamped = { ...withVisit, lastVisit: nowIso() }
-      // persist the new visit timestamp without clobbering the greeting value
-      try {
-        localStorage.setItem(storageKey(userId), JSON.stringify(stamped))
-      } catch {
-        /* ignore */
-      }
-      // Fresh device? Pull the cloud copy (if any) so the world follows the user.
-      // An existing local world is never clobbered — last-writer-per-device wins.
-      const isEmpty =
-        data.tasks.length === 0 &&
-        data.projects.length === 0 &&
-        data.goals.length === 0 &&
-        data.habits.length === 0 &&
-        data.templates.length === 0
-      if (isEmpty) {
-        void pullMagnet(userId).then((remote) => {
-          if (remote && get().userId === userId) {
-            const merged = { ...backfillPomodoro(remote), lastVisit: nowIso() }
-            persist(merged)
-            set({ data: merged })
-          }
-        })
-      }
-    },
+     hydrate: (userId) => {
+       if (get().userId === userId && get().ready) return
+       const data = backfillPomodoro(load(userId))
+       const prevVisit = data.lastVisit
+       const withVisit: MagnetData = { ...data, lastVisit: prevVisit }
+       // record this visit time but remember the *previous* one for greetings
+       set({ userId, data: withVisit, ready: true })
+       const stamped = { ...withVisit, lastVisit: nowIso() }
+       // persist the new visit timestamp without clobbering the greeting value
+       try {
+         localStorage.setItem(storageKey(userId), JSON.stringify(stamped))
+       } catch {
+         /* ignore */
+       }
+
+       // Check inactivity penalty on daily load
+       try {
+         const currentRank = rankForTotalXp(data.xp + data.premiumXp)
+         const penaltyResult = checkInactivityPenalty(data.xp, data.premiumXp, currentRank.id)
+         if (penaltyResult.leaves < 0 || penaltyResult.goldenLeaves > 0) {
+           const newXp = data.xp + penaltyResult.leaves
+           const newPremiumXp = data.premiumXp + penaltyResult.goldenLeaves
+           const newRank = rankForTotalXp(newXp + newPremiumXp)
+           let achievements = data.achievements
+           if (penaltyResult.rankChanged && newRank.id !== currentRank.id) {
+             achievements = [
+               { id: uid('ach'), title: `Rank Down: ${newRank.name}`, detail: `Inactivity penalty applied.`, icon: 'alert-circle', at: nowIso() },
+               ...achievements,
+             ]
+           }
+           const updated = { ...data, xp: newXp, premiumXp: newPremiumXp, achievements }
+           persist(updated)
+           set({ data: updated })
+           if (penaltyResult.leaves < 0) {
+             set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} leaves for not hitting 60 min focus today.`, icon: 'alert-circle' } })
+           }
+         }
+       } catch { /* ignore — penalty is best-effort */ }
+
+       // Fresh device? Pull the cloud copy (if any) so the world follows the user.
+       // An existing local world is never clobbered — last-writer-per-device wins.
+       const isEmpty =
+         data.tasks.length === 0 &&
+         data.projects.length === 0 &&
+         data.goals.length === 0 &&
+         data.habits.length === 0 &&
+         data.templates.length === 0
+       if (isEmpty) {
+         void pullMagnet(userId).then((remote) => {
+           if (remote && get().userId === userId) {
+             const merged = { ...backfillPomodoro(remote), lastVisit: nowIso() }
+             persist(merged)
+             set({ data: merged })
+           }
+         })
+       }
+     },
 
     clearToast: () => set({ toast: null }),
 
     // ---------- tasks ----------
-    addTask: (partial) =>
+    addTask: (partial) => {
+      recordActivity()
       commit((d) => {
         const task: Task = {
           id: uid('task'),
@@ -370,12 +398,12 @@ export const useMagnet = create<MagnetState>((set, get) => {
           next = { ...next, subjects: [...next.subjects, partial.subject] }
         }
         return next
-      }),
+      })},
 
-    updateTask: (id, patch) =>
-      commit((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+    updateTask: (id, patch) => commit((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
 
     toggleTask: (id) => {
+      recordActivity()
       const d0 = get().data
       const task = d0.tasks.find((t) => t.id === id)
       if (!task) return
@@ -498,8 +526,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
             ...t,
             blockedBy: has ? t.blockedBy.filter((b) => b !== blockerId) : [...t.blockedBy, blockerId],
           }
-        }),
-      })),
+      })})),
 
     // ---------- templates ----------
     addTemplate: (partial) =>
@@ -698,7 +725,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
     setBrainDump: (text) => commit((d) => ({ ...d, brainDump: text })),
 
     // ---------- focus + subjects ----------
-    logFocus: (minutes, subject) =>
+    logFocus: (minutes, subject) => {
+      recordActivity()
       commit((d) => {
         const session = { id: uid('foc'), date: todayKey(), minutes, subject }
         let next = { ...d, focus: [session, ...d.focus] }
@@ -707,9 +735,10 @@ export const useMagnet = create<MagnetState>((set, get) => {
         }
         // Leaves earned: 1 per focus minute (study rooms / library)
         return award(next, 'focus', Math.round(minutes * XP_VALUES.focusMin))
-      }),
+      })},
 
-    recordJourney: ({ minutes, subject, xp, achievements }) =>
+    recordJourney: ({ minutes, subject, xp, achievements }) => {
+      recordActivity()
       commit((d) => {
         const session = { id: uid('foc'), date: todayKey(), minutes, subject }
         let next = { ...d, focus: [session, ...d.focus] }
@@ -727,7 +756,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
         // Award premium XP for journey commitment (golden leaves, uncapped)
         const pResult = awardGoldenLeaves(result.xp, result.premiumXp, XP_VALUES.journeyPremium, rankForTotalXp(result.xp + result.premiumXp).id)
         return { ...result, premiumXp: result.premiumXp + pResult.goldenLeaves }
-      }),
+      })},
 
     addSubject: (name) =>
       commit((d) =>

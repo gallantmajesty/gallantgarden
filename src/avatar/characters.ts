@@ -284,7 +284,7 @@ export const CHARACTERS: Character[] = [
       top: 'tee', bottom: 'pants', shoes: 'sneakers',
       buildOverrides: { height: 0.55, neckLen: 0.04, armLen: 0.2, headSize: 1.9, shoulderWidth: 0.45, torsoLen: 0.45 },
     }),
-    description: 'A gentle gray elephant with big floppy ears, a long trunk and tiny tusks',
+    description: 'A gentle gray elephant with sturdy pillar legs, a long forward-sweeping trunk, curved ivory tusks, large fan ears, a visible tail tuft, and wrinkled skin',
     icon: '/icons/characters/elephant.svg',
     rarity: 'Epic',
     color: '#8a8f94',

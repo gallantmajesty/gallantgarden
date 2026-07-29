@@ -13,7 +13,7 @@ import { MobileControlCenter } from './components/mobile/MobileControlCenter'
 import { MobileBlocker } from './components/MobileBlocker'
 import GlobalClickSpark from './components/GlobalClickSpark'
 import './screens/Explore.css'
-import { AuthScreen } from './screens/AuthScreen'
+import { GuestMode } from './screens/GuestMode'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
 const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ default: m.ComingSoon })))
@@ -65,7 +65,7 @@ export default function App() {
     }
   }, [])
 
-  const PUBLIC_PATHS = new Set(['/', '/about'])
+  const PUBLIC_PATHS = new Set(['/', '/about', '/guest'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
 
   // Public marketing pages render without WebBackground/IntroVeil
@@ -77,7 +77,8 @@ export default function App() {
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/guest" element={<GuestMode />} />
+      <Route path="/" element={<Landing />} />
             <Route path="/about" element={<About />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
           </Routes>
