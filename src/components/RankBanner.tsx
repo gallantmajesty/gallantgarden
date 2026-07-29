@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Rank } from '../lib/ranks'
+import type { Rank } from '../lib/ranks'
 
 type Tier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'crystal' | 'focuster'
 
