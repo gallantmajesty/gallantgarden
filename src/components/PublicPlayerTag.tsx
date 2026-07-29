@@ -15,6 +15,10 @@ export interface PublicPlayer {
   country: string | null
   /** rank id (see ranks.ts) */
   rank: string
+  /** banner id for the nameplate strip */
+  banner?: string
+  /** logo id for the nameplate avatar */
+  logo?: string
 }
 
 export function PublicPlayerTag({

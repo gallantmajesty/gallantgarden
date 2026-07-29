@@ -7,12 +7,6 @@ import './Landing.css'
 const Antigravity = lazy(() => import('./Antigravity'))
 const ScrollVelocity = lazy(() => import('./ScrollVelocity'))
 const Snowfall = lazy(() => import('../../components/Snowfall'))
-import { ComingSoonOverlay } from '../../components/ComingSoonOverlay'
-
-function isLocalhost() {
-  const h = window.location.hostname
-  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]'
-}
 
 /* ═══ Scroll reveal hook ═══ */
 function useScrollReveal() {
@@ -1217,14 +1211,8 @@ export function Landing() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const [showComingSoon, setShowComingSoon] = useState(false)
-
   const goToApp = useCallback(() => {
-    if (isLocalhost()) {
-      navigate('/rooms')
-    } else {
-      setShowComingSoon(true)
-    }
+    navigate('/rooms')
   }, [navigate])
 
   const [shootingStar, setShootingStar] = useState(false)
@@ -2067,9 +2055,6 @@ export function Landing() {
         </div>
       </footer>
 
-      {showComingSoon && (
-        <ComingSoonOverlay onClose={() => setShowComingSoon(false)} />
-      )}
     </div>
   )
 }

@@ -34,7 +34,9 @@ import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '.
 import { type PublicPlayer } from '../components/PublicPlayerTag'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
+import { Flag } from '../components/Flag'
 import { getRank } from '../lib/ranks'
+import { getBanner, LOGOS } from '../lib/banners'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { UserDetailModal } from '../components/library/UserDetailModal'
@@ -569,10 +571,27 @@ function RoomRoster() {
   const rank = useProfile((s) => s.data.rank)
   const playerId = useProfile((s) => s.playerId)
   const displayName = useProfile((s) => s.displayName)
+  const banner = useProfile((s) => s.pub.banner)
+  const logo = useProfile((s) => s.pub.logo)
   const realm = useRealm((s) => s.active)
   const roster = useRealmNet((s) => s.roster)
   const [open, setOpen] = useState(true)
   const [detailTarget, setDetailTarget] = useState<{ networkId: string; name: string; country: string | null; rank: string } | null>(null)
+
+  // Listen for "More Info" clicks from the 3D floating name tags
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail
+      if (!d) return
+      // Look up the network id from the roster or self
+      const entries = Object.entries(roster)
+      const match = entries.find(([, v]) => v.name === d.name)
+      const networkId = match ? match[0] : getSelfId()
+      if (networkId) setDetailTarget({ networkId, name: d.name, country: d.country, rank: d.rank })
+    }
+    window.addEventListener('pnt-info-click', handler)
+    return () => window.removeEventListener('pnt-info-click', handler)
+  }, [roster])
   // Tick every second so timer / sitting info updates live
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -588,6 +607,8 @@ function RoomRoster() {
     playerId,
     country,
     rank,
+    banner,
+    logo,
   }
   const rosterEntries = Object.entries(roster)
   const total = rosterEntries.length + 1
@@ -608,17 +629,34 @@ function RoomRoster() {
             style={{ cursor: 'pointer' }}
             onClick={() => { const sid = getSelfId(); if (sid) setDetailTarget({ networkId: sid, name: self.name, country, rank }) }}
           >
-            <div className="roster-card-banner" />
+            {(() => {
+              const b = getBanner(self.banner)
+              const logoData = self.logo ? LOGOS.find((l) => l.id === self.logo) : null
+              return (
+                <div className="roster-card-banner" style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: b.css }}>
+                  <div className="roster-card-banner-inner">
+                    {logoData && (logoData.image
+                      ? <img className="roster-card-banner-logo" src={logoData.image} alt="" draggable={false} />
+                      : <span className="roster-card-banner-logo" style={{ background: logoData.css || 'rgba(255,255,255,0.2)' }} />
+                    )}
+                    <span className="roster-card-banner-name">{self.name}</span>
+                  </div>
+                </div>
+              )
+            })()}
             <div className="roster-card-content">
-              <div className="roster-card-avatar">
-                <ProfileAvatar name={self.name} avatarUrl={null} rankId={self.rank} size={36} />
-              </div>
               <div className="roster-card-info">
-                <span className="roster-card-name">{self.name}</span>
+                {country && <Flag code={country} className="roster-card-flag" />}
                 <span className="roster-card-you">You</span>
               </div>
               <RankBadge rankId={self.rank} size={20} className="roster-card-rank" />
             </div>
+            <button
+              className="roster-card-more"
+              onClick={(e) => { e.stopPropagation(); const sid = getSelfId(); if (sid) setDetailTarget({ networkId: sid, name: self.name, country, rank }) }}
+            >
+              More info
+            </button>
           </div>
           {rosterEntries.map(([id, entry]) => {
             const target = getTarget(id)
@@ -647,19 +685,35 @@ function RoomRoster() {
                 className="room-roster-card clickable"
                 onClick={() => setDetailTarget({ networkId: id, name: entry.name, country: entry.country, rank: entry.rank })}
               >
-                <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
+                {(() => {
+                  const b = getBanner(entry.banner)
+                  const logoData = entry.logo ? LOGOS.find((l) => l.id === entry.logo) : null
+                  return (
+                    <div className="roster-card-banner" style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center', '--rank-color': getRank(entry.rank).accent } as React.CSSProperties : { background: b.css, '--rank-color': getRank(entry.rank).accent } as React.CSSProperties}>
+                      <div className="roster-card-banner-inner">
+                        {logoData && (logoData.image
+                          ? <img className="roster-card-banner-logo" src={logoData.image} alt="" draggable={false} />
+                          : <span className="roster-card-banner-logo" style={{ background: logoData.css || 'rgba(255,255,255,0.2)' }} />
+                        )}
+                        <span className="roster-card-banner-name">{entry.name}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
                 <div className="roster-card-content">
-                  <div className="roster-card-avatar">
-                    <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={36} />
-                  </div>
                   <div className="roster-card-info">
-                    <span className="roster-card-name">{entry.name}</span>
+                    {entry.country && <Flag code={entry.country} className="roster-card-flag" />}
                     {subject && <span className="roster-card-subject">{subject}</span>}
                     {!subject && timerStartedAt > 0 && <span className="roster-card-subject roster-card-subject--idle">Studying…</span>}
                   </div>
                   <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
                 </div>
-                {/* Timer bar + sitting duration */}
+                <button
+                  className="roster-card-more"
+                  onClick={(e) => { e.stopPropagation(); setDetailTarget({ networkId: id, name: entry.name, country: entry.country, rank: entry.rank }) }}
+                >
+                  More info
+                </button>
                 {timerStartedAt > 0 && timerDurationMs > 0 && (
                   <div className="roster-card-timer">
                     <div className="roster-card-timer-track">

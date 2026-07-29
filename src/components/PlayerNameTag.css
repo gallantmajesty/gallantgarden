@@ -138,6 +138,30 @@
   margin-top: 1px;
 }
 
+/* "More Info" clickable link */
+.pnt-info {
+  display: block;
+  margin: 2px auto 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(201, 168, 124, 0.7);
+  cursor: pointer;
+  pointer-events: auto;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+  transition: color 0.15s;
+  text-decoration: underline;
+  text-decoration-color: rgba(201, 168, 124, 0.3);
+  text-underline-offset: 2px;
+}
+.pnt-info:hover {
+  color: rgba(201, 168, 124, 1);
+  text-decoration-color: rgba(201, 168, 124, 0.8);
+}
+
 /* Mini banner strip — logo left, name right */
 .pnt-banner-strip {
   display: flex;

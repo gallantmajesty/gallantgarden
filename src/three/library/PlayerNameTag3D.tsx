@@ -2,9 +2,6 @@ import { Html } from '@react-three/drei'
 import { PlayerNameTag } from '../../components/PlayerNameTag'
 import { getTarget } from '../../multiplayer/net'
 
-// Anchors the magical name plate above a player's head in world space.
-// Scale follows distance so far players shrink naturally, and the whole thing
-// sits slightly above the chibi rig's head.
 export function PlayerNameTag3D({
   name,
   rank,
@@ -17,6 +14,7 @@ export function PlayerNameTag3D({
   playerId_net,
   banner,
   logo,
+  onInfoClick,
 }: {
   name: string
   rank: string
@@ -26,16 +24,13 @@ export function PlayerNameTag3D({
   headY?: number
   hidden?: boolean
   showAll?: boolean
-  /** Network id of the player — used to read live timer state from targets. */
   playerId_net?: string
-  /** Banner id for the mini banner strip */
   banner?: string
-  /** Logo id for the mini avatar */
   logo?: string
+  onInfoClick?: () => void
 }) {
   if (hidden) return null
 
-  // Read live timer state from the multiplayer target (only for remote players)
   let timerRemaining: number | undefined
   let timerTotal: number | undefined
   if (playerId_net && !self) {
@@ -70,6 +65,7 @@ export function PlayerNameTag3D({
         timerTotal={timerTotal}
         banner={banner}
         logo={logo}
+        onInfoClick={onInfoClick}
       />
     </Html>
   )

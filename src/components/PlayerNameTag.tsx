@@ -5,38 +5,28 @@ import { getRank } from '../lib/ranks'
 import { getBanner, LOGOS } from '../lib/banners'
 import './PlayerNameTag.css'
 
-// A magical floating name plate shown above each player's head in the realm.
-// By default shows only the country flag — tap/click to expand the full tag
-// (name + rank + timer + report). When `showAllUserInfo` is ON, always show
-// the full tag.
 export interface PlayerNameTagProps {
   name: string
   rank: string
   country: string | null
   playerId?: number | null
   self?: boolean
-  /** When true, always show full info (name + rank). When false, flag-only by default. */
   showAll?: boolean
-  /** Timer info from the multiplayer target — remaining seconds and total seconds. */
   timerRemaining?: number
   timerTotal?: number
-  /** Banner id for the mini banner strip */
   banner?: string
-  /** Logo id for the mini avatar */
   logo?: string
+  onInfoClick?: () => void
 }
 
-export function PlayerNameTag({ name, rank, country, playerId, self, showAll, timerRemaining, timerTotal, banner, logo }: PlayerNameTagProps) {
+export function PlayerNameTag({ name, rank, country, playerId, self, showAll, timerRemaining, timerTotal, banner, logo, onInfoClick }: PlayerNameTagProps) {
   const [expanded, setExpanded] = useState(false)
   const r = getRank(rank)
   const visible = showAll || expanded
   const b = getBanner(banner)
   const logoData = logo ? LOGOS.find((l) => l.id === logo) : null
-
-  // Truncate name to 16 chars with ellipsis
   const displayName = name.length > 16 ? name.slice(0, 16) + '…' : name
 
-  // Auto-collapse after 6 seconds
   useEffect(() => {
     if (!expanded) return
     const t = setTimeout(() => setExpanded(false), 6000)
@@ -44,7 +34,6 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
   }, [expanded])
 
   if (!visible) {
-    // Flag-only mode — small, clickable
     return (
       <div
         className="pnt-flag-only"
@@ -56,13 +45,11 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
     )
   }
 
-  // Full expanded tag with mini banner
   return (
     <div
       className={`pnt pnt-expanded${self ? ' pnt-self' : ''}`}
       style={{ ['--rank' as string]: r.accent } as React.CSSProperties}
     >
-      {/* Mini banner strip */}
       <div
         className="pnt-banner-strip"
         style={b.image
@@ -89,10 +76,6 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
         <span className="pnt-banner-name">{displayName}</span>
       </div>
       <span className="pnt-content">
-        <span className="pnt-top">
-          {country && <Flag code={country} className="pnt-flag" />}
-          <span className="pnt-name">{name}</span>
-        </span>
         <span className="pnt-bottom">
           <RankBadge rankId={rank} size={18} className="pnt-rank" />
           <span className="pnt-rankname">{r.name}</span>
@@ -108,9 +91,19 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
             </span>
           </span>
         )}
-        {self && (
-          <span className="pnt-self-label">You</span>
-        )}
+        <button
+          className="pnt-info"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onInfoClick) {
+              onInfoClick()
+            } else {
+              window.dispatchEvent(new CustomEvent('pnt-info-click', { detail: { name, rank, country, playerId } }))
+            }
+          }}
+        >
+          More Info
+        </button>
       </span>
     </div>
   )

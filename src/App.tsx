@@ -35,11 +35,6 @@ const CharacterSelection = lazy(() => import('./screens/CharacterSelection').the
 const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
 const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
 
-function isLocalhost() {
-  const h = window.location.hostname
-  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]'
-}
-
 export default function App() {
   const { user, loading } = useAuth()
   const onboarded = useProfile((s) => s.onboarded)
@@ -90,11 +85,6 @@ export default function App() {
         <GlobalClickSpark />
       </ErrorBoundary>
     )
-  }
-
-  // Non-localhost: redirect to landing page — the CTA there shows "Coming Soon"
-  if (!isLocalhost() && !user && !loading) {
-    return <Navigate to="/" replace />
   }
 
   // The background is mounted once, above the auth/loading/router branch, so it
