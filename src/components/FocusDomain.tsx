@@ -10,6 +10,7 @@ import { AstronomicalChart } from "./focus/AstronomicalChart";
 import { MultiplayerBar } from "./focus/MultiplayerBar";
 import { usePomodoro, computeSegments, SESSION_OPTIONS, TimerPreset, SessionSummary, SessionHistoryEntry, BREAK_ACTIVITIES, type TimerType } from "../store/pomodoro";
 import { useWorld } from "../store/world";
+import { useSettings } from "../store/settings";
 import { useHardcodeMode } from "../hooks/focus/useHardcodeMode";
 import { useLockerTask } from "../hooks/focus/useLockerTask";
 import { useMultiplayerPresence } from "../hooks/focus/useMultiplayerPresence";
