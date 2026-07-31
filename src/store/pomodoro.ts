@@ -380,7 +380,6 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     totalFocusMin: loadNum(MIN_KEY),
     history: loadHistory(),
     presets: loadPresets(),
-    history: loadHistory(),
 
     setSubject: (subject) => {
       saveStr(SUBJECT_KEY, subject)

@@ -49,8 +49,8 @@ export const MagicalParticles = memo(function MagicalParticles() {
     window.addEventListener('resize', resize)
 
     particlesRef.current = Array.from({ length: 32 }, (_, i) => ({
-      x: Math.random() * dimensions.width,
-      y: Math.random() * dimensions.height,
+      x: Math.random() * (dimensions.width || 100),
+      y: Math.random() * (dimensions.height || 100),
       vx: (Math.random() - 0.5) * 0.15,
       vy: -0.08 - Math.random() * 0.12,
       size: 1 + Math.random() * 2,
@@ -70,6 +70,10 @@ export const MagicalParticles = memo(function MagicalParticles() {
 
       const ctx = canvas?.getContext('2d')
       if (!ctx || !canvas) return
+      if (canvas.width === 0 || canvas.height === 0) {
+        animationRef.current = requestAnimationFrame(animate)
+        return
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       const dpr = window.devicePixelRatio || 1
 
