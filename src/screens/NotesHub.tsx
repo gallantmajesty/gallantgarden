@@ -11,7 +11,7 @@ export function NotesHub() {
   return (
     <div className="notes-hub">
       <header className="notes-hub-head">
-        <button className="notes-hub-back" onClick={() => navigate('/')}>‹ Back</button>
+        <button className="notes-hub-back" onClick={() => navigate(-1)}>‹ Back</button>
         <h1>Notes</h1>
         <p>Choose how you want to capture your study notes.</p>
       </header>

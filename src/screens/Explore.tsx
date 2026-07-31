@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
-import { UkCafeScene } from '../three/ukcafe/UkCafeScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
 import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
@@ -21,7 +20,7 @@ import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
 import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro'
 import type { TimerType } from '../store/pomodoro'
-import { getRemoteOccupied, setLocalTimer, setLocalSubject, getTarget, useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId, getSelfId } from '../multiplayer/net'
+import { getRemoteOccupied, setLocalTimer } from '../multiplayer/net'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
@@ -30,20 +29,19 @@ import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
 import { trainStationEnabled, ukCafeEnabled } from '../lib/realm'
+import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
-import { type PublicPlayer } from '../components/PublicPlayerTag'
+import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
-import { Flag } from '../components/Flag'
 import { getRank } from '../lib/ranks'
-import { getBanner, LOGOS } from '../lib/banners'
+import { AddFriendButton } from '../components/AddFriendButton'
 import { Icon } from '../components/magnet/Icon'
 import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
-import { UserDetailModal } from '../components/library/UserDetailModal'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
-import { FocusDomain } from '../components/FocusDomain'
+import { FullscreenPomodoro } from '../components/FullscreenPomodoro'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
@@ -211,15 +209,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
     return unsub
   }, [])
 
-  // Sync local pomodoro subject into multiplayer so others can see what you're studying.
-  useEffect(() => {
-    const unsub = usePomodoro.subscribe((s) => {
-      setLocalSubject(s.subject)
-    })
-    setLocalSubject(usePomodoro.getState().subject)
-    return unsub
-  }, [])
-
   // Enter a realm in Third-person so the player always sees their own character —
   // never spawn body-less in First-person. (They can switch to First afterward.)
   useEffect(() => {
@@ -227,13 +216,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
   }, [set])
 
   // DPR is fixed at mount time — no live step-up to avoid GPU stalls / context loss.
-
-  // Keep the cafe scene ready immediately since it has no async loading gate
-  // like the library scene does. This is set before the early-exit guards so
-  // the hook order stays consistent on every render (Rules of Hooks).
-  useEffect(() => {
-    if (isUkCafe) setReady(true)
-  }, [isUkCafe])
 
   // Experimental-realm route guard. If someone reaches a flagship route while it
   // is hidden (public build, no dev access) — e.g. a stale link or a manual
@@ -254,9 +236,11 @@ export function Explore({ defaultWorld }: ExploreProps) {
       {isTrain ? (
         <TrainStationScene onReady={() => setReady(true)} />
       ) : isUkCafe ? (
-        <UkCafeScene />
-      ) : (
         <LibraryScene onReady={() => setReady(true)} />
+      ) : (
+        <LibraryScene
+          onReady={() => setReady(true)}
+        />
       )}
       <PomodoroTicker />
       {!cinematic && <RealmConnection />}
@@ -386,7 +370,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
       {location.pathname === '/realm/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
-      <FocusDomain isOpen={fpOpen} onClose={() => setFpOpen(false)} />
+      <FullscreenPomodoro isOpen={fpOpen} onClose={() => setFpOpen(false)} />
     </div>
   )
 }
@@ -571,44 +555,18 @@ function RoomRoster() {
   const rank = useProfile((s) => s.data.rank)
   const playerId = useProfile((s) => s.playerId)
   const displayName = useProfile((s) => s.displayName)
-  const banner = useProfile((s) => s.pub.banner)
-  const logo = useProfile((s) => s.pub.logo)
   const realm = useRealm((s) => s.active)
   const roster = useRealmNet((s) => s.roster)
   const [open, setOpen] = useState(true)
-  const [detailTarget, setDetailTarget] = useState<{ networkId: string; name: string; country: string | null; rank: string } | null>(null)
+  const [profileTarget, setProfileTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string } | null>(null)
 
-  // Listen for "More Info" clicks from the 3D floating name tags
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const d = (e as CustomEvent).detail
-      if (!d) return
-      // Look up the network id from the roster or self
-      const entries = Object.entries(roster)
-      const match = entries.find(([, v]) => v.name === d.name)
-      const networkId = match ? match[0] : getSelfId()
-      if (networkId) setDetailTarget({ networkId, name: d.name, country: d.country, rank: d.rank })
-    }
-    window.addEventListener('pnt-info-click', handler)
-    return () => window.removeEventListener('pnt-info-click', handler)
-  }, [roster])
-  // Tick every second so timer / sitting info updates live
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (!open) return
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000)
-    return () => window.clearInterval(id)
-  }, [open])
-
-  const realmName = realm?.name ?? 'Library'
+  if (!realm) return null
 
   const self: PublicPlayer = {
     name: displayName || user?.profile?.name || 'You',
     playerId,
     country,
     rank,
-    banner,
-    logo,
   }
   const rosterEntries = Object.entries(roster)
   const total = rosterEntries.length + 1
@@ -622,112 +580,37 @@ function RoomRoster() {
       </button>
       {open && (
         <div className="room-roster-list">
-          <div
-            className="room-roster-card me clickable"
-            role="button"
-            tabIndex={0}
-            style={{ cursor: 'pointer' }}
-            onClick={() => { const sid = getSelfId(); if (sid) setDetailTarget({ networkId: sid, name: self.name, country, rank }) }}
-          >
-            {(() => {
-              const b = getBanner(self.banner)
-              const logoData = self.logo ? LOGOS.find((l) => l.id === self.logo) : null
-              return (
-                <div className="roster-card-banner" style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: b.css }}>
-                  <div className="roster-card-banner-inner">
-                    {logoData && (logoData.image
-                      ? <img className="roster-card-banner-logo" src={logoData.image} alt="" draggable={false} />
-                      : <span className="roster-card-banner-logo" style={{ background: logoData.css || 'rgba(255,255,255,0.2)' }} />
-                    )}
-                    <span className="roster-card-banner-name">{self.name}</span>
-                  </div>
-                </div>
-              )
-            })()}
+          <div className="room-roster-card me">
+            <div className="roster-card-banner" />
             <div className="roster-card-content">
+              <div className="roster-card-avatar">
+                <ProfileAvatar name={self.name} avatarUrl={null} rankId={self.rank} size={36} />
+              </div>
               <div className="roster-card-info">
-                {country && <Flag code={country} className="roster-card-flag" />}
+                <span className="roster-card-name">{self.name}</span>
                 <span className="roster-card-you">You</span>
               </div>
               <RankBadge rankId={self.rank} size={20} className="roster-card-rank" />
             </div>
-            <button
-              className="roster-card-more"
-              onClick={(e) => { e.stopPropagation(); const sid = getSelfId(); if (sid) setDetailTarget({ networkId: sid, name: self.name, country, rank }) }}
-            >
-              More info
-            </button>
           </div>
-          {rosterEntries.map(([id, entry]) => {
-            const target = getTarget(id)
-            const subject = target?.subject || ''
-            const timerStartedAt = target?.timerStartedAt ?? 0
-            const timerDurationMs = target?.timerDurationMs ?? 0
-            let timerPct = 0
-            let timerLabel = ''
-            let sittingLabel = ''
-            if (timerStartedAt && timerDurationMs) {
-              const elapsed = Date.now() - timerStartedAt
-              timerPct = Math.min(1, Math.max(0, elapsed / timerDurationMs))
-              const remainMs = Math.max(0, timerDurationMs - elapsed)
-              const remainSec = Math.round(remainMs / 1000)
-              const mm = String(Math.floor(remainSec / 60)).padStart(2, '0')
-              const ss = String(remainSec % 60).padStart(2, '0')
-              timerLabel = `${mm}:${ss}`
-              const sitMin = Math.floor(elapsed / 60000)
-              const sitH = Math.floor(sitMin / 60)
-              const sitM = sitMin % 60
-              sittingLabel = sitH > 0 ? `${sitH}h ${sitM}m` : `${sitM}m`
-            }
-            return (
-              <div
-                key={id}
-                className="room-roster-card clickable"
-                onClick={() => setDetailTarget({ networkId: id, name: entry.name, country: entry.country, rank: entry.rank })}
-              >
-                {(() => {
-                  const b = getBanner(entry.banner)
-                  const logoData = entry.logo ? LOGOS.find((l) => l.id === entry.logo) : null
-                  return (
-                    <div className="roster-card-banner" style={b.image ? { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center', '--rank-color': getRank(entry.rank).accent } as React.CSSProperties : { background: b.css, '--rank-color': getRank(entry.rank).accent } as React.CSSProperties}>
-                      <div className="roster-card-banner-inner">
-                        {logoData && (logoData.image
-                          ? <img className="roster-card-banner-logo" src={logoData.image} alt="" draggable={false} />
-                          : <span className="roster-card-banner-logo" style={{ background: logoData.css || 'rgba(255,255,255,0.2)' }} />
-                        )}
-                        <span className="roster-card-banner-name">{entry.name}</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-                <div className="roster-card-content">
-                  <div className="roster-card-info">
-                    {entry.country && <Flag code={entry.country} className="roster-card-flag" />}
-                    {subject && <span className="roster-card-subject">{subject}</span>}
-                    {!subject && timerStartedAt > 0 && <span className="roster-card-subject roster-card-subject--idle">Studying…</span>}
-                  </div>
-                  <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
+          {rosterEntries.map(([id, entry]) => (
+            <div
+              key={id}
+              className="room-roster-card clickable"
+              onClick={() => setProfileTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank })}
+            >
+              <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
+              <div className="roster-card-content">
+                <div className="roster-card-avatar">
+                  <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={36} />
                 </div>
-                <button
-                  className="roster-card-more"
-                  onClick={(e) => { e.stopPropagation(); setDetailTarget({ networkId: id, name: entry.name, country: entry.country, rank: entry.rank }) }}
-                >
-                  More info
-                </button>
-                {timerStartedAt > 0 && timerDurationMs > 0 && (
-                  <div className="roster-card-timer">
-                    <div className="roster-card-timer-track">
-                      <div className="roster-card-timer-fill" style={{ width: `${Math.round(timerPct * 100)}%` }} />
-                    </div>
-                    <div className="roster-card-timer-meta">
-                      <span className="roster-card-timer-time">{timerLabel}</span>
-                      {sittingLabel && <span className="roster-card-timer-sitting">🕐 {sittingLabel}</span>}
-                    </div>
-                  </div>
-                )}
+                <div className="roster-card-info">
+                  <span className="roster-card-name">{entry.name}</span>
+                </div>
+                <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
               </div>
-            )
-          })}
+            </div>
+          ))}
           {rosterEntries.length === 0 && (
             <p className="room-roster-empty">
               <span>Others studying in this realm will appear here live.</span>
@@ -735,14 +618,16 @@ function RoomRoster() {
           )}
         </div>
       )}
-      {detailTarget && (
-        <UserDetailModal
-          networkId={detailTarget.networkId}
-          name={detailTarget.name}
-          country={detailTarget.country}
-          rank={detailTarget.rank}
-          onClose={() => setDetailTarget(null)}
-        />
+      {profileTarget && (
+        <div className="roster-profile-overlay" onClick={() => setProfileTarget(null)}>
+          <div className="roster-profile-card" onClick={(e) => e.stopPropagation()}>
+            <button className="roster-profile-close" onClick={() => setProfileTarget(null)}>×</button>
+            <PublicPlayerTag player={{ name: profileTarget.name, country: profileTarget.country, rank: profileTarget.rank }} size="md" />
+            <div className="roster-profile-actions">
+              <AddFriendButton targetId={profileTarget.playerId} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1068,6 +953,9 @@ function RewardPopup() {
 function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, segmentsCompleted, totalSessionLeaves } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
+  const chimeVolume = useSettings((s) => s.pomo.chimeVolume)
+  const setChimeVolume = useSettings((s) => s.setPomo)
+  const autoStart = useSettings((s) => s.pomo.autoStart)
   const [configOpen, setConfigOpen] = useState(false)
   const [pickType, setPickType] = useState<TimerType>(timerType)
   const [pickDur, setPickDur] = useState(sessionMinutes)
@@ -1222,7 +1110,7 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
                 {[1, 2, 3, 4, 5].map((n) => {
                   const segs = computeSegments(pickDur, n)
                   const segMin = segs[0]
-  return (
+                  return (
                     <button key={n} className={`pomo-config-btn ${pickBreaks === n ? 'active' : ''}`} onClick={() => setPickBreaks(n)}>
                       {n} <span className="pomo-config-sub">({segMin}m)</span>
                     </button>
@@ -1231,6 +1119,32 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
               </div>
             </div>
           )}
+          <div className="pomo-config-row">
+            <span className="pomo-config-label">Chime Volume</span>
+            <div className="pomo-config-btns">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.1}
+                value={chimeVolume}
+                onChange={(e) => setChimeVolume({ chimeVolume: parseFloat(e.target.value) })}
+                style={{ width: 80, accentColor: 'var(--color-genshin-gold)' }}
+              />
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-genshin-bronze)' }}>{Math.round(chimeVolume * 100)}%</span>
+            </div>
+          </div>
+          <div className="pomo-config-row">
+            <span className="pomo-config-label">Auto-start</span>
+            <div className="pomo-config-btns">
+              <button
+                className={`pomo-config-btn ${autoStart ? 'active' : ''}`}
+                onClick={() => setChimeVolume({ ...useSettings.getState().pomo, autoStart: !autoStart })}
+              >
+                {autoStart ? 'On' : 'Off'}
+              </button>
+            </div>
+          </div>
           <button className="pomo-config-start" onClick={handleStart}>
             Start {pickType === 'pomodoro' && pickBreaks > 0 ? `• ${pickBreaks} break${pickBreaks > 1 ? 's' : ''}` : ''} Session
           </button>

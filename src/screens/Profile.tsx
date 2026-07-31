@@ -14,7 +14,6 @@ import {
 } from '../lib/social'
 import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '../lib/stats'
 import { BANNERS, getBanner, LOGOS } from '../lib/banners'
-import { RankBanner } from '../components/RankBanner'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { getRank, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
@@ -57,7 +56,8 @@ export function Profile() {
   const ownAvatarUrl = useProfile((s) => s.avatarUrl)
   const ownPub = useProfile((s) => s.pub)
   const ownCountry = useProfile((s) => s.data.country)
-  const ownRank = useProfile((s) => s.data.rank)
+  const ownTotalXp = useProfile((s) => s.xp + s.premiumXp)
+  const ownRank = useProfile((s) => rankForTotalXp(s.xp + s.premiumXp).id)
 
   const isOwnRoute = !routePlayerId || Number(routePlayerId) === ownPlayerId
 
@@ -252,22 +252,33 @@ function ProfileBody({
 
       <div className="pf-channel">
         {/* ========== FF-STYLE BANNER ========== */}
-        <div className="ff-banner">
-          {/* Banner background */}
-          {view.pub.bannerImage ? (
-            <img src={view.pub.bannerImage} alt="" className="ff-banner-bg" style={{ ['--pf-banner-pos' as string]: `${view.pub.bannerPos}%` }} />
-          ) : banner.image ? (
-            <img src={banner.image} alt="" className="ff-banner-bg" />
-          ) : (
-            <div className="ff-banner-bg" style={{ background: banner.css }} />
-          )}
+        <div className="ff-banner-wrap">
+          <div className="ff-banner">
+            {/* Banner background */}
+            {view.pub.bannerImage ? (
+              <img src={view.pub.bannerImage} alt="" className="ff-banner-bg" style={{ ['--pf-banner-pos' as string]: `${view.pub.bannerPos}%` }} />
+            ) : banner.image ? (
+              <img src={banner.image} alt="" className="ff-banner-bg" />
+            ) : (
+              <div className="ff-banner-bg" style={{ background: banner.css }} />
+            )}
 
-          {/* Dark overlay for readability */}
-          <div className="ff-banner-overlay" />
+            {/* Dark overlay for readability */}
+            <div className="ff-banner-overlay" />
 
-          {/* Content ON the banner */}
-          <div className="ff-banner-content">
-            {/* Left: Avatar inside banner — logo overrides uploaded avatar when selected */}
+            {/* Edit icon for own profile */}
+            {isOwn && (
+              <button className="ff-banner-edit" onClick={() => setEditing(true)} title="Customize profile">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Identity row — avatar + name + rank, all OUTSIDE the overflow:hidden banner */}
+          <div className="ff-identity">
             <div className="ff-banner-avatar">
               {(() => {
                 const selectedLogo = view.pub.logo ? LOGOS.find(l => l.id === view.pub.logo) : null
@@ -277,15 +288,14 @@ function ProfileBody({
                 name={view.displayName}
                 avatarUrl={logoUrl || view.avatarUrl}
                 rankId={view.rankId}
-                size={130}
+                size={110}
                 className={selectedLogo ? 'logo-dim' : ''}
               />
                 )
               })()}
             </div>
 
-            {/* Center: Name + ID + Bio */}
-            <div className="ff-banner-info">
+            <div className="ff-identity-info">
               <div className="ff-banner-name-row">
                 <span className="ff-banner-name">{view.displayName}</span>
                 {view.country && <Flag code={view.country} className="ff-banner-flag" />}
@@ -294,21 +304,11 @@ function ProfileBody({
               {view.pub.bio && <div className="ff-banner-bio">{view.pub.bio}</div>}
             </div>
 
-            {/* Right: Rank banner — animated, rank-aware scene */}
-            <div className="ff-banner-rank">
-              <RankBanner rank={rank} />
+            <div className="ff-banner-rank" onClick={() => setRankModal(true)}>
+              <img src={rank.badge} alt="" className="ff-rank-badge-img" />
+              <span className="ff-rank-badge-name">{rank.name}</span>
             </div>
           </div>
-
-          {/* Edit icon for own profile */}
-          {isOwn && (
-            <button className="ff-banner-edit" onClick={() => setEditing(true)} title="Customize profile">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-          )}
         </div>
 
         {/* ========== FOLLOWER STATS + ACTIONS ========== */}

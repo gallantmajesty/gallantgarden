@@ -60,15 +60,9 @@ export function AvatarCreator() {
   const stepIndex = steps.indexOf(step)
   const goNext = () => { if (stepIndex < steps.length - 1) setStep(steps[stepIndex + 1]) }
   const goBack = () => { if (stepIndex > 0) setStep(steps[stepIndex - 1]) }
-  const hasChar = !!config.characterId
+const hasChar = !!config.characterId
 
-  const humanIds = ['james', 'claire', 'mia']
-  const isCurrentHuman = humanIds.includes(config.characterId || 'james')
-  useEffect(() => {
-    if (!isCurrentHuman && (step === 'outfit' || step === 'accessories')) {
-      setStep('characters')
-    }
-  }, [config.characterId])
+useEffect(() => { }, [config.characterId])
 
   return (
     <div className="ac-root">
@@ -94,7 +88,7 @@ export function AvatarCreator() {
         {/* ---- right: light dock ---- */}
         <aside className="ac-dock">
           <div className="ac-dock-head">
-            <button className="ac-dock-back" onClick={() => navigate('/')} aria-label="Back">
+            <button className="ac-dock-back" onClick={() => navigate(-1)} aria-label="Back">
               ← Back
             </button>
           </div>
@@ -114,15 +108,11 @@ export function AvatarCreator() {
 /* ----------------------------------------------------------- mind-map sidebar */
 
 function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'accessories' | 'shop'; onPick: (s: 'characters' | 'outfit' | 'accessories' | 'shop') => void; config: AvatarConfig }) {
-  const humanIds = ['james', 'claire', 'mia']
-  const isHuman = humanIds.includes(config.characterId || 'james')
   const nodes: { id: 'characters' | 'outfit' | 'accessories' | 'shop'; label: string; ico: 'body' | 'top' | 'bag' | 'shop' }[] = [
     { id: 'characters', label: 'Body', ico: 'body' },
-    ...(isHuman ? [
-      { id: 'outfit' as const, label: 'Outfit', ico: 'top' as const },
-      { id: 'accessories' as const, label: 'Accessories', ico: 'bag' as const },
-    ] : []),
-    { id: 'shop', label: 'Shop', ico: 'shop' as const },
+    { id: 'outfit', label: 'Outfit', ico: 'top' },
+    { id: 'accessories', label: 'Accessories', ico: 'bag' },
+    { id: 'shop', label: 'Shop', ico: 'shop' },
   ]
   return (
     <aside className="ac-mindmap">

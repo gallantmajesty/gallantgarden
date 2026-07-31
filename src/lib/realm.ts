@@ -102,13 +102,13 @@ export function isDevAccess(): boolean {
  *  as a headline study world (the brief: "give two options, Library or Train").
  *  Set to `false` to hide it from the public while keeping all of its code,
  *  routes and scenes intact (developers still reach it via `?dev=1`). */
-export const ENABLE_TRAIN_STATION_REALM = true
+export const ENABLE_TRAIN_STATION_REALM = false
 
 /** Master launch switch for the UK Cafe Realm — FocusLily's third flagship
  *  world. Enabled by default so it appears in the chooser alongside the Library
  *  and Train Station. Set to `false` to hide it from the public while keeping
  *  all of its code, routes and scenes intact (developers still reach it via `?dev=1`). */
-export const ENABLE_UK_CAFE_REALM = true
+export const ENABLE_UK_CAFE_REALM = false
 
 /** Whether the Train Station Realm may be shown and entered right now. Every
  *  place that exposes the card or guards the route reads this one helper. */

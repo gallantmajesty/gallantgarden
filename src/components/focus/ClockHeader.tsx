@@ -1,7 +1,7 @@
 import type { ClockMode } from "../../hooks/focus/types";
 
 const clockLabels: { mode: ClockMode; label: string; icon: string }[] = [
-  { mode: "sand", label: "Archon Hourglass", icon: "⏳" },
+  { mode: "sand", label: "Ancient Sangtok Hourglass", icon: "⏳" },
   { mode: "calendar", label: "Celestial Dial", icon: "☀" },
   { mode: "mental", label: "Focus Flowmeter", icon: "◎" },
   { mode: "cuckoo", label: "Mechanical Clocktower", icon: "⚙" },

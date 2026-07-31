@@ -10,7 +10,7 @@ export type TextureQuality = 'low' | 'medium' | 'high'
 export type CameraMode = 'first' | 'third'
 export type Weather = 'clear' | 'light-rain' | 'heavy-rain' | 'fog'
 export type Theme = 'light' | 'dark'
-export type ThemePreset = 'forest' | 'dusk' | 'sakura' | 'ocean'
+export type ThemePreset = 'forest' | 'dusk' | 'ocean'
 
 /** Theme presets shift the app's accent hue. Applied as CSS custom properties on
  *  <html> by applyVisualSettings(), so they cascade across the whole UI. */
@@ -23,7 +23,6 @@ export interface ThemePresetDef {
 export const THEME_PRESETS: ThemePresetDef[] = [
   { id: 'forest', label: 'Forest', accent: '#ffce54', accentDark: '#e6a817' },
   { id: 'dusk', label: 'Dusk', accent: '#b98cff', accentDark: '#7a52d6' },
-  { id: 'sakura', label: 'Sakura', accent: '#ff9ec4', accentDark: '#e0699b' },
   { id: 'ocean', label: 'Ocean', accent: '#5ec6e6', accentDark: '#2a90b8' },
 ]
 
@@ -177,6 +176,7 @@ export interface PomodoroSettings {
   longBreak: number
   autoStart: boolean
   sound: boolean
+  chimeVolume: number // 0..1
   showTimer: boolean
 }
 
@@ -367,7 +367,7 @@ const DEFAULTS: SettingsData = {
   weatherAuto: true,
   timeSpeed: 1,
   timePaused: false,
-  pomo: { study: 25, break: 5, longBreak: 15, autoStart: false, sound: true, showTimer: true },
+  pomo: { study: 25, break: 5, longBreak: 15, autoStart: false, sound: true, chimeVolume: 0.5, showTimer: true },
   showAllUserInfo: false,
 }
 

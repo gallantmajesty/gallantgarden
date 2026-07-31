@@ -102,6 +102,7 @@ export class AmbientEngine {
     const master = this.master
     if (!ctx || !master) return
     const now = ctx.currentTime
+    const vol = this.mix.master * 0.5
     ;[880, 1320].forEach((f, i) => {
       const o = ctx.createOscillator()
       const g = ctx.createGain()
@@ -110,7 +111,7 @@ export class AmbientEngine {
       g.gain.value = 0
       o.connect(g).connect(master)
       const t = now + i * 0.18
-      g.gain.linearRampToValueAtTime(0.18 * this.mix.master, t + 0.02)
+      g.gain.linearRampToValueAtTime(vol, t + 0.02)
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
       o.start(t)
       o.stop(t + 1)

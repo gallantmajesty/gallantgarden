@@ -341,8 +341,8 @@ export const useMagnet = create<MagnetState>((set, get) => {
            const updated = { ...data, xp: newXp, premiumXp: newPremiumXp, achievements }
            persist(updated)
            set({ data: updated })
-           if (penaltyResult.leaves < 0) {
-             set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} leaves for not hitting 60 min focus today.`, icon: 'alert-circle' } })
+  if (penaltyResult.leaves < 0) {
+    set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} XP deducted for not hitting ${XP_VALUES.inactivityThresholdMin} min focus today. Rank may drop.`, icon: 'alert-circle' } })
            }
          }
        } catch { /* ignore — penalty is best-effort */ }

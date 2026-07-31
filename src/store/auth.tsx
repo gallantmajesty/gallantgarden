@@ -28,6 +28,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, name: string) => Promise<string | null>
   signInWithProvider: (provider: OAuthProvider) => Promise<string | null>
   signInAsGuest: () => Promise<void>
+  signInLocal: (name: string, email: string) => Promise<void>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -121,14 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('session-lost', handleSessionLost)
 
     restoreSession()
+    // Only restore on hashchange (OAuth callbacks), not on every popstate/navigation
     window.addEventListener('hashchange', restoreSession)
-    window.addEventListener('popstate', restoreSession)
 
     return () => {
       cancelled = true
       if (stopHeartbeat) stopHeartbeat()
       window.removeEventListener('hashchange', restoreSession)
-      window.removeEventListener('popstate', restoreSession)
       window.removeEventListener('session-lost', handleSessionLost)
     }
   }, [])
@@ -198,6 +198,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await runUserInit(guestUser)
   }, [])
 
+  const signInLocal = useCallback(async (name: string, email: string) => {
+    const localId = networkId()
+    const localUser: AuthUser = {
+      id: localId,
+      email,
+      profile: { name },
+      isGuest: true,
+    }
+    setUser(localUser)
+    await runUserInit(localUser)
+  }, [])
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
@@ -215,10 +227,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signInWithProvider,
       signInAsGuest,
+      signInLocal,
       signOut,
       refresh,
     }),
-    [user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signOut, refresh],
+    [user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signInLocal, signOut, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

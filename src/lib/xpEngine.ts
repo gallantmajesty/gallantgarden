@@ -61,9 +61,9 @@ export const XP_VALUES = {
   firstTree: 10,
   blueprintMaster: 12,
 
-  // Inactivity penalty — deducted when daily focus < threshold
-  inactivityPenalty: 15,
-  inactivityThresholdMin: 60,
+// Inactivity penalty — deducted when daily focus < threshold (costs rank drops)
+  inactivityPenalty: 200,
+  inactivityThresholdMin: 20,
 } as const
 
 // Pomodoro session rewards — the main study currency engine
@@ -118,6 +118,8 @@ interface DailyRecord {
   lastActive: number
   /** whether the inactivity penalty has been applied today */
   penaltyApplied: boolean
+  /** whether the penalty notification panel has already been shown to the user */
+  penaltyPanelShown: boolean
   /** active XP-earning minutes today (capped at DAILY_CAPS.activeMinCap) */
   activeMinToday: number
 }
@@ -149,9 +151,10 @@ function loadDaily(): DailyRecord {
       blueprintsCreated: (parsed.blueprintsCreated as number) || 0,
       firstTreeAwarded: (parsed.firstTreeAwarded as boolean) || false,
       firstBlueprintAwarded: (parsed.firstBlueprintAwarded as boolean) || false,
-      lastActive: (parsed.lastActive as number) || 0,
-      penaltyApplied: (parsed.penaltyApplied as boolean) || false,
-      activeMinToday: (parsed.activeMinToday as number) || 0,
+  lastActive: (parsed.lastActive as number) || 0,
+  penaltyApplied: (parsed.penaltyApplied as boolean) || false,
+  penaltyPanelShown: (parsed.penaltyPanelShown as boolean) || false,
+  activeMinToday: (parsed.activeMinToday as number) || 0,
     }
   } catch {
     return freshDaily()
@@ -171,9 +174,10 @@ function freshDaily(): DailyRecord {
     blueprintsCreated: 0,
     firstTreeAwarded: false,
     firstBlueprintAwarded: false,
-    lastActive: 0,
-    penaltyApplied: false,
-    activeMinToday: 0,
+  lastActive: 0,
+  penaltyApplied: false,
+  penaltyPanelShown: false,
+  activeMinToday: 0,
   }
 }
 
@@ -475,7 +479,7 @@ export function awardDailyTaskCompletion(
   saveDaily(daily)
 
   // Check for Perfect Day (daily tasks + focus + login)
-  if (daily.dailyTasksCompleted && daily.totalFocusMin >= 60 && daily.loginAwarded) {
+  if (daily.dailyTasksCompleted && daily.totalFocusMin >= XP_VALUES.inactivityThresholdMin && daily.loginAwarded) {
     return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.perfectDay, currentRankId)
   }
 

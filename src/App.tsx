@@ -13,6 +13,7 @@ import { MobileControlCenter } from './components/mobile/MobileControlCenter'
 import { MobileBlocker } from './components/MobileBlocker'
 import GlobalClickSpark from './components/GlobalClickSpark'
 import './screens/Explore.css'
+import { AuthScreen } from './screens/AuthScreen'
 import { GuestMode } from './screens/GuestMode'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
@@ -34,6 +35,9 @@ const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ 
 const CharacterSelection = lazy(() => import('./screens/CharacterSelection').then(m => ({ default: m.CharacterSelection })))
 const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
 const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
+const OwnerPanel = lazy(() => import('./components/owner/OwnerPage').then(m => ({ default: m.OwnerPage })))
+const EventShop = lazy(() => import('./components/focus/EventShop').then(m => ({ default: m.EventShop })))
+const InventoryPanel = lazy(() => import('./components/focus/InventoryPanel').then(m => ({ default: m.InventoryPanel })))
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -94,53 +98,70 @@ export default function App() {
   const appReady = !loading && (!user || profileReady)
   const veilReady = appReady && (!waitForLobby || lobbyReady)
   const isBlueprintRoute = location.pathname === '/blueprint'
+  const isOwnerRoute = location.pathname === '/owner'
 
-  const appContent = (
-    <>
-      {user && <WebBackground />}
-      {user && <IntroVeil ready={veilReady} />}
-      {loading ? null : !user ? (
-        <AuthScreen />
-      ) : !profileReady ? null : !onboarded ? (
-        <Onboarding />
-      ) : (
-        <ErrorBoundary resetKeys={[location.pathname]}>
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<Lobby />} />
-              <Route path="/blueprint" element={<Blueprint />} />
-              <Route path="/notes" element={<NotesHub />} />
-              <Route path="/notes/doc" element={<NotesEditor />} />
-              <Route path="/realm" element={<Realm />} />
-              <Route path="/realm/explore" element={<Explore />} />
-              <Route path="/realm/:code" element={<RealmInvite />} />
-              <Route path="/info" element={<About />} />
-              <Route path="/room" element={<Navigate to="/rooms" replace />} />
-              <Route path="/rooms" element={<RoomsList />} />
-              <Route path="/room/:id" element={<StudyRoom />} />
-              <Route path="/magnet" element={<TaskMagnet />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/u/:playerId" element={<Profile />} />
-              <Route path="/avatar" element={<AvatarCreator />} />
-              <Route path="/character-select" element={<CharacterSelection />} />
-              <Route path="/games" element={<Games />} />
-              <Route path="/games/lava-pad" element={<LavaPad />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
-      )}
-      {user && <MobileControlCenter />}
-      <GlobalClickSpark />
-    </>
-  )
-
-  // Blueprint works on mobile — skip the blocker for that route
-  if (isBlueprintRoute) return appContent
-
+// Owner route renders completely standalone — no WebBackground, no IntroVeil, no lobby chrome
+if (isOwnerRoute && !loading) {
   return (
-    <MobileBlocker>
-      {appContent}
-    </MobileBlocker>
+    <ErrorBoundary resetKeys={[location.pathname]}>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/owner" element={<OwnerPanel />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   )
+}
+
+const appContent = (
+  <>
+    {user && <WebBackground />}
+    {user && <IntroVeil ready={veilReady} />}
+    {loading ? null : !user ? (
+      <AuthScreen />
+    ) : !profileReady ? null : !onboarded ? (
+      <Onboarding />
+    ) : (
+      <ErrorBoundary resetKeys={[location.pathname]}>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<Lobby />} />
+            <Route path="/blueprint" element={<Blueprint />} />
+            <Route path="/notes" element={<NotesHub />} />
+            <Route path="/notes/doc" element={<NotesEditor />} />
+            <Route path="/realm" element={<Realm />} />
+            <Route path="/realm/explore" element={<Explore />} />
+            <Route path="/realm/:code" element={<RealmInvite />} />
+            <Route path="/info" element={<About />} />
+            <Route path="/room" element={<Navigate to="/rooms" replace />} />
+            <Route path="/rooms" element={<RoomsList />} />
+            <Route path="/room/:id" element={<StudyRoom />} />
+            <Route path="/magnet" element={<TaskMagnet />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/u/:playerId" element={<Profile />} />
+            <Route path="/avatar" element={<AvatarCreator />} />
+            <Route path="/character-select" element={<CharacterSelection />} />
+            <Route path="/games" element={<Games />} />
+            <Route path="/games/lava-pad" element={<LavaPad />} />
+            <Route path="/event-shop" element={<EventShop />} />
+            <Route path="/inventory" element={<InventoryPanel />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    )}
+    {user && <MobileControlCenter />}
+    <GlobalClickSpark />
+  </>
+)
+
+// Blueprint works on mobile — skip the blocker for that route
+if (isBlueprintRoute) return appContent
+
+return (
+  <MobileBlocker>
+    {appContent}
+  </MobileBlocker>
+)
 }

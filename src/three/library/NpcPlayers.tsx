@@ -10,6 +10,7 @@ import { RANKS } from '../../lib/ranks'
 import { CHARACTERS, characterById } from '../../avatar/characters'
 import { ACCESSORIES } from '../../avatar/config'
 import { useRealm } from '../../store/realm'
+import { usePomodoro } from '../../store/pomodoro'
 
 // NPC configuration - maps room IDs to NPC counts
 const NPC_COUNT_PER_ROOM: Record<string, number> = {
@@ -44,10 +45,7 @@ const VALID_NPC_CHARACTERS = CHARACTERS.filter(
   (c) => c.rarity === 'Common' || c.rarity === 'Epic'
 ).map((c) => c.id)
 
-// Accessories for NPCs: laptop, phone, gaming_laptop
-const NPC_ACCESSORIES = ACCESSORIES.filter(
-  (a) => ['laptop', 'phone', 'gaming_laptop'].includes(a.id)
-).map((a) => a.id)
+const NPC_ACCESSORIES = ACCESSORIES.map((a) => a.id)
 
 // Ranks below Gold (Bronze and Silver only)
 const VALID_NPC_RANKS = RANKS.filter(
@@ -64,7 +62,7 @@ function generateNpcAvatarConfig(characterId: string, accessories: string[]): Av
 }
 
 // Generate a random NPC
-function generateNpc(id: number): {
+function generateNpc(id: number, sessionMin: number): {
   id: string
   name: string
   characterId: string
@@ -87,9 +85,9 @@ function generateNpc(id: number): {
     }
   }
   
-  // Random timer: 15-60 minutes in seconds
-  const timerDuration = Math.floor(Math.random() * 45 + 15) * 60
-  const timerStart = Date.now() - Math.floor(Math.random() * timerDuration * 1000)
+  // Use session minutes as timer duration, randomized start
+  const timerDuration = Math.max(300, sessionMin * 60)
+  const timerStart = Date.now() - Math.floor(Math.random() * timerDuration)
   
   return {
     id: `npc_${id}`,
@@ -119,6 +117,7 @@ export function NpcPlayers() {
   const camera = useThree((s) => s.camera)
   const [npcs, setNpcs] = useState<ReturnType<typeof generateNpc>[]>([])
   const seats = useMemo(() => seatAnchors(), [])
+  const sessionMin = usePomodoro((s) => s.sessionMinutes)
   
   // Get room ID from realm
   const roomId = realm?.roomId
@@ -136,19 +135,20 @@ export function NpcPlayers() {
       return
     }
     
-    // Generate NPCs
+    // Generate NPCs using session minutes
     const newNpcs: ReturnType<typeof generateNpc>[] = []
     for (let i = 0; i < count; i++) {
-      newNpcs.push(generateNpc(i))
+      newNpcs.push(generateNpc(i, sessionMin))
     }
     setNpcs(newNpcs)
-  }, [roomId])
+  }, [roomId, sessionMin])
   
   // Filter out expired NPCs and re-generate them periodically
   useEffect(() => {
     if (npcs.length === 0 || !roomId) return
     
     const interval = setInterval(() => {
+      const curMin = usePomodoro.getState().sessionMinutes
       setNpcs((prev) => {
         // Remove expired NPCs
         const active = prev.filter((npc) => !isNpcTimerExpired(npc))
@@ -158,7 +158,7 @@ export function NpcPlayers() {
           const count = NPC_COUNT_PER_ROOM[roomId] || 0
           const toAdd = count - active.length
           for (let i = 0; i < toAdd; i++) {
-            active.push(generateNpc(Date.now() + i))
+            active.push(generateNpc(Date.now() + i, curMin))
           }
         }
         

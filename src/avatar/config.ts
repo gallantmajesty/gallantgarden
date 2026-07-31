@@ -5,13 +5,14 @@
 // which is the single biggest lever for staying at 60 FPS with many avatars.
 
 import {
-  BoxGeometry,
-  BufferGeometry,
-  CanvasTexture,
-  CapsuleGeometry,
-  CircleGeometry,
-  Color,
-  CylinderGeometry,
+BoxGeometry,
+BufferGeometry,
+CanvasTexture,
+CapsuleGeometry,
+CircleGeometry,
+ConeGeometry,
+Color,
+CylinderGeometry,
   Float32BufferAttribute,
   MeshStandardMaterial,
   RepeatWrapping,
@@ -191,9 +192,12 @@ export type AccessoryId =
   | 'gaming_laptop'
   | 'phone'
   | 'book'
+  | 'book_stack'
+  | 'do_not_disturb_poster'
+  | 'trading_laptop'
+  | 'trading_desktop_3side'
   | 'piano'
   | 'mug'
-  | 'trading_laptop'
   | 'flower_pot'
   | 'chair_balloon'
   | 'bento_box'
@@ -218,10 +222,13 @@ export const ACCESSORIES: AccessoryDef[] = [
   { id: 'laptop', name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion' },
   { id: 'gaming_laptop', name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig' },
   { id: 'phone', name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand' },
-  { id: 'book', name: 'Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook' },
-  { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax' },
+  { id: 'book', name: 'Single Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook' },
+  { id: 'book_stack', name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower' },
+  { id: 'do_not_disturb_poster', name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active' },
+  { id: 'trading_laptop', name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts' },
+  { id: 'trading_desktop_3side', name: 'Tri-Monitor Trading Desk', icon: '🖥️', color: '#1a1a2e', blurb: '3-screen endpoint' },
   { id: 'mug', name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip' },
-  { id: 'trading_laptop', name: 'Trading Workstation', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts' },
+  { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax' },
   { id: 'flower_pot', name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life' },
   { id: 'chair_balloon', name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy' },
   { id: 'bento_box', name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack' },
@@ -652,6 +659,11 @@ export function taperGeo(rTop: number, rBot: number, len: number): BufferGeometr
 export function skirtGeo(rTop: number, rBot: number, len: number): BufferGeometry {
   const key = `skirt:${rTop}:${rBot}:${len}`
   return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, len, 40, 1, true))
+}
+
+export function coneGeo(radius: number, height: number, seg = 32): BufferGeometry {
+  const key = `con:${radius}:${height}:${seg}`
+  return cachedGeo(key, () => new ConeGeometry(radius, height, seg))
 }
 
 export function torusGeo(radius: number, tube: number): BufferGeometry {

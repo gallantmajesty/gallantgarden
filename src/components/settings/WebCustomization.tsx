@@ -68,10 +68,12 @@ export function WebCustomizationContent({ showAppearance = false }: { showAppear
       <section className="wc-section">
         <h3 className="wc-h3">{t('webCustomization.background')}</h3>
         <div className="wc-bg-grid">
-          {theme.backgrounds.map((b) => (
+          {theme.backgrounds.map((b) => {
+            const noFilterBgs = ['cozy-study-desk', 'anime-study-night', 'moonlit-oak', 'love-pink-cloud', 'silent-ruins', 'fantasy-kingdom', 'dark-fantasy-castle']
+            return (
             <button
               key={b.id}
-              className={`wc-bg-thumb ${b.id === bgId ? 'on' : ''}`}
+              className={`wc-bg-thumb ${b.id === bgId ? 'on' : ''} ${noFilterBgs.includes(b.id) ? 'no-filter' : ''}`}
               style={{ backgroundImage: `url(${b.src})` }}
               onClick={() => setBackground(b.id)}
               aria-pressed={b.id === bgId}
@@ -80,7 +82,8 @@ export function WebCustomizationContent({ showAppearance = false }: { showAppear
               <span className="wc-bg-label">{b.label}</span>
               {b.id === bgId && <span className="wc-tick small">✓</span>}
             </button>
-          ))}
+            )
+          })}
         </div>
         {theme.backgrounds.length === 1 && (
           <p className="wc-note">{t('webCustomization.moreBackgrounds', { theme: theme.name })}</p>

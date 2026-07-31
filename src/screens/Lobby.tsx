@@ -7,10 +7,11 @@ import { useMagnet } from '../store/magnet'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
+import { LobbySettings } from '../components/settings/LobbySettings'
 import { ResourceBar } from '../components/ResourceBar'
 import { ScorePanel } from '../components/ScorePanel'
 import { LoginPanel } from '../components/LoginPanel'
-import { getRank, rankProgress } from '../lib/ranks'
+import { RANKS, getRank, rankProgress, rankForTotalXp } from '../lib/ranks'
 import { getDailyEngagement } from '../lib/xpEngine'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
@@ -29,17 +30,17 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint' },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: true },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm' },
-  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games' },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', soon: true },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games', soon: true },
 ]
 
 const MOBILE_WORLDS: LobbyObject[] = [
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/realm', accent: '#6bbf4f' },
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a' },
-  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa' },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games', accent: '#8a6cff' },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: true },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa', soon: true },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games', accent: '#8a6cff', soon: true },
 ]
 
 const DAILY_QUESTS = [
@@ -68,12 +69,12 @@ export function Lobby() {
   const navigate = useNavigate()
   const [panel, setPanel] = useState<null | 'settings' | 'friends' | 'inbox' | 'score' | 'login'>(null)
   const [showLoginPanel, setShowLoginPanel] = useState(false)
-  const rank = useProfile((s) => s.data.rank)
+  const userXp = useProfile((s) => s.xp)
+  const userPremiumXp = useProfile((s) => s.premiumXp)
+  const rank = useProfile((s) => rankForTotalXp(s.xp + s.premiumXp).id)
   const incomingCount = useFriends((s) => s.incoming.length)
   const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
-  const userXp = useProfile((s) => s.xp)
   const isDesktop = useIsDesktop()
-  const userPremiumXp = useProfile((s) => s.premiumXp)
   const [mobileNav, setMobileNav] = useState<'home' | 'realm' | 'tasks' | 'games' | 'profile'>('home')
   const [showQuests, setShowQuests] = useState(false)
 
@@ -105,6 +106,8 @@ export function Lobby() {
 
   const rankObj = getRank(rank)
   const rankAccent = rankObj.accent
+  const rankIdx = RANKS.indexOf(rankObj)
+  const rankTier = Math.max(1, Math.floor(rankIdx / 3) + 1) // 1=Bronze, 2=Silver, 3=Gold, 4=Platinum, 5=Diamond, 6=Crystal, 7=Focuster
   const totalXp = userXp + userPremiumXp
   const { pct: xpPctRaw, nextRank } = rankProgress(totalXp)
   const xpPct = Math.round(xpPctRaw * 100)
@@ -116,12 +119,17 @@ export function Lobby() {
     }
   }, [])
 
-  useEffect(() => {
-    const engagement = getDailyEngagement()
-    if (user && (engagement.penaltyApplied || engagement.activeMinToday < engagement.penaltyThresholdMin)) {
-      setShowLoginPanel(true)
-    }
-  }, [user])
+useEffect(() => {
+  const lastShown = localStorage.getItem('sf.loginPanel.lastShown')
+  const now = Date.now()
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+  const cooldownOk = !lastShown || (now - Number(lastShown)) > TWENTY_FOUR_HOURS
+  const engagement = getDailyEngagement()
+  if (user && cooldownOk && (engagement.penaltyApplied || engagement.activeMinToday < engagement.penaltyThresholdMin)) {
+    setShowLoginPanel(true)
+    localStorage.setItem('sf.loginPanel.lastShown', String(now))
+  }
+}, [user])
 
   const pickProfile = useCallback((e: React.MouseEvent) => {
     if (transition?.active || rankTransition?.active) return
@@ -188,7 +196,7 @@ export function Lobby() {
             className={`lobby-xp ${rankTransition?.active ? 'lobby-xp--transitioning' : ''}`}
             onClick={pickProfile}
             title={`${displayName} · ${rankObj.name}`}
-            style={{ ['--xp' as string]: rankAccent, ['--pct' as string]: xpPct }}
+            style={{ ['--xp' as string]: rankAccent, ['--pct' as string]: xpPct, ['--xpi' as string]: rankTier }}
           >
             <span className="lobby-xp__medal">
               <RankBadge rankId={rank} size={36} />
@@ -202,10 +210,10 @@ export function Lobby() {
         </div>
         <div className="lobby-topright">
           <button className="lobby-round" title="Score" onClick={() => setPanel('score')}>
-            <Glyph name="star" />
+            <Glyph name="trophy" />
           </button>
           <button className="lobby-round" title="Avatar" onClick={() => navigate('/avatar')}>
-            <Glyph name="people" />
+            <Glyph name="stickman" />
           </button>
            <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
              <Glyph name="gear" />
@@ -382,7 +390,7 @@ export function Lobby() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
             {incomingCount > 0 && <span className="lm-bell-dot" />}
           </button>
-          <button className="lm-score-btn" onClick={() => setPanel('score')} title="Honour Score">
+          <button className="lm-score-btn" onClick={() => setPanel('score')} title="Focus Score">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </button>
         </div>
@@ -616,6 +624,10 @@ function Glyph({ name }: { name: string }) {
     face: 'M12 2a10 10 0 100 20 10 10 0 000-20z M9 10h.01 M15 10h.01 M8 15a4 4 0 008 0',
     gear: 'M12 8a4 4 0 100 8 4 4 0 000-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2',
     palette: 'M12 3a9 9 0 100 18 2.5 2.5 0 002.5-2.5 2 2 0 01.5-1.4 2 2 0 011.5-.6H18a3 3 0 003-3A9 9 0 0012 3z M7.5 11.5h.01 M10 7.5h.01 M14.5 7.5h.01',
+    trophy: 'M6 9V2h12v7a6 6 0 11-12 0z M6 4H2v3a3 3 0 003 3h1 M18 4h4v3a3 3 0 01-3 3h-1 M9 21h6 M12 15v6',
+    chart: 'M4 20h16 M4 20V10 M10 20V4 M16 20v-8 M22 20H2',
+    wand: 'M3 21l8-8 M11 13l-1.5-1.5 M17.5 7.5l-1-1a1 1 0 00-1.4 0l-7 7a1 1 0 000 1.4l1 1a1 1 0 001.4 0l7-7a1 1 0 000-1.4z M20 3l1 1',
+    stickman: 'M12 2a3 3 0 100 6 3 3 0 000-6z M8 22v-6a4 4 0 018 0v6 M12 12v4',
   }
   return (
     <svg className="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"

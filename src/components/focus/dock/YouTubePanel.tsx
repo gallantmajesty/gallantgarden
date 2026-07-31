@@ -40,7 +40,7 @@ export function YouTubePanel() {
   const clearRecent = () => { setRecent([]); localStorage.removeItem(RECENT_KEY); };
 
   const iframeSrc = videoId
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0`
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0`
     : null;
 
   return (
@@ -78,7 +78,7 @@ export function YouTubePanel() {
 
       <div ref={wrapperRef} style={{ flex: 1, position: "relative", background: "#000", borderRadius: 2, overflow: "hidden", margin: "0.5rem" }}>
         {iframeSrc ? (
-          <iframe src={iframeSrc} title="YouTube" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }} allow="autoplay; encrypted-media" allowFullScreen />
+          <iframe src={iframeSrc} title="YouTube" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen />
         ) : (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", color: "var(--color-genshin-bronze)", opacity: 0.6, fontSize: "0.75rem", fontFamily: "var(--font-serif-heading)", padding: "1rem" }}>
             Paste a YouTube URL or video ID above to start watching.

@@ -142,7 +142,7 @@ export function TaskMagnet() {
     <div className="mg-root dark" style={rootStyle}>
 
       <aside className={`mg-sidebar ${navOpen ? 'open' : ''}`}>
-        <button className="mg-back" onClick={() => navigate('/')}>
+        <button className="mg-back" onClick={() => navigate(-1)}>
           <Icon name="back" size={18} /> {t('common.lobby')}
         </button>
 

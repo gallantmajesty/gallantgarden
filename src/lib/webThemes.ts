@@ -326,7 +326,6 @@ export const WEB_THEMES: WebTheme[] = [
 
 /** Placeholder themes shown as "coming soon" in the picker. */
 export const WEB_THEMES_SOON: { id: string; name: string; emoji: string }[] = [
-  { id: 'sakura', name: 'Sakura', emoji: '🌸' },
   { id: 'ember', name: 'Ember', emoji: '🔥' },
 ]
 

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import type { FocusEvent, EventItem, OwnedItem } from "../../data/events";
-import { DEFAULT_EVENTS } from "../../data/events";
+import type { FocusEvent, EventItem, OwnedItem, SavedBundle } from "../../data/events";
+import { DEFAULT_EVENTS, DEFAULT_BUNDLES } from "../../data/events";
 
-// ---- localStorage keys ----
+// ---- localStorage helpers ----
 const EVENTS_KEY = "sg.events.all";
-const PURCHASES_KEY = "sg.events.purchases"; // "eventId:itemId" → true
+const PURCHASES_KEY = "sg.events.purchases";
 const WALLET_KEY = "sg.wallet.balance";
+const INV_KEY = "sg.inventory.items";
+const BUNDLES_KEY = "sg.bundles.all";
 
-// ---- helpers ----
 function loadJSON<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -20,9 +21,23 @@ function loadJSON<T>(key: string, fallback: T): T {
 function saveJSON(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* ignore quota errors */ }
+}
+
+function loadNum(key: string): number {
+  try {
+    const raw = localStorage.getItem(key);
+    const n = raw ? Number(raw) : 0;
+    return Number.isFinite(n) && n >= 0 ? n : 0;
   } catch {
-    // ignore quota errors
+    return 0;
   }
+}
+
+function saveNum(key: string, n: number) {
+  try {
+    localStorage.setItem(key, String(n));
+  } catch { /* ignore */ }
 }
 
 // ---- active event resolver ----
@@ -81,8 +96,7 @@ export function useEventShop() {
       saveJSON(PURCHASES_KEY, newPurchases);
 
       // Add to inventory
-      const inventoryKey = "sg.inventory.items";
-      const inv = loadJSON<OwnedItem[]>(inventoryKey, []);
+      const inv = loadJSON<OwnedItem[]>(INV_KEY, []);
       const owned: OwnedItem = {
         rewardId: key,
         eventId: event.id,
@@ -94,7 +108,7 @@ export function useEventShop() {
         earnedAt: Date.now(),
         equipped: false,
       };
-      saveJSON(inventoryKey, [...inv, owned]);
+      saveJSON(INV_KEY, [...inv, owned]);
 
       return { ok: true };
     },
@@ -150,6 +164,37 @@ export function useEventShop() {
     toggleEventActive,
     addLeaves,
   };
+}
+
+// ============================================================
+// Hook: useBundles
+// ============================================================
+export function useBundles() {
+  const [bundles, setBundles] = useState<SavedBundle[]>(() =>
+    loadJSON<SavedBundle[]>(BUNDLES_KEY, DEFAULT_BUNDLES),
+  );
+
+  useEffect(() => {
+    saveJSON(BUNDLES_KEY, bundles);
+  }, [bundles]);
+
+  const saveBundle = useCallback((bundle: SavedBundle) => {
+    setBundles((prev) => {
+      const idx = prev.findIndex((b) => b.id === bundle.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = bundle;
+        return next;
+      }
+      return [...prev, bundle];
+    });
+  }, []);
+
+  const deleteBundle = useCallback((id: string) => {
+    setBundles((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
+  return { bundles, saveBundle, deleteBundle };
 }
 
 // ============================================================

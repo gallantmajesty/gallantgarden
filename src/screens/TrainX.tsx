@@ -88,7 +88,7 @@ export default function TrainX() {
         />
         {error && <div style={{ color: '#e55', fontSize: 14 }}>Wrong passcode</div>}
         <button
-          onClick={() => navigate('/')}
+onClick={() => navigate(-1)}
           style={{
             marginTop: 8,
             background: 'rgba(11,16,32,0.8)',

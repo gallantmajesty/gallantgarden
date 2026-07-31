@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
@@ -103,6 +104,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
 /* ---------------------------------------------------------- private sub-choose */
 
 function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   return (
@@ -136,8 +138,8 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
         </button>
 
         <button
-          className="realm-card water-glass"
-          onClick={() => onPick('train-station')}
+          className="realm-card water-glass realm-card--soon"
+          disabled
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -153,12 +155,12 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           </div>
           <h2>🚂 Train Station</h2>
           <p>Board a magical train and commit to a real study journey — from Express to Grand Journey.</p>
-          <span className="realm-card-cta">Enter the train ›</span>
+          <span className="realm-card-cta">{t('common.soon')}</span>
         </button>
         
         <button
-          className="realm-card water-glass"
-          onClick={() => onPick('uk-cafe')}
+          className="realm-card water-glass realm-card--soon"
+          disabled
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -174,7 +176,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           </div>
           <h2>☕ UK Cafe</h2>
           <p>A cozy Edinburgh-style cafe with exposed brick, warm lighting, and fresh pastries.</p>
-          <span className="realm-card-cta">Enter the cafe ›</span>
+          <span className="realm-card-cta">{t('common.soon')}</span>
         </button>
       </div>
     </>

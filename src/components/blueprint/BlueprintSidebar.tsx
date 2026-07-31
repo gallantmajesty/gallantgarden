@@ -60,7 +60,7 @@ export function BlueprintSidebar({ open, onToggle, onExport, onToggleSearch, dar
           </div>
 
           {/* Back to lobby */}
-          <button className="bp-sidebar-back" onClick={() => navigate('/')}>
+          <button className="bp-sidebar-back" onClick={() => navigate(-1)}>
             <span className="bp-sidebar-back-arrow">‹</span>
             Back to Lobby
           </button>

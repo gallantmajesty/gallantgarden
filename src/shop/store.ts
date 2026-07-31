@@ -12,7 +12,7 @@ const FREE_PLAYER_ID = -1
 // Common characters are always owned (free starter characters)
 const STARTER_CHARACTER_IDS = ['james', 'claire', 'mia', 'ruslan']
 // Free banners and logos are always owned
-const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'sakura', 'midnight', 'dawn', 'tide', 'mystic']
+const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn', 'tide', 'mystic']
 const STARTER_LOGO_IDS = ['default_logo']
 const ALL_STARTERS = [...STARTER_THEME_IDS, ...STARTER_CHARACTER_IDS, ...STARTER_BANNER_IDS, ...STARTER_LOGO_IDS]
 

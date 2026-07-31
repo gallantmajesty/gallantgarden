@@ -260,7 +260,6 @@ export const NOTE_PRESETS: NotePreset[] = [
 
 /** Cute / Korean-aegyo gradient looks — clean pastel washes, no patterns. */
 export const NOTE_CUTE_PRESETS: NotePreset[] = [
-  { id: 'sakura', name: 'Sakura', swatch: '#FFB6D5', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#FFE0EB', pattern: 'dots', borderColor: '#F5C6D8', borderWidth: 1, radius: 16, shadow: 0.3, textColor: '#6B2040' } },
   { id: 'matcha', name: 'Matcha', swatch: '#A8D99C', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#D8F0D0', pattern: 'lines', borderColor: '#C4DEB8', borderWidth: 1, radius: 16, shadow: 0.3, textColor: '#2E5A2C' } },
   { id: 'lavender', name: 'Lavender', swatch: '#CDB4FF', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#E8E0FF', pattern: 'grid', borderColor: '#D4C4F0', borderWidth: 1, radius: 16, shadow: 0.3, textColor: '#4A2A72' } },
   { id: 'peach', name: 'Peach', swatch: '#FFB88C', patch: { shape: 'rounded', bgKind: 'solid', bgColor: '#FFE0CC', pattern: 'diagonal', borderColor: '#F0D0B8', borderWidth: 1, radius: 16, shadow: 0.3, textColor: '#7A3A22' } },

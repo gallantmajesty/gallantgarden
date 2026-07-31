@@ -1,6 +1,6 @@
 /* ============================================================
-   Profile — Brown Magical Theme
-   Warm dark brown, golden accents, soft glows, big elements.
+   Profile — Fantasy Magical Theme
+   Mystical particles, glowing rings, shimmer effects, ornate decorations.
    ============================================================ */
 
 /* --- colour tokens --- */
@@ -103,164 +103,82 @@
 }
 
 /* ============================================================
-   FF-STYLE BANNER — full-bleed image with overlay + content
+   FF-STYLE BANNER — premium border frame only
    ============================================================ */
+.ff-banner-wrap {
+  position: relative;
+}
+/* Smoke wisps under banner edge */
+.ff-banner-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  height: 60px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 40% 100% at 15% 50%, rgba(212, 168, 67, 0.08), transparent),
+    radial-gradient(ellipse 30% 100% at 45% 30%, rgba(139, 105, 20, 0.06), transparent),
+    radial-gradient(ellipse 35% 100% at 75% 60%, rgba(212, 168, 67, 0.07), transparent),
+    radial-gradient(ellipse 25% 100% at 90% 40%, rgba(240, 200, 80, 0.05), transparent);
+  animation: banner-smoke 6s ease-in-out infinite alternate;
+  z-index: 2;
+}
+@keyframes banner-smoke {
+  0% { opacity: 0.4; transform: translateX(-8px) scaleX(1); }
+  100% { opacity: 0.9; transform: translateX(8px) scaleX(1.08); }
+}
 .ff-banner {
   width: 100%;
-  height: 220px;
+  height: 200px;
   border-radius: 16px;
   overflow: hidden;
   position: relative;
-  border: 2px solid var(--pf-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 40px rgba(212, 168, 67, 0.08);
+  border: 2px solid rgba(212, 168, 67, 0.35);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(212, 168, 67, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.ff-banner-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.5) 35%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  pointer-events: none;
 }
 .ff-banner-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  border-radius: 14px;
   object-fit: cover;
-  object-position: center var(--pf-banner-pos, 50%);
+  object-position: center var(--pf-banner-pos, 28%);
 }
-.ff-banner-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.9) 0%,
-    rgba(0, 0, 0, 0.5) 40%,
-    rgba(0, 0, 0, 0.15) 100%
-  );
-  pointer-events: none;
-}
-.ff-banner-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 24px 20px;
-}
-.ff-banner-avatar {
-  flex-shrink: 0;
-}
-.ff-banner-avatar .profile-avatar {
-  border: 3px solid rgba(255, 215, 0, 0.5);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-}
-.logo-dim {
-  filter: brightness(0.85) contrast(1.15) saturate(0.85);
-}
-.pf-banner-swatch-logo {
-  filter: brightness(0.9) contrast(1.05) saturate(0.9);
-}
-.ff-banner-info {
-  flex: 1;
-  min-width: 0;
-}
-.ff-banner-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ff-banner-name {
-  font-size: 24px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ff-banner-flag {
-  font-size: 18px;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
-}
-.ff-banner-player-id {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
-  margin-top: 2px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-}
-.ff-banner-bio {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  margin-top: 2px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ff-banner-rank {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  background: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.4));
-  border: 2px solid rgba(255, 215, 0, 0.4);
-  border-radius: 10px;
-  padding: 6px 10px 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  backdrop-filter: blur(8px);
-}
-.ff-banner-rank:hover {
-  border-color: rgba(255, 215, 0, 0.9);
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
-  transform: scale(1.05);
-}
-.ff-banner-rank-img {
-  width: 32px;
-  height: 32px;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
-}
-.ff-banner-rank-name {
-  font-size: 9px;
-  font-weight: 800;
-  color: rgba(255, 215, 0, 0.85);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-/* New animated RankBanner integration */
-.ff-banner-rank {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 160px;
-  height: 100%;
-  min-height: 140px;
-}
-
-.ff-banner-rank .rank-banner {
-  width: 100%;
-  height: 100%;
-}
-
-/* Edit button (own profile) */
+/* Edit button (own profile) — top-right corner */
 .ff-banner-edit {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
+  top: 14px;
+  right: 14px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.75);
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: all 0.2s;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 .ff-banner-edit:hover {
   background: rgba(255, 215, 0, 0.2);
@@ -268,26 +186,206 @@
   color: #fff;
 }
 
+/* ============================================================
+   IDENTITY ROW — avatar + name + rank, overlapping the banner
+   ============================================================ */
+.ff-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: -90px;
+  padding: 0 24px;
+  position: relative;
+  z-index: 3;
+}
+.ff-banner-avatar {
+  flex-shrink: 0;
+  position: relative;
+}
+/* Animated magical glow ring */
+.ff-banner-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, 
+    rgba(212, 168, 67, 0.8), 
+    rgba(240, 200, 80, 0.4), 
+    rgba(139, 105, 20, 0.6), 
+    rgba(212, 168, 67, 0.8));
+  animation: avatar-glow-rotate 4s linear infinite;
+  z-index: -1;
+  filter: blur(4px);
+}
+.ff-banner-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg, 
+    rgba(212, 168, 67, 0.6), 
+    rgba(240, 200, 80, 0.3), 
+    rgba(139, 105, 20, 0.5), 
+    rgba(212, 168, 67, 0.6));
+  animation: avatar-glow-rotate 3s linear infinite reverse;
+  z-index: -1;
+  filter: blur(2px);
+}
+@keyframes avatar-glow-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.ff-banner-avatar .profile-avatar {
+  width: 110px !important;
+  height: 110px !important;
+  border: 4px solid var(--pf-bg, #1a1008);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(255, 215, 0, 0.3);
+  position: relative;
+  z-index: 1;
+}
+.logo-dim {
+  filter: brightness(0.85) contrast(1.15) saturate(0.85);
+}
+.pf-banner-swatch-logo {
+  filter: brightness(0.9) contrast(1.05) saturate(0.9);
+}
+.ff-identity-info {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0px;
+}
+.ff-banner-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ff-banner-name {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(
+    135deg,
+    #f0e6d4 0%,
+    #d4a843 20%,
+    #f0c850 40%,
+    #fff8e0 50%,
+    #f0c850 60%,
+    #d4a843 80%,
+    #f0e6d4 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: name-shimmer 4s linear infinite;
+  filter: drop-shadow(0 2px 8px rgba(212, 168, 67, 0.4));
+}
+@keyframes name-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.ff-banner-flag {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.ff-banner-player-id {
+  font-size: 13px;
+  color: var(--pf-text-soft);
+  margin-top: 4px;
+  letter-spacing: 0.3px;
+}
+.ff-banner-bio {
+  font-size: 13px;
+  color: var(--pf-text-soft);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Rank badge — magical floating effect */
+.ff-banner-rank {
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 2px solid rgba(255, 215, 0, 0.35);
+  background: rgba(15, 12, 8, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+  gap: 2px;
+  animation: rank-float 3s ease-in-out infinite;
+  position: relative;
+}
+/* Shimmer overlay */
+.ff-banner-rank::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(212, 168, 67, 0.15) 50%,
+    transparent 70%
+  );
+  animation: rank-shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes rank-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes rank-shimmer {
+  0%, 100% { opacity: 0; transform: translateX(-100%); }
+  50% { opacity: 1; transform: translateX(100%); }
+}
+.ff-banner-rank:hover {
+  border-color: rgba(255, 215, 0, 0.8);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+  transform: translateY(-4px) scale(1.05);
+}
+.ff-rank-badge-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+.ff-rank-badge-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
 /* --- meta row below banner --- */
 .ff-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
+  padding: 16px 0 12px;
 }
 .ff-meta-stats {
   display: flex;
-  gap: 16px;
-  font-size: 13px;
+  gap: 20px;
+  font-size: 14px;
   color: var(--pf-text-soft);
 }
 .ff-meta-stats strong {
   color: var(--pf-text);
-  font-weight: 700;
+  font-weight: 800;
 }
 .ff-meta-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -353,16 +451,34 @@
 }
 
 /* ============================================================
-   DIVIDER
+   DIVIDER — magical ornate
    ============================================================ */
 .pf-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--pf-border), transparent);
+  background: linear-gradient(90deg, 
+    transparent, 
+    var(--pf-border), 
+    var(--pf-gold), 
+    var(--pf-border), 
+    transparent);
   margin: 8px 0 24px;
+  position: relative;
+}
+/* Center ornament */
+.pf-divider::after {
+  content: '◆';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: var(--pf-gold);
+  background: var(--pf-bg);
+  padding: 0 8px;
 }
 
 /* ============================================================
-   STATS ROW — 4 cards
+   STATS ROW — 4 cards with magical effects
    ============================================================ */
 .pf-stats-row {
   display: grid;
@@ -371,16 +487,49 @@
   margin-bottom: 28px;
 }
 .pf-stat-card {
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
+  background: linear-gradient(135deg, rgba(42, 26, 16, 0.6), rgba(26, 16, 8, 0.8));
+  border: 1px solid rgba(212, 168, 67, 0.15);
   border-radius: 12px;
   padding: 18px 14px;
   text-align: center;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  animation: card-float 4s ease-in-out infinite;
+  backdrop-filter: blur(12px);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(212, 168, 67, 0.1);
+}
+.pf-stat-card:nth-child(2) { animation-delay: 0.5s; }
+.pf-stat-card:nth-child(3) { animation-delay: 1s; }
+.pf-stat-card:nth-child(4) { animation-delay: 1.5s; }
+/* Magical shimmer overlay */
+.pf-stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(212, 168, 67, 0.08) 50%,
+    transparent 60%
+  );
+  animation: card-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes card-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes card-shimmer {
+  0%, 100% { opacity: 0; transform: translateX(-100%); }
+  50% { opacity: 1; transform: translateX(100%); }
 }
 .pf-stat-card:hover {
   border-color: var(--pf-border-glow);
-  box-shadow: 0 0 12px rgba(212, 168, 67, 0.08);
+  box-shadow: 0 0 20px rgba(212, 168, 67, 0.2);
+  transform: translateY(-6px) scale(1.02);
 }
 .pf-stat-card-label {
   font-size: 12px;
@@ -403,7 +552,7 @@
 }
 
 /* ============================================================
-   SECTION HEADERS
+   SECTION HEADERS — ornate fantasy style
    ============================================================ */
 .pf-section-title {
   font-size: 17px;
@@ -412,10 +561,40 @@
   text-transform: uppercase;
   color: var(--pf-gold);
   padding: 0 0 14px;
+  position: relative;
+  display: inline-block;
+}
+/* Decorative flourish left */
+.pf-section-title::before {
+  content: '✦';
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--pf-gold);
+  opacity: 0.6;
+  animation: flourish-pulse 2s ease-in-out infinite;
+}
+/* Decorative flourish right */
+.pf-section-title::after {
+  content: '✦';
+  position: absolute;
+  right: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--pf-gold);
+  opacity: 0.6;
+  animation: flourish-pulse 2s ease-in-out infinite 0.5s;
+}
+@keyframes flourish-pulse {
+  0%, 100% { opacity: 0.4; transform: translateY(-50%) scale(0.8); }
+  50% { opacity: 0.8; transform: translateY(-50%) scale(1.2); }
 }
 
 /* ============================================================
-   XP BAR
+   XP BAR — magical shimmer
    ============================================================ */
 .pf-xp-bar-wrap { margin-bottom: 20px; }
 .pf-xp-bar-header {
@@ -425,20 +604,52 @@
   margin-bottom: 6px;
 }
 .pf-xp-bar-label { font-size: 13px; font-weight: 700; color: var(--pf-text-soft); }
-.pf-xp-bar-pct { font-size: 13px; font-weight: 700; color: var(--pf-gold); }
+.pf-xp-bar-pct { 
+  font-size: 13px; 
+  font-weight: 700; 
+  color: var(--pf-gold);
+  text-shadow: 0 0 8px rgba(212, 168, 67, 0.5);
+}
 .pf-xp-bar-track {
   width: 100%;
-  height: 8px;
+  height: 10px;
   background: var(--pf-surface-hover);
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
   border: 1px solid var(--pf-border);
+  position: relative;
 }
 .pf-xp-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--pf-accent-dark), var(--pf-gold));
-  border-radius: 4px;
+  background: linear-gradient(90deg, 
+    var(--pf-accent-dark), 
+    var(--pf-gold), 
+    var(--pf-gold-bright),
+    var(--pf-gold));
+  background-size: 200% 100%;
+  border-radius: 5px;
   transition: width 0.5s ease;
+  animation: xp-shimmer 2s linear infinite;
+  position: relative;
+}
+/* Magical glow on XP bar */
+.pf-xp-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  bottom: -2px;
+  width: 20px;
+  background: radial-gradient(ellipse at right, rgba(240, 200, 80, 0.8), transparent);
+  animation: xp-glow 1.5s ease-in-out infinite;
+}
+@keyframes xp-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes xp-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 /* ============================================================
@@ -451,10 +662,18 @@
   gap: 12px;
 }
 .pf-about-card {
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
+  background: linear-gradient(135deg, rgba(42, 26, 16, 0.6), rgba(26, 16, 8, 0.8));
+  border: 1px solid rgba(212, 168, 67, 0.12);
   border-radius: 10px;
   padding: 14px 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
+}
+.pf-about-card:hover {
+  border-color: rgba(212, 168, 67, 0.3);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(212, 168, 67, 0.1);
+  transform: translateY(-2px);
 }
 .pf-about-card-label {
   font-size: 11px;
@@ -494,7 +713,7 @@
 }
 
 /* ============================================================
-   GOALS SECTION
+   GOALS SECTION — magical sparkles
    ============================================================ */
 .pf-goals-section { margin-bottom: 28px; }
 .pf-goals-list { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -509,6 +728,30 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--pf-gold);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+/* Sparkle effect */
+.pf-goal-badge::after {
+  content: '✦';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  color: var(--pf-gold);
+  opacity: 0;
+  animation: sparkle 2s ease-in-out infinite;
+}
+.pf-goal-badge:hover {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 16px rgba(212, 168, 67, 0.3);
+  transform: translateY(-2px);
+}
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: translateY(-50%) scale(0.5); }
+  50% { opacity: 0.8; transform: translateY(-50%) scale(1.2); }
 }
 .pf-goal-lock { font-size: 13px; opacity: 0.6; }
 .pf-goals-empty {
@@ -520,7 +763,7 @@
 }
 
 /* ============================================================
-   SOCIAL SECTION
+   SOCIAL SECTION — magical hover
    ============================================================ */
 .pf-social-section { margin-bottom: 28px; }
 .pf-social-row { display: flex; gap: 14px; }
@@ -532,14 +775,37 @@
   gap: 4px;
   padding: 16px 14px;
   border-radius: 10px;
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
+  background: linear-gradient(135deg, rgba(42, 26, 16, 0.6), rgba(26, 16, 8, 0.8));
+  border: 1px solid rgba(212, 168, 67, 0.12);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+/* Magical shimmer */
+.pf-social-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(212, 168, 67, 0.1) 50%,
+    transparent 70%
+  );
+  animation: social-shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes social-shimmer {
+  0%, 100% { opacity: 0; transform: translateX(-100%); }
+  50% { opacity: 1; transform: translateX(100%); }
 }
 .pf-social-btn:hover {
   border-color: var(--pf-border-glow);
-  box-shadow: 0 0 12px rgba(212, 168, 67, 0.08);
+  box-shadow: 0 0 20px rgba(212, 168, 67, 0.2);
+  transform: translateY(-4px);
 }
 .pf-social-btn-label {
   font-size: 12px;
@@ -555,18 +821,62 @@
 }
 
 /* ============================================================
-   CHARACTER SECTION
+   CHARACTER SECTION — mystical aura
    ============================================================ */
 .pf-character-section { margin-bottom: 28px; }
 .pf-character-wrap {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
+  background: linear-gradient(180deg, rgba(42, 26, 16, 0.5), rgba(15, 10, 5, 0.8));
+  border: 1px solid rgba(212, 168, 67, 0.15);
   border-radius: 14px;
   padding: 28px;
   min-height: 320px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(212, 168, 67, 0.1);
+}
+/* Mystical aura background */
+.pf-character-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 50% 50% at 50% 50%, rgba(212, 168, 67, 0.1), transparent 70%),
+    radial-gradient(ellipse 30% 30% at 30% 60%, rgba(80, 40, 120, 0.06), transparent 50%),
+    radial-gradient(ellipse 25% 25% at 70% 40%, rgba(20, 60, 90, 0.06), transparent 50%);
+  animation: character-orb 5s ease-in-out infinite;
+}
+/* Constellation / star particles */
+.pf-character-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 10% 15%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 25% 65%, rgba(212, 168, 67, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 55% 25%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 70% 80%, rgba(212, 168, 67, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 85% 35%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 40% 90%, rgba(212, 168, 67, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 90% 10%, rgba(255, 255, 255, 0.25), transparent),
+    radial-gradient(1px 1px at 5% 50%, rgba(212, 168, 67, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 60% 55%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 35% 30%, rgba(212, 168, 67, 0.4), transparent);
+  animation: constellation-twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes character-orb {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes constellation-twinkle {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
 }
 
 /* ============================================================
@@ -1036,14 +1346,16 @@
    ============================================================ */
 @media (max-width: 720px) {
   .pf-channel { padding: 0 14px 60px; }
-  .ff-banner { height: 180px; border-radius: 12px; }
-  .ff-banner-content { gap: 10px; padding: 12px 14px; }
-  .ff-banner-avatar .profile-avatar { width: 56px !important; height: 56px !important; }
-  .ff-banner-name { font-size: 18px; }
-  .ff-banner-rank { padding: 4px 8px 3px; }
-  .ff-banner-rank-img { width: 24px; height: 24px; }
-  .ff-banner-rank-name { font-size: 8px; }
-  .ff-banner-edit { width: 28px; height: 28px; top: 8px; right: 8px; }
+  .ff-banner { height: 160px; border-radius: 12px; }
+  .ff-identity { gap: 12px; margin-top: -48px; padding: 0 14px; }
+  .ff-banner-avatar .profile-avatar { width: 80px !important; height: 80px !important; border-width: 3px; }
+  .ff-identity-info { padding-top: 36px; }
+  .ff-banner-name { font-size: 20px; }
+  .ff-banner-player-id { font-size: 12px; }
+  .ff-banner-rank { width: 76px; height: 76px; margin-top: 28px; border-radius: 10px; }
+  .ff-rank-badge-img { width: 38px; height: 38px; }
+  .ff-rank-badge-name { font-size: 10px; }
+  .ff-banner-edit { width: 28px; height: 28px; top: 10px; right: 10px; border-radius: 8px; }
   .ff-meta-row { flex-direction: column; gap: 10px; align-items: flex-start; }
   .pf-stats-row { grid-template-columns: 1fr 1fr; }
   .pf-about-grid { grid-template-columns: 1fr; }

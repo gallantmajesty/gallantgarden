@@ -67,16 +67,23 @@ export async function releaseSession(): Promise<void> {
   await supabase.rpc('release_session')
 }
 
-export function startHeartbeat(intervalMs = 10000): () => void {
+export function startHeartbeat(intervalMs = 15000): () => void {
   let stopped = false
+  let failCount = 0
+  const MAX_FAILS = 3
 
   const tick = async () => {
     if (stopped) return
     const ok = await heartbeatSession()
-    if (!ok) {
-      stopped = true
-      // Emit event for UI to show "active elsewhere" overlay
-      window.dispatchEvent(new CustomEvent('session-lost'))
+    if (ok) {
+      failCount = 0
+    } else {
+      failCount++
+      console.warn(`[Session] heartbeat failed (${failCount}/${MAX_FAILS})`)
+      if (failCount >= MAX_FAILS) {
+        stopped = true
+        window.dispatchEvent(new CustomEvent('session-lost'))
+      }
     }
   }
 

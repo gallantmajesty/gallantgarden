@@ -11,18 +11,22 @@ export function LoginPanel({ onClose }: { onClose: () => void }) {
   const userId = useMagnet((s) => s.userId)
   const engagement = getDailyEngagement()
 
-  const [showPenalty, setShowPenalty] = useState(false)
-  const [penaltyMsg, setPenaltyMsg] = useState('')
+const [showPenalty, setShowPenalty] = useState(false)
+const [penaltyMsg, setPenaltyMsg] = useState('')
 
-  useEffect(() => {
-    const daily = engagement
-    if (daily.penaltyApplied && daily.activeMinToday < daily.penaltyThresholdMin) {
-      setPenaltyMsg(`You only studied ${daily.activeMinToday}min today (target: ${daily.penaltyThresholdMin}min). Your inactivity penalty has been applied. Keep consistency to avoid losing leaves!`)
-      setShowPenalty(true)
-    }
-  }, [engagement])
+useEffect(() => {
+  const penaltyKey = 'sf.loginPenalty.shownToday'
+  const panelShownToday = localStorage.getItem(penaltyKey) === new Date().toDateString()
+  const daily = engagement
+  if (!panelShownToday && daily.penaltyApplied && daily.activeMinToday < daily.penaltyThresholdMin) {
+    setPenaltyMsg(`You only studied ${daily.activeMinToday}min today (target: ${daily.penaltyThresholdMin}min). Your inactivity penalty has been applied. Keep consistency or you'll lose XP and drop in rank!`)
+    setShowPenalty(true)
+    localStorage.setItem(penaltyKey, new Date().toDateString())
+  }
+}, [engagement])
 
   const handleClose = () => {
+    localStorage.setItem('sf.loginPanel.lastShown', String(Date.now()))
     if (userId) syncXpToDb(userId, data.xp, data.premiumXp)
     onClose()
   }
@@ -59,7 +63,7 @@ export function LoginPanel({ onClose }: { onClose: () => void }) {
         <div className="lp-stats">
           <div className="lp-stat">
             <span className="lp-stat-val">{data.xp.toLocaleString()}</span>
-            <span className="lp-stat-label">Leaves (Regular)</span>
+            <span className="lp-stat-label">XP (Focus)</span>
           </div>
           <div className="lp-stat">
             <span className="lp-stat-val" style={{ color: '#ffd700' }}>{data.premiumXp.toLocaleString()}</span>
@@ -89,7 +93,7 @@ export function LoginPanel({ onClose }: { onClose: () => void }) {
             <li>Study at least <strong>{engagement.penaltyThresholdMin} minutes</strong> daily to avoid inactivity penalties</li>
             <li>Earn up to <strong>{DAILY_CAPS.activeMinCap} min</strong> of active XP earning per day</li>
             <li>Maintain a <strong>streak</strong> for bonus golden leaves</li>
-            <li>Check your <strong>Honour Score</strong> for 30-day analytics</li>
+            <li>Check your <strong>Focus Score</strong> for 30-day analytics</li>
           </ul>
         </div>
 

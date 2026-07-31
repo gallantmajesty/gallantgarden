@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDailyEngagement, DAILY_CAPS } from '../lib/xpEngine'
-import { getRank, rankForTotalXp, RANKS } from '../lib/ranks'
+import { rankForTotalXp, RANKS } from '../lib/ranks'
 import { useMagnet } from '../store/magnet'
 import './ScorePanel.css'
 
@@ -119,7 +119,7 @@ export function ScorePanel({ onClose }: { onClose: () => void }) {
     const tk = todayKey()
     let rec = todayRecord
     if (!rec) {
-      rec = { date: tk, login: true, activeMin: engagement.activeMinToday, earned: 0, lost: 0, net: 0, rankId: data.rank || 'bronze-1' }
+      rec = { date: tk, login: true, activeMin: engagement.activeMinToday, earned: 0, lost: 0, net: 0,     rankId: rankForTotalXp(data.xp + data.premiumXp).id }
       setHistory((prev) => {
         const next = [...prev, rec!].slice(-DAYS)
         saveHistory(next)
@@ -150,7 +150,7 @@ export function ScorePanel({ onClose }: { onClose: () => void }) {
     <div className="sp-overlay" onClick={onClose}>
       <div className="sp-panel water-glass" onClick={(e) => e.stopPropagation()}>
         <div className="sp-header">
-          <h2>⚔️ Honour Score</h2>
+          <h2>⚔️ Focus Score</h2>
           <span className="sp-subtitle">30-Day Activity Analytics</span>
           <button className="sp-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
