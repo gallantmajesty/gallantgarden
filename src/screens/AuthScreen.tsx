@@ -1,15 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
+import { useLocation } from 'react-router-dom'
 import './AuthScreen.css'
 
 export function AuthScreen() {
   const { t } = useTranslation()
   const { signInWithProvider, signInAsGuest } = useAuth()
+  const location = useLocation()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<OAuthProvider | 'guest' | null>(null)
 
   useEffect(() => { setPending(null) }, [])
+
+  const isGithubRoute = location.pathname === '/login/github'
+
+  useEffect(() => {
+    if (isGithubRoute && !pending) {
+      const provider: OAuthProvider = 'github'
+      setError(null)
+      setPending(provider)
+      signInWithProvider(provider).catch(() => {
+        setError(t('auth.githubError') || 'GitHub sign-in failed')
+        setPending(null)
+      })
+    }
+  }, [isGithubRoute, pending, signInWithProvider, t])
 
   const providers: { id: OAuthProvider; label: string }[] = [
     { id: 'github', label: t('auth.continueGithub') },

@@ -47,6 +47,7 @@
         "orContinueEmail": "or continue with email",
         "signIn": "Sign In",
         "createAccount": "Create Account",
+        "githubError": "GitHub sign-in failed. Please try again.",
         "explorerName": "Explorer name",
         "namePlaceholder": "What should we call you?",
         "email": "Email",

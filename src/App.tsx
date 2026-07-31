@@ -75,7 +75,7 @@ export default function App() {
     }
   }, [])
 
-  const PUBLIC_PATHS = new Set(['/', '/about', '/guest'])
+  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
 
   // Public marketing pages render without WebBackground/IntroVeil
@@ -91,6 +91,9 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/about" element={<About />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
+            <Route path="/login" element={<AuthScreen />} />
+            <Route path="/login/github" element={<AuthScreen />} />
+            <Route path="/login/perinfo" element={<Onboarding />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -144,6 +147,9 @@ const appContent = (
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Navigate to="/lobby" replace />} />
+            <Route path="/login" element={<Navigate to="/lobby" replace />} />
+            <Route path="/login/github" element={<Navigate to="/lobby" replace />} />
+            <Route path="/login/perinfo" element={<Navigate to="/lobby" replace />} />
             <Route path="/lobby" element={<Lobby />} />
             <Route path="/lobby/realm" element={<Realm />} />
             <Route path="/lobby/realm/choose" element={<Realm />} />
