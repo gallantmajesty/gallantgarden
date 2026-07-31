@@ -126,7 +126,17 @@ const appContent = (
     {user && <WebBackground />}
     {user && <IntroVeil ready={veilReady} />}
     {loading ? null : !user ? (
-      <AuthScreen />
+      isPublic ? (
+        <AuthScreen />
+      ) : (
+        <ErrorBoundary resetKeys={[location.pathname]}>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      )
     ) : !profileReady ? null : !onboarded ? (
       <Onboarding />
     ) : (
