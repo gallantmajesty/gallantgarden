@@ -45,7 +45,8 @@
     <div id="root"></div>
     <script>
       window.addEventListener('error', function (e) {
-        showError(e.error && e.error.message ? e.error.message : (e.message || 'Unknown error'))
+        var loc = (e.filename ? ' at ' + e.filename + (e.lineno ? ':' + e.lineno : '') : '')
+        showError((e.error && e.error.message ? e.error.message : (e.message || 'Unknown error')) + loc)
       })
       window.addEventListener('unhandledrejection', function (e) {
         showError(e.reason && e.reason.message ? e.reason.message : String(e.reason))
@@ -55,10 +56,10 @@
         if (!div) {
           div = document.createElement('div')
           div.id = 'crash-error'
-          div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f1410;color:#e8efe6;z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;'
+          div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f1410;color:#e8efe6;z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;overflow:auto;'
           document.body.appendChild(div)
         }
-        div.innerHTML = '<div style="max-width:560px;text-align:center;"><div style="font-size:40px;margin-bottom:12px;">⚠️</div><h2 style="margin:0 0 10px;">Something went wrong</h2><pre style="white-space:pre-wrap;word-break:break-word;background:#1d241b;padding:12px;border-radius:8px;opacity:.9;font-size:13px;">' + String(msg).replace(/</g, '&lt;') + '</pre><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;border-radius:8px;background:#2a3a2e;color:#e8efe6;border:1px solid #4a5a4e;cursor:pointer;">Reload</button></div>'
+        div.innerHTML = '<div style="max-width:640px;text-align:center;"><div style="font-size:40px;margin-bottom:12px;">⚠️</div><h2 style="margin:0 0 10px;">Something went wrong</h2><pre style="white-space:pre-wrap;word-break:break-word;background:#1d241b;padding:12px;border-radius:8px;opacity:.9;font-size:13px;text-align:left;">' + String(msg).replace(/</g, '&lt;') + '</pre><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;border-radius:8px;background:#2a3a2e;color:#e8efe6;border:1px solid #4a5a4e;cursor:pointer;">Reload</button></div>'
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>
