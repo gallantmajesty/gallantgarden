@@ -1,17 +1,22 @@
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 
 export function NotFound() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [showAlert, setShowAlert] = useState(false)
+  const [showQuote, setShowQuote] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number>(0)
+  const timestamp = new Date().toLocaleString()
 
   useEffect(() => {
     setShowAlert(true)
-    const timer = setTimeout(() => setShowAlert(false), 8000)
+    const timer = setTimeout(() => setShowAlert(false), 6000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowQuote(true), 5000)
     return () => clearTimeout(timer)
   }, [])
 
@@ -22,37 +27,28 @@ export function NotFound() {
     if (!ctx) return
 
     const handleResize = () => {
-      const c = canvasRef.current
-      if (c) {
-        c.width = window.innerWidth
-        c.height = window.innerHeight
-      }
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
     }
-
-    setSize()
+    handleResize()
     window.addEventListener('resize', handleResize)
 
     const W = canvas.width
     const H = canvas.height
 
-    function initParticles() {
-      const pts = []
-      for (let i = 0; i < 60; i++) {
-        pts.push({
-          x: Math.random() * W,
-          y: Math.random() * H,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: -Math.random() * 0.5 - 0.1,
-          life: Math.random() * 200,
-          maxLife: 200 + Math.random() * 200,
-          size: Math.random() * 2.5 + 0.5,
-          color: Math.random() > 0.5 ? '#7B6FBA' : '#9B8FDB',
-        })
-      }
-      return pts
+    const pts: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: string }[] = []
+    for (let i = 0; i < 40; i++) {
+      pts.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: -Math.random() * 0.25 - 0.05,
+        life: Math.random() * 300,
+        maxLife: 300 + Math.random() * 300,
+        size: Math.random() * 1.5 + 0.3,
+        color: Math.random() > 0.5 ? 'rgba(0,200,255,0.4)' : 'rgba(0,255,150,0.3)',
+      })
     }
-
-    const pts = initParticles()
 
     function draw() {
       ctx.clearRect(0, 0, W, H)
@@ -60,7 +56,7 @@ export function NotFound() {
         p.x += p.vx
         p.y += p.vy
         p.life++
-        const alpha = Math.max(0, 0.6 * (1 - p.life / p.maxLife))
+        const alpha = Math.max(0, 0.5 * (1 - p.life / p.maxLife))
         ctx.fillStyle = p.color
         ctx.globalAlpha = alpha
         ctx.beginPath()
@@ -90,8 +86,8 @@ export function NotFound() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(180deg, #06020e 0%, #0f0a1a 40%, #1a0e2e 100%)',
-      color: '#c4b5fd',
+      background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 50%, #0a0e1a 100%)',
+      color: '#00d4ff',
       fontFamily: 'var(--font-serif-heading)',
       padding: '2rem',
       position: 'relative',
@@ -110,24 +106,42 @@ export function NotFound() {
 
       <div style={{
         position: 'absolute',
-        top: '10%',
-        left: '10%',
-        width: 200,
-        height: 200,
-        background: 'radial-gradient(circle, rgba(123,111,186,0.15) 0%, transparent 70%)',
-        borderRadius: '50%',
+        inset: 0,
+        background: 'radial-gradient(ellipse at center, rgba(0,40,80,0.3) 0%, #0a0e1a 70%)',
         pointerEvents: 'none',
       }} />
+
       <div style={{
         position: 'absolute',
-        bottom: '15%',
-        right: '15%',
-        width: 300,
-        height: 300,
-        background: 'radial-gradient(circle, rgba(155,143,219,0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '2px',
+        background: 'linear-gradient(90deg, transparent, #00d4ff, transparent)',
+        opacity: 0.6,
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.01) 2px, rgba(0,212,255,0.01) 4px)',
         pointerEvents: 'none',
       }} />
+
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% { text-shadow: 0 0 20px rgba(0,212,255,0.4), 0 0 40px rgba(0,212,255,0.2); }
+          50% { text-shadow: 0 0 30px rgba(0,212,255,0.6), 0 0 60px rgba(0,212,255,0.3); }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-in-scale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
 
       {showAlert && (
         <div style={{
@@ -136,199 +150,179 @@ export function NotFound() {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 10000,
-          padding: '1rem 2rem',
-          background: 'rgba(30, 10, 50, 0.95)',
-          border: '1px solid rgba(123,111,186,0.6)',
-          borderRadius: 6,
-          boxShadow: '0 0 40px rgba(123,111,186,0.3), 0 0 80px rgba(123,111,186,0.1)',
+          padding: '0.75rem 1.5rem',
+          background: 'rgba(0,20,40,0.9)',
+          border: '1px solid rgba(0,212,255,0.4)',
+          borderRadius: 4,
+          boxShadow: '0 0 20px rgba(0,212,255,0.2)',
           backdropFilter: 'blur(10px)',
-          animation: 'slideDown 0.5s ease-out',
-          maxWidth: 500,
+          animation: 'fade-in 0.5s ease-out',
+          maxWidth: 450,
           textAlign: 'center',
         }}>
           <div style={{
-            fontSize: '0.7rem',
+            fontSize: '0.65rem',
             letterSpacing: '0.2em',
-            color: '#9B8FDB',
+            color: '#00d4ff',
             fontWeight: 700,
-            marginBottom: '0.5rem',
+            marginBottom: '0.25rem',
             fontFamily: 'var(--font-serif-heading)',
           }}>
-            ⚠ ATTENTION TRAVELER
+            ℹ SYSTEM NOTICE
           </div>
           <div style={{
-            fontSize: '0.8rem',
-            color: '#c4b5fd',
-            lineHeight: 1.6,
+            fontSize: '0.75rem',
+            color: '#80e0ff',
+            lineHeight: 1.5,
           }}>
-            The path you seek does not exist in this realm. Your journey has been logged and your steps are being recorded by the ancient wardens of this domain.
-          </div>
-          <div style={{
-            fontSize: '0.65rem',
-            color: '#7B6FBA',
-            marginTop: '0.5rem',
-            fontStyle: 'italic',
-          }}>
-            Every misstep echoes through the corridors of time...
+            This page was not found. Your activity is safe and secure. Redirecting you shortly.
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-        }
-      `}</style>
 
       <div style={{
         position: 'relative',
         zIndex: 1,
         textAlign: 'center',
-        maxWidth: 500,
+        maxWidth: 580,
+        width: '100%',
       }}>
         <div style={{
-          fontSize: '10rem',
+          fontSize: '8rem',
           fontWeight: 900,
           lineHeight: 1,
-          marginBottom: '0.5rem',
-          background: 'linear-gradient(180deg, #9B8FDB 0%, #7B6FBA 50%, #5B4F9B 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          animation: 'float 4s ease-in-out infinite',
-          filter: 'drop-shadow(0 0 30px rgba(123,111,186,0.5))',
+          marginBottom: '0.25rem',
+          color: '#00d4ff',
+          textShadow: '0 0 30px rgba(0,212,255,0.5), 0 0 60px rgba(0,212,255,0.2)',
+          letterSpacing: '0.05em',
+          animation: 'pulse-glow 3s ease-in-out infinite',
         }}>
           404
         </div>
 
         <div style={{
-          width: 120,
-          height: 2,
-          margin: '0 auto 2rem',
-          background: 'linear-gradient(90deg, transparent, #7B6FBA, transparent)',
-          animation: 'pulse-glow 3s ease-in-out infinite',
+          width: 80,
+          height: 3,
+          margin: '0 auto 1rem',
+          background: 'linear-gradient(90deg, transparent, #00d4ff, transparent)',
+          boxShadow: '0 0 10px rgba(0,212,255,0.4)',
         }} />
 
         <h1 style={{
-          fontSize: '1.75rem',
+          fontSize: '1.2rem',
           marginBottom: '0.75rem',
           letterSpacing: '0.15em',
-          color: '#d4c4f8',
+          color: '#60e0ff',
           fontWeight: 700,
+          textTransform: 'uppercase',
         }}>
-          {t('notFound.title') || 'Realm Not Found'}
+          {t('notFound.title') || 'Page Not Found'}
         </h1>
 
         <p style={{
-          color: '#9B8FDB',
-          marginBottom: '2.5rem',
-          lineHeight: 1.7,
-          fontSize: '0.95rem',
+          color: '#80c0e0',
+          marginBottom: '1.5rem',
+          lineHeight: 1.6,
+          fontSize: '0.9rem',
         }}>
-          {t('notFound.description') || "This path doesn't exist in FocusLily. The corridor you're looking for may have shifted, or never existed at all."}
+          {t('notFound.subtitle') || "Oops! You've reached a dead link."}
         </p>
 
         <div style={{
-          display: 'flex',
-          gap: '1rem',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
+          padding: '1.25rem',
+          border: '1px solid rgba(0,212,255,0.2)',
+          background: 'rgba(0,20,40,0.5)',
+          borderRadius: 4,
+          marginBottom: '1.5rem',
+          boxShadow: '0 0 20px rgba(0,212,255,0.05)',
         }}>
-          <button
-            onClick={() => navigate('/lobby')}
-            style={{
-              padding: '0.85rem 2.5rem',
-              fontSize: '1rem',
-              fontFamily: 'var(--font-serif-heading)',
-              letterSpacing: '0.1em',
-              background: 'linear-gradient(135deg, rgba(123,111,186,0.3), rgba(75,60,150,0.3))',
-              border: '1px solid rgba(155,143,219,0.5)',
-              color: '#d4c4f8',
-              borderRadius: 4,
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-              backdropFilter: 'blur(5px)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(123,111,186,0.5), rgba(75,60,150,0.5))'
-              e.currentTarget.style.boxShadow = '0 0 25px rgba(123,111,186,0.3)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(123,111,186,0.3), rgba(75,60,150,0.3))'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          >
-            {t('notFound.backToLobby') || 'Return to Lobby'}
-          </button>
-
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: '0.85rem 2.5rem',
-              fontSize: '1rem',
-              fontFamily: 'var(--font-serif-heading)',
-              letterSpacing: '0.1em',
-              background: 'transparent',
-              border: '1px solid rgba(155,143,219,0.3)',
-              color: '#9B8FDB',
-              borderRadius: 4,
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(155,143,219,0.6)'
-              e.currentTarget.style.color = '#d4c4f8'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(155,143,219,0.3)'
-              e.currentTarget.style.color = '#9B8FDB'
-            }}
-          >
-            Go Back
-          </button>
+          <p style={{
+            color: '#80d0ff',
+            lineHeight: 1.7,
+            fontSize: '0.85rem',
+            margin: 0,
+          }}>
+            {t('notFound.description') || "The page you tried to access doesn't exist or is restricted. Don't worry — your activity is safe and secure."}
+          </p>
         </div>
 
         <div style={{
-          marginTop: '3rem',
-          padding: '1.5rem',
-          border: '1px solid rgba(123,111,186,0.2)',
-          borderRadius: 6,
-          background: 'rgba(15,10,30,0.5)',
-          backdropFilter: 'blur(5px)',
-          maxWidth: 400,
-          marginLeft: 'auto',
-          marginRight: 'auto',
+          padding: '0.75rem 1.25rem',
+          border: '1px solid rgba(0,212,255,0.15)',
+          background: 'rgba(0,15,30,0.4)',
+          borderRadius: 4,
+          marginBottom: '1.5rem',
         }}>
           <div style={{
-            fontSize: '0.65rem',
+            fontSize: '0.55rem',
             letterSpacing: '0.2em',
-            color: '#7B6FBA',
+            color: '#00a0cc',
             fontWeight: 700,
-            marginBottom: '0.75rem',
+            marginBottom: '0.4rem',
             fontFamily: 'var(--font-serif-heading)',
           }}>
-            ✦ WARDEN'S LOG ✦
+            ℹ SYSTEM LOG
           </div>
           <div style={{
-            fontSize: '0.7rem',
-            color: '#9B8FDB',
-            lineHeight: 1.6,
-            fontStyle: 'italic',
+            fontSize: '0.65rem',
+            color: '#6090b0',
+            lineHeight: 1.5,
+            fontFamily: 'monospace',
           }}>
-            "The paths of the unwary are recorded in the stones of this realm.
-            Turn back, traveler, before the corridors forget you."
+            Attempt recorded at {timestamp}. No harm done. Navigation errors are tracked to improve your experience.
           </div>
         </div>
+
+        <button
+          onClick={() => window.location.href = '/lobby'}
+          style={{
+            padding: '0.75rem 2rem',
+            fontSize: '0.9rem',
+            fontFamily: 'var(--font-serif-heading)',
+            letterSpacing: '0.1em',
+            background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,100,150,0.15))',
+            border: '1px solid rgba(0,212,255,0.4)',
+            color: '#00d4ff',
+            borderRadius: 4,
+            cursor: 'pointer',
+            transition: 'all 0.3s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.25), rgba(0,100,150,0.25))'
+            e.currentTarget.style.boxShadow = '0 0 20px rgba(0,212,255,0.2)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,100,150,0.15))'
+            e.currentTarget.style.boxShadow = 'none'
+          }}
+        >
+          Return to Dashboard
+        </button>
       </div>
+
+      {showQuote && (
+        <div style={{
+          position: 'absolute',
+          left: '30px',
+          top: '50%',
+          transform: 'translateY(-50%) rotate(-90deg)',
+          whiteSpace: 'nowrap',
+          opacity: showQuote ? 1 : 0,
+          transition: 'opacity 1s ease',
+          zIndex: 2,
+        }}>
+          <span style={{
+            fontSize: '1.3rem',
+            color: 'rgba(0,255,150,0.35)',
+            fontFamily: 'var(--font-serif-heading)',
+            fontStyle: 'italic',
+            letterSpacing: '0.15em',
+            textShadow: '0 0 15px rgba(0,255,150,0.2)',
+          }}>
+            "Stay focused — keep learning"
+          </span>
+        </div>
+      )}
     </div>
   )
 }

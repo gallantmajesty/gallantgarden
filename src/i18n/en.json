@@ -1246,8 +1246,9 @@
     "empty": "No activity yet — finish a task or log focus, then revisit."
   },
   "notFound": {
-    "title": "Realm Not Found",
-    "description": "This path doesn't exist in FocusLily. The corridor you're looking for may have shifted, or never existed at all.",
-    "backToLobby": "Return to Lobby"
+    "title": "Page Not Found",
+    "subtitle": "Oops! You've reached a dead link.",
+    "description": "The page you tried to access doesn't exist or is restricted. Don't worry — your activity is safe and secure.",
+    "backToLobby": "Return to Dashboard"
   }
 }

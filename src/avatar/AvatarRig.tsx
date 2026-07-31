@@ -2341,8 +2341,8 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
         )}
 
         <group ref={bind(foot)} position={[0, -P.lowerLeg - P.ankleR * 0.4, 0]}>
-          {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien */}
-          {!isAlien && (
+          {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien + robot (robot has its own boot) */}
+          {!isAlien && !isRobot && (
             <mesh geometry={sphereGeo(1)} material={showShoes && !isHacker ? shoeM : skin}
               scale={Array(3).fill(P.ankleR * (isRobot ? 0.65 : 1.1)) as [number, number, number]} />
           )}
@@ -2513,42 +2513,7 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
             <mesh key={i} geometry={taperGeo(P.ankleR * 0.02, P.ankleR * 0.17, P.footLen * 0.38)} material={shoeAccent}
               position={[tx * P.ankleR * 0.52, -P.ankleR * 0.3, P.footLen * 0.92]} rotation={[1.4, 0, 0]} castShadow />
           ))}
-          {/* Robot: glowing blue sci-fi line down the calf + glowing boot sole +
-               glowing accent strips on the ankle + detail plates on the
-               shin for a heavier, more mechanical foot. */}
-{isRobot && glowM && (
-              <group>
-                {/* main boot body — dark metal with angular geometry */}
-                <mesh geometry={latheGeo([
-                  [P.ankleR * 0.7, 0],
-                  [P.ankleR * 0.9, P.footLen * 0.15],
-                  [P.ankleR * 1.1, P.footLen * 0.4],
-                  [P.ankleR * 1.05, P.footLen * 0.6],
-                  [P.ankleR * 0.9, P.footLen * 0.75],
-                  [P.ankleR * 0.7, P.footLen * 0.85],
-                ])} material={shoeM} position={[0, -P.ankleR * 0.3, P.footLen * 0.2]} castShadow />
-                {/* glowing sole strip */}
-                <mesh geometry={boxGeo(P.ankleR * 2.0, P.ankleR * 0.3, P.footLen * 0.15)} material={glowM}
-                  position={[0, -P.ankleR * 0.65, P.footLen * 0.25]} />
-                {/* side accent strips */}
-                <mesh geometry={boxGeo(P.ankleR * 0.08, P.ankleR * 0.6, P.footLen * 0.06)} material={glowM}
-                  position={[sign * P.ankleR * 0.85, -P.ankleR * 0.15, P.footLen * 0.4]} />
-                <mesh geometry={boxGeo(P.ankleR * 0.08, P.ankleR * 0.6, P.footLen * 0.06)} material={glowM}
-                  position={[sign * P.ankleR * 0.85, -P.ankleR * 0.15, P.footLen * 0.7]} />
-                {/* ankle glow ring */}
-                <mesh geometry={torusGeo(P.ankleR * 1.05, P.ankleR * 0.04, 8, 20)} material={glowM}
-                  position={[0, -P.ankleR * 0.05, P.footLen * 0.1]} rotation={[Math.PI / 2, 0, 0]} />
-                {/* calf line — accent strip running up the leg */}
-                <mesh geometry={boxGeo(P.ankleR * 0.18, P.lowerLeg * 0.8, P.ankleR * 0.18)} material={glowM}
-                  position={[0, P.lowerLeg * 0.4, P.ankleR * 1.0]} />
-               {/* small detail plate on the shin */}
-               {robotMetal && (
-                 <mesh geometry={boxGeo(P.ankleR * 0.4, P.lowerLeg * 0.25, P.torsoD * 0.04)} material={robotMetal}
-                   position={[0, P.lowerLeg * 0.2, P.ankleR * 0.95]} castShadow />
-               )}
-</group>
-            )}
-          {/* Hacker: clean high-top sneaker — dark body, neon-green sole +
+{/* Hacker: clean high-top sneaker — dark body, neon-green sole +
               side accent. No floating panels, everything flush on the foot. */}
           {isHacker && hackerGlow && (() => {
             const shoeDark = sharedMaterial('#16181d', 0.6, 0.05)

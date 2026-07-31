@@ -80,57 +80,57 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
   case 'laptop':
   case 'gaming_laptop': {
     const isGaming = id === 'gaming_laptop'
-    const shell = isGaming ? tm('#1a1218', 0.35, 0.15, 'wood') : tm('#b8a48c', 0.5, 0.1, 'leather')
-    const base = isGaming ? tm('#0f0a12', 0.4, 0.1, 'wood') : tm('#9a8468', 0.6, 0, 'wood')
-    const keyMat = !isGaming ? m('#e9dcc4', 0.5) : null
+    const shell = isGaming ? tm('#1e1420', 0.3, 0.18, 'ceramic') : tm('#c8b898', 0.45, 0.08, 'leather')
+    const base = isGaming ? tm('#120c18', 0.35, 0.15, 'ceramic') : tm('#a89070', 0.55, 0.04, 'wood')
+    const palmRest = isGaming ? tm('#1a1220', 0.3, 0.12, 'ceramic') : tm('#d4c4a4', 0.5, 0.02, 'leather')
+    const keyMat = !isGaming ? m('#f0e8d8', 0.4) : null
 
-    const { base: hueBase, glowSoft, glowMid, glowHard, glowUltra, complimentGlowSoft, complimentGlowMid, rgb } =
+    const { glowSoft, glowMid, glowHard, glowUltra, complimentGlowSoft, complimentGlowMid, rgb } =
       isGaming
         ? makeRgbGamingPalette()
         : {
             base: '#c9924a',
             compliment: '#7a4a2b',
-            glowSoft: m('#c9924a', 0.4, 0.1),
-            glowMid: m('#c9924a', 0.4, 0.2),
-            glowHard: m('#c9924a', 0.35, 0.2),
-            glowUltra: m('#c9924a', 0.3, 0.15),
-            complimentGlowSoft: m('#7a4a2b', 0.4, 0.1),
-            complimentGlowMid: m('#7a4a2b', 0.4, 0.2),
+            glowSoft: m('#c9924a', 0.35, 0.12),
+            glowMid: m('#c9924a', 0.35, 0.22),
+            glowHard: m('#c9924a', 0.3, 0.25),
+            glowUltra: m('#c9924a', 0.25, 0.18),
+            complimentGlowSoft: m('#7a4a2b', 0.35, 0.12),
+            complimentGlowMid: m('#7a4a2b', 0.35, 0.22),
             rgb: WARM_GLOW,
           }
 
-    const screenGlow = isGaming ? glowHard : m('#c9924a', 0.35)
-    const logo = isGaming ? glowMid : m('#caa24a', 0.4, 0.3)
+    const screenGlow = isGaming ? glowHard : m('#c9924a', 0.3)
+    const logo = isGaming ? glowMid : m('#caa24a', 0.35, 0.25)
+    const portMat = m('#2a2a2a', 0.3, 0.5)
+    const ledMat = isGaming ? glowSoft : m('#c9924a', 0.5, 0.3)
 
     const keys = []
     const colsK = isGaming ? 13 : 11
     const rowsK = 5
-    const keyW = 0.026
-    const keyD = isGaming ? 0.022 : 0.02
-    const keySpacing = 0.032
-    const keyH = 0.012
-    // QWERTY row labels — padded to colsK per row
+    const keyW = 0.028
+    const keyD = isGaming ? 0.024 : 0.022
+    const keySpacing = 0.034
+    const keyH = 0.014
     const rowLabels = isGaming
       ? ['`1234567890-=', 'qwertyuiop[]\\', 'asdfghjkl;\'"', 'zxcvbnm,./', ' ']
       : ['`1234567890', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm', ' ']
     for (let r = 0; r < rowsK; r++) {
       for (let c = 0; c < colsK; c++) {
         const kx = -((colsK - 1) * keySpacing) / 2 + c * keySpacing
-        const kz = 0.015 + r * 0.026
-        const keyPalette = isGaming ? rgb : ['#e9dcc4']
+        const kz = 0.018 + r * 0.028
+        const keyPalette = isGaming ? rgb : ['#f0e8d8']
         const hue = keyMat ? keyPalette[0] : keyPalette[(c + r) % keyPalette.length]
-        // Determine label: use row label char if available, else blank
         const label = (rowLabels[r] && c < rowLabels[r].length) ? rowLabels[r][c] : ''
-        // Space bar (row 4, col 0) is wide — stretch it
         const isSpace = r === 4 && c === 0
         const kw = isSpace ? keySpacing * (colsK - 1) + keyW : keyW
         keys.push(
-          <group key={`k${r}-${c}`} position={[kx, 0.031, kz]}>
-            <mesh geometry={boxGeo(kw, keyH, keyD)} material={keyMat ? keyMat : m(hue, 0.45, 0.2)} />
+          <group key={`k${r}-${c}`} position={[kx, 0.033, kz]}>
+            <mesh geometry={boxGeo(kw, keyH, keyD)} material={keyMat ? keyMat : m(hue, 0.4, 0.15)} />
             {label ? (
               <Text
-                fontSize={0.009}
-                color={isGaming ? '#ffffff' : '#3a2a1a'}
+                fontSize={0.008}
+                color={isGaming ? '#e0e0e0' : '#2a1a0a'}
                 anchorX="center"
                 anchorY="middle"
                 position={[0, keyH / 2 + 0.001, 0]}
@@ -146,54 +146,95 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
 
     return (
       <group>
-        {/* RGB underglow / backlight strip */}
-        <group position={[0, -0.004, 0]}>
-          <mesh geometry={boxGeo(0.52, 0.006, 0.2)} material={glowSoft} />
-          <mesh geometry={boxGeo(0.48, 0.005, 0.16)} material={glowHard} />
-          <mesh geometry={boxGeo(0.44, 0.004, 0.12)} material={glowUltra} />
+        {/* RGB underglow / backlight strip — triple layer */}
+        <group position={[0, -0.005, 0]}>
+          <mesh geometry={boxGeo(0.54, 0.007, 0.22)} material={glowSoft} />
+          <mesh geometry={boxGeo(0.50, 0.005, 0.18)} material={glowHard} />
+          <mesh geometry={boxGeo(0.46, 0.004, 0.14)} material={glowUltra} />
         </group>
 
-        {/* base / keyboard deck */}
+        {/* base / keyboard deck — tapered edges for slim profile */}
         <mesh
-          geometry={boxGeo(0.48, 0.028, 0.34)}
-          material={isGaming ? tm('#0f0a12', 0.35, 0.12, 'wood') : shell}
-          position={[0, 0.014, 0.02]}
+          geometry={boxGeo(0.50, 0.030, 0.36)}
+          material={isGaming ? tm('#120c18', 0.3, 0.15, 'ceramic') : shell}
+          position={[0, 0.015, 0.02]}
           castShadow
         />
-        <mesh geometry={boxGeo(0.44, 0.014, 0.24)} material={base} position={[0, 0.028, 0.03]} />
+        <mesh geometry={boxGeo(0.46, 0.015, 0.26)} material={base} position={[0, 0.030, 0.03]} />
+
+        {/* keyboard keys */}
         {keys}
-        {/* trackpad (lit edge when gaming) */}
+
+        {/* wrist rest pad */}
+        <mesh geometry={boxGeo(0.38, 0.008, 0.06)} material={palmRest} position={[0, 0.034, 0.17]} />
+
+        {/* trackpad with subtle edge glow */}
         <mesh
-          geometry={boxGeo(0.12, 0.006, 0.08)}
-          material={isGaming ? glowMid : m('#d9c8a8', 0.5)}
-          position={[0, 0.032, 0.14]}
+          geometry={boxGeo(0.13, 0.006, 0.09)}
+          material={isGaming ? glowMid : m('#c8b898', 0.45)}
+          position={[0, 0.035, 0.14]}
         />
+        {isGaming && (
+          <mesh geometry={boxGeo(0.13, 0.002, 0.09)} material={glowSoft} position={[0, 0.037, 0.14]} />
+        )}
+
         {/* left RGB accent bar */}
         {isGaming && (
-          <mesh geometry={boxGeo(0.006, 0.028, 0.3)} material={complimentGlowMid} position={[-0.235, 0.026, 0.03]} />
+          <mesh geometry={boxGeo(0.006, 0.030, 0.32)} material={complimentGlowMid} position={[-0.245, 0.028, 0.03]} />
         )}
         {/* right RGB accent bar */}
         {isGaming && (
-          <mesh geometry={boxGeo(0.006, 0.028, 0.3)} material={complimentGlowSoft} position={[0.235, 0.026, 0.03]} />
-        )}
-        {/* front vent strip */}
-        {isGaming && (
-          <mesh geometry={boxGeo(0.36, 0.008, 0.008)} material={glowUltra} position={[0, 0.008, 0.19]} />
+          <mesh geometry={boxGeo(0.006, 0.030, 0.32)} material={complimentGlowSoft} position={[0.245, 0.028, 0.03]} />
         )}
 
-        {/* screen lid */}
-        <group position={[0, 0.028, -0.14]} rotation={[-0.22, 0, 0]}>
-          {/* thin RGB light bar on screen hinge */}
+        {/* front vent strip */}
+        {isGaming && (
+          <mesh geometry={boxGeo(0.38, 0.008, 0.008)} material={glowUltra} position={[0, 0.008, 0.20]} />
+        )}
+
+        {/* side ports — left */}
+        <mesh geometry={boxGeo(0.004, 0.012, 0.04)} material={portMat} position={[-0.25, 0.018, 0.0]} />
+        <mesh geometry={boxGeo(0.004, 0.012, 0.04)} material={portMat} position={[-0.25, 0.018, 0.06]} />
+
+        {/* side ports — right */}
+        <mesh geometry={boxGeo(0.004, 0.012, 0.04)} material={portMat} position={[0.25, 0.018, 0.0]} />
+        <mesh geometry={boxGeo(0.004, 0.012, 0.04)} material={portMat} position={[0.25, 0.018, 0.06]} />
+
+        {/* power LED indicator */}
+        <mesh geometry={sphereGeo(0.003)} material={ledMat} position={[0, 0.035, -0.16]} />
+
+        {/* === screen lid === */}
+        <group position={[0, 0.030, -0.14]} rotation={[-0.22, 0, 0]}>
+          {/* hinge mechanism — two small cylinders */}
+          <mesh geometry={cylinderGeo(0.008, 0.008, 0.02, 8)} material={tm('#2a2a2a', 0.3, 0.5, 'ceramic')} position={[-0.12, -0.002, 0.005]} />
+          <mesh geometry={cylinderGeo(0.008, 0.008, 0.02, 8)} material={tm('#2a2a2a', 0.3, 0.5, 'ceramic')} position={[0.12, -0.002, 0.005]} />
+
+          {/* RGB light bar on screen hinge */}
           {isGaming && (
-            <mesh geometry={boxGeo(0.5, 0.007, 0.014)} material={glowUltra} position={[0, -0.002, 0.005]} />
+            <mesh geometry={boxGeo(0.52, 0.007, 0.014)} material={glowUltra} position={[0, -0.002, 0.005]} />
           )}
-          <mesh geometry={boxGeo(0.48, 0.32, 0.016)} material={shell} position={[0, 0.16, 0]} castShadow />
-          <mesh geometry={boxGeo(0.44, 0.28, 0.004)} material={m('#0a0610', 0.3)} position={[0, 0.16, 0.009]} />
-          <mesh geometry={boxGeo(0.41, 0.25, 0.002)} material={screenGlow} position={[0, 0.16, 0.011]} />
-          {/* lit brand emblem on the lid */}
-          <mesh geometry={boxGeo(0.08, 0.08, 0.002)} material={logo} position={[0, 0.16, 0.012]} />
-          {/* webcam dot */}
-          <mesh geometry={sphereGeo(0.004)} material={m('#1a1a2a', 0.3)} position={[0, 0.31, 0.01]} />
+
+          {/* bezel — outer frame */}
+          <mesh geometry={boxGeo(0.50, 0.34, 0.018)} material={shell} position={[0, 0.17, 0]} castShadow />
+
+          {/* inner bezel shadow */}
+          <mesh geometry={boxGeo(0.46, 0.30, 0.004)} material={m('#080810', 0.35)} position={[0, 0.17, 0.009]} />
+
+          {/* display panel — subtle gradient glow */}
+          <mesh geometry={boxGeo(0.43, 0.27, 0.002)} material={screenGlow} position={[0, 0.17, 0.011]} />
+
+          {/* subtle screen reflection highlight */}
+          <mesh geometry={boxGeo(0.30, 0.15, 0.001)} material={m('#ffffff', 0.1, 0.05)} position={[0.05, 0.20, 0.012]} rotation={[0, 0.3, 0]} />
+
+          {/* brand emblem — glowing logo */}
+          <mesh geometry={boxGeo(0.07, 0.07, 0.002)} material={logo} position={[0, 0.17, 0.013]} />
+
+          {/* webcam with ring light */}
+          <mesh geometry={sphereGeo(0.005)} material={m('#1a1a2a', 0.2)} position={[0, 0.32, 0.01]} />
+          <mesh geometry={torusGeo(0.008, 0.001)} material={glowSoft} position={[0, 0.32, 0.011]} rotation={[Math.PI / 2, 0, 0]} />
+
+          {/* ambient light sensor dot */}
+          <mesh geometry={sphereGeo(0.002)} material={m('#3a3a3a', 0.2, 0.3)} position={[0.12, 0.31, 0.01]} />
         </group>
       </group>
     )
@@ -667,6 +708,15 @@ case 'book_stack': {
   const marbledEdge = m('#d4c5b2', 0.4)
 
   const foreEdge = wornPaper('#b8a58c', 0.72)
+  const pageEdge = wornPaper('#c8b89a', 0.8)
+  const endpaperRed = m('#c03030', 0.6)
+  const endpaperBlue = m('#3050a0', 0.6)
+  const endpaperGold = m('#d4a030', 0.5)
+  const endpaperGreen = m('#30a050', 0.6)
+  const wearDark = m('#1a1510', 0.9)
+  const wearMark = m('#3a3028', 0.85)
+  const goldTool = m('#e8c84a', 0.35, 0.5)
+  const goldFine = m('#f0d860', 0.3, 0.55)
 
   interface BookDef {
     title: string
@@ -677,25 +727,28 @@ case 'book_stack': {
     color: ReturnType<typeof wornRough>
     spineTex: ReturnType<typeof wornPaper>
     spinePatina: ReturnType<typeof m>
+    endpaper: ReturnType<typeof m>
     hasCloth: boolean
     hasLeather: boolean
     hasMarbled: boolean
     tiltX: number
     tiltZ: number
     ribbon?: string
+    ribbonColor?: string
+    wearSpots?: [number, number, number][]
   }
 
   const bookDefs: BookDef[] = [
-    { title: 'THE ILIAD', author: 'Homer', width: 0.30, depth: 0.21, thickness: 0.025, color: clothNavy, spineTex: clothCream, spinePatina: m('#d4a030', 0.5, 0.3), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0, tiltZ: 0, ribbon: '#c03030' },
-    { title: 'MIDDLEMARCH', author: 'George Eliot', width: 0.28, depth: 0.19, thickness: 0.032, color: leatherDark, spineTex: wornPaper('#e8dcc8', 0.8), spinePatina: spineGold, hasCloth: false, hasLeather: true, hasMarbled: true, tiltX: 0.03, tiltZ: 0.02 },
-    { title: 'SHAKESPEARE', author: 'Complete Works', width: 0.34, depth: 0.23, thickness: 0.048, color: clothRed, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: -0.02, tiltZ: 0.03, ribbon: '#f0d030' },
-    { title: 'PARADISE LOST', author: 'John Milton', width: 0.29, depth: 0.20, thickness: 0.027, color: clothBrown, spineTex: clothCream, spinePatina: m('#c8942a', 0.5, 0.3), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: -0.01 },
-    { title: 'PRIDE & PREJUDICE', author: 'Jane Austen', width: 0.26, depth: 0.18, thickness: 0.022, color: clothBurgundy, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: 0.04, tiltZ: -0.02, ribbon: '#4a90c0' },
-    { title: 'THE ODYSSEY', author: 'Homer', width: 0.28, depth: 0.19, thickness: 0.024, color: clothGreen, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.01, tiltZ: 0.01 },
-    { title: 'A TALE OF TWO CITIES', author: 'Dickens', width: 0.31, depth: 0.22, thickness: 0.028, color: clothCharcoal, spineTex: clothCream, spinePatina: m('#e0c878', 0.55, 0.3), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0, tiltZ: 0, ribbon: '#c03030' },
-    { title: 'REBECCA', author: 'Daphne du Maurier', width: 0.27, depth: 0.185, thickness: 0.024, color: moroccoRed, spineTex: vellumMat, spinePatina: spineGold, hasCloth: false, hasLeather: true, hasMarbled: true, tiltX: 0.02, tiltZ: -0.03 },
-    { title: 'WUTHERING HEIGHTS', author: 'Emily Brontë', width: 0.27, depth: 0.185, thickness: 0.023, color: clothLavender, spineTex: clothCream, spinePatina: m('#a08040', 0.5, 0.25), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.03, tiltZ: 0.02, ribbon: '#6b8e6b' },
-    { title: 'ANNA KARENINA', author: 'Leo Tolstoy', width: 0.32, depth: 0.22, thickness: 0.040, color: clothOlive, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: -0.01 },
+    { title: 'THE ILIAD', author: 'Homer', width: 0.30, depth: 0.21, thickness: 0.025, color: clothNavy, spineTex: clothCream, spinePatina: m('#d4a030', 0.5, 0.3), endpaper: endpaperBlue, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0, tiltZ: 0, ribbon: '#c03030', wearSpots: [[0.08, 0.005, 0.06], [-0.06, 0.003, 0.04]] },
+    { title: 'MIDDLEMARCH', author: 'George Eliot', width: 0.28, depth: 0.19, thickness: 0.032, color: leatherDark, spineTex: wornPaper('#e8dcc8', 0.8), spinePatina: spineGold, endpaper: endpaperGold, hasCloth: false, hasLeather: true, hasMarbled: true, tiltX: 0.03, tiltZ: 0.02, wearSpots: [[0.07, 0.004, 0.05]] },
+    { title: 'SHAKESPEARE', author: 'Complete Works', width: 0.34, depth: 0.23, thickness: 0.048, color: clothRed, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperRed, hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: -0.02, tiltZ: 0.03, ribbon: '#f0d030', ribbonColor: '#f0d030', wearSpots: [[0.09, 0.006, 0.07], [-0.05, 0.003, 0.03]] },
+    { title: 'PARADISE LOST', author: 'John Milton', width: 0.29, depth: 0.20, thickness: 0.027, color: clothBrown, spineTex: clothCream, spinePatina: m('#c8942a', 0.5, 0.3), endpaper: endpaperGreen, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: -0.01, wearSpots: [[0.06, 0.004, 0.05]] },
+    { title: 'PRIDE & PREJUDICE', author: 'Jane Austen', width: 0.26, depth: 0.18, thickness: 0.022, color: clothBurgundy, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperGold, hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: 0.04, tiltZ: -0.02, ribbon: '#4a90c0', wearSpots: [[0.05, 0.003, 0.04]] },
+    { title: 'THE ODYSSEY', author: 'Homer', width: 0.28, depth: 0.19, thickness: 0.024, color: clothGreen, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperGreen, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.01, tiltZ: 0.01, wearSpots: [[0.07, 0.004, 0.06]] },
+    { title: 'A TALE OF TWO CITIES', author: 'Dickens', width: 0.31, depth: 0.22, thickness: 0.028, color: clothCharcoal, spineTex: clothCream, spinePatina: m('#e0c878', 0.55, 0.3), endpaper: endpaperRed, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0, tiltZ: 0, ribbon: '#c03030', wearSpots: [[0.08, 0.005, 0.05], [-0.04, 0.003, 0.03]] },
+    { title: 'REBECCA', author: 'Daphne du Maurier', width: 0.27, depth: 0.185, thickness: 0.024, color: moroccoRed, spineTex: vellumMat, spinePatina: spineGold, endpaper: endpaperGold, hasCloth: false, hasLeather: true, hasMarbled: true, tiltX: 0.02, tiltZ: -0.03, wearSpots: [[0.06, 0.004, 0.04]] },
+    { title: 'WUTHERING HEIGHTS', author: 'Emily Brontë', width: 0.27, depth: 0.185, thickness: 0.023, color: clothLavender, spineTex: clothCream, spinePatina: m('#a08040', 0.5, 0.25), endpaper: endpaperBlue, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.03, tiltZ: 0.02, ribbon: '#6b8e6b', wearSpots: [[0.05, 0.003, 0.04]] },
+    { title: 'ANNA KARENINA', author: 'Leo Tolstoy', width: 0.32, depth: 0.22, thickness: 0.040, color: clothOlive, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperGreen, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: -0.01, wearSpots: [[0.08, 0.005, 0.06], [-0.05, 0.003, 0.03]] },
   ]
   const rightBookDefs: BookDef[] = [
     { title: 'THE GREAT GATSBY', author: 'F. Scott Fitzgerald', width: 0.25, depth: 0.175, thickness: 0.020, color: clothPlum, spineTex: clothCream, spinePatina: m('#c0a050', 0.5, 0.35), endpaper: endpaperGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.03, tiltZ: 0.02, ribbon: '#2080b0', wearSpots: [[0.05, 0.003, 0.04]] },
@@ -709,6 +762,95 @@ case 'book_stack': {
     { title: 'MOBY-DICK', author: 'Herman Melville', width: 0.30, depth: 0.21, thickness: 0.036, color: clothGold, spineTex: clothCream, spinePatina: m('#5a3a10', 0.5, 0.3), endpaper: endpaperRed, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: 0.01, wearSpots: [[0.07, 0.004, 0.05]] },
     { title: 'LES MISÉRABLES', author: 'Victor Hugo', width: 0.33, depth: 0.22, thickness: 0.042, color: clothBurgundy, spineTex: clothCream, spinePatina: m('#c0a030', 0.55, 0.35), endpaper: endpaperBlue, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.02, tiltZ: -0.01, ribbon: '#4a90c0', wearSpots: [[0.08, 0.005, 0.06], [-0.04, 0.003, 0.03]] },
   ]
+
+  const buildStack = (books: BookDef[], baseX: number) => {
+    const nodes: React.ReactNode[] = []
+    let yAcc = 0.009
+
+    books.forEach((b, i) => {
+      const tiltX = b.tiltX
+      const tiltZ = b.tiltZ
+      const cx = baseX + tiltZ * 0.5
+      const cz = tiltX * 0.5
+      const halfW = b.width / 2
+      const halfD = b.depth / 2
+      const midY = yAcc + b.thickness / 2
+      const spineSide = -halfW - (b.hasLeather ? 0.007 : 0.005)
+      const clampX = -halfW
+      const dotSideZ = 1
+
+      nodes.push(
+        <group key={`book-${baseX}-${i}`} position={[cx, midY, cz]} rotation={[tiltX, 0, tiltZ]}>
+          <mesh geometry={boxGeo(b.width, b.thickness, b.depth)} material={b.color} position={[0, 0, 0]} />
+          <mesh geometry={boxGeo(b.width * 0.02, b.thickness * 0.9, b.depth * 0.02)} material={foreEdge} position={[halfW - 0.001, 0, 0]} />
+          {b.hasCloth && <mesh geometry={boxGeo(0.004, b.thickness + 0.001, b.depth)} material={b.color} position={[clampX, 0, 0]} />}
+          {b.hasLeather && (
+            <mesh
+              geometry={boxGeo(0.005, b.thickness + 0.0008, b.depth + 0.001)}
+              material={b.color}
+              position={[clampX + dotSideZ * 0.001, 0, 0]}
+            />
+          )}
+          <group position={[spineSide, 0, 0]}>
+            <mesh geometry={boxGeo(0.001, b.thickness + 0.0002, b.depth)} material={b.spineTex} />
+            {Array.from({ length: 10 }).map((_, bi) => {
+              const bandY = -b.thickness / 2 + (bi + 1) * (b.thickness / 11)
+              return <mesh key={`band-${bi}`} geometry={boxGeo(0.0018, 0.0018, b.depth + 0.004)} material={b.spinePatina} position={[dotSideZ * 0.001, bandY, 0]} />
+            })}
+            <mesh geometry={boxGeo(0.0018, b.thickness * 0.22, b.depth * 0.7)} material={spineGold} position={[dotSideZ * 0.001, b.thickness * 0.42, 0]} />
+            <mesh geometry={boxGeo(0.0018, b.thickness * 0.14, b.depth * 0.6)} material={spineGold} position={[dotSideZ * 0.001, b.thickness * 0.22, 0]} />
+            <mesh geometry={boxGeo(0.0012, b.thickness * 0.08, b.depth * 0.5)} material={goldTool} position={[dotSideZ * 0.001, b.thickness * 0.55, 0]} />
+            <mesh geometry={boxGeo(0.0012, b.thickness * 0.06, b.depth * 0.45)} material={goldFine} position={[dotSideZ * 0.001, b.thickness * 0.65, 0]} />
+            {b.hasMarbled && (
+              <>
+                <mesh geometry={boxGeo(0.0016, b.thickness * 0.06, b.depth * 0.85)} material={marbledEdge} position={[dotSideZ * 0.001, b.thickness * 0.48, 0]} />
+                <mesh geometry={boxGeo(0.0016, b.thickness * 0.06, b.depth * 0.85)} material={marbledEdge} position={[dotSideZ * 0.001, -b.thickness * 0.48, 0]} />
+                <mesh geometry={boxGeo(0.0014, b.thickness * 0.04, b.depth * 0.75)} material={marbledEdge} position={[dotSideZ * 0.001, b.thickness * 0.35, 0]} />
+                <mesh geometry={boxGeo(0.0014, b.thickness * 0.04, b.depth * 0.75)} material={marbledEdge} position={[dotSideZ * 0.001, -b.thickness * 0.35, 0]} />
+              </>
+            )}
+            {[b.depth * 0.38, -b.depth * 0.38].map((dz) => (
+              <mesh key={`dot-${dz}`} geometry={sphereGeo(0.0015)} material={spineGold} position={[dotSideZ * 0.001, b.thickness * 0.42, dz]} />
+            ))}
+            {[b.depth * 0.25, -b.depth * 0.25].map((dz) => (
+              <mesh key={`dot2-${dz}`} geometry={sphereGeo(0.001)} material={goldFine} position={[dotSideZ * 0.001, b.thickness * 0.58, dz]} />
+            ))}
+            <mesh geometry={boxGeo(0.001, b.thickness * 0.12, b.depth * 0.5)} material={b.endpaper} position={[dotSideZ * 0.001, b.thickness * 0.7, 0]} />
+            <mesh geometry={boxGeo(0.001, b.thickness * 0.12, b.depth * 0.5)} material={b.endpaper} position={[dotSideZ * 0.001, -b.thickness * 0.7, 0]} />
+          </group>
+          {b.ribbon && (
+            <group position={[b.width * 0.22, -b.thickness / 2 - 0.0005, 0]}>
+              <mesh geometry={boxGeo(0.007, b.thickness * 0.45, 0.004)} material={m(b.ribbon, 0.7, 0.05)} />
+              <mesh geometry={boxGeo(0.006, 0.06, 0.003)} material={m(b.ribbon, 0.65, 0.05)} position={[0, -b.thickness * 0.22, 0.002]} />
+              <mesh geometry={boxGeo(0.003, 0.03, 0.002)} material={m(b.ribbon, 0.6, 0.05)} position={[0.002, -b.thickness * 0.35, 0.003]} />
+            </group>
+          )}
+          {b.wearSpots && b.wearSpots.map(([wx, wy, wz], wi) => (
+            <mesh key={`wear-${i}-${wi}`} geometry={sphereGeo(0.003)} material={wearDark} position={[wx, wy, wz]} />
+          ))}
+          <mesh geometry={boxGeo(b.width * 0.02, b.thickness * 0.5, b.depth * 0.02)} material={wearMark} position={[clampX + 0.002, 0, halfD - 0.01]} />
+          <mesh geometry={boxGeo(b.width * 0.02, b.thickness * 0.5, b.depth * 0.02)} material={wearMark} position={[clampX + 0.002, 0, -halfD + 0.01]} />
+          {Array.from({ length: 8 }).map((_, pi) => {
+            const py = -b.thickness / 2 + (pi + 0.5) * (b.thickness / 8)
+            return <mesh key={`page-${pi}`} geometry={boxGeo(b.width * 0.98, 0.0008, b.depth * 0.95)} material={pageEdge} position={[0, py, 0]} />
+          })}
+          <mesh geometry={boxGeo(b.width * 0.015, b.thickness * 0.9, b.depth * 0.01)} material={goldTool} position={[halfW - 0.002, 0, 0]} />
+          <mesh geometry={boxGeo(b.width * 0.015, b.thickness * 0.9, b.depth * 0.01)} material={goldTool} position={[-halfW + 0.002, 0, 0]} />
+        </group>,
+      )
+      yAcc += b.thickness
+    })
+
+    const stackW = 0.36
+    const stackD = 0.26
+    return (
+      <group key={`stack-${baseX}`} position={[baseX, 0, 0]}>
+        <mesh geometry={boxGeo(stackW, 0.012, stackD)} material={foreEdge} position={[0, 0.006, 0]} castShadow />
+        <mesh geometry={boxGeo(stackW * 0.95, 0.002, stackD * 0.95)} material={wearMark} position={[0, 0.003, 0]} />
+        {nodes}
+      </group>
+    )
+  }
 
   const LEFT_X = -0.26
   const RIGHT_X = 0.26
