@@ -88,9 +88,10 @@ export default function App() {
         <Suspense fallback={null}>
           <Routes>
             <Route path="/guest" element={<GuestMode />} />
-      <Route path="/" element={<Landing />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/about" element={<About />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
         <GlobalClickSpark />
