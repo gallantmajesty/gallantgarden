@@ -251,7 +251,7 @@ function NpcAvatar({ npc, seat, config, remainingTime }: {
       {/* Avatar */}
       <CharacterAvatar
         config={config}
-        locomotion={loco.current}
+        locomotion={loco}
         lod={nearLod}
         preview={false}
       />
