@@ -129,30 +129,6 @@ const S: Record<string, React.CSSProperties> = {
   },
 };
 
-{/* Export Modal */}
-      {showExport && (
-        <div className="udm-overlay" onClick={() => setShowExport(false)}>
-          <div className="udm-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-            <div className="udm-head">
-              <div className="udm-head-left">
-                <span className="udm-head-name">Export Data</span>
-              </div>
-              <button className="udm-close" onClick={() => setShowExport(false)}>×</button>
-            </div>
-            <div className="udm-body">
-              <ExportModal onClose={() => setShowExport(false)} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ============================================================
- *  PRESETS MODAL
- * ============================================================ */
-
 function PresetsModal({ onClose }: { onClose: () => void }) {
   const { presets, addPreset, updatePreset, deletePreset, loadPreset } = usePomodoro();
   const [editId, setEditId] = useState<string | null>(null);
