@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../store/auth'
 import { Canvas, useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
 import { PngIcon } from '../components/PngIcon'
@@ -19,6 +20,7 @@ type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'public'
 
 export function Realm() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [mode, setMode] = useState<Mode>('choose')
   return (
     <div className="realm-root">
@@ -250,8 +252,13 @@ function LibraryRealm() {
   }, [])
 
   function join(roomId: string, name: string) {
-      enterGlobal(roomId, name)
-      navigate('/realm/explore?world=library')
+    if (!user) {
+      console.warn('[Realm] No user, redirecting to login')
+      navigate('/')
+      return
+    }
+    enterGlobal(roomId, name)
+    navigate('/realm/explore?world=library')
   }
   return (
     <>
@@ -313,6 +320,11 @@ function UkCafeRealm() {
   }, [])
 
   function join(roomId: string, name: string) {
+    if (!user) {
+      console.warn('[Realm] No user, redirecting to login')
+      navigate('/')
+      return
+    }
     enterGlobal(roomId, name)
     navigate('/realm/explore?world=uk-cafe')
   }
@@ -377,6 +389,11 @@ function TrainRealm() {
   }, [])
 
   function join(roomId: string, name: string) {
+    if (!user) {
+      console.warn('[Realm] No user, redirecting to login')
+      navigate('/')
+      return
+    }
     enterGlobal(roomId, name)
     navigate('/realm/explore?world=train-station')
   }
@@ -513,6 +530,12 @@ function PublicRealm() {
       return
     }
 
+    if (!user) {
+      console.warn('[Realm] No user, redirecting to login')
+      navigate('/')
+      return
+    }
+
     setNeedPassword(false)
     setPendingCode('')
     setJoinCode('')
@@ -537,6 +560,11 @@ function PublicRealm() {
   }
 
   async function joinSearchResult(realm: DbRealm) {
+    if (!user) {
+      console.warn('[Realm] No user, redirecting to login')
+      navigate('/')
+      return
+    }
     if (realm.password) {
       setJoinCode(realm.code)
       setNeedPassword(true)
@@ -552,7 +580,7 @@ function PublicRealm() {
   }
 
   if (created) {
-    return <InviteCard realm={created} onEnter={() => { enterCustom(dbToCustom(created)); navigate('/realm/explore?world=library') }} onBack={() => setCreated(null)} />
+    return <InviteCard realm={created} onEnter={() => { if (!user) { navigate('/'); return } enterCustom(dbToCustom(created)); navigate('/realm/explore?world=library') }} onBack={() => setCreated(null)} />
   }
 
   return (
@@ -657,7 +685,7 @@ function PublicRealm() {
           <h3>Your realms</h3>
           <div className="realm-mine-list">
             {custom.map((r) => (
-              <button key={r.id} className="realm-mine-item" onClick={() => { enterCustom(r); navigate('/realm/explore?world=library') }}>
+              <button key={r.id} className="realm-mine-item" onClick={() => { if (!user) { navigate('/'); return } enterCustom(r); navigate('/realm/explore?world=library') }}>
                 <PngIcon name="realm" size={34} alt="" />
                 <span>{r.name}</span>
                 {r.code && <span className="realm-mine-code">{r.code}</span>}

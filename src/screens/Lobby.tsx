@@ -176,8 +176,13 @@ useEffect(() => {
   }, [navigate])
 
   const startSession = useCallback(() => {
+    if (!user) {
+      console.warn('[Lobby] No user, redirecting to login')
+      navigate('/')
+      return
+    }
     navigate('/explore?world=library')
-  }, [navigate])
+  }, [navigate, user])
 
   /* ═══════════════════════════════════════════════════════════════
      DESKTOP LAYOUT — PIXEL-PERFECT, DO NOT TOUCH

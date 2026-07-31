@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import './i18n'
 import { useProfile } from './store/profile'
@@ -41,6 +41,7 @@ const InventoryPanel = lazy(() => import('./components/focus/InventoryPanel').th
 
 export default function App() {
   const { user, loading } = useAuth()
+  const navigate = useNavigate()
   const onboarded = useProfile((s) => s.onboarded)
   const profileReady = useProfile((s) => s.ready)
   const location = useLocation()
@@ -48,6 +49,11 @@ export default function App() {
   // Lobby readiness — preload icons so the intro veil can stay until they're loaded
   const waitForLobby = useSettings((s) => s.waitForLobbyReady)
   const lobbyReady = useLobbyReady()
+
+  // DEBUG: log auth state on route change
+  useEffect(() => {
+    console.log('[App] route change', { pathname: location.pathname, user: !!user, loading, onboarded, profileReady })
+  }, [location.pathname, user, loading, onboarded, profileReady])
 
   // Apply visual + theme settings app-wide and keep them in sync. Both stores
   // feed the same CSS custom properties, so we re-apply in a fixed order on any
@@ -126,7 +132,8 @@ const appContent = (
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/" element={<Lobby />} />
+            <Route path="/" element={<Navigate to="/lobby" replace />} />
+            <Route path="/lobby" element={<Lobby />} />
             <Route path="/blueprint" element={<Blueprint />} />
             <Route path="/notes" element={<NotesHub />} />
             <Route path="/notes/doc" element={<NotesEditor />} />
