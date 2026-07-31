@@ -41,7 +41,7 @@ import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
-import { FullscreenPomodoro } from '../components/FullscreenPomodoro'
+import { FocusDomain } from '../components/FocusDomain'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
@@ -370,7 +370,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
       {location.pathname === '/realm/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
-      <FullscreenPomodoro isOpen={fpOpen} onClose={() => setFpOpen(false)} />
+      <FocusDomain isOpen={fpOpen} onClose={() => setFpOpen(false)} />
     </div>
   )
 }
