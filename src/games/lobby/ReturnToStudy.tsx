@@ -32,7 +32,7 @@ export function ReturnToStudy({ onReturn }: ReturnToStudyProps) {
     if (pomoMode === 'running') {
       const timer = setTimeout(() => {
         onReturn()
-        navigate('/realm')
+navigate('/lobby/realm/choose')
       }, 2000)
       return () => clearTimeout(timer)
     }
@@ -90,7 +90,7 @@ export function ReturnToStudy({ onReturn }: ReturnToStudyProps) {
 
         {/* Actions */}
         <div className="return-study-actions">
-          <button className="sf-btn" onClick={() => { onReturn(); navigate('/realm') }}>
+          <button className="sf-btn" onClick={() => { onReturn(); navigate('/lobby/realm/choose') }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18" style={{ marginRight: 8 }}>
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />

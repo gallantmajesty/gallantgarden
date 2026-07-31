@@ -18,6 +18,7 @@ import { GuestMode } from './screens/GuestMode'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
 const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ default: m.ComingSoon })))
+const NotFound = lazy(() => import('./screens/NotFound').then(m => ({ default: m.NotFound })))
 import { useLobbyReady } from './hooks/useLobbyReady'
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
 const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
@@ -25,7 +26,6 @@ const NotesHub = lazy(() => import('./screens/NotesHub').then(m => ({ default: m
 const NotesEditor = lazy(() => import('./screens/NotesEditor').then(m => ({ default: m.NotesEditor })))
 const Explore = lazy(() => import('./screens/Explore').then(m => ({ default: m.Explore })))
 const StudyRoom = lazy(() => import('./screens/StudyRoom').then(m => ({ default: m.StudyRoom })))
-const RoomsList = lazy(() => import('./screens/RoomsList').then(m => ({ default: m.RoomsList })))
 const About = lazy(() => import('./screens/About').then(m => ({ default: m.About })))
 const Realm = lazy(() => import('./screens/Realm').then(m => ({ default: m.Realm })))
 const RealmInvite = lazy(() => import('./screens/RealmInvite').then(m => ({ default: m.RealmInvite })))
@@ -134,15 +134,22 @@ const appContent = (
           <Routes>
             <Route path="/" element={<Navigate to="/lobby" replace />} />
             <Route path="/lobby" element={<Lobby />} />
+            <Route path="/lobby/realm" element={<Realm />} />
+            <Route path="/lobby/realm/choose" element={<Realm />} />
+            <Route path="/lobby/realm/library" element={<Realm />} />
+            <Route path="/lobby/realm/train" element={<Realm />} />
+            <Route path="/lobby/realm/uk-cafe" element={<Realm />} />
+            <Route path="/lobby/realm/public" element={<Realm />} />
+            <Route path="/lobby/realm/custom" element={<Realm />} />
+            <Route path="/lobby/realm/custom/:code" element={<Realm />} />
+            <Route path="/lobby/explore" element={<Explore />} />
             <Route path="/blueprint" element={<Blueprint />} />
             <Route path="/notes" element={<NotesHub />} />
             <Route path="/notes/doc" element={<NotesEditor />} />
-            <Route path="/realm" element={<Realm />} />
-            <Route path="/realm/explore" element={<Explore />} />
             <Route path="/realm/:code" element={<RealmInvite />} />
             <Route path="/info" element={<About />} />
-            <Route path="/room" element={<Navigate to="/rooms" replace />} />
-            <Route path="/rooms" element={<RoomsList />} />
+            <Route path="/room" element={<Navigate to="/lobby" replace />} />
+            <Route path="/rooms" element={<Navigate to="/lobby" replace />} />
             <Route path="/room/:id" element={<StudyRoom />} />
             <Route path="/magnet" element={<TaskMagnet />} />
             <Route path="/profile" element={<Profile />} />
@@ -153,7 +160,7 @@ const appContent = (
             <Route path="/games/lava-pad" element={<LavaPad />} />
             <Route path="/event-shop" element={<EventShop />} />
             <Route path="/inventory" element={<InventoryPanel />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>

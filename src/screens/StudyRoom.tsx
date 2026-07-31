@@ -84,7 +84,7 @@ export function StudyRoom() {
   useEffect(() => () => stopCam(), [])
 
   function leave() {
-    navigate('/rooms')
+    navigate('/lobby')
   }
 
   const online = peers.length + 1

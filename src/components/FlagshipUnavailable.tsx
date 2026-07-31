@@ -18,7 +18,7 @@ export function FlagshipUnavailable({ name }: Props) {
       </p>
       <button
         className="sf-btn water"
-        onClick={() => navigate('/realm')}
+        onClick={() => navigate('/lobby/realm/choose')}
         style={{ marginTop: 16 }}
       >
         ← Back to Realms

@@ -268,7 +268,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
         <>
           {/* top-left: clean realm identity + fps */}
           <div className="explore-topleft">
-            <button className="explore-back" onClick={() => navigate('/realm')} title="Back to realms">
+            <button className="explore-back" onClick={() => navigate('/lobby/realm/choose')} title="Back to realms">
               ‹ Realms
             </button>
             <span className="sf-pill">{realm ? realm.name : 'Realm'}</span>

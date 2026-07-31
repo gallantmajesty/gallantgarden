@@ -49,7 +49,7 @@ export function RealmInvite() {
     }
     rememberCustom(cached)
     enterCustom(cached)
-    navigate('/realm/explore', { replace: true })
+    navigate('/lobby/explore', { replace: true })
   }
 
   function handlePasswordSubmit(e: React.FormEvent) {
@@ -87,7 +87,7 @@ export function RealmInvite() {
 
         {error && (
           <div className="realm-create">
-            <button className="sf-btn water" onClick={() => navigate('/realm')}>
+            <button className="sf-btn water" onClick={() => navigate('/lobby/realm/choose')}>
               Back to realms
             </button>
           </div>

@@ -237,7 +237,7 @@ export function About() {
         <footer className="about__footer">
           <img className="about__footer-logo" src="/icons/focus-lily-logo.png" alt="FocusLily" />
           <div className="about__tag">{t('about.tagline')}</div>
-          <button className="sf-btn about__cta" onClick={() => navigate('/realm')}>
+          <button className="sf-btn about__cta" onClick={() => navigate('/lobby/realm/choose')}>
             {t('about.enterRealm')}
           </button>
         </footer>

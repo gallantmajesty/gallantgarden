@@ -301,7 +301,7 @@ export function Landing() {
   }, [])
 
   const goToApp = useCallback(() => {
-    navigate('/rooms')
+    navigate('/lobby')
   }, [navigate])
 
   const [shootingStar, setShootingStar] = useState(false)

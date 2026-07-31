@@ -1244,5 +1244,10 @@
     "run": "Start weekly review",
     "close": "Close",
     "empty": "No activity yet — finish a task or log focus, then revisit."
+  },
+  "notFound": {
+    "title": "Realm Not Found",
+    "description": "This path doesn't exist in FocusLily. The corridor you're looking for may have shifted, or never existed at all.",
+    "backToLobby": "Return to Lobby"
   }
 }

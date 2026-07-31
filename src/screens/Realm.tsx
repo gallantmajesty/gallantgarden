@@ -1,6 +1,6 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { Canvas, useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
@@ -16,35 +16,57 @@ import { createRealm, getRealmByCode, searchPublicRealms, inviteLink, type Realm
 
 import './Realm.css'
 
-type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'public'
+type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'public' | 'custom'
+
+function modeFromPath(pathname: string): Mode {
+  if (pathname.includes('/custom/') && pathname.split('/custom/')[1].split('/')[0]) return 'custom'
+  if (pathname.endsWith('/custom')) return 'custom'
+  if (pathname.endsWith('/public')) return 'public'
+  if (pathname.endsWith('/uk-cafe')) return 'uk-cafe'
+  if (pathname.endsWith('/train')) return 'train'
+  if (pathname.endsWith('/library')) return 'library'
+  if (pathname.endsWith('/choose') || pathname === '/lobby/realm') return 'choose'
+  return 'choose'
+}
+
+function pathForMode(mode: Mode, code?: string): string {
+  switch (mode) {
+    case 'choose': return '/lobby/realm/choose'
+    case 'private': return '/lobby/realm/choose'
+    case 'library': return '/lobby/realm/library'
+    case 'train': return '/lobby/realm/train'
+    case 'uk-cafe': return '/lobby/realm/uk-cafe'
+    case 'public': return '/lobby/realm/public'
+    case 'custom': return code ? `/lobby/realm/custom/${code}` : '/lobby/realm/custom'
+    default: return '/lobby/realm/choose'
+  }
+}
 
 export function Realm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
-  const [mode, setMode] = useState<Mode>('choose')
+  const mode = useMemo(() => modeFromPath(location.pathname), [location.pathname])
   return (
     <div className="realm-root">
       <div className="realm-topleft">
-        <button className="sf-btn water" onClick={() => (mode === 'choose' ? navigate('/') : setMode(mode === 'private' ? 'choose' : 'private'))}>
-          ‹ {mode === 'choose' ? 'Lobby' : mode === 'private' ? 'Realms' : 'Private Realm'}
+        <button className="sf-btn water" onClick={() => navigate(mode === 'choose' ? '/lobby' : pathForMode('choose'))}>
+          ‹ {mode === 'choose' ? 'Lobby' : 'Realms'}
         </button>
       </div>
 
-<div className="realm-stage">
-         {mode === 'choose' && <RealmChoose onPick={setMode} />}
-         {mode === 'private' && <PrivateChoose onPick={setMode} />}
-         {mode === 'library' && <LibraryRealm />}
-         {mode === 'train' && <TrainRealm />}
-         {mode === 'uk-cafe' && <UkCafeRealm />}
-         {mode === 'public' && <PublicRealm />}
-       </div>
+      <div className="realm-stage">
+        {mode === 'choose' && <RealmChoose onPick={(m) => navigate(pathForMode(m))} />}
+        {mode === 'private' && <PrivateChoose onPick={(m) => navigate(pathForMode(m))} />}
+        {mode === 'library' && <LibraryRealm />}
+        {mode === 'train' && <TrainRealm />}
+        {mode === 'uk-cafe' && <UkCafeRealm />}
+        {mode === 'public' && <PublicRealm />}
+        {mode === 'custom' && <PublicRealm />}
+      </div>
     </div>
   )
 }
-
-/* ------------------------------------------------------------ choose flavour */
-
-function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
   return (
     <>
       <div className="realm-topright">
@@ -258,7 +280,7 @@ function LibraryRealm() {
       return
     }
     enterGlobal(roomId, name)
-    navigate('/realm/explore?world=library')
+    navigate('/lobby/explore?world=library')
   }
   return (
     <>
@@ -326,7 +348,7 @@ function UkCafeRealm() {
       return
     }
     enterGlobal(roomId, name)
-    navigate('/realm/explore?world=uk-cafe')
+    navigate('/lobby/explore?world=uk-cafe')
   }
 
   return (
@@ -395,7 +417,7 @@ function TrainRealm() {
       return
     }
     enterGlobal(roomId, name)
-    navigate('/realm/explore?world=train-station')
+    navigate('/lobby/explore?world=train-station')
   }
 
   return (
@@ -543,7 +565,7 @@ function PublicRealm() {
     const c = dbToCustom(realm)
     rememberCustom(c)
     enterCustom(c)
-    navigate('/realm/explore?world=library')
+    navigate('/lobby/explore?world=library')
   }
 
   async function handleSearch(q: string) {
@@ -576,11 +598,11 @@ function PublicRealm() {
     const c = dbToCustom(realm)
     rememberCustom(c)
     enterCustom(c)
-    navigate('/realm/explore?world=library')
+    navigate('/lobby/explore?world=library')
   }
 
   if (created) {
-    return <InviteCard realm={created} onEnter={() => { if (!user) { navigate('/'); return } enterCustom(dbToCustom(created)); navigate('/realm/explore?world=library') }} onBack={() => setCreated(null)} />
+    return <InviteCard realm={created} onEnter={() => { if (!user) { navigate('/'); return } enterCustom(dbToCustom(created)); navigate('/lobby/explore?world=library') }} onBack={() => setCreated(null)} />
   }
 
   return (
@@ -685,7 +707,7 @@ function PublicRealm() {
           <h3>Your realms</h3>
           <div className="realm-mine-list">
             {custom.map((r) => (
-              <button key={r.id} className="realm-mine-item" onClick={() => { if (!user) { navigate('/'); return } enterCustom(r); navigate('/realm/explore?world=library') }}>
+              <button key={r.id} className="realm-mine-item" onClick={() => { if (!user) { navigate('/'); return } enterCustom(r); navigate('/lobby/explore?world=library') }}>
                 <PngIcon name="realm" size={34} alt="" />
                 <span>{r.name}</span>
                 {r.code && <span className="realm-mine-code">{r.code}</span>}
