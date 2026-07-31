@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useSettings } from './settings'
 import { getAmbient } from '../audio/ambient'
+import { useHardcore, HARDCORE_RATE } from './hardcore'
 
 // ---- Types ----
 
@@ -132,6 +133,8 @@ interface PomodoroState {
   subject: string
   startedAt: number | null
   pausedAt: number | null
+  /** wall-clock timestamp of the last tick (drives real-time drift correction) */
+  lastTickAt: number
 
   // Tab tracking
   tabAlwaysVisible: boolean
@@ -318,9 +321,10 @@ function getAllBreakDurations(totalMin: number, breakCount: number, customDurati
   return Array.from({ length: breakCount }, (_, i) => getBreakDuration(i, totalMin, breakCount, customDurations))
 }
 
-/** Calculate XP for a single segment */
+/** Calculate XP for a single segment. Hardcore sessions earn 10x (HARDCORE_RATE). */
 function calcSegmentXP(minutes: number, tabVisible: boolean, hasSubject: boolean): SegmentReward['leaves'] {
-  const base = Math.round(minutes * XP_PER_MIN)
+  const rate = useHardcore.getState().active ? HARDCORE_RATE : XP_PER_MIN
+  const base = Math.round(minutes * rate)
   const noTab = tabVisible ? Math.round(base * 0.30) : 0
   const subj = hasSubject ? 5 : 0
   return base + noTab + subj
@@ -333,12 +337,13 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
   function awardSegment(state: PomodoroState): PomodoroState {
     const segMin = computeSegments(state.sessionMinutes, state.breakCount, state.breakDurations)
     const minutes = segMin[state.segmentIndex] ?? 25
+    const rate = useHardcore.getState().active ? HARDCORE_RATE : XP_PER_MIN
     const leaves = calcSegmentXP(minutes, state.tabAlwaysVisible, state.subject.length > 0)
     const reward: SegmentReward = {
       segmentIndex: state.segmentIndex,
       minutes,
       leaves,
-      noTabBonus: state.tabAlwaysVisible ? Math.round(Math.round(minutes * XP_PER_MIN) * 0.30) : 0,
+      noTabBonus: state.tabAlwaysVisible ? Math.round(Math.round(minutes * rate) * 0.30) : 0,
       subjectBonus: state.subject.length > 0 ? 5 : 0,
     }
     focusSink?.(minutes, state.subject)
@@ -370,6 +375,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     subject: loadStr(SUBJECT_KEY),
     startedAt: null,
     pausedAt: null,
+    lastTickAt: 0,
     tabAlwaysVisible: true,
     tabLeftAt: null,
     tabReturnDeadline: null,
@@ -428,6 +434,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
           remaining: firstSegMin * 60,
           running: true,
           startedAt: Date.now(),
+          lastTickAt: Date.now(),
           totalElapsed: 0,
           segmentIndex: 0,
           segmentsCompleted: 0,
@@ -440,17 +447,29 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         })
       } else if (s.phase === 'paused') {
         // Return from tab switch — resume
-        set({ phase: 'running', running: true, pausedAt: null, tabLeftAt: null, tabReturnDeadline: null })
+        set({ phase: 'running', running: true, pausedAt: null, tabLeftAt: null, tabReturnDeadline: null, lastTickAt: Date.now() })
       } else {
-        // Pause/resume
-        set({ running: !s.running })
+        // Pause/resume — reset the wall-clock anchor so no phantom gap accrues
+        set({ running: !s.running, lastTickAt: Date.now() })
       }
     },
 
     forfeit: () => {
       const s = get()
+      const hc = useHardcore.getState()
+      // Covers both live hardcore sessions and ones already failed by the
+      // fullscreen grace timer (fail() flips active off before FocusDomain
+      // calls forfeit to settle the timer).
+      const wasHardcore = hc.active || hc.status === 'failed'
+
+      // Hardcore: forfeiting fails the session — the wagered leaves are lost
+      // and partial-XP recording is skipped (earnings only exist on a win).
+      if (wasHardcore) {
+        hc.fail()
+      }
+
       // If minimum time passed, award partial XP for completed segments only
-      if (s.totalElapsed >= MINIMUM_SESSION_SEC && s.segmentsCompleted > 0) {
+      if (!wasHardcore && s.totalElapsed >= MINIMUM_SESSION_SEC && s.segmentsCompleted > 0) {
         const totalMin = s.totalElapsed / 60
         const existingMin = loadNum(MIN_KEY)
         saveNum(MIN_KEY, existingMin + Math.round(totalMin))
@@ -464,6 +483,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         running: false,
         startedAt: null,
         pausedAt: null,
+        lastTickAt: 0,
         segmentIndex: 0,
         segmentsCompleted: 0,
         pendingRewards: [],
@@ -481,9 +501,17 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (!s.running) return
       const pomo = useSettings.getState().pomo
 
+      // Wall-clock drift correction: count real elapsed time so the timer keeps
+      // running even when the tab is hidden (intervals get throttled). Gaps are
+      // capped at 10 minutes per tick to avoid absurd jumps.
+      const now = Date.now()
+      const last = s.lastTickAt || now - 1000
+      const gap = Math.min(600, Math.max(0, Math.round((now - last) / 1000)))
+      set({ lastTickAt: now })
+
       if (s.phase === 'break') {
-        if (s.remaining > 1) {
-          set({ remaining: s.remaining - 1 })
+        if (s.remaining > gap) {
+          set({ remaining: s.remaining - gap })
         } else {
           if (pomo.sound) getAmbient().chime()
           const segments = computeSegments(s.sessionMinutes, s.breakCount, s.breakDurations)
@@ -507,9 +535,9 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
       if (s.phase !== 'running') return
 
-      if (s.remaining > 1) {
-        const newElapsed = s.totalElapsed + 1
-        set({ remaining: s.remaining - 1, totalElapsed: newElapsed })
+      if (s.remaining > gap) {
+        const newElapsed = s.totalElapsed + gap
+        set({ remaining: s.remaining - gap, totalElapsed: newElapsed })
       } else {
         // Segment or session complete
         const segments = computeSegments(s.sessionMinutes, s.breakCount, s.breakDurations)
@@ -590,6 +618,14 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     onTabHidden: () => {
       const s = get()
       if (s.phase !== 'running') return
+
+      // Hardcore: the tab may be switched freely — the timer keeps running and
+      // only leaving fullscreen can fail the session.
+      if (useHardcore.getState().active) {
+        set({ tabAlwaysVisible: false })
+        return
+      }
+
       const now = Date.now()
       set({
         running: false,
@@ -604,6 +640,12 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (s.phase !== 'running' && s.phase !== 'paused') return
       const now = Date.now()
 
+      // Hardcore never paused — just restore the visible flag.
+      if (useHardcore.getState().active) {
+        set({ tabAlwaysVisible: true })
+        return
+      }
+
       // If we have a deadline and it passed, auto-pause
       if (s.tabReturnDeadline && now > s.tabReturnDeadline) {
         set({ phase: 'paused', running: false, tabLeftAt: null, tabReturnDeadline: null })
@@ -612,7 +654,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
       // If tab was hidden and we're still in grace period, resume
       if (s.tabLeftAt) {
-        set({ running: true, tabLeftAt: null, tabReturnDeadline: null })
+        set({ running: true, tabLeftAt: null, tabReturnDeadline: null, lastTickAt: Date.now() })
       }
     },
 

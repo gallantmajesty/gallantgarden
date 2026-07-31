@@ -8,14 +8,16 @@ import { SideDock } from "./focus/SideDock";
 import { TimerControls } from "./focus/TimerControls";
 import { AstronomicalChart } from "./focus/AstronomicalChart";
 import { MultiplayerBar } from "./focus/MultiplayerBar";
-import { usePomodoro, computeSegments, SESSION_OPTIONS, TimerPreset, SessionSummary, SessionHistoryEntry, BREAK_ACTIVITIES, type TimerType } from "../store/pomodoro";
+import { usePomodoro, computeSegments, SESSION_OPTIONS, TimerPreset, SessionSummary, SessionHistoryEntry, BREAK_ACTIVITIES } from "../store/pomodoro";
 import { useWorld } from "../store/world";
 import { useSettings } from "../store/settings";
+import { useHardcore } from "../store/hardcore";
 import { useHardcodeMode } from "../hooks/focus/useHardcodeMode";
 import { useLockerTask } from "../hooks/focus/useLockerTask";
 import { useMultiplayerPresence } from "../hooks/focus/useMultiplayerPresence";
 import { useAstronomicalLog } from "../hooks/focus/useAstronomicalLog";
 import { useSideDock } from "../hooks/focus/useSideDock";
+import { WagerModal } from "./focus/WagerModal";
 import "./FocusDomain.css";
 
 interface FocusDomainProps {
@@ -449,6 +451,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showBreakActivities, setShowBreakActivities] = useState(false);
+  const [showWager, setShowWager] = useState(false);
   const chimeVolume = useSettings((s) => s.pomo.chimeVolume);
   const setChimeVolume = useSettings((s) => s.setPomo);
   const [tabataRounds, setTabataRounds] = useState(8);
@@ -533,19 +536,15 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     if (dur > 0 && dur <= 999) {
       configure(pickType, dur, pickType === 'pomodoro' ? pickBreaks : 0, customBreaks);
     }
-    if (hardcode.hardcodeActive) {
-      hardcode.activate();
-    }
     toggle();
-  }, [toggle, hardcode, pickType, pickDur, pickBreaks, customDur, customBreaks, configure]);
+  }, [toggle, pickType, pickDur, pickBreaks, customDur, customBreaks, configure]);
 
   const handleLockIn = useCallback(
     (taskId: string, _duration: number) => {
       locker.setActiveTask(taskId);
       toggle();
-      if (hardcode.hardcodeActive) hardcode.activate();
     },
-    [locker, toggle, hardcode]
+    [locker, toggle]
   );
 
   const handleReset = useCallback(() => {
@@ -560,13 +559,35 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     forfeit();
   }, [isFinishedPhase, isPausedPhase, totalElapsed, astroLog, clockMode, forfeit]);
 
-  const handleHardcodeToggle = useCallback(() => {
-    if (!hardcode.hardcodeActive) {
-      hardcode.activate();
-    } else {
-      hardcode.deactivate();
+  const handleHardcoreStart = useCallback((wager: number, minutes: number) => {
+    const ok = useHardcore.getState().start(wager, minutes);
+    if (!ok) return;
+    configure(pickType, minutes, pickType === 'pomodoro' ? pickBreaks : 0, customBreaks);
+    toggle();
+    dock.setTab('tasks');
+    setShowWager(false);
+  }, [pickType, pickBreaks, customBreaks, configure, toggle, dock]);
+
+  // Win: timer finished while hardcore was active → credit wager + earnings.
+  useEffect(() => {
+    if (phase === 'finished' && hardcode.hardcodeActive) {
+      useHardcore.getState().win();
     }
-  }, [hardcode]);
+  }, [phase, hardcode.hardcodeActive]);
+
+  // Fail (fullscreen grace expired or forfeit): settle the pomodoro timer.
+  useEffect(() => {
+    if (hardcode.status === 'failed' && phase !== 'idle') {
+      forfeit();
+    }
+  }, [hardcode.status, phase, forfeit]);
+
+  // Surface the result modal automatically when a session is won or lost.
+  useEffect(() => {
+    if (hardcode.status === 'won' || hardcode.status === 'failed') {
+      setShowWager(true);
+    }
+  }, [hardcode.status]);
 
   useEffect(() => {
     if (isOpen) {
@@ -671,8 +692,14 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
           <span style={{ fontSize: '0.65rem', color: 'var(--color-genshin-bronze)' }}>min</span>
         </div>
 
-        <button onClick={handleHardcodeToggle} style={hcStyle}>
-          {hardcode.hardcodeActive ? "HARDCODE ON" : "HARDCODE OFF"}
+        <button onClick={() => setShowWager(true)} style={hcStyle}>
+          {hardcode.hardcodeActive
+            ? `HARDCODE • ${hardcode.wager} 🍃`
+            : hardcode.status === "won"
+              ? "HARDCODE • WON"
+              : hardcode.status === "failed"
+                ? "HARDCODE • LOST"
+                : "HARDCODE"}
         </button>
 
         <button onClick={onClose} style={closeStyle}>
@@ -1008,6 +1035,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
         width={dock.width}
         onTabChange={dock.setTab}
         onClose={dock.close}
+        lockOpen={hardcode.hardcodeActive}
         tasks={locker.tasks}
         activeTaskId={locker.activeTaskId}
         onAddTask={locker.addTask}
@@ -1064,6 +1092,61 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
             </div>
             <div className="udm-body">
               <ExportModal onClose={() => setShowExport(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wager Modal */}
+      {showWager && (
+        <div className="udm-overlay" onClick={() => setShowWager(false)}>
+          <div className="udm-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="udm-head">
+              <div className="udm-head-left">
+                <span className="udm-head-name">Hardcore Wager</span>
+              </div>
+              <button className="udm-close" onClick={() => setShowWager(false)}>×</button>
+            </div>
+            <WagerModal
+              onClose={() => setShowWager(false)}
+              onStart={handleHardcoreStart}
+              onForfeit={() => {
+                forfeit();
+                setShowWager(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen grace countdown */}
+      {hardcode.hardcodeActive && hardcode.graceLeft > 0 && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(30, 8, 8, 0.72)",
+          backdropFilter: "blur(3px)",
+        }}>
+          <div style={{
+            textAlign: "center",
+            padding: "2rem 3rem",
+            border: "1px solid rgba(220,80,60,0.7)",
+            background: "rgba(26,16,14,0.95)",
+            boxShadow: "0 0 60px rgba(220,80,60,0.35)",
+          }}>
+            <div style={{ fontSize: "0.85rem", letterSpacing: "0.2em", color: "rgba(255,180,160,1)", fontWeight: 700 }}>
+              ⚠️ FULLSCREEN REQUIRED
+            </div>
+            <div style={{ fontSize: "3rem", color: "var(--color-genshin-gold)", fontFamily: "var(--font-mono-display)", margin: "0.75rem 0" }}>
+              {hardcode.graceLeft}
+            </div>
+            <div style={{ fontSize: "0.75rem", color: "rgba(255,200,180,0.85)", maxWidth: 340, lineHeight: 1.5 }}>
+              Return to fullscreen within {hardcode.graceLeft}s or the session fails and you lose{" "}
+              <b>{hardcode.wager} 🍃</b>. Your timer is still running.
             </div>
           </div>
         </div>

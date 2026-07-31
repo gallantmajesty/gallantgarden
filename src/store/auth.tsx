@@ -28,7 +28,6 @@ interface AuthContextValue {
   signUp: (email: string, password: string, name: string) => Promise<string | null>
   signInWithProvider: (provider: OAuthProvider) => Promise<string | null>
   signInAsGuest: () => Promise<void>
-  signInLocal: (name: string, email: string) => Promise<void>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -198,18 +197,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await runUserInit(guestUser)
   }, [])
 
-  const signInLocal = useCallback(async (name: string, email: string) => {
-    const localId = networkId()
-    const localUser: AuthUser = {
-      id: localId,
-      email,
-      profile: { name },
-      isGuest: true,
-    }
-    setUser(localUser)
-    await runUserInit(localUser)
-  }, [])
-
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
@@ -227,11 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signInWithProvider,
       signInAsGuest,
-      signInLocal,
       signOut,
       refresh,
     }),
-    [user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signInLocal, signOut, refresh],
+    [user, loading, signIn, signUp, signInWithProvider, signInAsGuest, signOut, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

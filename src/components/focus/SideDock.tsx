@@ -9,6 +9,8 @@ interface SideDockProps {
   width: number;
   onTabChange: (tab: DockTab) => void;
   onClose: () => void;
+  /** During hardcore the task bar is locked open — the close button switches to Tasks. */
+  lockOpen?: boolean;
   tasks: LockerTask[];
   activeTaskId: string | null;
   onAddTask: (title: string, description: string) => void;
@@ -31,6 +33,7 @@ export function SideDock({
   width,
   onTabChange,
   onClose,
+  lockOpen = false,
   tasks,
   activeTaskId,
   onAddTask,
@@ -40,6 +43,7 @@ export function SideDock({
   onToggleSubTask,
   onLockIn,
 }: SideDockProps) {
+  const handleClose = lockOpen ? () => onTabChange("tasks") : onClose;
   return (
     <>
       {/* Dock trigger tab */}
@@ -54,23 +58,23 @@ export function SideDock({
         }}
       >
         <button
-          onClick={() => onTabChange(isOpen ? activeTab : "ai")}
+          onClick={() => onTabChange(isOpen ? (lockOpen ? "tasks" : activeTab) : "ai")}
           className="genshin-card"
           style={{
             padding: "1.5rem 0.5rem",
             borderRadius: "2px 0 0 2px",
             cursor: "pointer",
             borderRight: "none",
-            background: "var(--color-genshin-parchment)",
+            background: lockOpen ? "rgba(180,150,60,0.18)" : "var(--color-genshin-parchment)",
             writingMode: "vertical-rl",
             textOrientation: "mixed",
             fontSize: "0.65rem",
             letterSpacing: "0.1em",
             fontFamily: "var(--font-serif-heading)",
-            color: "var(--color-genshin-ink)",
+            color: lockOpen ? "var(--color-genshin-gold)" : "var(--color-genshin-ink)",
           }}
         >
-          {isOpen ? "CLOSE" : "DOCK"}
+          {lockOpen ? (isOpen ? "TASKS" : "TASK BAR") : isOpen ? "CLOSE" : "DOCK"}
         </button>
       </div>
 
@@ -138,18 +142,19 @@ export function SideDock({
             </button>
           ))}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               padding: "0 0.75rem",
               fontSize: "0.75rem",
-              color: "var(--color-genshin-bronze)",
+              color: lockOpen ? "var(--color-genshin-gold)" : "var(--color-genshin-bronze)",
               fontFamily: "var(--font-serif-heading)",
               background: "transparent",
               border: "none",
               cursor: "pointer",
             }}
+            title={lockOpen ? "Task bar is locked during hardcore" : "Close"}
           >
-            ✕
+            {lockOpen ? "☰" : "✕"}
           </button>
         </div>
 

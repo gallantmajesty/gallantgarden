@@ -6,6 +6,7 @@ import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { usePomodoro, setPomodoroFocusSink } from '../store/pomodoro'
 import { useMagnet } from '../store/magnet'
+import { useHardcore, applyPendingRefund } from '../store/hardcore'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
 import { globalRunOnce, userRunOnce } from './runOnce'
@@ -54,6 +55,9 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   //     onboarding gate reads `onboarded` with no default-then-swap flash.
   await useProfile.getState().hydrate(user.id, user.profile?.name)
 
+  // 2b2. Refund any hardcore wager orphaned by a page refresh mid-session.
+  applyPendingRefund()
+
   // 2c. Hydrate the social graph (who I follow + my counts) so Follow buttons
   //     and the profile header render correct state immediately. Non-blocking.
   void useSocial.getState().hydrate(user.id)
@@ -100,6 +104,10 @@ function bindFocusPresence(): void {
 function bindFocusLogging(): void {
   setPomodoroFocusSink((minutes, subject) => {
     useMagnet.getState().logFocus(minutes, subject)
+
+    // Hardcore sessions are credited entirely by the hardcore store on a win
+    // (wager back + 10x rate). Skip the normal per-minute award here.
+    if (useHardcore.getState().active) return
 
     // Award leaves (regular XP) for the completed segment
     try {

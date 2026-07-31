@@ -1,24 +1,14 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
 import './AuthScreen.css'
 
 export function AuthScreen() {
   const { t } = useTranslation()
-  const { signInWithProvider, signInLocal } = useAuth()
+  const { signInWithProvider, signInAsGuest } = useAuth()
   const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<OAuthProvider | null>(null)
+  const [pending, setPending] = useState<OAuthProvider | 'guest' | null>(null)
 
-  // Private login state
-  const [privateOpen, setPrivateOpen] = useState(false)
-  const [privateEmail, setPrivateEmail] = useState('')
-  const [privatePass, setPrivatePass] = useState('')
-  const [privateError, setPrivateError] = useState<string | null>(null)
-  const [privatePending, setPrivatePending] = useState(false)
-  const clickCount = useRef(0)
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Reset pending state on mount
   useEffect(() => { setPending(null) }, [])
 
   const providers: { id: OAuthProvider; label: string }[] = [
@@ -36,28 +26,6 @@ export function AuthScreen() {
       setTimeout(() => {
         setPending(current => current === provider ? null : current)
       }, 4000)
-    }
-  }
-
-  function handleSecretTap() {
-    clickCount.current++
-    if (clickTimer.current) clearTimeout(clickTimer.current)
-    clickTimer.current = setTimeout(() => { clickCount.current = 0 }, 3000)
-    if (clickCount.current >= 5) {
-      clickCount.current = 0
-      setPrivateOpen(true)
-    }
-  }
-
-  async function handlePrivateLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setPrivateError(null)
-    if (privateEmail === 'Success' && privatePass === '801057') {
-      setPrivatePending(true)
-      await signInLocal('Success', 'success@focuslily.com')
-      setPrivatePending(false)
-    } else {
-      setPrivateError('Invalid credentials')
     }
   }
 
@@ -142,51 +110,28 @@ export function AuthScreen() {
           ))}
         </div>
 
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <button
+          type="button"
+          className="auth-guest-btn"
+          disabled={!!pending}
+          onClick={async () => {
+            setError(null)
+            setPending('guest')
+            await signInAsGuest()
+          }}
+        >
+          {pending === 'guest' ? t('auth.enterGuest') : t('auth.continueGuest')}
+        </button>
+        <p className="auth-guest-hint">
+          {t('auth.guestHint')}
+        </p>
+
         {error && <div className="auth-error">{error}</div>}
       </div>
-
-      {/* Hidden trigger — tap 5 times to open private login */}
-      <button
-        className="auth-secret-dot"
-        onClick={handleSecretTap}
-        aria-label="."
-        title="."
-      />
-
-      {/* Private login overlay */}
-      {privateOpen && (
-        <div className="auth-private-overlay" onClick={() => setPrivateOpen(false)}>
-          <div className="auth-private-card" onClick={(e) => e.stopPropagation()}>
-            <button className="auth-private-close" onClick={() => setPrivateOpen(false)}>×</button>
-            <h2 className="auth-private-title">Private Access</h2>
-            <form className="auth-private-form" onSubmit={handlePrivateLogin}>
-              <input
-                className="auth-private-input"
-                type="text"
-                placeholder="Username"
-                value={privateEmail}
-                onChange={(e) => setPrivateEmail(e.target.value)}
-                autoFocus
-              />
-              <input
-                className="auth-private-input"
-                type="password"
-                placeholder="Password"
-                value={privatePass}
-                onChange={(e) => setPrivatePass(e.target.value)}
-              />
-              {privateError && <div className="auth-error">{privateError}</div>}
-              <button
-                className="auth-submit"
-                type="submit"
-                disabled={privatePending || !privateEmail || !privatePass}
-              >
-                {privatePending ? 'Entering...' : 'Enter'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
