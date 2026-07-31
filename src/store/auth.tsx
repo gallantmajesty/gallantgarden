@@ -102,6 +102,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             stopHeartbeat = startHeartbeat()
           }
         } else {
+          // No Supabase session — check for a persisted guest user
+          const saved = localStorage.getItem('sf.guest')
+          if (saved) {
+            try {
+              const guest = JSON.parse(saved) as AuthUser
+              if (guest.isGuest && guest.id) {
+                setUser(guest)
+                await runUserInit(guest)
+                return
+              }
+            } catch { /* invalid JSON, ignore */ }
+          }
           setUser(null)
         }
       } catch (e) {
@@ -133,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
+    localStorage.removeItem('sf.guest')
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return error.message
     const u = mapSupabaseUser(data.user)
@@ -146,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (email: string, password: string, name: string) => {
+      localStorage.removeItem('sf.guest')
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -165,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
     try {
+      localStorage.removeItem('sf.guest')
       const redirectTo = typeof window !== 'undefined' ? window.location.origin : 'https://focuslily.com'
       console.log('[Auth] signInWithProvider', provider, 'redirectTo:', redirectTo)
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -193,11 +208,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile: { name: 'Guest' },
       isGuest: true,
     }
+    localStorage.setItem('sf.guest', JSON.stringify(guestUser))
     setUser(guestUser)
     await runUserInit(guestUser)
   }, [])
 
   const signOut = useCallback(async () => {
+    localStorage.removeItem('sf.guest')
     const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
     // Release session on sign out
