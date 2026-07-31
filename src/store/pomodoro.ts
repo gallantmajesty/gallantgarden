@@ -72,42 +72,6 @@ export const BREAK_ACTIVITIES = [
   { id: 'music', label: 'Music', icon: '🎵', duration: 60 },
 ] as const
 
-export interface TimerPreset {
-  id: string
-  name: string
-  timerType: TimerType
-  sessionMinutes: number
-  breakCount: number
-  breakDurations: Record<number, number>
-  createdAt: number
-}
-
-export interface SessionHistoryEntry {
-  id: string
-  date: string
-  timerType: TimerType
-  sessionMinutes: number
-  breakCount: number
-  breakDurations: Record<number, number>
-  completed: boolean
-  totalFocusMinutes: number
-  leavesEarned: number
-  subject: string
-}
-
-export interface SessionSummary {
-  totalSessions: number
-  totalFocusMinutes: number
-  totalLeavesEarned: number
-  completedSessions: number
-  averageSessionLength: number
-  currentStreak: number
-  longestStreak: number
-  sessionsByType: Record<TimerType, number>
-  sessionsByDay: Record<string, number> // ISO date -> count
-  recentSessions: SessionHistoryEntry[]
-}
-
 // Custom break durations per index (0-based)
 export interface BreakDurations {
   [breakIndex: number]: number // duration in minutes

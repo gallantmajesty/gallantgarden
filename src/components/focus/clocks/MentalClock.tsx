@@ -21,6 +21,7 @@ export function MentalClock({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number>(0);
   const pulseRef = useRef(0);
+  const flowAngleRef = useRef(0);
 
   const progress = totalSeconds > 0 ? remainingSeconds / totalSeconds : 1;
   const { minutes, seconds } = formatTime(remainingSeconds);
@@ -43,40 +44,98 @@ export function MentalClock({
       pulseRef.current += 0.02;
       const pulse = Math.sin(pulseRef.current) * 0.1 + 1;
 
-      const r1 = 120;
+      flowAngleRef.current += 0.005;
+      const flowAngle = flowAngleRef.current;
+
+      const r1 = 130;
       const r1Progress = 1 - progress;
+
+      const outerGlow = ctx.createRadialGradient(cx, cy, r1 - 10, cx, cy, r1 + 20);
+      outerGlow.addColorStop(0, "rgba(201,168,76,0.06)");
+      outerGlow.addColorStop(1, "rgba(201,168,76,0)");
+      ctx.fillStyle = outerGlow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r1 + 20, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.beginPath();
       ctx.arc(cx, cy, r1, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(201, 168, 76, 0.2)";
+      ctx.strokeStyle = "rgba(201,168,76,0.15)";
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
 
+      const r1Grad = ctx.createLinearGradient(cx, cy, cx + r1, cy);
+      r1Grad.addColorStop(0, "rgba(201,168,76,0.1)");
+      r1Grad.addColorStop(0.5, "rgba(201,168,76,0.6)");
+      r1Grad.addColorStop(1, "rgba(201,168,76,0.8)");
+
       ctx.beginPath();
       ctx.arc(cx, cy, r1, -Math.PI / 2, -Math.PI / 2 + r1Progress * Math.PI * 2);
-      ctx.strokeStyle = "rgba(201, 168, 76, 0.8)";
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = r1Grad;
+      ctx.lineWidth = 4;
       ctx.stroke();
 
-      const r2 = 90;
+      ctx.save();
+      ctx.shadowColor = "rgba(201,168,76,0.5)";
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r1, -Math.PI / 2, -Math.PI / 2 + r1Progress * Math.PI * 2);
+      ctx.strokeStyle = "rgba(201,168,76,0.3)";
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.restore();
+
+      for (let i = 0; i < 64; i++) {
+        const angle = (i / 64) * Math.PI * 2 + flowAngle;
+        const x = cx + Math.cos(angle) * r1;
+        const y = cy + Math.sin(angle) * r1;
+        const isActive = i / 64 < r1Progress;
+        const a = isActive ? 0.7 : 0.1;
+        const s = isActive ? 2.5 : 1;
+        ctx.fillStyle = `rgba(201,168,76,${a})`;
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const r2 = 95;
       const momentumPct = Math.min(momentumScore / 100, 1);
       const r2Scale = pulse * (0.5 + momentumPct * 0.5);
 
       ctx.beginPath();
       ctx.arc(cx, cy, r2 * r2Scale, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(232, 212, 160, 0.4)";
+      ctx.strokeStyle = "rgba(232,212,160,0.2)";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
 
+      const r2Grad = ctx.createLinearGradient(cx, cy, cx + r2, cy);
+      r2Grad.addColorStop(0, "rgba(232,212,160,0.1)");
+      r2Grad.addColorStop(0.5, "rgba(232,212,160,0.5)");
+      r2Grad.addColorStop(1, "rgba(232,212,160,0.7)");
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r2 * r2Scale, -Math.PI / 2, -Math.PI / 2 + momentumPct * Math.PI * 2);
+      ctx.strokeStyle = r2Grad;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
       for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2 + pulseRef.current;
+        const angle = (i / 8) * Math.PI * 2 + flowAngle * 2;
         const x = cx + Math.cos(angle) * r2 * r2Scale;
         const y = cy + Math.sin(angle) * r2 * r2Scale;
-        ctx.fillStyle = `rgba(232, 212, 160, ${0.3 + 0.7 * momentumPct})`;
+        const a = 0.3 + 0.7 * momentumPct;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, 6);
+        g.addColorStop(0, `rgba(232,212,160,${a})`);
+        g.addColorStop(1, `rgba(232,212,160,0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(232,212,160,${a})`;
         ctx.beginPath();
         ctx.arc(x, y, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -85,22 +144,62 @@ export function MentalClock({
       const r3 = 60;
       const streakPct = Math.min(streakDays / 30, 1);
 
+      const r3Glow = ctx.createRadialGradient(cx, cy, r3 - 10, cx, cy, r3 + 15);
+      r3Glow.addColorStop(0, "rgba(139,109,46,0.08)");
+      r3Glow.addColorStop(1, "rgba(139,109,46,0)");
+      ctx.fillStyle = r3Glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r3 + 15, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.beginPath();
       ctx.arc(cx, cy, r3, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(139, 109, 46, 0.2)";
+      ctx.strokeStyle = "rgba(139,109,46,0.15)";
       ctx.lineWidth = 2;
       ctx.stroke();
 
       const streakAngle = streakPct * Math.PI * 2;
+      const streakGrad = ctx.createLinearGradient(cx, cy, cx + r3, cy);
+      streakGrad.addColorStop(0, "#8B6D2E");
+      streakGrad.addColorStop(1, "#C9A84C");
+
       ctx.beginPath();
       ctx.arc(cx, cy, r3, -Math.PI / 2, -Math.PI / 2 + streakAngle);
-      ctx.strokeStyle = "#8B6D2E";
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = streakGrad;
+      ctx.lineWidth = 4;
       ctx.stroke();
 
-      ctx.fillStyle = "rgba(26, 20, 16, 0.6)";
+      ctx.save();
+      ctx.shadowColor = "rgba(139,109,46,0.4)";
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.arc(cx, cy, 35, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r3, -Math.PI / 2, -Math.PI / 2 + streakAngle);
+      ctx.strokeStyle = "rgba(139,109,46,0.3)";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      ctx.restore();
+
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+        const x = cx + Math.cos(angle) * r3;
+        const y = cy + Math.sin(angle) * r3;
+        ctx.fillStyle = "rgba(139,109,46,0.4)";
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "rgba(26,20,16,0.7)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+      ctx.fill();
+
+      const innerGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 38);
+      innerGlow.addColorStop(0, "rgba(201,168,76,0.1)");
+      innerGlow.addColorStop(1, "rgba(201,168,76,0)");
+      ctx.fillStyle = innerGlow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 38, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#C9A84C";
@@ -118,13 +217,40 @@ export function MentalClock({
 
       ctx.fillStyle = "#E8D4A0";
       ctx.font = "9px Georgia, serif";
-      ctx.fillText("SESSION", cx, cy - r1 - 18);
-      ctx.fillText("FLOW", cx, cy - r2 - 18);
-      ctx.fillText("STREAK", cx, cy - r3 - 18);
+      ctx.fillText("SESSION", cx, cy - r1 - 22);
+      ctx.fillText("FLOW", cx, cy - r2 - 22);
+      ctx.fillText("STREAK", cx, cy - r3 - 22);
 
       if (streakDays > 0) {
-        ctx.fillText(`x${streakDays}`, cx, cy - r3 - 6);
+        ctx.fillStyle = "#C9A84C";
+        ctx.font = "bold 10px Georgia, serif";
+        ctx.fillText(`x${streakDays}`, cx, cy - r3 - 8);
       }
+
+      const orbR = 5;
+      const orbG = ctx.createRadialGradient(cx - 2, cy - r1 - 22, 0, cx, cy - r1 - 22, orbR);
+      orbG.addColorStop(0, "#F0E080");
+      orbG.addColorStop(1, "#8B6D2E");
+      ctx.fillStyle = orbG;
+      ctx.beginPath();
+      ctx.arc(cx, cy - r1 - 22, orbR, 0, Math.PI * 2);
+      ctx.fill();
+
+      const orbG2 = ctx.createRadialGradient(cx - 2, cy - r2 - 22, 0, cx, cy - r2 - 22, orbR);
+      orbG2.addColorStop(0, "#E8D4A0");
+      orbG2.addColorStop(1, "#8B6D2E");
+      ctx.fillStyle = orbG2;
+      ctx.beginPath();
+      ctx.arc(cx, cy - r2 - 22, orbR, 0, Math.PI * 2);
+      ctx.fill();
+
+      const orbG3 = ctx.createRadialGradient(cx - 2, cy - r3 - 22, 0, cx, cy - r3 - 22, orbR);
+      orbG3.addColorStop(0, "#C9A84C");
+      orbG3.addColorStop(1, "#6B4F10");
+      ctx.fillStyle = orbG3;
+      ctx.beginPath();
+      ctx.arc(cx, cy - r3 - 22, orbR, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     function animate() {
@@ -137,20 +263,22 @@ export function MentalClock({
   }, [progress, isRunning, focusMinutes, streakDays, momentumScore]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
       <canvas
         ref={canvasRef}
-        width={300}
-        height={340}
-        style={{ width: 300, height: 340 }}
+        width={340}
+        height={380}
+        style={{ width: 340, height: 380, filter: "drop-shadow(0 10px 30px rgba(0,0,0,0.4))" }}
       />
       <div
         style={{
-          fontSize: "2.25rem",
+          fontSize: "2.75rem",
           fontWeight: 700,
-          letterSpacing: "0.1em",
+          letterSpacing: "0.15em",
           fontFamily: "var(--font-mono-display)",
           color: "var(--color-genshin-gold)",
+          textShadow: "0 0 20px rgba(201,168,76,0.6), 0 0 40px rgba(201,168,76,0.3)",
+          fontVariantNumeric: "tabular-nums",
         }}
       >
         {minutes}:{seconds}

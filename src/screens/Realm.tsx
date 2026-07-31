@@ -21,6 +21,7 @@ type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'public' | 
 function modeFromPath(pathname: string): Mode {
   if (pathname.includes('/custom/') && pathname.split('/custom/')[1].split('/')[0]) return 'custom'
   if (pathname.endsWith('/custom')) return 'custom'
+  if (pathname.endsWith('/private')) return 'private'
   if (pathname.endsWith('/public')) return 'public'
   if (pathname.endsWith('/uk-cafe')) return 'uk-cafe'
   if (pathname.endsWith('/train')) return 'train'
@@ -32,7 +33,7 @@ function modeFromPath(pathname: string): Mode {
 function pathForMode(mode: Mode, code?: string): string {
   switch (mode) {
     case 'choose': return '/lobby/realm/choose'
-    case 'private': return '/lobby/realm/choose'
+    case 'private': return '/lobby/realm/private'
     case 'library': return '/lobby/realm/library'
     case 'train': return '/lobby/realm/train'
     case 'uk-cafe': return '/lobby/realm/uk-cafe'
@@ -57,16 +58,20 @@ export function Realm() {
 
       <div className="realm-stage">
         {mode === 'choose' && <RealmChoose onPick={(m) => navigate(pathForMode(m))} />}
-        {mode === 'private' && <PrivateChoose onPick={(m) => navigate(pathForMode(m))} />}
+        {mode === 'private' && <PublicRealm />}
         {mode === 'library' && <LibraryRealm />}
         {mode === 'train' && <TrainRealm />}
         {mode === 'uk-cafe' && <UkCafeRealm />}
-        {mode === 'public' && <PublicRealm />}
+        {mode === 'public' && <PrivateChoose onPick={(m) => navigate(pathForMode(m))} />}
         {mode === 'custom' && <PublicRealm />}
-      </div>
+</div>
     </div>
   )
 }
+
+/* ------------------------------------------------------------ choose flavour */
+
+function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
   return (
     <>
       <div className="realm-topright">
@@ -78,10 +83,10 @@ export function Realm() {
         <p>Join a public study hall or create a private world for your friends.</p>
       </header>
 
-      <div className="realm-cards">
+<div className="realm-cards">
         <button
           className="realm-card water-glass"
-          onClick={() => onPick('private')}
+          onClick={() => onPick('public')}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -102,7 +107,7 @@ export function Realm() {
 
         <button
           className="realm-card water-glass"
-          onClick={() => onPick('public')}
+          onClick={() => onPick('private')}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -134,7 +139,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
   return (
     <>
       <header className="realm-head">
-        <span className="sf-pill">Private Realm</span>
+        <span className="sf-pill">Public Realm</span>
         <h1>Pick a world</h1>
         <p>Choose a world type, then join a room to study alongside others live.</p>
       </header>
@@ -257,6 +262,7 @@ function SpinningAvatar({ config }: { config: AvatarConfig }) {
 
 function LibraryRealm() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const enterGlobal = useRealm((s) => s.enterGlobal)
   const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
 
@@ -325,6 +331,7 @@ function LibraryRealm() {
 
 function UkCafeRealm() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const enterGlobal = useRealm((s) => s.enterGlobal)
   const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
 
@@ -394,6 +401,7 @@ function UkCafeRealm() {
 
 function TrainRealm() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const enterGlobal = useRealm((s) => s.enterGlobal)
   const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
 
@@ -487,6 +495,7 @@ function timeLeft(expiresAt: string): string {
 
 function PublicRealm() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const custom = useRealm((s) => s.custom)
   const rememberCustom = useRealm((s) => s.rememberCustom)
   const enterCustom = useRealm((s) => s.enterCustom)
@@ -608,7 +617,7 @@ function PublicRealm() {
   return (
     <>
       <header className="realm-head">
-        <span className="sf-pill">Public Realm</span>
+        <span className="sf-pill">Private Realm</span>
         <h1>Your own world</h1>
         <p>Create a realm for you and your friends. Share the 7-digit code and password so they join the exact same world.</p>
       </header>

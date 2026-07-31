@@ -46,9 +46,9 @@ function load(): Persisted {
     bgId: DEFAULT_WEB_BG_ID,
     accent: null,
     fontColor: null,
-    bgBrightness: 1,
-    bgContrast: 1,
-    bgSaturation: 1,
+    bgBrightness: 0.75,
+    bgContrast: 2,
+    bgSaturation: 2,
   }
   try {
     const raw = localStorage.getItem(KEY)
@@ -62,9 +62,9 @@ function load(): Persisted {
       bgId: bgOk ? (p.bgId as string) : theme.backgrounds[0].id,
       accent: p.accent ?? null,
       fontColor: p.fontColor ?? null,
-      bgBrightness: typeof p.bgBrightness === 'number' && Number.isFinite(p.bgBrightness) ? p.bgBrightness : 1,
-      bgContrast: typeof p.bgContrast === 'number' && Number.isFinite(p.bgContrast) ? p.bgContrast : 1,
-      bgSaturation: typeof p.bgSaturation === 'number' && Number.isFinite(p.bgSaturation) ? p.bgSaturation : 1,
+      bgBrightness: typeof p.bgBrightness === 'number' && Number.isFinite(p.bgBrightness) ? p.bgBrightness : 0.75,
+      bgContrast: typeof p.bgContrast === 'number' && Number.isFinite(p.bgContrast) ? p.bgContrast : 2,
+      bgSaturation: typeof p.bgSaturation === 'number' && Number.isFinite(p.bgSaturation) ? p.bgSaturation : 2,
     }
   } catch {
     return fallback

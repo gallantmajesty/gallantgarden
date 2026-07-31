@@ -329,8 +329,8 @@ export const WEB_THEMES_SOON: { id: string; name: string; emoji: string }[] = [
   { id: 'ember', name: 'Ember', emoji: '🔥' },
 ]
 
-export const DEFAULT_WEB_THEME_ID = 'cozy-night'
-export const DEFAULT_WEB_BG_ID = 'cozy-study-desk'
+export const DEFAULT_WEB_THEME_ID = 'fantasy'
+export const DEFAULT_WEB_BG_ID = 'medieval-castle'
 
 /** Quick text-colour choices for the font-colour picker (plus "Auto" = null and
  *  a custom colour wheel, handled in the UI). */

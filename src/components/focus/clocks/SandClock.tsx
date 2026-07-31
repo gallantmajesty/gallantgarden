@@ -57,6 +57,7 @@ export function SandClock({
   const isPausedRef = useRef(false);
   const scaleRef = useRef(1);
   const ambientInitRef = useRef(false);
+  const glowPulseRef = useRef(0);
 
   const progress = totalSeconds > 0 ? remainingSeconds / totalSeconds : 1;
   const { minutes, seconds } = formatTime(remainingSeconds);
@@ -69,14 +70,14 @@ export function SandClock({
   useEffect(() => {
     if (ambientInitRef.current) return;
     ambientInitRef.current = true;
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 80; i++) {
       ambientPartsRef.current.push({
         x: Math.random() * BASE_W,
         y: Math.random() * BASE_H,
-        vx: (Math.random() - 0.5) * 0.15,
-        vy: -Math.random() * 0.12 - 0.02,
-        size: Math.random() * 1.8 + 0.3,
-        alpha: Math.random() * 0.25 + 0.05,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: -Math.random() * 0.15 - 0.03,
+        size: Math.random() * 2.2 + 0.3,
+        alpha: Math.random() * 0.3 + 0.05,
         phase: Math.random() * Math.PI * 2,
       });
     }
@@ -96,7 +97,7 @@ export function SandClock({
       const rect = container.getBoundingClientRect();
       const cw = rect.width;
       const ch = rect.height;
-      scale = Math.min(cw / BASE_W, ch / BASE_H, 1.4);
+      scale = Math.min(cw / BASE_W, ch / BASE_H, 1.5);
       scaleRef.current = scale;
       const sw = Math.round(BASE_W * scale);
       const sh = Math.round(BASE_H * scale);
@@ -152,9 +153,9 @@ export function SandClock({
       ctx.globalAlpha = alpha;
       const pg = ctx.createLinearGradient(x, y, x + w, y + h);
       pg.addColorStop(0, 'rgba(74,107,58,0)');
-      pg.addColorStop(0.3, 'rgba(74,107,58,0.15)');
-      pg.addColorStop(0.5, 'rgba(58,85,48,0.08)');
-      pg.addColorStop(0.7, 'rgba(74,107,58,0.12)');
+      pg.addColorStop(0.3, 'rgba(74,107,58,0.18)');
+      pg.addColorStop(0.5, 'rgba(58,85,48,0.1)');
+      pg.addColorStop(0.7, 'rgba(74,107,58,0.15)');
       pg.addColorStop(1, 'rgba(74,107,58,0)');
       ctx.fillStyle = pg;
       ctx.fillRect(x, y, w, h);
@@ -261,7 +262,7 @@ export function SandClock({
       ctx.stroke();
       ctx.save();
       ctx.shadowColor = 'rgba(200,160,60,0.5)';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 8;
       ctx.fillStyle = COLORS.GOLD_HI;
       ctx.font = 'bold 15px Georgia,serif';
       ctx.textAlign = 'center';
@@ -348,30 +349,30 @@ export function SandClock({
       }
       ctx.closePath();
       const glassFill = ctx.createLinearGradient(cx - gw / 2, gy, cx + gw / 2, gy);
-      glassFill.addColorStop(0, 'rgba(60,45,25,0.12)');
-      glassFill.addColorStop(0.15, 'rgba(80,60,30,0.06)');
-      glassFill.addColorStop(0.5, 'rgba(100,80,40,0.03)');
-      glassFill.addColorStop(0.85, 'rgba(80,60,30,0.06)');
-      glassFill.addColorStop(1, 'rgba(60,45,25,0.12)');
+      glassFill.addColorStop(0, 'rgba(60,45,25,0.15)');
+      glassFill.addColorStop(0.15, 'rgba(80,60,30,0.08)');
+      glassFill.addColorStop(0.5, 'rgba(100,80,40,0.04)');
+      glassFill.addColorStop(0.85, 'rgba(80,60,30,0.08)');
+      glassFill.addColorStop(1, 'rgba(60,45,25,0.15)');
       ctx.fillStyle = glassFill;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(140,110,60,0.2)';
+      ctx.strokeStyle = 'rgba(140,110,60,0.25)';
       ctx.lineWidth = 2;
       ctx.stroke();
       const hlG = ctx.createLinearGradient(cx - gw * 0.4, gy, cx - gw * 0.15, gy + gh);
-      hlG.addColorStop(0, 'rgba(255,240,200,0.12)');
-      hlG.addColorStop(0.3, 'rgba(255,240,200,0.06)');
-      hlG.addColorStop(0.6, 'rgba(255,240,200,0.01)');
+      hlG.addColorStop(0, 'rgba(255,240,200,0.18)');
+      hlG.addColorStop(0.3, 'rgba(255,240,200,0.08)');
+      hlG.addColorStop(0.6, 'rgba(255,240,200,0.02)');
       hlG.addColorStop(1, 'rgba(255,240,200,0)');
       ctx.strokeStyle = hlG;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.stroke();
       const hlR = ctx.createLinearGradient(cx + gw * 0.2, gy, cx + gw * 0.45, gy + gh * 0.6);
       hlR.addColorStop(0, 'rgba(255,240,200,0)');
-      hlR.addColorStop(0.5, 'rgba(255,240,200,0.03)');
+      hlR.addColorStop(0.5, 'rgba(255,240,200,0.04)');
       hlR.addColorStop(1, 'rgba(255,240,200,0)');
       ctx.strokeStyle = hlR;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.stroke();
       const sandLevel = isTop ? topS : botS;
       const sandH = gh * sandLevel * 0.82;
@@ -420,9 +421,9 @@ export function SandClock({
         ctx.closePath();
         ctx.fill();
         const depthG = ctx.createLinearGradient(cx, sandTop, cx, gy + gh);
-        depthG.addColorStop(0, 'rgba(221,184,74,0.2)');
-        depthG.addColorStop(0.3, 'rgba(200,152,48,0.1)');
-        depthG.addColorStop(1, 'rgba(100,70,20,0.15)');
+        depthG.addColorStop(0, 'rgba(221,184,74,0.25)');
+        depthG.addColorStop(0.3, 'rgba(200,152,48,0.12)');
+        depthG.addColorStop(1, 'rgba(100,70,20,0.18)');
         ctx.fillStyle = depthG;
         ctx.beginPath();
         if (isTop) {
@@ -442,7 +443,7 @@ export function SandClock({
         ctx.closePath();
         ctx.fill();
         const specG = ctx.createLinearGradient(cx - gw * 0.3, sandTop, cx - gw * 0.1, sandTop + sandH * 0.5);
-        specG.addColorStop(0, 'rgba(232,204,96,0.15)');
+        specG.addColorStop(0, 'rgba(232,204,96,0.2)');
         specG.addColorStop(1, 'rgba(232,204,96,0)');
         ctx.fillStyle = specG;
         ctx.fillRect(cx - gw / 2, sandTop, gw, sandH);
@@ -494,15 +495,15 @@ export function SandClock({
       ctx.globalAlpha = streamAlpha;
       const sLen = 25;
       const sg = ctx.createLinearGradient(cx, ny - sLen, cx, ny + sLen);
-      sg.addColorStop(0, 'rgba(200,152,48,0.9)');
+      sg.addColorStop(0, 'rgba(200,152,48,0.95)');
       sg.addColorStop(0.3, COLORS.SAND_L);
       sg.addColorStop(0.5, COLORS.SAND);
       sg.addColorStop(0.7, COLORS.SAND_D);
-      sg.addColorStop(1, 'rgba(138,104,24,0.6)');
+      sg.addColorStop(1, 'rgba(138,104,24,0.7)');
       ctx.fillStyle = sg;
       ctx.beginPath();
-      const wTop = 2;
-      const wBot = 1;
+      const wTop = 2.5;
+      const wBot = 1.2;
       ctx.moveTo(cx - wTop, ny - sLen);
       ctx.lineTo(cx + wTop, ny - sLen);
       ctx.lineTo(cx + wBot, ny + sLen);
@@ -656,18 +657,18 @@ export function SandClock({
       if (topS <= 0.005) return;
       if (isPausedRef.current) return;
       const ny = cy;
-      const count = Math.ceil(2 * topS);
+      const count = Math.ceil(3 * topS);
       for (let i = 0; i < count; i++) {
-        if (Math.random() < 0.7) {
+        if (Math.random() < 0.75) {
           sandParticlesRef.current.push({
-            x: cx + (Math.random() - 0.5) * 3,
-            y: ny + 15 + Math.random() * 3,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: Math.random() * 1.2 + 0.4,
-            size: Math.random() * 1.2 + 0.4,
+            x: cx + (Math.random() - 0.5) * 4,
+            y: ny + 18 + Math.random() * 4,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: Math.random() * 1.5 + 0.5,
+            size: Math.random() * 1.5 + 0.4,
             alpha: 0.7 + Math.random() * 0.3,
             life: 0,
-            maxLife: 180 + Math.random() * 250,
+            maxLife: 180 + Math.random() * 300,
             color: Math.random() > 0.5 ? COLORS.SAND : COLORS.SAND_L,
           });
         }
@@ -721,19 +722,20 @@ export function SandClock({
 
     function drawGlow() {
       const topS = topSandRef.current;
-      const pulse = 0.7 + 0.3 * Math.sin(timeRef.current * 0.001);
-      const g1 = ctx.createRadialGradient(cx, cy, 5, cx, cy, 180);
-      g1.addColorStop(0, `rgba(180,130,40,${0.06 * pulse})`);
-      g1.addColorStop(0.4, `rgba(140,100,30,${0.03 * pulse})`);
+      glowPulseRef.current += 0.01;
+      const pulse = 0.7 + 0.3 * Math.sin(glowPulseRef.current);
+      const g1 = ctx.createRadialGradient(cx, cy, 5, cx, cy, 200);
+      g1.addColorStop(0, `rgba(180,130,40,${0.08 * pulse})`);
+      g1.addColorStop(0.4, `rgba(140,100,30,${0.04 * pulse})`);
       g1.addColorStop(1, 'rgba(100,70,20,0)');
       ctx.fillStyle = g1;
       ctx.fillRect(0, 0, W, H);
       if (topS > 0.005) {
-        const g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, 35);
-        g2.addColorStop(0, `rgba(220,180,60,${0.12 * pulse})`);
+        const g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, 40);
+        g2.addColorStop(0, `rgba(220,180,60,${0.15 * pulse})`);
         g2.addColorStop(1, 'rgba(220,180,60,0)');
         ctx.fillStyle = g2;
-        ctx.fillRect(cx - 35, cy - 35, 70, 70);
+        ctx.fillRect(cx - 40, cy - 40, 80, 80);
       }
     }
 
@@ -826,8 +828,8 @@ export function SandClock({
       drawScrollwork(cx, L.neckY, L.baseW * 0.6);
       drawSun(cx - L.baseW / 2 + 35, L.neckY, 7);
       drawMoon(cx + L.baseW / 2 - 35, L.neckY, 7);
-      drawFloral(cx - 50, L.inscY + 5, 0.45);
-      drawFloral(cx + 50, L.inscY + 5, 0.45);
+      drawFloral(cx - L.baseW / 2 + 10, L.inscY + 5, 0.45);
+      drawFloral(cx + L.baseW / 2 - 10, L.inscY + 5, 0.45);
       drawFloral(cx, L.topBaseY - 12, 0.5);
       const orbR = 9;
       const orbG = ctx.createRadialGradient(cx - 2, L.topBaseY - 10, 0, cx, L.topBaseY - 8, orbR);
@@ -844,7 +846,7 @@ export function SandClock({
       ctx.stroke();
       const vignette = ctx.createRadialGradient(cx, cy + 30, 100, cx, cy + 30, Math.max(W, H) * 0.7);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, W, H);
 
@@ -857,7 +859,7 @@ export function SandClock({
       ctx.textBaseline = 'middle';
       ctx.font = 'bold 48px serif';
       ctx.shadowColor = 'rgba(180,130,40,0.7)';
-      ctx.shadowBlur = 24;
+      ctx.shadowBlur = 30;
       ctx.fillStyle = COLORS.GOLD_HI;
       ctx.fillText(timeStr, cx, L.botBaseY + L.baseH + 40);
       ctx.restore();
@@ -878,7 +880,7 @@ export function SandClock({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: '0.75rem',
+      gap: '1rem',
       width: '100%',
       minHeight: 0,
       flex: 1,
@@ -899,12 +901,12 @@ export function SandClock({
       </div>
       <div
         style={{
-          fontSize: "2rem",
+          fontSize: "2.25rem",
           fontWeight: 700,
           letterSpacing: "0.1em",
           fontFamily: "var(--font-mono-display)",
           color: "var(--color-genshin-gold)",
-          textShadow: "0 0 12px rgba(180,130,40,0.5), 0 0 30px rgba(180,130,40,0.2)",
+          textShadow: "0 0 15px rgba(180,130,40,0.6), 0 0 35px rgba(180,130,40,0.25), 0 0 60px rgba(180,130,40,0.1)",
           flexShrink: 0,
         }}
       >

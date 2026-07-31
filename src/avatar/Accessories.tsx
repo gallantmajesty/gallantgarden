@@ -698,94 +698,25 @@ case 'book_stack': {
     { title: 'ANNA KARENINA', author: 'Leo Tolstoy', width: 0.32, depth: 0.22, thickness: 0.040, color: clothOlive, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: -0.01 },
   ]
   const rightBookDefs: BookDef[] = [
-    { title: 'THE GREAT GATSBY', author: 'F. Scott Fitzgerald', width: 0.25, depth: 0.175, thickness: 0.020, color: clothPlum, spineTex: clothCream, spinePatina: m('#c0a050', 0.5, 0.35), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.03, tiltZ: 0.02, ribbon: '#2080b0' },
-    { title: 'JANE EYRE', author: 'Charlotte Brontë', width: 0.27, depth: 0.185, thickness: 0.026, color: clothTeal, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.02, tiltZ: -0.02 },
-    { title: 'THE PICTURE OF DORIAN GRAY', author: 'Oscar Wilde', width: 0.28, depth: 0.19, thickness: 0.024, color: clothRust, spineTex: clothCream, spinePatina: m('#e8c060', 0.55, 0.3), hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: 0, tiltZ: 0.01, ribbon: '#2a2a5e' },
-    { title: 'CRIME AND PUNISHMENT', author: 'Fyodor Dostoevsky', width: 0.29, depth: 0.20, thickness: 0.030, color: clothSlate, spineTex: clothCream, spinePatina: m('#c8a848', 0.5, 0.35), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.02, tiltZ: 0.02 },
-    { title: 'THE SCARLET LETTER', author: 'Nathaniel Hawthorne', width: 0.26, depth: 0.18, thickness: 0.021, color: clothMaroon, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.01, tiltZ: -0.03, ribbon: '#c03030' },
-    { title: 'WAR AND PEACE', author: 'Leo Tolstoy', width: 0.35, depth: 0.24, thickness: 0.046, color: clothIndigo, spineTex: clothCream, spinePatina: spineGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.03, tiltZ: 0.01, ribbon: '#d4a030' },
-    { title: 'THE COMPLETE POEMS', author: 'John Keats', width: 0.25, depth: 0.175, thickness: 0.019, color: clothWillow, spineTex: clothCream, spinePatina: m('#b08040', 0.5, 0.25), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0, tiltZ: 0.03 },
-    { title: 'THE WAVES', author: 'Virginia Woolf', width: 0.24, depth: 0.17, thickness: 0.018, color: linenMat, spineTex: linenMat, spinePatina: m('#8a7a6a', 0.4, 0.1), hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: -0.02, tiltZ: 0.02, ribbon: '#c07040' },
-    { title: 'MOBY-DICK', author: 'Herman Melville', width: 0.30, depth: 0.21, thickness: 0.036, color: clothGold, spineTex: clothCream, spinePatina: m('#5a3a10', 0.5, 0.3), hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: 0.01 },
+    { title: 'THE GREAT GATSBY', author: 'F. Scott Fitzgerald', width: 0.25, depth: 0.175, thickness: 0.020, color: clothPlum, spineTex: clothCream, spinePatina: m('#c0a050', 0.5, 0.35), endpaper: endpaperGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.03, tiltZ: 0.02, ribbon: '#2080b0', wearSpots: [[0.05, 0.003, 0.04]] },
+    { title: 'JANE EYRE', author: 'Charlotte Brontë', width: 0.27, depth: 0.185, thickness: 0.026, color: clothTeal, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperBlue, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.02, tiltZ: -0.02, wearSpots: [[0.06, 0.004, 0.05]] },
+    { title: 'THE PICTURE OF DORIAN GRAY', author: 'Oscar Wilde', width: 0.28, depth: 0.19, thickness: 0.024, color: clothRust, spineTex: clothCream, spinePatina: m('#e8c060', 0.55, 0.3), endpaper: endpaperRed, hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: 0, tiltZ: 0.01, ribbon: '#2a2a5e', wearSpots: [[0.05, 0.003, 0.04]] },
+    { title: 'CRIME AND PUNISHMENT', author: 'Fyodor Dostoevsky', width: 0.29, depth: 0.20, thickness: 0.030, color: clothSlate, spineTex: clothCream, spinePatina: m('#c8a848', 0.5, 0.35), endpaper: endpaperGold, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.02, tiltZ: 0.02, wearSpots: [[0.06, 0.004, 0.05]] },
+    { title: 'THE SCARLET LETTER', author: 'Nathaniel Hawthorne', width: 0.26, depth: 0.18, thickness: 0.021, color: clothMaroon, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperRed, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: -0.01, tiltZ: -0.03, ribbon: '#c03030', wearSpots: [[0.05, 0.003, 0.04]] },
+    { title: 'WAR AND PEACE', author: 'Leo Tolstoy', width: 0.35, depth: 0.24, thickness: 0.046, color: clothIndigo, spineTex: clothCream, spinePatina: spineGold, endpaper: endpaperBlue, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.03, tiltZ: 0.01, ribbon: '#d4a030', wearSpots: [[0.09, 0.006, 0.07], [-0.05, 0.003, 0.03]] },
+    { title: 'THE COMPLETE POEMS', author: 'John Keats', width: 0.25, depth: 0.175, thickness: 0.019, color: clothWillow, spineTex: clothCream, spinePatina: m('#b08040', 0.5, 0.25), endpaper: endpaperGreen, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0, tiltZ: 0.03, wearSpots: [[0.04, 0.003, 0.03]] },
+    { title: 'THE WAVES', author: 'Virginia Woolf', width: 0.24, depth: 0.17, thickness: 0.018, color: linenMat, spineTex: linenMat, spinePatina: m('#8a7a6a', 0.4, 0.1), endpaper: endpaperGold, hasCloth: true, hasLeather: false, hasMarbled: false, tiltX: -0.02, tiltZ: 0.02, ribbon: '#c07040', wearSpots: [[0.04, 0.002, 0.03]] },
+    { title: 'MOBY-DICK', author: 'Herman Melville', width: 0.30, depth: 0.21, thickness: 0.036, color: clothGold, spineTex: clothCream, spinePatina: m('#5a3a10', 0.5, 0.3), endpaper: endpaperRed, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.01, tiltZ: 0.01, wearSpots: [[0.07, 0.004, 0.05]] },
+    { title: 'LES MISÉRABLES', author: 'Victor Hugo', width: 0.33, depth: 0.22, thickness: 0.042, color: clothBurgundy, spineTex: clothCream, spinePatina: m('#c0a030', 0.55, 0.35), endpaper: endpaperBlue, hasCloth: true, hasLeather: false, hasMarbled: true, tiltX: 0.02, tiltZ: -0.01, ribbon: '#4a90c0', wearSpots: [[0.08, 0.005, 0.06], [-0.04, 0.003, 0.03]] },
   ]
-
-  const SPLIT = Math.ceil(bookDefs.length / 2)
-  const leftBooks = bookDefs.slice(0, SPLIT)
-  const rightBooks = bookDefs.slice(SPLIT)
-
-  const buildStack = (books: BookDef[], baseX: number, side: 'left' | 'right') => {
-    const nodes: React.ReactNode[] = []
-    let yAcc = 0.009
-
-    books.forEach((b, i) => {
-      const tiltX = b.tiltX
-      const tiltZ = b.tiltZ
-      const cx = baseX + tiltZ * 0.5
-      const cz = tiltX * 0.5
-      const halfW = b.width / 2
-      const halfD = b.depth / 2
-      const midY = yAcc + b.thickness / 2
-      const spineSide = side === 'left' ? -halfW - (b.hasLeather ? 0.007 : 0.005) : halfW + (b.hasLeather ? 0.007 : 0.005)
-      const clampX = side === 'left' ? -halfW : halfW
-      const dotSideZ = side === 'left' ? 1 : -1
-
-      nodes.push(
-        <group key={`book-${baseX}-${i}`} position={[cx, midY, cz]} rotation={[tiltX, 0, tiltZ]}>
-          <mesh geometry={boxGeo(b.width, b.thickness, b.depth)} material={foreEdge} position={[0, 0, 0]} />
-          {b.hasCloth && <mesh geometry={boxGeo(0.004, b.thickness + 0.001, b.depth)} material={b.color} position={[clampX, 0, 0]} />}
-          {b.hasLeather && (
-            <mesh
-              geometry={boxGeo(0.005, b.thickness + 0.0008, b.depth + 0.001)}
-              material={b.color}
-              position={[clampX + dotSideZ * 0.001, 0, 0]}
-            />
-          )}
-          <group position={[spineSide, 0, 0]}>
-            <mesh geometry={boxGeo(0.001, b.thickness + 0.0002, b.depth)} material={b.spineTex} />
-            {Array.from({ length: 6 }).map((_, bi) => {
-              const bandY = -b.thickness / 2 + (bi + 1) * (b.thickness / 7)
-              return <mesh key={`band-${bi}`} geometry={boxGeo(0.0018, 0.0018, b.depth + 0.004)} material={b.spinePatina} position={[dotSideZ * 0.001, bandY, 0]} />
-            })}
-            <mesh geometry={boxGeo(0.0018, b.thickness * 0.18, b.depth * 0.7)} material={spineGold} position={[dotSideZ * 0.001, b.thickness * 0.38, 0]} />
-            <mesh geometry={boxGeo(0.0018, b.thickness * 0.12, b.depth * 0.6)} material={spineGold} position={[dotSideZ * 0.001, b.thickness * 0.18, 0]} />
-            {b.hasMarbled && (
-              <>
-                <mesh geometry={boxGeo(0.0016, b.thickness * 0.06, b.depth * 0.85)} material={marbledEdge} position={[dotSideZ * 0.001, b.thickness * 0.48, 0]} />
-                <mesh geometry={boxGeo(0.0016, b.thickness * 0.06, b.depth * 0.85)} material={marbledEdge} position={[dotSideZ * 0.001, -b.thickness * 0.48, 0]} />
-              </>
-            )}
-            {[b.depth * 0.38, -b.depth * 0.38].map((dz) => (
-              <mesh key={`dot-${dz}`} geometry={sphereGeo(0.0015)} material={spineGold} position={[dotSideZ * 0.001, b.thickness * 0.42, dz]} />
-            ))}
-          </group>
-          {b.ribbon && (
-            <group position={[b.width * 0.22, -b.thickness / 2 - 0.0005, 0]}>
-              <mesh geometry={boxGeo(0.007, b.thickness * 0.45, 0.004)} material={m(b.ribbon, 0.7, 0.05)} />
-              <mesh geometry={boxGeo(0.006, 0.06, 0.003)} material={m(b.ribbon, 0.65, 0.05)} position={[0, -b.thickness * 0.22, 0.002]} />
-            </group>
-          )}
-        </group>,
-      )
-      yAcc += b.thickness
-    })
-
-    const stackW = 0.36
-    const stackD = 0.26
-    return (
-      <group key={`stack-${baseX}`} position={[baseX, 0, 0]}>
-        <mesh geometry={boxGeo(stackW, 0.012, stackD)} material={foreEdge} position={[0, 0.006, 0]} castShadow />
-        {nodes}
-      </group>
-    )
-  }
 
   const LEFT_X = -0.26
   const RIGHT_X = 0.26
 
   return (
     <group position={[0, 0, 0]}>
-      {buildStack(leftBooks, LEFT_X)}
-      {buildStack(rightBooks, RIGHT_X)}
+      {buildStack(bookDefs, LEFT_X)}
+      {buildStack(rightBookDefs, RIGHT_X)}
     </group>
   )
 }

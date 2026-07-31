@@ -1128,24 +1128,34 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "rgba(30, 8, 8, 0.72)",
-          backdropFilter: "blur(3px)",
+          background: "rgba(20, 8, 4, 0.8)",
+          backdropFilter: "blur(6px)",
         }}>
           <div style={{
             textAlign: "center",
-            padding: "2rem 3rem",
-            border: "1px solid rgba(220,80,60,0.7)",
-            background: "rgba(26,16,14,0.95)",
-            boxShadow: "0 0 60px rgba(220,80,60,0.35)",
+            padding: "2.5rem 3.5rem",
+            border: "1px solid rgba(201,168,76,0.5)",
+            background: "rgba(26,16,14,0.92)",
+            boxShadow: "0 0 80px rgba(201,168,76,0.2), inset 0 0 60px rgba(201,168,76,0.05)",
+            borderRadius: 4,
+            maxWidth: 400,
           }}>
-            <div style={{ fontSize: "0.85rem", letterSpacing: "0.2em", color: "rgba(255,180,160,1)", fontWeight: 700 }}>
-              ⚠️ FULLSCREEN REQUIRED
+            <div style={{ fontSize: "0.75rem", letterSpacing: "0.25em", color: "rgba(201,168,76,0.9)", fontWeight: 700, fontFamily: "var(--font-serif-heading)" }}>
+              ⚠ FULLSCREEN REQUIRED
             </div>
-            <div style={{ fontSize: "3rem", color: "var(--color-genshin-gold)", fontFamily: "var(--font-mono-display)", margin: "0.75rem 0" }}>
+            <div style={{
+              fontSize: "4.5rem",
+              color: "var(--color-genshin-gold)",
+              fontFamily: "var(--font-mono-display)",
+              margin: "0.5rem 0",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textShadow: "0 0 30px rgba(201,168,76,0.6), 0 0 60px rgba(201,168,76,0.3)",
+            }}>
               {hardcode.graceLeft}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "rgba(255,200,180,0.85)", maxWidth: 340, lineHeight: 1.5 }}>
-              Return to fullscreen within {hardcode.graceLeft}s or the session fails and you lose{" "}
+            <div style={{ fontSize: "0.7rem", color: "rgba(201,168,76,0.7)", maxWidth: 340, lineHeight: 1.6, fontFamily: "var(--font-serif-heading)" }}>
+              Return to fullscreen within <b style={{ color: "var(--color-genshin-gold)" }}>{hardcode.graceLeft}s</b> or the session fails and you lose{" "}
               <b>{hardcode.wager} 🍃</b>. Your timer is still running.
             </div>
           </div>

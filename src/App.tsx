@@ -136,6 +136,7 @@ const appContent = (
             <Route path="/lobby" element={<Lobby />} />
             <Route path="/lobby/realm" element={<Realm />} />
             <Route path="/lobby/realm/choose" element={<Realm />} />
+            <Route path="/lobby/realm/private" element={<Realm />} />
             <Route path="/lobby/realm/library" element={<Realm />} />
             <Route path="/lobby/realm/train" element={<Realm />} />
             <Route path="/lobby/realm/uk-cafe" element={<Realm />} />
