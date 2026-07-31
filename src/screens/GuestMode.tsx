@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../store/auth'
 import './GuestMode.css'
@@ -7,6 +7,12 @@ export function GuestMode() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { signOut } = useAuth()
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <div className="guest-root">
@@ -20,7 +26,7 @@ export function GuestMode() {
           You&apos;re browsing as a guest — your progress saves on this device only.
         </p>
 
-        <div className="guest-info">
+        <div className={`guest-info${visible ? '' : ' hidden'}`}>
           <h3>What works now</h3>
           <ul>
             <li>Study sessions, timers, and focus blocks</li>

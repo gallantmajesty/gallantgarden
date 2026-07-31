@@ -53,6 +53,18 @@
   border: 1px solid rgba(246, 232, 200, 0.08);
   border-radius: 12px;
   padding: 16px 18px;
+  opacity: 1;
+  max-height: 500px;
+  overflow: hidden;
+  transition: opacity 0.5s ease, max-height 0.5s ease, padding 0.5s ease;
+}
+.guest-info.hidden {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  margin: 0;
 }
 
 .guest-info h3 {
