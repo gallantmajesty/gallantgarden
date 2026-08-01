@@ -20,21 +20,11 @@ import { useWorld } from '../../store/world'
 
 const TOTAL_NPC_POOL = 28
 
-// Scheduling: each NPC cycles through  stay → gap → stay → gap …
-const MIN_STAY_MIN = 25
-const MAX_STAY_MIN = 55
-const MIN_GAP_MIN = 15
-const MAX_GAP_MIN = 40
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Zone-based density
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface Zone {
-  name: string
-  zCenter: number
-  weight: number
-}
+interface Zone { name: string; zCenter: number; weight: number }
 
 const ZONES: Zone[] = [
   { name: 'back',    zCenter: -36, weight: 1.0 },
@@ -65,53 +55,30 @@ function closestZone(z: number): Zone {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Country pool — weighted by realistic student demographics
+//  Country pool — weighted demographics
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface CountryEntry { code: string; weight: number }
-
-const COUNTRY_POOL: CountryEntry[] = [
-  // Majority — large student populations / active users
-  { code: 'US', weight: 20 },
-  { code: 'IN', weight: 18 },
-  { code: 'KR', weight: 10 },
-  { code: 'JP', weight: 8 },
-  { code: 'ZA', weight: 6 },
-  { code: 'MX', weight: 6 },
-  { code: 'FR', weight: 6 },
-  // Moderate
-  { code: 'GB', weight: 4 },
-  { code: 'DE', weight: 4 },
-  { code: 'BR', weight: 4 },
-  { code: 'CA', weight: 3 },
-  { code: 'AU', weight: 3 },
-  { code: 'NG', weight: 3 },
-  { code: 'PH', weight: 3 },
-  // Rare — smaller pools
-  { code: 'IT', weight: 2 },
-  { code: 'ES', weight: 2 },
-  { code: 'SE', weight: 1.5 },
-  { code: 'PL', weight: 1.5 },
-  { code: 'TR', weight: 1.5 },
-  { code: 'AR', weight: 1 },
-  { code: 'TH', weight: 1 },
-  { code: 'ID', weight: 1 },
-  { code: 'KE', weight: 1 },
-  { code: 'CL', weight: 0.8 },
-  { code: 'NZ', weight: 0.8 },
-  { code: 'NO', weight: 0.5 },
-  { code: 'DK', weight: 0.5 },
-  { code: 'FI', weight: 0.5 },
+const COUNTRY_POOL: { code: string; weight: number }[] = [
+  { code: 'US', weight: 20 }, { code: 'IN', weight: 18 },
+  { code: 'KR', weight: 10 }, { code: 'JP', weight: 8 },
+  { code: 'ZA', weight: 6 },  { code: 'MX', weight: 6 },
+  { code: 'FR', weight: 6 },  { code: 'GB', weight: 4 },
+  { code: 'DE', weight: 4 },  { code: 'BR', weight: 4 },
+  { code: 'CA', weight: 3 },  { code: 'AU', weight: 3 },
+  { code: 'NG', weight: 3 },  { code: 'PH', weight: 3 },
+  { code: 'IT', weight: 2 },  { code: 'ES', weight: 2 },
+  { code: 'SE', weight: 1.5 },{ code: 'PL', weight: 1.5 },
+  { code: 'TR', weight: 1.5 },{ code: 'AR', weight: 1 },
+  { code: 'TH', weight: 1 },  { code: 'ID', weight: 1 },
+  { code: 'KE', weight: 1 },  { code: 'CL', weight: 0.8 },
+  { code: 'NZ', weight: 0.8 },{ code: 'NO', weight: 0.5 },
+  { code: 'DK', weight: 0.5 },{ code: 'FI', weight: 0.5 },
 ]
-
 const COUNTRY_WEIGHT_TOTAL = COUNTRY_POOL.reduce((s, c) => s + c.weight, 0)
 
 function pickCountry(): string {
   let r = Math.random() * COUNTRY_WEIGHT_TOTAL
-  for (const c of COUNTRY_POOL) {
-    r -= c.weight
-    if (r <= 0) return c.code
-  }
+  for (const c of COUNTRY_POOL) { r -= c.weight; if (r <= 0) return c.code }
   return 'US'
 }
 
@@ -182,18 +149,12 @@ const JOIN_DATES = [
 //  Character / Accessory / Rank / Banner Selection
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Common characters (40%), Epic non-animal (20%), Epic animal (1%), Legendary (1 rare slot)
 const CHAR_POOL: { id: string; w: number }[] = (() => {
   const out: { id: string; w: number }[] = []
   for (const c of CHARACTERS) {
-    if (c.rarity === 'Common') {
-      out.push({ id: c.id, w: 8 })
-    } else if (c.rarity === 'Epic' && !c.isAnimal) {
-      out.push({ id: c.id, w: 4 })
-    } else if (c.rarity === 'Epic' && c.isAnimal) {
-      out.push({ id: c.id, w: 1 })
-    }
-    // Legendary excluded from random pool — assigned to exactly 1 NPC
+    if (c.rarity === 'Common') out.push({ id: c.id, w: 8 })
+    else if (c.rarity === 'Epic' && !c.isAnimal) out.push({ id: c.id, w: 4 })
+    else if (c.rarity === 'Epic' && c.isAnimal) out.push({ id: c.id, w: 1 })
   }
   return out
 })()
@@ -201,10 +162,7 @@ const CHAR_WEIGHT_TOTAL = CHAR_POOL.reduce((s, c) => s + c.w, 0)
 
 function pickCharacter(): string {
   let r = Math.random() * CHAR_WEIGHT_TOTAL
-  for (const c of CHAR_POOL) {
-    r -= c.w
-    if (r <= 0) return c.id
-  }
+  for (const c of CHAR_POOL) { r -= c.w; if (r <= 0) return c.id }
   return CHAR_POOL[0].id
 }
 
@@ -234,26 +192,25 @@ const NPC_LOGO_IDS = [
   'glitch_chibi', 'kawaii_angel', 'neon_chibi_warrior', 'star_child',
 ]
 
-// NPC rank pool — mostly Bronze/Silver, some Gold, rarely Platinum
-const RANK_POOL = RANKS.filter(
+const NPC_RANK_POOL = RANKS.filter(
   (r) => r.id.startsWith('bronze') || r.id.startsWith('silver') ||
          r.id.startsWith('gold') || r.id === 'platinum-1',
 )
 
 function pickRank(): string {
-  const weights = RANK_POOL.map((r) => {
+  const weights = NPC_RANK_POOL.map((r) => {
     if (r.id.startsWith('bronze')) return 5
     if (r.id.startsWith('silver')) return 3
     if (r.id.startsWith('gold')) return 1.5
-    return 0.3 // platinum-1
+    return 0.3
   })
   const total = weights.reduce((s, w) => s + w, 0)
   let r = Math.random() * total
-  for (let i = 0; i < RANK_POOL.length; i++) {
+  for (let i = 0; i < NPC_RANK_POOL.length; i++) {
     r -= weights[i]
-    if (r <= 0) return RANK_POOL[i].id
+    if (r <= 0) return NPC_RANK_POOL[i].id
   }
-  return RANK_POOL[0].id
+  return NPC_RANK_POOL[0].id
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,41 +233,24 @@ interface NpcProfile {
   sessionsCompleted: number
   streak: number
   status: 'studying' | 'on-break' | 'offline'
-  offsetMin: number
-  stayMin: number
-  cycleMin: number
   preferredZone: number
 }
 
 function generatePool(): NpcProfile[] {
   const pool: NpcProfile[] = []
-  const legendaryId = 'robot' // exactly 1 legendary NPC
-
   for (let i = 0; i < TOTAL_NPC_POOL; i++) {
     const useHandle = i >= FIRST_NAMES.length || (i > 0 && i % 5 === 0)
-    let name: string
-    if (useHandle) {
-      name = HANDLES[i % HANDLES.length]
-      if (i >= HANDLES.length) name += Math.floor(Math.random() * 99) + 1
-    } else {
-      name = FIRST_NAMES[i % FIRST_NAMES.length]
-    }
+    const name = useHandle
+      ? HANDLES[i % HANDLES.length] + (i >= HANDLES.length ? String(Math.floor(Math.random() * 99) + 1) : '')
+      : FIRST_NAMES[i % FIRST_NAMES.length]
 
-    const stayMin = MIN_STAY_MIN + Math.random() * (MAX_STAY_MIN - MIN_STAY_MIN)
-    const gapMin = MIN_GAP_MIN + Math.random() * (MAX_GAP_MIN - MIN_GAP_MIN)
-
-    // Exactly 1 legendary NPC gets a high rank
     const isLegendary = i === 0
-    const charId = isLegendary ? legendaryId : pickCharacter()
+    const charId = isLegendary ? 'robot' : pickCharacter()
     const rankId = isLegendary
-      ? RANKS[Math.floor(Math.random() * 3) + 15].id // Crystal I–III or Diamond
+      ? 'crystal-2'
       : pickRank()
 
     const xp = RANKS.find((r) => r.id === rankId)?.threshold ?? 0
-    const xpBonus = Math.floor(Math.random() * 2000)
-
-    const banner = NPC_BANNER_IDS[Math.floor(Math.random() * NPC_BANNER_IDS.length)]
-    const logo = NPC_LOGO_IDS[Math.floor(Math.random() * NPC_LOGO_IDS.length)]
 
     pool.push({
       id: `npc_${i}`,
@@ -320,17 +260,14 @@ function generatePool(): NpcProfile[] {
       rank: rankId,
       country: pickCountry(),
       studyTopic: STUDY_TOPICS[Math.floor(Math.random() * STUDY_TOPICS.length)],
-      banner,
-      logo,
+      banner: NPC_BANNER_IDS[Math.floor(Math.random() * NPC_BANNER_IDS.length)],
+      logo: NPC_LOGO_IDS[Math.floor(Math.random() * NPC_LOGO_IDS.length)],
       bio: BIOS[Math.floor(Math.random() * BIOS.length)],
       joinDate: JOIN_DATES[Math.floor(Math.random() * JOIN_DATES.length)],
-      totalXp: xp + xpBonus,
+      totalXp: xp + Math.floor(Math.random() * 2000),
       sessionsCompleted: Math.floor(Math.random() * 200) + 10,
       streak: Math.floor(Math.random() * 60) + 1,
       status: Math.random() < 0.7 ? 'studying' : Math.random() < 0.5 ? 'on-break' : 'offline',
-      offsetMin: Math.random() * 120,
-      stayMin,
-      cycleMin: stayMin + gapMin,
       preferredZone: pickZoneIdx(),
     })
   }
@@ -338,55 +275,28 @@ function generatePool(): NpcProfile[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Scheduling helpers
+//  Seat assignment
 // ─────────────────────────────────────────────────────────────────────────────
 
-function elapsedMin(startMs: number): number {
-  return (Date.now() - startMs) / 60000
-}
-
-function isActive(npc: NpcProfile, tMin: number): boolean {
-  const cyc = ((tMin - npc.offsetMin) % npc.cycleMin + npc.cycleMin) % npc.cycleMin
-  return cyc < npc.stayMin
-}
-
-function remainingSec(npc: NpcProfile, tMin: number): number {
-  const cyc = ((tMin - npc.offsetMin) % npc.cycleMin + npc.cycleMin) % npc.cycleMin
-  return Math.max(0, Math.floor((npc.stayMin - cyc) * 60))
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Seat assignment (once at mount)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function assignAllSeats(
-  pool: NpcProfile[],
-  seats: Seat[],
-  userSeat: number | null,
-): Map<string, Seat> {
+function assignAllSeats(pool: NpcProfile[], seats: Seat[], userSeat: number | null): Map<string, Seat> {
   const map = new Map<string, Seat>()
-
   const zoneMap = new Map<number, Seat[]>()
   for (const s of seats) {
-    const zone = closestZone(s.pos[2])
-    const idx = ZONES.indexOf(zone)
+    const idx = ZONES.indexOf(closestZone(s.pos[2]))
     if (!zoneMap.has(idx)) zoneMap.set(idx, [])
     zoneMap.get(idx)!.push(s)
   }
-
   const available = new Map<number, Seat[]>()
   for (const [zIdx, zSeats] of zoneMap) {
     const filtered = zSeats.filter((s) => s.id !== userSeat)
     filtered.sort((a, b) => a.id - b.id)
     available.set(zIdx, filtered)
   }
-
   for (const npc of pool) {
-    const zoneIdx = npc.preferredZone
-    let seat = pickFromZone(available, zoneIdx)
+    let seat = available.get(npc.preferredZone)?.pop() ?? null
     if (!seat) {
       for (let z = 0; z < ZONES.length; z++) {
-        seat = pickFromZone(available, z)
+        seat = available.get(z)?.pop() ?? null
         if (seat) break
       }
     }
@@ -395,37 +305,18 @@ function assignAllSeats(
   return map
 }
 
-function pickFromZone(available: Map<number, Seat[]>, zIdx: number): Seat | null {
-  const arr = available.get(zIdx)
-  if (!arr || arr.length === 0) return null
-  return arr.pop()!
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Shared timing
-// ─────────────────────────────────────────────────────────────────────────────
-
-let SHARED_START_MS = Date.now()
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function NpcTag({
-  npc, remaining, total, onInfoClick,
-}: {
-  npc: NpcProfile; remaining: number; total: number; onInfoClick: () => void
-}) {
+function NpcTag({ npc, onInfoClick }: { npc: NpcProfile; onInfoClick: () => void }) {
   const banner = BANNERS.find((b) => b.id === npc.banner)
-
   return (
     <Html position={[0, 2.55, 0]} center distanceFactor={10} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
       <PlayerNameTag
         name={npc.name}
         rank={npc.rank}
         country={npc.country}
-        timerRemaining={remaining}
-        timerTotal={total}
         banner={npc.banner}
         logo={npc.logo}
         textDark={banner?.textDark}
@@ -446,24 +337,17 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     return { ...ch.fallback, accessories: npc.accessories }
   }, [npc.characterId, npc.accessories])
 
-  const totalSec = Math.floor(npc.stayMin * 60)
-
   useFrame(({ clock }) => {
     const g = group.current
     if (!g) return
-
     g.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
     g.rotation.y = seat.yaw + Math.PI
     loco.current.seated = true
     loco.current.speed = 0
-
-    const breathe = 1 + Math.sin(clock.elapsedTime * 0.8 + npc.offsetMin) * 0.003
-    g.scale.y = breathe
+    g.scale.y = 1 + Math.sin(clock.elapsedTime * 0.8 + npc.totalXp) * 0.003
   })
 
   const handleInfoClick = useCallback(() => setShowProfile(true), [])
-
-  const rem = remainingSec(npc, elapsedMin(SHARED_START_MS))
 
   const profileData: NpcProfileData = {
     name: npc.name,
@@ -483,7 +367,7 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     <>
       <group ref={group}>
         <CharacterAvatar config={config} locomotion={loco} lod={nearLod} preview={false} />
-        <NpcTag npc={npc} remaining={rem} total={totalSec} onInfoClick={handleInfoClick} />
+        <NpcTag npc={npc} onInfoClick={handleInfoClick} />
       </group>
       {showProfile && (
         <Html fullscreen zIndex={10000} style={{ pointerEvents: 'auto' }}>
@@ -507,31 +391,11 @@ export function NpcPlayers() {
     return assignAllSeats(pool, seats, userSeat)
   }, [pool, seats, userSeat])
 
-  // Filter active NPCs — re-evaluated every 30s via the tick-driven useMemo below
-  const [tick, setTick] = useState(0)
-  useFrame(({ clock }) => {
-    // tick up every 30s to re-check active NPCs — lightweight
-    if (Math.floor(clock.elapsedTime / 30) !== tick) {
-      setTick(Math.floor(clock.elapsedTime / 30))
-    }
-  })
-  const tMin = elapsedMin(SHARED_START_MS)
-
-  const activeIds = useMemo(() => {
-    const set = new Set<string>()
-    for (const npc of pool) {
-      if (isActive(npc, tMin)) set.add(npc.id)
-    }
-    return set
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pool, Math.floor(tMin / 0.5)])
-
   if (seats.length === 0) return null
 
   return (
     <>
       {pool.map((npc) => {
-        if (!activeIds.has(npc.id)) return null
         const seat = assignments.get(npc.id)
         if (!seat) return null
         return <NpcAvatar key={npc.id} npc={npc} seat={seat} />
