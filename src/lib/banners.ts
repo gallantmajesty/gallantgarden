@@ -17,6 +17,8 @@ export interface Banner {
   category: BannerCategory
   /** price in leaves — 0 means free */
   price: number
+  /** if true, banner is light-colored and name text should be dark */
+  textDark?: boolean
 }
 
 export const BANNERS: Banner[] = [
@@ -107,6 +109,7 @@ export const BANNERS: Banner[] = [
     image: '/banners/heavenly_banner_golden_halo.webp',
     category: 'others',
     price: 1000,
+    textDark: true,
   },
   {
     id: 'crimson_flame',
@@ -133,6 +136,7 @@ export const BANNERS: Banner[] = [
     image: '/banners/ethereal_angel_wing_banner.webp',
     category: 'others',
     price: 1000,
+    textDark: true,
   },
   {
     id: 'moonlit_celestial',

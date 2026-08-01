@@ -854,14 +854,38 @@ export function SandClock({
       const rM = Math.floor(rem / 60);
       const rS = rem % 60;
       const timeStr = `${rM.toString().padStart(2, '0')}:${rS.toString().padStart(2, '0')}`;
+      const textY = L.botBaseY + L.baseH + 40;
+
+      // Progress arc behind the readout — mirrors the sand level so the whole
+      // piece reads as one instrument.
+      const prog = 1 - Math.max(0, Math.min(1, targetTopRef.current));
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = 'bold 48px serif';
+      const ringR = 46;
+      ctx.strokeStyle = 'rgba(140,110,60,0.25)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, textY, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = COLORS.GOLD_MID;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(200,160,60,0.6)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(cx, textY, ringR, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 40px Georgia, serif';
       ctx.shadowColor = 'rgba(180,130,40,0.7)';
       ctx.shadowBlur = 30;
       ctx.fillStyle = COLORS.GOLD_HI;
-      ctx.fillText(timeStr, cx, L.botBaseY + L.baseH + 40);
+      ctx.fillText(timeStr, cx, textY);
       ctx.restore();
 
       frameRef.current = requestAnimationFrame(draw);

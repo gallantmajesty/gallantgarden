@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import './IntroVeil.css'
 
-const FADE_MS = 650
-const FRESH_WINDOW_MS = 5000
-const RELOAD_WINDOW_MS = 3000
+const FADE_MS = 300
+const FRESH_WINDOW_MS = 500
+const RELOAD_WINDOW_MS = 500
 
 function isReload(): boolean {
   try {

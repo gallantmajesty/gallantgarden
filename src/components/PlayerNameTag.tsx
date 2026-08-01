@@ -17,9 +17,11 @@ export interface PlayerNameTagProps {
   banner?: string
   logo?: string
   onInfoClick?: () => void
+  /** If true, banner name text should be dark (for light banners). */
+  textDark?: boolean
 }
 
-export function PlayerNameTag({ name, rank, country, playerId, self, showAll, timerRemaining, timerTotal, banner, logo, onInfoClick }: PlayerNameTagProps) {
+export function PlayerNameTag({ name, rank, country, playerId, self, showAll, timerRemaining, timerTotal, banner, logo, onInfoClick, textDark }: PlayerNameTagProps) {
   const [expanded, setExpanded] = useState(false)
   const r = getRank(rank)
   const visible = showAll || expanded
@@ -73,7 +75,7 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
             />
           )
         )}
-        <span className="pnt-banner-name">{displayName}</span>
+        <span className="pnt-banner-name" style={textDark ? { color: '#1a1a2e', textShadow: '0 1px 2px rgba(255,255,255,0.5)' } : undefined}>{displayName}</span>
       </div>
       <span className="pnt-content">
         <span className="pnt-bottom">
