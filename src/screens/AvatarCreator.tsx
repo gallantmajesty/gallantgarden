@@ -20,7 +20,7 @@ import {
   ACCESSORIES,
   skinHex,
 } from '../avatar/config'
-import { BigDiningTable } from '../avatar/Accessories'
+import { BigDiningTable, AccessoryModel } from '../avatar/Accessories'
 import { ResourceBar } from '../components/ResourceBar'
 import './AvatarCreator.css'
 
@@ -449,18 +449,29 @@ function AvatarCanvas({
         camera={{ position: [0, 1.2, 3.6], fov: 42, near: 0.1, far: 50 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
-        <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.8]} />
-        <directionalLight position={[3, 5, 2]} intensity={1.15} color="#ffecd0" />
-        <directionalLight position={[-2, 3, -1]} intensity={0.45} color="#ffb870" />
-        <pointLight position={[0, 1.6, 0.8]} intensity={0.5} color="#ff9040" distance={6} decay={2} />
-        <ambientLight intensity={0.28} color="#ffe8d0" />
+        {/* Very dark warm backdrop — never pure black, so the silhouette reads */}
+        <color attach="background" args={['#171310']} />
+        {/* Three-point studio rig: key high-right, fill low-left, cool rim
+            light from behind to pop the silhouette off the backdrop. */}
+        <hemisphereLight args={['#ffe8c0', '#2a1c10', 0.5]} />
+        <directionalLight position={[3, 4.5, 2.2]} intensity={1.3} color="#ffecd0" />
+        <directionalLight position={[-3, 1.2, 1.2]} intensity={0.65} color="#ffc890" />
+        <directionalLight position={[1.2, 2.8, -2.8]} intensity={0.75} color="#cfc4ee" />
+        <pointLight position={[0, 1.6, 0.8]} intensity={0.35} color="#ff9040" distance={6} decay={2} />
+        <ambientLight intensity={0.22} color="#ffe8d0" />
 
         <DustMotes count={50} />
 
-        <group position={[0, -0.9, 0]}>
-          <BigDiningTable accessory={accessory} />
-          <SoftShadow />
-        </group>
+        {accessory === 'piano' ? (
+          <group position={[0, -0.9, 0]}>
+            <ConcertStage />
+          </group>
+        ) : (
+          <group position={[0, -0.9, 0]}>
+            <BigDiningTable accessory={accessory} />
+            <SoftShadow />
+          </group>
+        )}
 
         <OrbitControls
           ref={controlsRef}
@@ -611,6 +622,94 @@ function SoftShadow() {
       <circleGeometry args={[0.82, 48]} />
       <meshBasicMaterial map={tex} transparent depthWrite={false} />
     </mesh>
+  )
+}
+
+/** Concert hall stage for the grand piano — maple plank platform on runners,
+ *  brass edge trim, a warm spotlight pool, and a dark curtain backdrop so the
+ *  instrument sits in a room instead of a void. */
+function ConcertStage() {
+  const stageTex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = c.height = 256
+    const ctx = c.getContext('2d')!
+    ctx.fillStyle = '#7a5a34'
+    ctx.fillRect(0, 0, 256, 256)
+    for (let r = 0; r < 8; r++) {
+      const y = r * 32
+      ctx.fillStyle = r % 2 ? '#6d4f2c' : '#7f5f38'
+      ctx.fillRect(0, y, 256, 31)
+      ctx.fillStyle = 'rgba(40,24,10,0.35)'
+      ctx.fillRect(0, y + 31, 256, 1)
+      ctx.strokeStyle = 'rgba(60,38,18,0.4)'
+      ctx.lineWidth = 1
+      for (let g = 0; g < 6; g++) {
+        const gx = (g * 41 + r * 7) % 256
+        ctx.beginPath()
+        ctx.moveTo(gx, y + 3)
+        ctx.bezierCurveTo(gx + 12, y + 8, gx - 6, y + 18, gx + 8, y + 29)
+        ctx.stroke()
+      }
+    }
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(3, 3)
+    return t
+  }, [])
+
+  const poolTex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = c.height = 128
+    const ctx = c.getContext('2d')!
+    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64)
+    g.addColorStop(0, 'rgba(255,214,150,0.5)')
+    g.addColorStop(0.55, 'rgba(255,200,130,0.2)')
+    g.addColorStop(1, 'rgba(255,190,120,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 128, 128)
+    return new THREE.CanvasTexture(c)
+  }, [])
+
+  const spotTarget = useMemo(() => new THREE.Object3D(), [])
+  useEffect(() => {
+    spotTarget.position.set(0, 0.2, -0.1)
+  }, [spotTarget])
+
+  const stageMat = useMemo(() => new THREE.MeshStandardMaterial({ map: stageTex, roughness: 0.75, metalness: 0.05 }), [stageTex])
+  const brassTrimMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#a8844d', roughness: 0.35, metalness: 0.7 }), [])
+  const runnerMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#2a1c10', roughness: 0.85 }), [])
+  const curtainMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#23110e', roughness: 0.95 }), [])
+
+  return (
+    <group>
+      {/* maple stage platform on runners */}
+      <mesh geometry={new THREE.CylinderGeometry(1.22, 1.3, 0.09, 48)} material={stageMat} position={[0, 0.045, 0]} castShadow receiveShadow />
+      {[[-0.8, 0.35], [0.8, 0.35], [0, -0.7]].map(([rx, rz], i) => (
+        <mesh key={`run${i}`} geometry={new THREE.BoxGeometry(0.07, 0.07, 0.5)} material={runnerMat} position={[rx, -0.075, rz]} />
+      ))}
+      {/* brass edge trim — a real stage edge, not a HUD ring */}
+      <mesh geometry={new THREE.TorusGeometry(1.22, 0.011, 8, 48)} material={brassTrimMat} position={[0, 0.091, 0]} rotation={[Math.PI / 2, 0, 0]} />
+      {/* warm spotlight pool on the boards */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.092, 0]}>
+        <circleGeometry args={[0.78, 48]} />
+        <meshBasicMaterial map={poolTex} transparent depthWrite={false} />
+      </mesh>
+
+      {/* the grand piano, centred on the stage */}
+      <group position={[0, 0.095, 0]}>
+        <AccessoryModel id="piano" />
+      </group>
+
+      {/* dark curtain backdrop wrapping the back of the hall */}
+      <mesh position={[0, 1.6, -2.4]} material={curtainMat}>
+        <cylinderGeometry args={[3.1, 3.1, 3.4, 24, 1, true, Math.PI / 2, Math.PI]} />
+      </mesh>
+
+      {/* warm stage spotlight aimed at the piano */}
+      <primitive object={spotTarget} position={[0, 0.2, -0.1]} />
+      <spotLight position={[2.1, 3.6, 2.4]} angle={0.55} penumbra={0.6} intensity={2.4} color="#ffd9a0" target={spotTarget} distance={12} decay={1.6} />
+    </group>
   )
 }
 
