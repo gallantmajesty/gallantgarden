@@ -439,9 +439,7 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
   const group = useRef<Group>(null)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
   const nearLod = useRef<'near' | 'far' | 'cull'>('near')
-  const [visible, setVisible] = useState(() => isActive(npc, elapsedMin(SHARED_START_MS)))
   const [showProfile, setShowProfile] = useState(false)
-  const [, setFrame] = useState(0)
 
   const config: AvatarConfig = useMemo(() => {
     const ch = characterById(npc.characterId)
@@ -450,7 +448,6 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
 
   const totalSec = Math.floor(npc.stayMin * 60)
 
-  const lastCheck = useRef(0)
   useFrame(({ clock }) => {
     const g = group.current
     if (!g) return
@@ -460,21 +457,11 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     loco.current.seated = true
     loco.current.speed = 0
 
-    // Subtle idle breathing — gentle Y scale oscillation
     const breathe = 1 + Math.sin(clock.elapsedTime * 0.8 + npc.offsetMin) * 0.003
     g.scale.y = breathe
-
-    if (clock.elapsedTime - lastCheck.current > 3) {
-      lastCheck.current = clock.elapsedTime
-      const now = isActive(npc, elapsedMin(SHARED_START_MS))
-      setVisible(now)
-      setFrame((f) => f + 1)
-    }
   })
 
   const handleInfoClick = useCallback(() => setShowProfile(true), [])
-
-  if (!visible) return null
 
   const rem = remainingSec(npc, elapsedMin(SHARED_START_MS))
 
@@ -498,7 +485,11 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
         <CharacterAvatar config={config} locomotion={loco} lod={nearLod} preview={false} />
         <NpcTag npc={npc} remaining={rem} total={totalSec} onInfoClick={handleInfoClick} />
       </group>
-      {showProfile && <NpcProfileCard profile={profileData} onClose={() => setShowProfile(false)} />}
+      {showProfile && (
+        <Html fullscreen zIndex={10000} style={{ pointerEvents: 'auto' }}>
+          <NpcProfileCard profile={profileData} onClose={() => setShowProfile(false)} />
+        </Html>
+      )}
     </>
   )
 }
@@ -516,11 +507,31 @@ export function NpcPlayers() {
     return assignAllSeats(pool, seats, userSeat)
   }, [pool, seats, userSeat])
 
+  // Filter active NPCs — re-evaluated every 30s via the tick-driven useMemo below
+  const [tick, setTick] = useState(0)
+  useFrame(({ clock }) => {
+    // tick up every 30s to re-check active NPCs — lightweight
+    if (Math.floor(clock.elapsedTime / 30) !== tick) {
+      setTick(Math.floor(clock.elapsedTime / 30))
+    }
+  })
+  const tMin = elapsedMin(SHARED_START_MS)
+
+  const activeIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const npc of pool) {
+      if (isActive(npc, tMin)) set.add(npc.id)
+    }
+    return set
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool, Math.floor(tMin / 0.5)])
+
   if (seats.length === 0) return null
 
   return (
     <>
       {pool.map((npc) => {
+        if (!activeIds.has(npc.id)) return null
         const seat = assignments.get(npc.id)
         if (!seat) return null
         return <NpcAvatar key={npc.id} npc={npc} seat={seat} />
