@@ -8,7 +8,8 @@ import { SideDock } from "./focus/SideDock";
 import { TimerControls } from "./focus/TimerControls";
 import { AstronomicalChart } from "./focus/AstronomicalChart";
 import { MultiplayerBar } from "./focus/MultiplayerBar";
-import { usePomodoro, computeSegments, SESSION_OPTIONS, TimerPreset, SessionSummary, SessionHistoryEntry, BREAK_ACTIVITIES } from "../store/pomodoro";
+import { usePomodoro, computeSegments, SESSION_OPTIONS, BREAK_ACTIVITIES, suggestBreakActivity } from "../store/pomodoro";
+import type { TimerPreset, SessionSummary, SessionHistoryEntry } from "../store/pomodoro";
 import { useWorld } from "../store/world";
 import { useSettings } from "../store/settings";
 import { useHardcore } from "../store/hardcore";
@@ -472,6 +473,8 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     toggle,
     forfeit,
     configure,
+    totalSessionLeaves,
+    subject,
   } = usePomodoro();
   const hardcode = useHardcodeMode();
   const locker = useLockerTask();
@@ -644,6 +647,14 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
 
   return (
     <div style={S.root}>
+      {/* Ambient vignette for depth */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        background: "radial-gradient(ellipse at center, transparent 55%, rgba(10,6,3,0.55) 100%)",
+        zIndex: 0,
+      }} />
       <CornerFiligree />
 
       <div style={S.header}>
@@ -993,34 +1004,41 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
           </div>
         )}
 
-        {/* Break Activity Suggestions */}
-        {isBreakPhase && (
-          <div style={{ ...S.card, width: '100%', maxWidth: '32rem', padding: '0.75rem 1rem', marginTop: '0.5rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-genshin-gold)', fontFamily: 'var(--font-serif-heading)', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
-              ☕ BREAK TIME — Suggestions
+        {/* Break Activity Suggestions — highlight the contextual pick */}
+        {isBreakPhase && (() => {
+          const suggested = suggestBreakActivity(segmentIndex - 1);
+          return (
+            <div style={{ ...S.card, width: '100%', maxWidth: '32rem', padding: '0.75rem 1rem', marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-genshin-gold)', fontFamily: 'var(--font-serif-heading)', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+                ☕ BREAK TIME — Suggested: {suggested.icon} {suggested.label}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {BREAK_ACTIVITIES.map((a) => {
+                  const isSuggested = a.id === suggested.id;
+                  return (
+                    <div key={a.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: 3,
+                      background: isSuggested ? 'rgba(180,150,60,0.22)' : 'rgba(26,20,16,0.4)',
+                      border: isSuggested ? '1px solid rgba(180,150,60,0.6)' : '1px solid rgba(139,109,46,0.2)',
+                      fontSize: '0.7rem',
+                      color: isSuggested ? 'var(--color-genshin-gold)' : 'var(--color-genshin-bronze)',
+                      cursor: 'pointer',
+                      boxShadow: isSuggested ? '0 0 8px rgba(180,150,60,0.25)' : 'none',
+                    }}>
+                      <span>{a.icon}</span>
+                      <span>{a.label}</span>
+                      <span style={{ opacity: 0.5 }}>{a.duration}s</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {BREAK_ACTIVITIES.map((a) => (
-                <div key={a.id} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: 3,
-                  background: 'rgba(26,20,16,0.4)',
-                  border: '1px solid rgba(139,109,46,0.2)',
-                  fontSize: '0.7rem',
-                  color: 'var(--color-genshin-bronze)',
-                  cursor: 'pointer',
-                }}>
-                  <span>{a.icon}</span>
-                  <span>{a.label}</span>
-                  <span style={{ opacity: 0.5 }}>{a.duration}s</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       <MultiplayerBar
@@ -1157,6 +1175,51 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
             <div style={{ fontSize: "0.7rem", color: "rgba(201,168,76,0.7)", maxWidth: 340, lineHeight: 1.6, fontFamily: "var(--font-serif-heading)" }}>
               Return to fullscreen within <b style={{ color: "var(--color-genshin-gold)" }}>{hardcode.graceLeft}s</b> or the session fails and you lose{" "}
               <b>{hardcode.wager} 🍃</b>. Your timer is still running.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session-complete ceremony — gold flash + leaf count-up */}
+      {isFinishedPhase && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 998,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "radial-gradient(ellipse at center, rgba(60,44,14,0.55) 0%, rgba(20,12,6,0.85) 100%)",
+          backdropFilter: "blur(4px)",
+          animation: "fd-ceremony-in 0.6s ease",
+        }}>
+          <div style={{
+            textAlign: "center",
+            padding: "2.5rem 3.5rem",
+            border: "1px solid rgba(201,168,76,0.55)",
+            background: "rgba(26,18,10,0.94)",
+            boxShadow: "0 0 90px rgba(201,168,76,0.28), inset 0 0 60px rgba(201,168,76,0.06)",
+            borderRadius: 6,
+            maxWidth: 420,
+          }}>
+            <div style={{ fontSize: "0.75rem", letterSpacing: "0.3em", color: "rgba(201,168,76,0.9)", fontWeight: 700, fontFamily: "var(--font-serif-heading)" }}>
+              ✦ SESSION COMPLETE ✦
+            </div>
+            <div style={{
+              fontSize: "3.4rem",
+              color: "var(--color-genshin-gold)",
+              fontFamily: "var(--font-serif-heading)",
+              margin: "0.75rem 0 0.25rem",
+              fontWeight: 700,
+              textShadow: "0 0 30px rgba(201,168,76,0.6)",
+            }}>
+              +{totalSessionLeaves} 🍃
+            </div>
+            <div style={{ fontSize: "0.8rem", color: "var(--color-genshin-bronze)", fontFamily: "var(--font-serif-heading)", letterSpacing: "0.08em" }}>
+              {Math.floor(totalElapsed / 60)} minutes of deep focus{subject ? ` · ${subject}` : ""}
+            </div>
+            <div style={{ fontSize: "0.7rem", color: "rgba(201,168,76,0.6)", marginTop: "1rem", fontFamily: "var(--font-serif-heading)" }}>
+              Press reset to return, or Esc to close the domain
             </div>
           </div>
         </div>

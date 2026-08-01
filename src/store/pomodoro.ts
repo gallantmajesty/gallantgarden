@@ -72,11 +72,6 @@ export const BREAK_ACTIVITIES = [
   { id: 'music', label: 'Music', icon: '🎵', duration: 60 },
 ] as const
 
-// Custom break durations per index (0-based)
-export interface BreakDurations {
-  [breakIndex: number]: number // duration in minutes
-}
-
 interface PomodoroState {
   // Config
   timerType: TimerType
@@ -145,11 +140,6 @@ interface PomodoroState {
 
   // Auto-start
   setAutoStartNext: (v: boolean) => void
-
-  // Tabata settings
-  setTabataRounds: (v: number) => void
-  setTabataWorkSec: (v: number) => void
-  setTabataRestSec: (v: number) => void
 }
 
 // ---- Constants ----
@@ -254,6 +244,63 @@ function saveHistory(history: SessionHistoryEntry[]) {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)) } catch { /* ignore */ }
 }
 
+// ---- Active-session persistence (resume on reload) ----
+
+const SESSION_KEY = 'sg.pomo.activeSession'
+
+interface ActiveSessionSnapshot {
+  timerType: TimerType
+  sessionMinutes: number
+  breakCount: number
+  breakDurations: BreakDurations
+  phase: PomoPhase
+  remaining: number
+  totalElapsed: number
+  segmentIndex: number
+  segmentsCompleted: number
+  running: boolean
+  subject: string
+  startedAt: number | null
+  totalSessionLeaves: number
+  pendingRewards: SegmentReward[]
+  tabAlwaysVisible: boolean
+  savedAt: number
+}
+
+function saveActiveSession(s: ActiveSessionSnapshot | null) {
+  try {
+    if (!s) localStorage.removeItem(SESSION_KEY)
+    else localStorage.setItem(SESSION_KEY, JSON.stringify(s))
+  } catch { /* ignore */ }
+}
+
+/** Restore an in-progress session after a page reload. Recomputes `remaining`
+ *  from wall-clock so time kept passing while the page was closed. Returns null
+ *  when there is nothing worth restoring. */
+function loadActiveSession(): ActiveSessionSnapshot | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const s = JSON.parse(raw) as ActiveSessionSnapshot
+    if (!s || (s.phase !== 'running' && s.phase !== 'break' && s.phase !== 'paused')) return null
+
+    if (s.phase === 'paused') {
+      // Paused sessions restore exactly as-is (no wall-clock drift while paused).
+      return { ...s, running: false }
+    }
+
+    // Running/break: advance the clock by the time the page was closed.
+    const awaySec = Math.max(0, Math.round((Date.now() - s.savedAt) / 1000))
+    const remaining = s.remaining - awaySec
+    const totalElapsed = s.phase === 'running' ? s.totalElapsed + awaySec : s.totalElapsed
+    if (remaining <= 0) {
+      // Session expired while away — drop it rather than auto-completing.
+      return null
+    }
+    return { ...s, remaining, totalElapsed, running: true }
+  } catch { return null }
+}
+
 // ---- Segment calculation ----
 
 /** Given total session minutes, break count, and custom break durations, compute segment durations in minutes.
@@ -298,6 +345,10 @@ function calcSegmentXP(minutes: number, tabVisible: boolean, hasSubject: boolean
 
 export const usePomodoro = create<PomodoroState>((set, get) => {
 
+  // Restore an in-progress session (resume on reload). Recomputes remaining
+  // from wall-clock so focus time kept accruing while the page was closed.
+  const restored = loadActiveSession()
+
   function awardSegment(state: PomodoroState): PomodoroState {
     const segMin = computeSegments(state.sessionMinutes, state.breakCount, state.breakDurations)
     const minutes = segMin[state.segmentIndex] ?? 25
@@ -322,29 +373,29 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
   }
 
   return {
-    timerType: 'focus',
-    sessionMinutes: 60,
-    breakCount: 0,
-    breakDurations: {},
+    timerType: restored?.timerType ?? 'focus',
+    sessionMinutes: restored?.sessionMinutes ?? 60,
+    breakCount: restored?.breakCount ?? 0,
+    breakDurations: restored?.breakDurations ?? {},
     tabataRounds: 8,
     tabataWorkSec: 20,
     tabataRestSec: 10,
     presets: loadPresets(),
-    phase: 'idle',
-    remaining: 0,
-    totalElapsed: 0,
-    segmentIndex: 0,
-    segmentsCompleted: 0,
-    running: false,
-    subject: loadStr(SUBJECT_KEY),
-    startedAt: null,
+    phase: restored?.phase ?? 'idle',
+    remaining: restored?.remaining ?? 0,
+    totalElapsed: restored?.totalElapsed ?? 0,
+    segmentIndex: restored?.segmentIndex ?? 0,
+    segmentsCompleted: restored?.segmentsCompleted ?? 0,
+    running: restored?.running ?? false,
+    subject: restored?.subject ?? loadStr(SUBJECT_KEY),
+    startedAt: restored?.startedAt ?? null,
     pausedAt: null,
-    lastTickAt: 0,
-    tabAlwaysVisible: true,
+    lastTickAt: restored ? Date.now() : 0,
+    tabAlwaysVisible: restored?.tabAlwaysVisible ?? true,
     tabLeftAt: null,
     tabReturnDeadline: null,
-    pendingRewards: [],
-    totalSessionLeaves: 0,
+    pendingRewards: restored?.pendingRewards ?? [],
+    totalSessionLeaves: restored?.totalSessionLeaves ?? 0,
     lastReward: null,
     completed: loadNum(DONE_KEY),
     totalFocusMin: loadNum(MIN_KEY),
@@ -735,6 +786,40 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
   }
 })
 
+// ---- Active-session persistence subscriber ----
+// Saves a snapshot whenever the session is in a restorable phase; clears it
+// when the session returns to idle/finished. Throttled to once per second so
+// the per-tick updates don't hammer localStorage.
+let lastSessionSave = 0
+usePomodoro.subscribe((s) => {
+  const restorable = s.phase === 'running' || s.phase === 'break' || s.phase === 'paused'
+  if (!restorable) {
+    if (lastSessionSave !== -1) { saveActiveSession(null); lastSessionSave = -1 }
+    return
+  }
+  const now = Date.now()
+  if (now - lastSessionSave < 1000) return
+  lastSessionSave = now
+  saveActiveSession({
+    timerType: s.timerType,
+    sessionMinutes: s.sessionMinutes,
+    breakCount: s.breakCount,
+    breakDurations: s.breakDurations,
+    phase: s.phase,
+    remaining: s.remaining,
+    totalElapsed: s.totalElapsed,
+    segmentIndex: s.segmentIndex,
+    segmentsCompleted: s.segmentsCompleted,
+    running: s.running,
+    subject: s.subject,
+    startedAt: s.startedAt,
+    totalSessionLeaves: s.totalSessionLeaves,
+    pendingRewards: s.pendingRewards,
+    tabAlwaysVisible: s.tabAlwaysVisible,
+    savedAt: now,
+  })
+})
+
 // ---- Tab visibility listener (auto-manages) ----
 
 if (typeof document !== 'undefined') {
@@ -749,6 +834,13 @@ if (typeof document !== 'undefined') {
 
 // ---- Helper exports ----
 
+/** Pick a break activity deterministically per break index so the mini chip and
+ *  the fullscreen domain suggest the same thing for a given break. */
+export function suggestBreakActivity(breakIndex: number) {
+  const idx = Math.abs(breakIndex) % BREAK_ACTIVITIES.length
+  return BREAK_ACTIVITIES[idx]
+}
+
 export {
   SESSION_OPTIONS,
   XP_PER_MIN,
@@ -758,8 +850,8 @@ export {
   getBreakDuration,
   getAllBreakDurations,
   type TimerPreset,
-  type SessionHistoryEntry,
   type SessionSummary,
+  type SessionHistoryEntry,
   type TimerType,
   type PomoPhase,
   type SegmentReward,

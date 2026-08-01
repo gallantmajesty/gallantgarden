@@ -2239,6 +2239,10 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
   const calfMat = config.bottom === 'shorts' ? skin : botM
   const legMat = config.top === 'frock' ? skin : botM
 
+  // Robot-specific leg materials (cached globally via sharedMaterial)
+  const robotDark = sharedMaterial('#0c0d10', 0.4, 0.85)
+  const robotJoint = sharedMaterial('#23262b', 0.25, 1.0)
+
   const eM = isElephant ? 1.0 : 1.0  // Elephant uses its own thick lathe profile (see below)
   // Elephant pillar radii — thick, sturdy tree-trunk-like legs
   const eTopR = P.thighR * 1.85
@@ -2271,11 +2275,20 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
             [P.thighR * 1.12 * eM, -P.upperLeg * 0.35],
             [P.thighR * 1.18 * eM, -P.upperLeg * 0.15],
             [P.thighR * 1.15 * eM, 0],
-          ])} material={legMat} castShadow />
+          ])} material={isRobot ? robotDark : legMat} castShadow />
         </>
       )}
 
       <group ref={bind(lower)} position={[0, -P.upperLeg, 0]}>
+        {/* Robot: mechanical knee joint — a dark pivot sphere with a glowing ring */}
+        {isRobot && (
+          <group position={[0, 0, 0]}>
+            <mesh geometry={sphereGeo(1)} material={robotJoint}
+              scale={[P.kneeR * 1.25, P.kneeR * 1.15, P.kneeR * 1.15]} castShadow />
+            <mesh geometry={torusGeo(P.kneeR * 1.1, P.kneeR * 0.06, 8, 20)}
+              material={glowM} rotation={[Math.PI / 2, 0, 0]} />
+          </group>
+        )}
         {isElephant ? (
           <>
             {/* Elephant shin — thick matching pillar to thigh for a heavy, sturdy elephant leg */}
@@ -2300,7 +2313,7 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               [P.kneeR * 1.08 * eM, -P.lowerLeg * 0.35],
               [P.kneeR * 1.1 * eM, -P.lowerLeg * 0.2],
               [P.kneeR * eM, 0],
-            ])} material={calfMat} castShadow />
+            ])} material={isRobot ? robotDark : calfMat} castShadow />
           </>
         )}
 
@@ -2318,33 +2331,40 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               position={[sign * P.kneeR * 1.1, -P.lowerLeg * 0.5, 0]} />
           </group>
         )}
-        {/* Robot: dark mechanical boots with glowing sole and side accent — clean, shoe-like */}
-        {isRobot && glowM && (
-          <group>
-            {/* main boot body — smooth rounded boot */}
-            <mesh geometry={sphereGeo(1)} material={shoeM}
-              scale={[P.ankleR * 1.15, P.ankleR * 0.95, P.footLen * 0.55]}
-              position={[0, -P.ankleR * 0.25, P.footLen * 0.3]} castShadow />
-            {/* ankle collar / cuff */}
-            <mesh geometry={taperGeo(P.ankleR * 0.9, P.ankleR * 1.0, P.ankleR * 0.35)}
-              material={shoeM} position={[0, -P.ankleR * 0.05, P.footLen * 0.1]} castShadow />
-            {/* glowing sole — flush at bottom */}
-            <mesh geometry={boxGeo(P.ankleR * 2.2, P.ankleR * 0.18, P.footLen * 1.0)}
-              material={glowM} position={[0, -P.ankleR * 0.55, P.footLen * 0.3]} castShadow />
-            {/* side accent strip — outer side of boot */}
-            <mesh geometry={boxGeo(P.ankleR * 0.08, P.ankleR * 0.7, P.footLen * 0.55)}
-              material={glowM} position={[sign * P.ankleR * 1.05, -P.ankleR * 0.2, P.footLen * 0.3]} />
-            {/* small toe cap accent */}
-            <mesh geometry={boxGeo(P.ankleR * 0.5, P.ankleR * 0.25, P.footLen * 0.12)}
-              material={glowM} position={[0, -P.ankleR * 0.35, P.footLen * 0.55]} />
-          </group>
-        )}
-
         <group ref={bind(foot)} position={[0, -P.lowerLeg - P.ankleR * 0.4, 0]}>
           {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien + robot (robot has its own boot) */}
           {!isAlien && !isRobot && (
             <mesh geometry={sphereGeo(1)} material={showShoes && !isHacker ? shoeM : skin}
-              scale={Array(3).fill(P.ankleR * (isRobot ? 0.65 : 1.1)) as [number, number, number]} />
+              scale={Array(3).fill(P.ankleR * 1.1) as [number, number, number]} />
+          )}
+          {/* Robot: blocky mechanical boot — matches the block hand aesthetic */}
+          {isRobot && glowM && (
+            <group>
+              {/* main boot body — angular block shape */}
+              <mesh geometry={boxGeo(P.ankleR * 1.8, P.ankleR * 1.1, P.footLen * 0.7)}
+                material={robotDark} position={[0, -P.ankleR * 0.3, P.footLen * 0.25]} castShadow />
+              {/* ankle cuff / collar — wraps around the ankle */}
+              <mesh geometry={boxGeo(P.ankleR * 1.5, P.ankleR * 0.45, P.footLen * 0.55)}
+                material={robotDark} position={[0, P.ankleR * 0.3, P.footLen * 0.15]} castShadow />
+              {/* glowing sole — flat plate under the foot */}
+              <mesh geometry={boxGeo(P.ankleR * 2.0, P.ankleR * 0.15, P.footLen * 0.9)}
+                material={glowM} position={[0, -P.ankleR * 0.85, P.footLen * 0.25]} castShadow />
+              {/* outer side accent strip */}
+              <mesh geometry={boxGeo(P.ankleR * 0.06, P.ankleR * 0.9, P.footLen * 0.04)}
+                material={glowM} position={[sign * P.ankleR * 0.92, -P.ankleR * 0.2, P.footLen * 0.25]} />
+              {/* inner side accent strip */}
+              <mesh geometry={boxGeo(P.ankleR * 0.06, P.ankleR * 0.9, P.footLen * 0.04)}
+                material={glowM} position={[-sign * P.ankleR * 0.92, -P.ankleR * 0.2, P.footLen * 0.25]} />
+              {/* toe cap — angular front plate */}
+              <mesh geometry={boxGeo(P.ankleR * 1.2, P.ankleR * 0.6, P.footLen * 0.2)}
+                material={robotDark} position={[0, -P.ankleR * 0.4, P.footLen * 0.7]} castShadow />
+              {/* toe glow line */}
+              <mesh geometry={boxGeo(P.ankleR * 0.9, P.ankleR * 0.08, P.footLen * 0.04)}
+                material={glowM} position={[0, -P.ankleR * 0.4, P.footLen * 0.82]} />
+              {/* heel block */}
+              <mesh geometry={boxGeo(P.ankleR * 1.0, P.ankleR * 0.5, P.footLen * 0.18)}
+                material={robotDark} position={[0, -P.ankleR * 0.35, -P.footLen * 0.12]} castShadow />
+            </group>
           )}
           {/* Sunflower: earthy brown root-like feet */}
           {isSunflower && sfBrown && (

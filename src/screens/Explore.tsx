@@ -18,7 +18,7 @@ import {
 } from '../store/settings'
 import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
-import { usePomodoro, SESSION_OPTIONS, computeSegments } from '../store/pomodoro'
+import { usePomodoro, SESSION_OPTIONS, computeSegments, suggestBreakActivity } from '../store/pomodoro'
 import type { TimerType } from '../store/pomodoro'
 import { getRemoteOccupied, setLocalTimer } from '../multiplayer/net'
 import { useWorld } from '../store/world'
@@ -278,7 +278,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           </div>
 
           {/* top-center: pomodoro */}
-          <PomodoroChip onFullscreen={() => setFpOpen(true)} />
+          <PomodoroChip onFullscreen={() => { useHud.getState().setPerfMode(true); setFpOpen(true) }} />
 
           {/* top-right: compact bar — brightness · menu. (Audio volume now lives
               in the Library Realm music widget, bottom-right.) */}
@@ -370,7 +370,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
       {location.pathname === '/realm/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
-      <FocusDomain isOpen={fpOpen} onClose={() => setFpOpen(false)} />
+      <FocusDomain isOpen={fpOpen} onClose={() => { setFpOpen(false); useHud.getState().setPerfMode(false) }} />
     </div>
   )
 }
@@ -951,7 +951,7 @@ function RewardPopup() {
 }
 
 function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
-  const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, segmentsCompleted, totalSessionLeaves } = usePomodoro()
+  const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, segmentsCompleted, segmentIndex, totalSessionLeaves } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
   const chimeVolume = useSettings((s) => s.pomo.chimeVolume)
   const setChimeVolume = useSettings((s) => s.setPomo)
@@ -961,7 +961,16 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const [pickDur, setPickDur] = useState(sessionMinutes)
   const [pickBreaks, setPickBreaks] = useState(breakCount)
   const chipRef = useRef<HTMLDivElement>(null)
-  const [chipDrag, setChipDrag] = useState<{ x: number; y: number } | null>(null)
+  const [chipDrag, setChipDrag] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem('pomo-chip-pos')
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (typeof p?.x === 'number' && typeof p?.y === 'number') return { x: p.x, y: p.y }
+      }
+    } catch { /* ignore */ }
+    return null
+  })
   const chipDragAbort = useRef<AbortController | null>(null)
   if (!show) return null
   const hh = String(Math.floor(remaining / 3600)).padStart(2, '0')
@@ -1028,6 +1037,7 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
       chipDragAbort.current = null
       setChipDragging(false)
       setChipDrag(last)
+      try { localStorage.setItem('pomo-chip-pos', JSON.stringify(last)) } catch { /* ignore */ }
     }
     window.addEventListener('pointermove', move, { signal: ac.signal })
     window.addEventListener('pointerup', finish, { signal: ac.signal })
@@ -1082,6 +1092,31 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
           <div className="pomo-session-xp">🍃 {totalSessionLeaves}</div>
         )}
       </div>
+
+      {/* Subject label during focus, break suggestion during break */}
+      {phase === 'running' && subject && (
+        <div className="pomo-subject" title={subject}>📖 {subject}</div>
+      )}
+      {phase === 'break' && (() => {
+        const act = suggestBreakActivity(segmentIndex - 1)
+        return (
+          <div className="pomo-break-tip" title="Break suggestion">
+            {act.icon} {act.label} · {act.duration}s
+          </div>
+        )
+      })()}
+
+      {/* Segment dots — one per focus segment (breaks + 1), filled as completed */}
+      {phase !== 'idle' && timerType === 'pomodoro' && breakCount > 0 && (
+        <div className="pomo-dots">
+          {Array.from({ length: breakCount + 1 }, (_, i) => (
+            <span
+              key={i}
+              className={`pomo-dot ${i < segmentsCompleted ? 'filled' : i === segmentsCompleted && (phase === 'running' || phase === 'break') ? 'active' : ''}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Configuration panel */}
       {configOpen && phase === 'idle' && (

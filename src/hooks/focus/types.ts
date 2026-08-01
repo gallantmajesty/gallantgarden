@@ -1,8 +1,5 @@
 export type ClockMode =
   | "sand"
-  | "calendar"
-  | "mental"
-  | "cuckoo"
   | "pendulum"
   | "digital";
 
