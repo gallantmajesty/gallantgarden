@@ -1,0 +1,27 @@
+import { create } from 'zustand'
+
+export interface NpcProfileData {
+  name: string
+  rank: string
+  country: string | null
+  characterId: string
+  studyTopic: string
+  totalXp: number
+  sessionsCompleted: number
+  streak: number
+  bio: string
+  joinDate: string
+  status: 'studying' | 'on-break' | 'offline'
+}
+
+interface NpcProfileState {
+  profile: NpcProfileData | null
+  show: (p: NpcProfileData) => void
+  hide: () => void
+}
+
+export const useNpcProfile = create<NpcProfileState>((set) => ({
+  profile: null,
+  show: (p) => set({ profile: p }),
+  hide: () => set({ profile: null }),
+}))

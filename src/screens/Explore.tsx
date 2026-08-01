@@ -45,6 +45,8 @@ import { FocusDomain } from '../components/FocusDomain'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
+import { NpcProfileCard } from '../components/NpcProfileCard'
+import { useNpcProfile } from '../store/npcProfile'
 import { useSeatFlow } from '../store/seatFlow'
 import './Explore.css'
 
@@ -371,6 +373,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
           timer stays visible. */}
       {location.pathname === '/realm/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
       <FocusDomain isOpen={fpOpen} onClose={() => { setFpOpen(false); useHud.getState().setPerfMode(false) }} />
+      <NpcProfileOverlay />
     </div>
   )
 }
@@ -1190,6 +1193,13 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
 }
 
 /* --------------------------------------------------------------------- fps */
+
+function NpcProfileOverlay() {
+  const profile = useNpcProfile((s) => s.profile)
+  const hide = useNpcProfile((s) => s.hide)
+  if (!profile) return null
+  return <NpcProfileCard profile={profile} onClose={hide} />
+}
 
 function FpsMeter() {
   const [fps, setFps] = useState(0)

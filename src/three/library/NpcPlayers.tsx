@@ -1,10 +1,9 @@
-import { useRef, useMemo, useState, useCallback } from 'react'
+import { useRef, useMemo, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Group } from 'three'
 import { Html } from '@react-three/drei'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import { PlayerNameTag } from '../../components/PlayerNameTag'
-import { NpcProfileCard, type NpcProfileData } from '../../components/NpcProfileCard'
 import type { Locomotion } from '../../avatar/animation'
 import type { AvatarConfig } from '../../avatar/config'
 import { seatAnchors, type Seat } from './furniture'
@@ -13,6 +12,8 @@ import { BANNERS } from '../../lib/banners'
 import { CHARACTERS, characterById } from '../../avatar/characters'
 import { ACCESSORIES } from '../../avatar/config'
 import { useWorld } from '../../store/world'
+import { useNpcProfile } from '../../store/npcProfile'
+import type { NpcProfileData } from '../../store/npcProfile'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Configuration
@@ -246,10 +247,7 @@ function generatePool(): NpcProfile[] {
 
     const isLegendary = i === 0
     const charId = isLegendary ? 'robot' : pickCharacter()
-    const rankId = isLegendary
-      ? 'crystal-2'
-      : pickRank()
-
+    const rankId = isLegendary ? 'crystal-2' : pickRank()
     const xp = RANKS.find((r) => r.id === rankId)?.threshold ?? 0
 
     pool.push({
@@ -306,7 +304,7 @@ function assignAllSeats(pool: NpcProfile[], seats: Seat[], userSeat: number | nu
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Components
+//  Components — NO Html fullscreen, profile card is rendered OUTSIDE Canvas
 // ─────────────────────────────────────────────────────────────────────────────
 
 function NpcTag({ npc, onInfoClick }: { npc: NpcProfile; onInfoClick: () => void }) {
@@ -330,7 +328,7 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
   const group = useRef<Group>(null)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
   const nearLod = useRef<'near' | 'far' | 'cull'>('near')
-  const [showProfile, setShowProfile] = useState(false)
+  const showProfile = useNpcProfile((s) => s.show)
 
   const config: AvatarConfig = useMemo(() => {
     const ch = characterById(npc.characterId)
@@ -347,34 +345,27 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     g.scale.y = 1 + Math.sin(clock.elapsedTime * 0.8 + npc.totalXp) * 0.003
   })
 
-  const handleInfoClick = useCallback(() => setShowProfile(true), [])
-
-  const profileData: NpcProfileData = {
-    name: npc.name,
-    rank: npc.rank,
-    country: npc.country,
-    characterId: npc.characterId,
-    studyTopic: npc.studyTopic,
-    totalXp: npc.totalXp,
-    sessionsCompleted: npc.sessionsCompleted,
-    streak: npc.streak,
-    bio: npc.bio,
-    joinDate: npc.joinDate,
-    status: npc.status,
-  }
+  const handleInfoClick = useCallback(() => {
+    showProfile({
+      name: npc.name,
+      rank: npc.rank,
+      country: npc.country,
+      characterId: npc.characterId,
+      studyTopic: npc.studyTopic,
+      totalXp: npc.totalXp,
+      sessionsCompleted: npc.sessionsCompleted,
+      streak: npc.streak,
+      bio: npc.bio,
+      joinDate: npc.joinDate,
+      status: npc.status,
+    })
+  }, [npc, showProfile])
 
   return (
-    <>
-      <group ref={group}>
-        <CharacterAvatar config={config} locomotion={loco} lod={nearLod} preview={false} />
-        <NpcTag npc={npc} onInfoClick={handleInfoClick} />
-      </group>
-      {showProfile && (
-        <Html fullscreen zIndex={10000} style={{ pointerEvents: 'auto' }}>
-          <NpcProfileCard profile={profileData} onClose={() => setShowProfile(false)} />
-        </Html>
-      )}
-    </>
+    <group ref={group}>
+      <CharacterAvatar config={config} locomotion={loco} lod={nearLod} preview={false} />
+      <NpcTag npc={npc} onInfoClick={handleInfoClick} />
+    </group>
   )
 }
 

@@ -101,6 +101,12 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
 
     const screenGlow = isGaming ? glowHard : m('#c9924a', 0.35)
     const logo = isGaming ? glowMid : m('#caa24a', 0.4, 0.3)
+    // On-screen UI palette
+    const scrBg = m(isGaming ? '#0a0812' : '#14100c', 0.9)
+    const scrLine = m(isGaming ? '#3a2a4a' : '#3a2f22', 0.8)
+    const scrAccent = isGaming ? glowMid : m('#e0b878', 0.5)
+    const scrAccent2 = isGaming ? complimentGlowMid : m('#a06a3a', 0.5)
+    const scrText = m(isGaming ? '#c9a0ff' : '#e8d4a0', 0.6)
 
     const keys = []
     const colsK = isGaming ? 13 : 11
@@ -144,6 +150,54 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
       }
     }
 
+    // On-screen content: a code editor for the study laptop, a game HUD for the
+    // gaming laptop. Built from thin boxes so it reads as a live display.
+    const screenContent = isGaming ? (
+      <group position={[0, 0.16, 0.012]}>
+        {/* top HUD bar */}
+        <mesh geometry={boxGeo(0.4, 0.02, 0.001)} material={scrLine} position={[0, 0.105, 0]} />
+        {/* health + energy bars */}
+        <mesh geometry={boxGeo(0.14, 0.012, 0.001)} material={m('#c03030', 0.5)} position={[-0.12, 0.105, 0.001]} />
+        <mesh geometry={boxGeo(0.1, 0.012, 0.001)} material={m('#30a050', 0.5)} position={[0.13, 0.105, 0.001]} />
+        {/* central game world — layered terrain blocks */}
+        {Array.from({ length: 7 }).map((_, i) => {
+          const bx = -0.15 + i * 0.05
+          const bh = 0.02 + ((i * 7) % 4) * 0.018
+          return <mesh key={`g${i}`} geometry={boxGeo(0.04, bh, 0.001)} material={i % 2 === 0 ? scrAccent : scrAccent2} position={[bx, -0.06 + bh / 2, 0.001]} />
+        })}
+        {/* crosshair */}
+        <mesh geometry={boxGeo(0.02, 0.003, 0.001)} material={scrText} position={[0, 0.02, 0.001]} />
+        <mesh geometry={boxGeo(0.003, 0.02, 0.001)} material={scrText} position={[0, 0.02, 0.001]} />
+        {/* minimap corner */}
+        <mesh geometry={boxGeo(0.07, 0.05, 0.001)} material={scrLine} position={[0.155, 0.07, 0.001]} />
+        <mesh geometry={sphereGeo(0.006)} material={scrAccent} position={[0.155, 0.07, 0.002]} />
+      </group>
+    ) : (
+      <group position={[0, 0.16, 0.012]}>
+        {/* window chrome */}
+        <mesh geometry={boxGeo(0.4, 0.018, 0.001)} material={scrLine} position={[0, 0.108, 0]} />
+        {[-0.17, -0.155, -0.14].map((dx, i) => (
+          <mesh key={`wc${i}`} geometry={sphereGeo(0.004)} material={m(['#c03030', '#d4a030', '#30a050'][i], 0.5)} position={[dx, 0.108, 0.001]} />
+        ))}
+        {/* sidebar */}
+        <mesh geometry={boxGeo(0.07, 0.2, 0.001)} material={scrLine} position={[-0.16, 0, 0]} />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <mesh key={`sb${i}`} geometry={boxGeo(0.05, 0.008, 0.001)} material={scrText} position={[-0.16, 0.08 - i * 0.03, 0.001]} />
+        ))}
+        {/* code lines — varied widths + colours like syntax highlighting */}
+        {Array.from({ length: 9 }).map((_, i) => {
+          const lw = [0.2, 0.14, 0.22, 0.1, 0.18, 0.24, 0.12, 0.2, 0.16][i]
+          const indent = [0, 1, 1, 2, 1, 0, 1, 2, 0][i] * 0.02
+          const cols = [scrAccent, scrText, scrAccent2, scrText]
+          return (
+            <mesh key={`cl${i}`} geometry={boxGeo(lw, 0.011, 0.001)} material={cols[i % cols.length]} position={[-0.04 + indent + lw / 2 - 0.1, 0.085 - i * 0.021, 0.001]} />
+          )
+        })}
+        {/* blinking cursor */}
+        <mesh geometry={boxGeo(0.008, 0.013, 0.001)} material={scrText} position={[0.1, -0.095, 0.001]} />
+      </group>
+    )
+
     return (
       <group>
         {/* RGB underglow / backlight strip */}
@@ -168,6 +222,8 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
           material={isGaming ? glowMid : m('#d9c8a8', 0.5)}
           position={[0, 0.032, 0.14]}
         />
+        {/* trackpad centre line */}
+        <mesh geometry={boxGeo(0.001, 0.007, 0.08)} material={m('#000000', 0.6)} position={[0, 0.032, 0.14]} />
         {/* left RGB accent bar */}
         {isGaming && (
           <mesh geometry={boxGeo(0.006, 0.028, 0.3)} material={complimentGlowMid} position={[-0.235, 0.026, 0.03]} />
@@ -180,20 +236,33 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
         {isGaming && (
           <mesh geometry={boxGeo(0.36, 0.008, 0.008)} material={glowUltra} position={[0, 0.008, 0.19]} />
         )}
+        {/* speaker grilles flanking keyboard */}
+        {[-0.2, 0.2].map((sx, i) => (
+          <group key={`spk${i}`} position={[sx, 0.03, 0.05]}>
+            {Array.from({ length: 5 }).map((_, d) => (
+              <mesh key={`sd${d}`} geometry={boxGeo(0.03, 0.002, 0.003)} material={m('#000000', 0.7)} position={[0, 0, -0.04 + d * 0.02]} />
+            ))}
+          </group>
+        ))}
 
         {/* screen lid */}
         <group position={[0, 0.028, -0.14]} rotation={[-0.22, 0, 0]}>
+          {/* hinge barrel */}
+          <mesh geometry={taperGeo(0.012, 0.012, 0.46)} material={base} rotation={[0, 0, Math.PI / 2]} position={[0, 0.004, 0.004]} />
           {/* thin RGB light bar on screen hinge */}
           {isGaming && (
             <mesh geometry={boxGeo(0.5, 0.007, 0.014)} material={glowUltra} position={[0, -0.002, 0.005]} />
           )}
           <mesh geometry={boxGeo(0.48, 0.32, 0.016)} material={shell} position={[0, 0.16, 0]} castShadow />
-          <mesh geometry={boxGeo(0.44, 0.28, 0.004)} material={m('#0a0610', 0.3)} position={[0, 0.16, 0.009]} />
+          <mesh geometry={boxGeo(0.44, 0.28, 0.004)} material={scrBg} position={[0, 0.16, 0.009]} />
           <mesh geometry={boxGeo(0.41, 0.25, 0.002)} material={screenGlow} position={[0, 0.16, 0.011]} />
+          {/* live on-screen content */}
+          {screenContent}
           {/* lit brand emblem on the lid */}
           <mesh geometry={boxGeo(0.08, 0.08, 0.002)} material={logo} position={[0, 0.16, 0.012]} />
-          {/* webcam dot */}
+          {/* webcam dot + subtle lens ring */}
           <mesh geometry={sphereGeo(0.004)} material={m('#1a1a2a', 0.3)} position={[0, 0.31, 0.01]} />
+          <mesh geometry={torusGeo(0.006, 0.0015)} material={m('#3a3a4a', 0.4)} position={[0, 0.31, 0.01]} />
         </group>
       </group>
     )
