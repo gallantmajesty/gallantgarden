@@ -1,7 +1,7 @@
 // Canvas-based texture generation for clothing logos and patterns.
 // Creates HTMLCanvasElement textures that map onto clothing geometry.
 
-import { CanvasTexture, LinearFilter, RepeatWrapping } from 'three'
+import { CanvasTexture, LinearFilter, RepeatWrapping, SRGBColorSpace } from 'three'
 
 const texCache = new Map<string, CanvasTexture>()
 
@@ -189,4 +189,151 @@ export function skinReliefTex(): CanvasTexture {
       ctx.fillRect(x, y, 1, 1)
     }
   }, 256, 256)
+}
+
+/** Coarse golden-sand grain (grayscale bump map) — dense irregular flecks so
+ *  hourglass sand reads as granular instead of smooth clay. */
+export function sandGrainTex(): CanvasTexture {
+  return cachedTexture('sand-grain', (ctx, w, h) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, w, h)
+    for (let i = 0; i < 2800; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const tone = 90 + Math.floor(Math.random() * 110)
+      ctx.fillStyle = `rgba(${tone},${tone},${tone},${0.35 + Math.random() * 0.55})`
+      ctx.fillRect(x, y, 1.2 + Math.random() * 1.8, 1.2 + Math.random() * 1.8)
+    }
+  }, 128, 128)
+}
+
+/** iPhone-style home screen wallpaper (portrait): vertical blue-purple gradient
+ *  with soft depth-effect blobs, a status bar (9:41, signal, 5G, wifi, battery
+ *  87%), a 4×6 grid of rounded app icons and a translucent dock with 4 pinned
+ *  apps. Drawn at screen resolution so the phone reads as a real lit display. */
+export function phoneHomeScreenTex(): CanvasTexture {
+  return cachedTexture('phone-home-screen', (ctx, w, h) => {
+    // wallpaper gradient #1a1a2e → #16213e
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, '#1a1a2e')
+    g.addColorStop(1, '#16213e')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+    // soft depth-effect blobs
+    const blob = (x: number, y: number, r: number, c: string) => {
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, r)
+      rg.addColorStop(0, c)
+      rg.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = rg
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    blob(w * 0.72, h * 0.28, w * 0.55, 'rgba(88,101,242,0.30)')
+    blob(w * 0.22, h * 0.55, w * 0.42, 'rgba(56,189,248,0.20)')
+    blob(w * 0.6, h * 0.85, w * 0.5, 'rgba(168,85,247,0.18)')
+    blob(w * 0.4, h * 0.12, w * 0.35, 'rgba(129,140,248,0.22)')
+
+    // status bar (white, clear of the Dynamic Island at x 0.30–0.70)
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `bold ${h * 0.035}px "Segoe UI", Arial, sans-serif`
+    ctx.textAlign = 'left'
+    ctx.fillText('9:41', w * 0.075, h * 0.038)
+    // signal bars
+    for (let i = 0; i < 4; i++) {
+      const bh = 6 + i * 4.5
+      ctx.fillRect(w * 0.707 + i * 7.5, h * 0.045 - bh, 4.5, bh)
+    }
+    // 5G
+    ctx.font = `600 ${h * 0.022}px "Segoe UI", Arial, sans-serif`
+    ctx.textAlign = 'right'
+    ctx.fillText('5G', w * 0.845, h * 0.042)
+    // wifi arcs + dot
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    for (const r of [6, 10.5, 15]) {
+      ctx.beginPath()
+      ctx.arc(w * 0.787, h * 0.05, r, Math.PI * 1.15, Math.PI * 1.85)
+      ctx.stroke()
+    }
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(w * 0.787, h * 0.05, 2, 0, Math.PI * 2)
+    ctx.fill()
+    // battery pill (87% fill)
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'
+    ctx.lineWidth = 2
+    const bx = w * 0.875, by = h * 0.031, bw = 44, bh2 = 20
+    ctx.beginPath()
+    ctx.rect(bx, by, bw, bh2)
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'
+    ctx.fillRect(bx + 44, by + 6.5, 3.5, 7)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(bx + 2.5, by + 2.5, (bw - 5) * 0.87, bh2 - 5)
+
+    // rounded-rect path helper
+    const rr = (x: number, y: number, rw: number, rh: number, r: number) => {
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.arcTo(x + rw, y, x + rw, y + rh, r)
+      ctx.arcTo(x + rw, y + rh, x, y + rh, r)
+      ctx.arcTo(x, y + rh, x, y, r)
+      ctx.arcTo(x, y, x + rw, y, r)
+      ctx.closePath()
+    }
+
+    // 4×6 home-screen app grid (iOS-ish tile colors + emoji glyphs)
+    const GRID: Array<[string, string]> = [
+      ['📞', '#34c759'], ['✉️', '#007aff'], ['⛅', '#4aa8ff'], ['📅', '#ff3b30'],
+      ['📷', '#8e8e93'], ['🎵', '#fa2d48'], ['🗺️', '#007aff'], ['💬', '#34c759'],
+      ['⏰', '#2c2c2e'], ['⚙️', '#6e6e73'], ['🗒️', '#ffcc00'], ['📚', '#007aff'],
+      ['📈', '#34c759'], ['🎧', '#af52de'], ['📺', '#1c1c1e'], ['👛', '#1c1c1e'],
+      ['🏠', '#f2f2f7'], ['❤️', '#ff3b30'], ['🧭', '#0a84ff'], ['🎨', '#ff9f0a'],
+      ['🎙️', '#30d158'], ['🎮', '#1c1c1e'], ['🎬', '#ff2d55'], ['🌐', '#1c1c1e'],
+    ]
+    ctx.textAlign = 'center'
+    const iw = 88, gap = 24
+    const x0 = (w - (iw * 4 + gap * 3)) / 2
+    GRID.forEach(([glyph, color], i) => {
+      const cx = x0 + (i % 4) * (iw + gap) + iw / 2
+      const cy = h * 0.155 + Math.floor(i / 4) * (iw + 20)
+      rr(cx - iw / 2, cy - iw / 2, iw, iw, 24)
+      ctx.fillStyle = color
+      ctx.fill()
+      const hg = ctx.createLinearGradient(0, cy - iw / 2, 0, cy - iw / 2 + iw * 0.5)
+      hg.addColorStop(0, 'rgba(255,255,255,0.14)')
+      hg.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = hg
+      ctx.fill()
+      ctx.font = `44px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+      ctx.fillText(glyph, cx, cy + 2)
+    })
+
+    // dock — translucent rounded bar + 4 pinned apps (phone, safari, messages, music)
+    rr(x0, h * 0.86, w - x0 * 2, h * 0.1, 28)
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'
+    ctx.fill()
+    const DOCK: Array<[string, string]> = [
+      ['📞', '#34c759'], ['🧭', '#0a84ff'], ['💬', '#34c759'], ['🎵', '#fa2d48'],
+    ]
+    const dw = 78, dgap = 24
+    const dx0 = (w - (dw * 4 + dgap * 3)) / 2
+    DOCK.forEach(([glyph, color], i) => {
+      const cx = dx0 + i * (dw + dgap) + dw / 2
+      const cy = h * 0.91
+      rr(cx - dw / 2, cy - dw / 2, dw, dw, 22)
+      ctx.fillStyle = color
+      ctx.fill()
+      ctx.font = `40px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+      ctx.fillText(glyph, cx, cy + 2)
+    })
+
+    // home indicator pill
+    rr(w / 2 - 48, h * 0.975, 96, 7, 3.5)
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fill()
+  }, 512, 1024)
 }
