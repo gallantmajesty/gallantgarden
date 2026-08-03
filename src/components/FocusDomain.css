@@ -1,104 +1,460 @@
+/* ============================================================
+   FOCUS DOMAIN — Professional 3-tier focus timer (Easy/Medium/Hardcore).
+   Modern dark glassmorphic design. Does NOT touch the 3D library rendering.
+   ============================================================ */
+
 :root {
-  --color-genshin-parchment: #FDF6E8;
-  --color-genshin-dark: #1A1410;
-  --color-genshin-gold: #C9A84C;
-  --color-genshin-gold-light: #E8D4A0;
-  --color-genshin-bronze: #8B6D2E;
-  --color-genshin-bronze-dark: #5C3D1E;
-  --color-genshin-ink: #2D1F12;
-  --color-genshin-ink-light: #4A3828;
-  --color-genshin-cream: #FFF8E7;
-  --color-genshin-divider: rgba(201, 168, 76, 0.3);
-  --color-genshin-overlay: rgba(26, 20, 16, 0.85);
-  --font-serif-heading: Georgia, "Times New Roman", serif;
-  --font-mono-display: "JetBrains Mono", "Fira Code", monospace;
+  --fd-bg: #0b0e14;
+  --fd-bg-2: #11151d;
+  --fd-panel: rgba(255, 255, 255, 0.04);
+  --fd-border: rgba(255, 255, 255, 0.09);
+  --fd-text: #e6e9f0;
+  --fd-text-dim: #9aa3b2;
+  --fd-accent: #c9a84c;
+  --fd-easy: #34d399;
+  --fd-medium: #fbbf24;
+  --fd-hardcore: #f87171;
 }
 
-.genshin-scrollbar::-webkit-scrollbar {
-  width: 4px;
+.fd-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 0%, #131926 0%, #0b0e14 55%);
+  color: var(--fd-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-.genshin-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.genshin-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-genshin-bronze);
-  border-radius: 2px;
-}
-
-.genshin-divider {
-  height: 1px;
-  background: var(--color-genshin-divider);
-}
-
-.genshin-card {
-  background: var(--color-genshin-parchment);
-  border: 1px solid var(--color-genshin-divider);
-  border-radius: 2px;
-  position: relative;
-}
-
-/* Session-complete ceremony entrance */
-@keyframes fd-ceremony-in {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.genshin-card::before {
-  content: '';
+.fd-vignette {
   position: absolute;
-  inset: 2px;
-  border: 1px solid rgba(201, 168, 76, 0.15);
-  border-radius: 1px;
+  inset: 0;
   pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(4, 6, 10, 0.55) 100%);
+  z-index: 0;
 }
 
-.genshin-btn {
-  background: linear-gradient(180deg, var(--color-genshin-gold) 0%, var(--color-genshin-bronze) 100%);
-  color: var(--color-genshin-dark);
-  font-family: var(--font-serif-heading);
-  font-weight: 700;
+/* ---------- Header ---------- */
+.fd-header {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  gap: 1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--fd-border);
+  background: rgba(11, 14, 20, 0.6);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 2;
+}
+.fd-header-left { display: flex; align-items: center; gap: 0.75rem; }
+.fd-title { font-size: 1rem; font-weight: 700; letter-spacing: 0.12em; color: var(--fd-text); }
+.fd-subtitle { font-size: 0.72rem; color: var(--fd-text-dim); }
+.fd-spacer { flex: 1; }
+.fd-wallclock {
+  font-size: 0.8rem;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  color: var(--fd-text-dim);
   letter-spacing: 0.05em;
-  border: 1px solid var(--color-genshin-gold-light);
-  border-radius: 2px;
-  padding: 0.5rem 1.25rem;
-  cursor: pointer;
-  transition: filter 0.2s, transform 0.1s;
-  text-transform: uppercase;
-  font-size: 0.75rem;
 }
-
-.genshin-btn:hover {
-  filter: brightness(1.15);
-}
-
-.genshin-btn:active {
-  transform: scale(0.97);
-}
-
-.genshin-btn-secondary {
+.fd-stats { display: flex; align-items: center; gap: 1rem; font-size: 0.72rem; color: var(--fd-text-dim); }
+.fd-close {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--fd-border);
+  color: var(--fd-text-dim);
   background: transparent;
-  border: 1px solid var(--color-genshin-bronze);
-  color: var(--color-genshin-gold);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.fd-close:hover { color: var(--fd-text); border-color: rgba(255,255,255,0.3); }
+
+/* ---------- Body ---------- */
+.fd-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.75rem 1.5rem 1.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
 }
 
-.genshin-input {
-  background: rgba(26, 20, 16, 0.6);
-  border: 1px solid var(--color-genshin-bronze);
-  color: var(--color-genshin-gold-light);
-  font-family: var(--font-mono-display);
-  padding: 0.5rem 0.75rem;
-  border-radius: 2px;
-  outline: none;
-  transition: border-color 0.2s;
+/* ---------- Idle: tier selection + config ---------- */
+.fd-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 880px;
+  overflow: visible;
+  padding: 0.25rem 0 1.5rem;
+}
+.fd-idle-heading {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--fd-text-dim);
+  text-transform: uppercase;
+}
+.fd-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.9rem;
   width: 100%;
 }
-
-.genshin-input:focus {
-  border-color: var(--color-genshin-gold);
+.fd-tier-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem 1rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--fd-border);
+  background: var(--fd-panel);
+  color: var(--fd-text);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.fd-tier-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
+.fd-tier-card.selected { transform: translateY(-2px); }
+.fd-tier-head { display: flex; align-items: center; gap: 0.5rem; }
+.fd-tier-emoji { font-size: 1.1rem; }
+.fd-tier-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; }
+.fd-tier-rate { font-size: 1.25rem; font-weight: 700; font-family: "JetBrains Mono", monospace; }
+.fd-tier-rate-unit { font-size: 0.65rem; font-weight: 400; color: var(--fd-text-dim); }
+.fd-tier-desc { font-size: 0.72rem; color: var(--fd-text-dim); line-height: 1.4; }
+.fd-tier-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.66rem; color: var(--fd-text-dim); }
+.fd-tier-row b { color: var(--fd-text); font-weight: 600; text-align: right; }
+.fd-tier-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #0b0e14;
+  font-size: 0.75rem;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  box-shadow: 0 0 12px rgba(0,0,0,0.4);
 }
 
-.genshin-input::placeholder {
-  color: var(--color-genshin-bronze);
+.fd-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--fd-border);
+  background: var(--fd-panel);
 }
+.fd-config-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.fd-config-label { width: 74px; font-size: 0.7rem; color: var(--fd-text-dim); text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
+.fd-config-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.fd-config-presets { gap: 0.35rem; }
+.fd-config-footer { display: flex; gap: 1rem; justify-content: center; padding-top: 0.4rem; border-top: 1px solid var(--fd-border); }
+.fd-btn-start {
+  align-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 3rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: linear-gradient(180deg, #2d3748, #1a212e);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.fd-btn-start:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,0,0,0.4); }
+.fd-btn-start:active { transform: translateY(0) scale(0.98); }
+
+/* ---------- Session ---------- */
+.fd-session {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 720px;
+}
+.fd-session-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+}
+
+/* ---------- Simple timer display (widget placeholder) ---------- */
+.fd-simple-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: rgba(20, 14, 8, 0.7);
+  border: 1px solid rgba(107, 68, 35, 0.35);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  width: 100%;
+  max-width: 320px;
+}
+.fd-timer-display {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-variant-numeric: tabular-nums;
+  color: #e8c86a;
+  text-shadow: 0 0 30px rgba(201, 168, 76, 0.5), 0 0 60px rgba(201, 168, 76, 0.2);
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.fd-timer-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--fd-text-dim);
+  text-transform: uppercase;
+}
+.fd-clock-wrap { display: flex; justify-content: center; }
+
+/* ---------- Session ---------- */
+
+/* ---------- Session ---------- */
+.fd-session {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 720px;
+}
+.fd-session-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+}
+.fd-controls-wrap { display: flex; justify-content: center; }
+.fd-session-leaves {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--fd-text);
+}
+.fd-session-leaves-label { font-size: 0.68rem; font-weight: 400; color: var(--fd-text-dim); }
+.fd-progress { width: 100%; max-width: 480px; }
+.fd-progress-track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.fd-progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.fd-locked { margin-top: 0.4rem; text-align: center; font-size: 0.72rem; color: var(--fd-text-dim); }
+
+.fd-reward {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  cursor: pointer;
+  animation: fd-pop 0.3s ease;
+}
+.fd-reward-leaf { font-size: 1rem; }
+.fd-reward-amount { font-size: 0.95rem; font-weight: 700; color: #34d399; }
+.fd-reward-label { font-size: 0.7rem; color: var(--fd-text-dim); }
+.fd-reward-bonus { font-size: 0.68rem; color: #fbbf24; }
+@keyframes fd-pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+/* ---------- Break suggestions ---------- */
+.fd-break-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--fd-border);
+  background: var(--fd-panel);
+}
+.fd-break-head { font-size: 0.75rem; color: var(--fd-text); margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+.fd-break-list { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+.fd-break-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--fd-border);
+  background: rgba(255,255,255,0.03);
+  font-size: 0.7rem;
+  color: var(--fd-text-dim);
+  cursor: pointer;
+}
+.fd-break-chip.suggested { background: rgba(255,255,255,0.08); color: var(--fd-text); }
+.fd-break-sec { opacity: 0.5; }
+
+/* ---------- Controls ---------- */
+.fd-controls { display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+.fd-btn {
+  padding: 0.55rem 1.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border-radius: 10px;
+  border: 1px solid var(--fd-border);
+  background: var(--fd-panel);
+  color: var(--fd-text);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.fd-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.fd-btn:active { transform: translateY(0) scale(0.98); }
+.fd-btn-primary { background: linear-gradient(180deg, #c9a84c, #8a6d2f); border-color: rgba(255,255,255,0.25); color: #0b0e14; font-weight: 700; box-shadow: 0 4px 18px rgba(201,168,76,0.25); }
+.fd-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 22px rgba(201,168,76,0.35); }
+.fd-btn-glow { animation: fd-glow-pulse 2.2s ease-in-out infinite; }
+@keyframes fd-glow-pulse {
+  0%, 100% { box-shadow: 0 4px 18px rgba(201,168,76,0.25); }
+  50% { box-shadow: 0 6px 26px rgba(201,168,76,0.45); }
+}
+.fd-btn-secondary { background: transparent; }
+.fd-btn-danger { background: rgba(248,113,113,0.14); border-color: rgba(248,113,113,0.4); color: #fda4af; }
+.fd-btn-exit { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.35); color: #fda4af; }
+.fd-btn-lg { padding: 0.75rem 2.2rem; font-size: 0.9rem; }
+.fd-btn-sm { padding: 0.25rem 0.7rem; font-size: 0.68rem; }
+.fd-link { font-size: 0.72rem; color: var(--fd-text-dim); background: none; border: none; cursor: pointer; text-decoration: underline; }
+
+.fd-chip {
+  font-size: 0.75rem;
+  font-family: "JetBrains Mono", monospace;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--fd-border);
+  color: var(--fd-text);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fd-chip:hover { border-color: rgba(255,255,255,0.25); }
+.fd-chip.active { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.4); color: #fff; }
+.fd-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.fd-input {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-family: "JetBrains Mono", monospace;
+  background: rgba(11, 14, 20, 0.7);
+  border: 1px solid var(--fd-border);
+  color: var(--fd-text);
+  border-radius: 8px;
+  outline: none;
+}
+.fd-input:focus { border-color: rgba(255,255,255,0.3); }
+
+.fd-label { font-size: 0.68rem; color: var(--fd-text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+.fd-card {
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--fd-border);
+  background: var(--fd-panel);
+}
+
+.fd-modal-body { color: var(--fd-text); font-family: inherit; }
+
+/* ---------- Warning overlay (universal 20s) ---------- */
+.fd-warning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 8, 4, 0.82);
+  backdrop-filter: blur(6px);
+  animation: fd-fade 0.2s ease;
+}
+.fd-warning-box {
+  text-align: center;
+  padding: 2.2rem 3rem;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(11, 14, 20, 0.94);
+  box-shadow: 0 0 80px rgba(0,0,0,0.5);
+  border-radius: 16px;
+  max-width: 400px;
+}
+.fd-warning-label { font-size: 0.78rem; letter-spacing: 0.22em; color: #fda4af; font-weight: 700; }
+.fd-warning-count {
+  font-size: 4.5rem;
+  font-family: "JetBrains Mono", monospace;
+  margin: 0.5rem 0;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 30px rgba(0,0,0,0.4);
+}
+.fd-warning-text { font-size: 0.75rem; color: var(--fd-text-dim); max-width: 340px; line-height: 1.6; }
+.fd-warning-text b { color: var(--fd-text); }
+
+@keyframes fd-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Ceremony ---------- */
+.fd-ceremony {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(30, 40, 30, 0.5) 0%, rgba(8, 10, 14, 0.9) 100%);
+  backdrop-filter: blur(4px);
+  animation: fd-fade 0.5s ease;
+}
+.fd-ceremony-box {
+  text-align: center;
+  padding: 2.5rem 3.5rem;
+  border: 1px solid;
+  background: rgba(11, 14, 20, 0.94);
+  box-shadow: 0 0 90px rgba(0,0,0,0.5);
+  border-radius: 16px;
+  max-width: 420px;
+}
+.fd-ceremony-label { font-size: 0.78rem; letter-spacing: 0.3em; font-weight: 700; }
+.fd-ceremony-leaves { font-size: 3.2rem; font-family: "JetBrains Mono", monospace; margin: 0.75rem 0 0.25rem; font-weight: 700; text-shadow: 0 0 30px rgba(0,0,0,0.4); }
+.fd-ceremony-meta { font-size: 0.82rem; color: var(--fd-text-dim); letter-spacing: 0.06em; }
+.fd-summary {
+  margin: 1rem 0 0.25rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  overflow: hidden;
+  text-align: left;
+}
+.fd-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.fd-summary-row:last-child { border-bottom: none; }
+.fd-summary-row span { color: var(--fd-text-dim); }
+.fd-ceremony-hint { font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 1rem; }
+
+.fd-mode-dot { display: inline-block; }
+
+/* ---------- Scrollbar ---------- */
+.fd-root ::-webkit-scrollbar { width: 4px; height: 4px; }
+.fd-root ::-webkit-scrollbar-track { background: transparent; }
+.fd-root ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }

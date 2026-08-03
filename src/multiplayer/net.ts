@@ -21,6 +21,13 @@ const PRUNE_MS = 3000
 const STALE_MS = 12000
 
 const targets = new Map<string, PlayerState>()
+
+// lastSeen lives OUTSIDE the reactive store on purpose: it changes on every
+// move/heartbeat (~1000 updates/sec in a busy room) and must never reach React.
+// Only the roster's identity fields (join/leave/name changes) are reactive, so
+// roster subscribers re-render only when someone actually enters or leaves.
+const lastSeen = new Map<string, number>()
+
 export function getTarget(id: string): PlayerState | undefined {
   if (id === selfId) return { ...localState, subject: localSubject }
   return targets.get(id)
@@ -277,18 +284,34 @@ function handleSeatRelease(payload: { payload: Record<string, unknown> }) {
 }
 
 function setRoster(id: string, entry: RosterEntry) {
+  lastSeen.set(id, entry.lastSeen)
+  const cur = useRealmNet.getState().roster[id]
+  // Heartbeats resend the full identity every ~4s. The avatar config is
+  // re-normalized fresh each time (never referentially stable), so compare a
+  // cheap serialization and skip the store write entirely when nothing changed —
+  // this is what keeps `roster` object-identical across moves, so React
+  // subscribers (RemotePlayers, TableAccessories, passenger lists) stay quiet.
+  const same =
+    !!cur &&
+    cur.name === entry.name &&
+    cur.country === entry.country &&
+    cur.rank === entry.rank &&
+    cur.banner === entry.banner &&
+    cur.logo === entry.logo &&
+    JSON.stringify(cur.avatar) === JSON.stringify(entry.avatar)
+  if (same) return
   useRealmNet.setState((s) => ({ roster: { ...s.roster, [id]: entry } }))
 }
 
 function touch(id: string, now: number) {
-  const cur = useRealmNet.getState().roster[id]
-  if (cur) setRoster(id, { ...cur, lastSeen: now })
+  lastSeen.set(id, now)
 }
 
 function drop(id: string) {
   targets.delete(id)
   cineActive.delete(id)
   cineCamTargets.delete(id)
+  lastSeen.delete(id)
   useRealmNet.setState((s) => {
     if (!s.roster[id]) return s
     const next = { ...s.roster }
@@ -375,9 +398,8 @@ function tickMove() {
 
 function prune() {
   const now = Date.now()
-  const roster = useRealmNet.getState().roster
-  for (const id of Object.keys(roster)) {
-    if (now - roster[id].lastSeen > STALE_MS) drop(id)
+  for (const id of lastSeen.keys()) {
+    if (now - (lastSeen.get(id) ?? 0) > STALE_MS) drop(id)
   }
 }
 
@@ -428,6 +450,7 @@ export async function joinRealm(channel: string, identity: PlayerIdentity): Prom
   currentChannel = channel
   lastPub = null
   targets.clear()
+  lastSeen.clear()
   useRealmNet.setState({ channel, selfId: identity.id, roster: {} })
 
   try {
@@ -471,5 +494,6 @@ export async function leaveRealm(): Promise<void> {
   }
   currentChannel = null
   targets.clear()
+  lastSeen.clear()
   useRealmNet.setState({ channel: null, roster: {} })
 }

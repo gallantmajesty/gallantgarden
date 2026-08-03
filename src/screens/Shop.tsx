@@ -8,28 +8,45 @@ import './Shop.css'
 export default function Shop() {
   const navigate = useNavigate()
   const xp = useProfile((s) => s.xp)
+  const premiumXp = useProfile((s) => s.premiumXp)
   const savePublic = useProfile((s) => s.savePublic)
   const pub = useProfile((s) => s.pub)
   const [tab, setTab] = useState<'banners' | 'logos'>('banners')
   const [flash, setFlash] = useState<string | null>(null)
 
-  const buyBanner = (id: string, price: number) => {
+  const buyBanner = (id: string, price: number, gold: boolean) => {
     if (useShop.getState().isOwned(id)) return
-    if (!useShop.getState().canAfford(price, xp)) return
-    const newLeaves = useShop.getState().purchase(id, price, xp)
-    useProfile.setState({ xp: newLeaves })
+    if (gold) {
+      if (!useShop.getState().canAffordGold(price, premiumXp)) return
+      const newGold = useShop.getState().purchaseGold(id, price, premiumXp)
+      useProfile.setState({ premiumXp: newGold })
+    } else {
+      if (!useShop.getState().canAfford(price, xp)) return
+      const newLeaves = useShop.getState().purchase(id, price, xp)
+      useProfile.setState({ xp: newLeaves })
+    }
     setFlash(id)
     setTimeout(() => setFlash(null), 800)
   }
 
-  const buyLogo = (id: string, price: number) => {
+  const buyLogo = (id: string, price: number, gold: boolean) => {
     if (useShop.getState().isOwned(id)) return
-    if (!useShop.getState().canAfford(price, xp)) return
-    const newLeaves = useShop.getState().purchase(id, price, xp)
-    useProfile.setState({ xp: newLeaves })
+    if (gold) {
+      if (!useShop.getState().canAffordGold(price, premiumXp)) return
+      const newGold = useShop.getState().purchaseGold(id, price, premiumXp)
+      useProfile.setState({ premiumXp: newGold })
+    } else {
+      if (!useShop.getState().canAfford(price, xp)) return
+      const newLeaves = useShop.getState().purchase(id, price, xp)
+      useProfile.setState({ xp: newLeaves })
+    }
     setFlash(id)
     setTimeout(() => setFlash(null), 800)
   }
+
+  const gold = (c?: string) => c === 'gold'
+  const canBuyWith = (price: number, c?: string) =>
+    gold(c) ? useShop.getState().canAffordGold(price, premiumXp) : useShop.getState().canAfford(price, xp)
 
   return (
     <div className="shop-page">
@@ -39,6 +56,7 @@ export default function Shop() {
         <div className="shop-balance">
           <img className="shop-balance-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
           <span>{xp.toLocaleString()}</span>
+          <span className="shop-gold-balance">🌟 {premiumXp.toLocaleString()}</span>
         </div>
       </div>
 
@@ -62,7 +80,8 @@ export default function Shop() {
                     {items.map((b) => {
                       const owned = useShop.getState().isOwned(b.id)
                       const equipped = pub.banner === b.id
-                      const canBuy = !owned && b.price > 0 && useShop.getState().canAfford(b.price, xp)
+                      const g = gold(b.currency)
+                      const canBuy = !owned && b.price > 0 && canBuyWith(b.price, b.currency)
                       return (
                         <div key={b.id} className={`shop-banner-card ${flash === b.id ? 'shop-flash' : ''}`}>
                           <div
@@ -91,10 +110,10 @@ export default function Shop() {
                             ) : (
                               <button
                                 className={`shop-buy-btn ${canBuy ? '' : 'shop-buy-btn--disabled'}`}
-                                onClick={() => buyBanner(b.id, b.price)}
+                                onClick={() => buyBanner(b.id, b.price, g)}
                                 disabled={!canBuy}
                               >
-                                <span className="shop-leaf-icon">🍃</span> {b.price}
+                                <span className={g ? 'shop-gold-icon' : 'shop-leaf-icon'}>{g ? '🌟' : '🍃'}</span> {b.price}
                               </button>
                             )}
                           </div>
@@ -122,7 +141,8 @@ export default function Shop() {
                     {items.map((l) => {
                       const owned = useShop.getState().isOwned(l.id)
                       const equipped = pub.logo === l.id
-                      const canBuy = !owned && l.price > 0 && useShop.getState().canAfford(l.price, xp)
+                      const g = gold(l.currency)
+                      const canBuy = !owned && l.price > 0 && canBuyWith(l.price, l.currency)
                       return (
                         <div key={l.id} className={`shop-logo-card ${flash === l.id ? 'shop-flash' : ''}`}>
                           <div className="shop-logo-preview">
@@ -147,10 +167,10 @@ export default function Shop() {
                             ) : (
                               <button
                                 className={`shop-buy-btn ${canBuy ? '' : 'shop-buy-btn--disabled'}`}
-                                onClick={() => buyLogo(l.id, l.price)}
+                                onClick={() => buyLogo(l.id, l.price, g)}
                                 disabled={!canBuy}
                               >
-                                <span className="shop-leaf-icon">🍃</span> {l.price}
+                                <span className={g ? 'shop-gold-icon' : 'shop-leaf-icon'}>{g ? '🌟' : '🍃'}</span> {l.price}
                               </button>
                             )}
                           </div>

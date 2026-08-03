@@ -5,7 +5,7 @@ import { useProfile } from '../store/profile'
 import { STATUS_COLOR } from '../lib/presence'
 import type { StudyStatus } from '../lib/types'
 import { getStudyRoom, channelFor, roomKey } from '../lib/studyRooms'
-import { rankForTotalXp } from '../lib/ranks'
+import { rankForLifetime } from '../lib/ranks'
 import { joinStudyRoom, leaveStudyRoom, updateMe, useStudyRoom, type StudyPeer } from '../lib/studyRoomNet'
 import { startHeartbeat, leavePresence } from '../lib/realmPresence'
 import './StudyRoom.css'
@@ -18,7 +18,7 @@ export function StudyRoom() {
   const { user } = useAuth()
   const displayName = useProfile((s) => s.displayName)
   const avatarUrl = useProfile((s) => s.avatarUrl)
-  const myRank = useProfile((s) => rankForTotalXp(s.xp + s.premiumXp).id)
+  const myRank = useProfile((s) => rankForLifetime(s.rankXp, s.xp, s.premiumXp).id)
   const myCountry = useProfile((s) => s.data.country)
   const myName = displayName && displayName !== 'Explorer' ? displayName.split(' ')[0] : 'You'
 

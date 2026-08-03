@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { rankForTotalXp, RANKS } from './ranks'
+import { rankForLifetime, RANKS } from './ranks'
 
 // Profile statistics. We surface REAL numbers wherever a data source exists
 // (focus sessions + minutes from the pomodoro store, notes/trees from the DB,
@@ -68,6 +68,8 @@ export interface StatsInput {
   counts: StudyCounts
   rankId: string | null
   xp: number
+  /** lifetime rank XP (monotonic). Falls back to xp when 0/missing. */
+  rankXp?: number
   achievementsUnlocked: number
   interestCount: number
 }
@@ -75,7 +77,7 @@ export interface StatsInput {
 /** Assemble the ordered set of stat cards from real + pending sources. */
 export function buildProfileStats(i: StatsInput): StatCard[] {
   const totalXp = i.xp
-  const rankObj = rankForTotalXp(totalXp)
+  const rankObj = rankForLifetime(i.rankXp ?? 0, i.xp, 0)
   const rankIdx = Math.max(0, RANKS.findIndex((r) => r.id === rankObj.id))
   // Compute tier name: Bronze I-III = "Bronze", Silver I-III = "Silver", etc.
   const tierNames = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Crystal', 'Focuster']

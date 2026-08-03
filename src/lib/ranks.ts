@@ -67,6 +67,21 @@ export function rankForTotalXp(totalXp: number): Rank {
   return rank
 }
 
+/**
+ * Compute rank from LIFETIME rank XP — never from the spendable wallet. Spending
+ * leaves/goldens must never demote the player. Falls back to the wallet total
+ * (xp + premium_xp) only when rankXp is 0/missing (pre-migration accounts).
+ */
+export function rankForLifetime(rankXp: number, xp: number, premiumXp: number): Rank {
+  const lifetime = rankXp > 0 ? rankXp : xp + premiumXp
+  return rankForTotalXp(lifetime)
+}
+
+/** Progress toward the next rank, driven by lifetime rank XP (wallet fallback). */
+export function lifetimeRankProgress(rankXp: number, xp: number, premiumXp: number): { rank: Rank; nextRank: Rank | null; pct: number } {
+  return rankProgress(rankXp > 0 ? rankXp : xp + premiumXp)
+}
+
 /** Return the index of the rank in the ladder (0-based). */
 export function rankIndex(rankId: string): number {
   return Math.max(0, RANKS.findIndex((r) => r.id === rankId))

@@ -1,16 +1,24 @@
 // XP Engine — centralized award logic with anti-spam / daily cap protection.
 //
 // Two currencies:
-//   leaves (regular XP)  — earned from real study (rooms, train, library)
-//   golden_leaves (premium XP) — earned from engagement habits & achievements
+//   leaves (regular XP / green)  — earned from real study + engagement
+//                                 (rooms, train, library, streaks, tasks).
+//                                 The F2P earn-and-spend track.
+//   golden_leaves (premium XP)   — real-money purchases ONLY (+ tiny rank-up
+//                                 trickle). NEVER handed out free for daily
+//                                 engagement, streaks, or achievements.
 //
-// Leaves are SPENDABLE currency (like CoC gold coins). They are earned ONLY
-// from study time: focus sessions, train journeys, and library.
-// Task Magnet (tasks, habits, milestones) awards NO leaves — prevents farming.
+// Leaves are SPENDABLE currency (like CoC gold coins), earned mainly from
+// study time: focus sessions, train journeys, and library.
+// Task Magnet (tasks, habits, milestones) awards NO base leaves — prevents
+// farming; only the daily all-tasks-done bonus and consistency reward green.
+//
+// Golden leaves are strictly premium: Stripe/golden purchases and the rank-up
+// trickle. See awardGoldenLeaves.
 //
 // Anti-spam measures:
 //   1. Focus XP only awarded for visible-tab time (enforced upstream)
-//   2. Train journeys have diminishing returns per day
+//   2. Soft daily diminishing returns (DAILY_CAPS) on focus earnings
 //   3. No hard cap on focus — it requires real time commitment
 
 import { supabase } from './supabase'
@@ -28,38 +36,42 @@ export const XP_VALUES = {
   dailyLogin: 5,
   journeyMin: 1.45,
 
-  // Premium XP — engagement rewards (golden leaves)
-  journeyPremium: 20,
-  streak7: 50,
-  streak30: 200,
+  // Premium XP — golden leaves, purchases ONLY + rank-up trickle. Never free
+  // engagement (see header). The rank-up trickle lets F2P taste the premium
+  // shop without enabling repeated purchases.
   rankUp: 30,
 
-  // Daily engagement
+  // Daily engagement (GREEN)
   dailyTaskComplete: 10,
   perfectDay: 30,
 
-  // Study quality
+  // Study quality (GREEN)
   hrLibraryFocus: 15,
   noTabCloseLibrary: 10,
   deepWork: 20,
   libraryStudy: 8,
 
-  // Streaks & consistency
+  // Streaks & consistency (GREEN)
   weeklyWarrior: 25,
+  streak7: 50,
+  streak30: 200,
 
-  // Exploration
+  // Exploration (GREEN)
   multiModeDay: 15,
   earlyBird: 10,
   nightOwl: 10,
   marathonScholar: 15,
 
-  // Social
+  // Social (GREEN)
   socialStudy: 8,
 
-  // Milestones (one-time)
+  // Milestones (one-time, GREEN)
   firstBlueprint: 20,
   firstTree: 10,
   blueprintMaster: 12,
+
+  // Train journeys: extra GREEN per completed journey (beyond journeyMin).
+  journeyPremium: 20,
 
 // Inactivity penalty — deducted when daily focus < threshold (costs rank drops)
   inactivityPenalty: 200,
@@ -102,6 +114,22 @@ export const DAILY_CAPS = {
   /** UI compatibility — "full-rate" minutes shown in cap meters. */
   activeMinCap: 120,
 } as const
+
+// Streak-tier XP multipliers applied to the focus-time base (retention hook).
+// Higher streaks make existing study worth more — not a path to farm.
+export const STREAK_XP_TIERS: { minDays: number; mult: number }[] = [
+  { minDays: 90, mult: 1.5 },
+  { minDays: 30, mult: 1.25 },
+  { minDays: 7, mult: 1.1 },
+]
+
+/** Best streak multiplier for a streak length (>=1, else 1). */
+export function streakXpMultiplier(streakDays: number): number {
+  for (const t of STREAK_XP_TIERS) {
+    if (streakDays >= t.minDays) return t.mult
+  }
+  return 1
+}
 
 // Focus minutes and train journeys are NOT capped — they require real time.
 // Train journeys have soft diminishing returns tracked below.
@@ -334,6 +362,58 @@ export function awardLeaves(
    }
  }
 
+// ---- Focus reward path with multipliers -------------------------------------
+// The deep-dive rebalance: subject bonus + first-session-of-day + streak tiers +
+// quality (no-forfeit) multiplier, layered on the existing soft daily cap.
+export interface FocusAwardInput {
+  currentLeaves: number
+  currentGoldenLeaves: number
+  durationMin: number
+  currentRankId: string
+  rankXp?: number
+  /** subject tag entered — earns a flat green bonus */
+  hasSubject?: boolean
+  /** active study streak days → tier multiplier (7/30/90) */
+  streakDays?: number
+  /** session completed without forfeit/leave (>=90% timer) → 1.5× base */
+  quality?: boolean
+  /** override the per-minute base rate (Medium 2.64 / Hardcore scaled).
+   *  Defaults to POMO_REWARDS.basePerMin (1.32). */
+  ratePerMin?: number
+}
+
+export function awardFocusLeaves(input: FocusAwardInput): AwardResult {
+  const rate = input.ratePerMin ?? POMO_REWARDS.basePerMin
+  const base = Math.round(input.durationMin * rate)
+
+  let total = base
+
+  // Quality multiplier: completed, no-forfeit focus is worth more.
+  if (input.quality) total = Math.round(total * 1.5)
+
+  // Subject bonus (flat) when a subject tag was entered.
+  if (input.hasSubject) total += POMO_REWARDS.subjectBonusFlat
+
+  // Streak-tier multiplier on top.
+  total = Math.round(total * streakXpMultiplier(input.streakDays ?? 1))
+
+  // First completed session of the day → +50% (habit hook).
+  const daily = loadDaily()
+  const firstSession = daily.focusSessionCount === 0
+  if (firstSession) total = Math.round(total * 1.5)
+  daily.focusSessionCount += 1
+  saveDaily(daily)
+
+  return awardLeaves(
+    input.currentLeaves,
+    input.currentGoldenLeaves,
+    'focus',
+    total,
+    input.currentRankId,
+    input.rankXp,
+  )
+}
+
 // ---- Award golden leaves (premium XP) — never capped, no cooldown -----------
 export function awardGoldenLeaves(
   currentLeaves: number,
@@ -405,7 +485,6 @@ export function awardFocusSessionBonuses(
   currentRankId: string,
 ): { result: AwardResult; bonusAwarded: boolean } {
   const daily = loadDaily()
-  let bonusGolden = 0
   let bonusLeaves = 0
 
   // Track mode usage for multi-mode day
@@ -420,62 +499,49 @@ export function awardFocusSessionBonuses(
 
   // 1hr Library Focus — library only, 60+ min
   if (isLibrary && durationMin >= 60) {
-    bonusGolden += XP_VALUES.hrLibraryFocus
+    bonusLeaves += XP_VALUES.hrLibraryFocus
   }
 
   // No-Tab-Close Library Focus — library only, tab always visible
   if (isLibrary && tabAlwaysVisible && durationMin >= 25) {
-    bonusGolden += XP_VALUES.noTabCloseLibrary
+    bonusLeaves += XP_VALUES.noTabCloseLibrary
   }
 
   // Deep Work Session — any mode, 25+ min, no tab switch
   if (tabAlwaysVisible && durationMin >= 25) {
-    bonusGolden += XP_VALUES.deepWork
+    bonusLeaves += XP_VALUES.deepWork
   }
 
   // Time-of-day bonuses
   const hour = new Date().getHours()
-  if (hour < 8) bonusGolden += XP_VALUES.earlyBird
-  if (hour >= 22) bonusGolden += XP_VALUES.nightOwl
+  if (hour < 8) bonusLeaves += XP_VALUES.earlyBird
+  if (hour >= 22) bonusLeaves += XP_VALUES.nightOwl
 
   // Marathon Scholar — 3+ total hours in a day
   if (daily.totalFocusMin >= 180) {
-    bonusGolden += XP_VALUES.marathonScholar
+    bonusLeaves += XP_VALUES.marathonScholar
   }
 
   // Multi-Mode Day — 3+ different modes in one day
   if (daily.modesUsed.size >= 3) {
-    bonusGolden += XP_VALUES.multiModeDay
+    bonusLeaves += XP_VALUES.multiModeDay
   }
 
   saveDaily(daily)
 
-  // Award combined bonus
-  const totalBonus = bonusGolden + bonusLeaves
-  if (totalBonus === 0) {
+  if (bonusLeaves === 0) {
     return { result: awardLeaves(currentLeaves, currentGoldenLeaves, isLibrary ? 'library' : 'focus', 0, currentRankId), bonusAwarded: false }
   }
 
-  // Award leaves portion
-  let leavesResult: AwardResult = { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
-  if (bonusLeaves > 0) {
-    leavesResult = awardLeaves(currentLeaves, currentGoldenLeaves, 'library', bonusLeaves, currentRankId)
-  }
-
-  // Award golden portion
-  const totalLeaves = currentLeaves + leavesResult.leaves
-  const totalGolden = currentGoldenLeaves + leavesResult.goldenLeaves
-  const goldenResult = bonusGolden > 0
-    ? awardGoldenLeaves(totalLeaves, totalGolden, bonusGolden, currentRankId)
-    : leavesResult
-
+  // All engagement bonuses are GREEN leaves — golden is purchase + rank-up only.
+  const leavesResult = awardLeaves(currentLeaves, currentGoldenLeaves, 'library', bonusLeaves, currentRankId)
   return {
     result: {
       leaves: leavesResult.leaves,
-      goldenLeaves: goldenResult.goldenLeaves,
-      rankChanged: leavesResult.rankChanged || goldenResult.rankChanged,
-      newRankId: goldenResult.rankChanged ? goldenResult.newRankId : leavesResult.newRankId,
-      capped: false,
+      goldenLeaves: 0,
+      rankChanged: leavesResult.rankChanged,
+      newRankId: leavesResult.newRankId,
+      capped: leavesResult.capped,
       onCooldown: false,
     },
     bonusAwarded: true,
@@ -500,10 +566,10 @@ export function awardDailyTaskCompletion(
 
   // Check for Perfect Day (daily tasks + focus + login)
   if (daily.dailyTasksCompleted && daily.totalFocusMin >= XP_VALUES.inactivityThresholdMin && daily.loginAwarded) {
-    return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.perfectDay, currentRankId)
+    return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.perfectDay, currentRankId)
   }
 
-  return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.dailyTaskComplete, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.dailyTaskComplete, currentRankId)
 }
 
 /** Call when studying in library with 2+ friends online. */
@@ -516,7 +582,7 @@ export function awardSocialStudy(
   if (friendsOnline < 2) {
     return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
   }
-  return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.socialStudy, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.socialStudy, currentRankId)
 }
 
 /** Call at end of week or when 5th active day is detected. */
@@ -538,7 +604,7 @@ export function awardWeeklyWarrior(
     }
     localStorage.setItem(awardedKey, '1')
   } catch { /* ignore */ }
-  return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.weeklyWarrior, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.weeklyWarrior, currentRankId)
 }
 
 /** Call when first tree is planted. */
@@ -561,7 +627,7 @@ export function awardFirstTree(
   } catch { /* ignore */ }
   daily.firstTreeAwarded = true
   saveDaily(daily)
-  return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.firstTree, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.firstTree, currentRankId)
 }
 
 /** Call when a blueprint is created. */
@@ -569,6 +635,8 @@ export function awardBlueprint(
   currentLeaves: number,
   currentGoldenLeaves: number,
   currentRankId: string,
+  /** Lifetime rank XP — see awardLeaves. */
+  rankXp?: number,
 ): AwardResult {
   const daily = loadDaily()
   daily.blueprintsCreated += 1
@@ -597,7 +665,7 @@ export function awardBlueprint(
   if (bonus === 0) {
     return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
   }
-  return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, bonus, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', bonus, currentRankId, rankXp)
 }
 
 // ---- Helpers -----------------------------------------------------------------
@@ -631,6 +699,7 @@ export function getDailyEngagement() {
 let syncTimer: ReturnType<typeof setTimeout> | null = null
 let pendingLeaves = 0
 let pendingGoldenLeaves = 0
+let pendingRankXp: number | undefined
 
 /**
  * Queue a DB sync. Batches rapid-fire writes (debounced to max 1 per 3s).
@@ -639,15 +708,17 @@ let pendingGoldenLeaves = 0
 export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number, rankXp?: number) {
   pendingLeaves = leaves
   pendingGoldenLeaves = goldenLeaves
+  if (typeof rankXp === 'number') pendingRankXp = rankXp
 
   if (syncTimer) return
   syncTimer = setTimeout(async () => {
     syncTimer = null
     const l = pendingLeaves
     const g = pendingGoldenLeaves
+    const r = pendingRankXp
     try {
         const payload: Record<string, unknown> = { id: userId, xp: l, premium_xp: g }
-        if (typeof rankXp === 'number') payload.rank_xp = rankXp
+        if (typeof r === 'number') payload.rank_xp = r
         await supabase
         .from('profiles')
         .upsert([payload], { onConflict: 'id' })

@@ -16,7 +16,7 @@ import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '.
 import { BANNERS, getBanner, LOGOS } from '../lib/banners'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
-import { getRank, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
+import { getRank, rankForLifetime, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
 import { computeStreak } from '../lib/magnet/insights'
 import { generatePlayerId } from '../lib/playerId'
 import { checkDisplayName } from '../lib/displayName'
@@ -57,8 +57,7 @@ export function Profile() {
   const ownAvatarUrl = useProfile((s) => s.avatarUrl)
   const ownPub = useProfile((s) => s.pub)
   const ownCountry = useProfile((s) => s.data.country)
-  const ownTotalXp = useProfile((s) => s.xp + s.premiumXp)
-  const ownRank = useProfile((s) => rankForTotalXp(s.xp + s.premiumXp).id)
+  const ownRank = useProfile((s) => rankForLifetime(s.rankXp, s.xp, s.premiumXp).id)
 
   const isOwnRoute = !routePlayerId || Number(routePlayerId) === ownPlayerId
 
@@ -102,7 +101,7 @@ export function Profile() {
         displayName: remote.display_name,
         avatarUrl: remote.avatar_url,
         country: remote.country,
-        rankId: remote.rank,
+        rankId: remote.rank_xp ? rankForTotalXp(remote.rank_xp).id : remote.rank,
         pub: remote.public_profile,
       }
     }
@@ -182,7 +181,9 @@ function ProfileBody({
   const onboardingGoals = useProfile((s) => s.data.studyGoals)
   const xp = useMagnet((s) => s.data.xp)
   const goldenXp = useMagnet((s) => s.data.premiumXp)
+  const rankXp = useMagnet((s) => s.data.rankXp)
   const totalXp = xp + goldenXp
+  const lifetimeXp = rankXp > 0 ? rankXp : totalXp
   const focusSessions = usePomodoro((s) => s.completed)
   const totalFocusMin = usePomodoro((s) => s.totalFocusMin)
   const achievements = useMagnet((s) => s.data.achievements.length)
@@ -228,8 +229,8 @@ function ProfileBody({
     return () => { cancelled = true }
   }, [view.id, isOwn])
 
-  const rank = rankForTotalXp(totalXp)
-  const levelData = levelProgress(totalXp)
+  const rank = rankForLifetime(rankXp, xp, goldenXp)
+  const levelData = levelProgress(lifetimeXp)
   const banner = getBanner(view.pub.banner)
 
   const formatHours = (min: number) => {
@@ -467,7 +468,7 @@ function ProfileBody({
       )}
 
       {rankModal && (
-        <RankRoadmap totalXp={totalXp} onClose={() => setRankModal(false)} />
+        <RankRoadmap totalXp={lifetimeXp} onClose={() => setRankModal(false)} />
       )}
     </div>
   )

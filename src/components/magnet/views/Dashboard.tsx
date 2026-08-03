@@ -81,14 +81,16 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
   // Weekly warrior: check if 5+ days studied this week
   useEffect(() => {
     if (streak < 5) return
-    const { xp, premiumXp, data: profileData } = useProfile.getState()
-    const currentRank = rankForTotalXp(xp + premiumXp)
+    const { xp, premiumXp, rankXp } = useProfile.getState()
+    const rankBase = rankXp || xp + premiumXp
+    const currentRank = rankForTotalXp(rankBase)
     const result = awardWeeklyWarrior(xp, premiumXp, streak, currentRank.id)
-    if (result.goldenLeaves > 0) {
-      const newPremiumXp = premiumXp + result.goldenLeaves
-      useProfile.setState({ premiumXp: newPremiumXp })
+    if (result.leaves > 0) {
+      const newXp = xp + result.leaves
+      const newRankXp = rankBase + result.leaves
+      useProfile.setState({ xp: newXp, rankXp: newRankXp })
       const userId = useProfile.getState().userId
-      if (userId) syncXpToDb(userId, xp, newPremiumXp)
+      if (userId) syncXpToDb(userId, newXp, premiumXp, newRankXp)
     }
   }, [streak])
   const insights = useMemo(() => generateInsights(data, now, 30), [data, now])

@@ -677,22 +677,62 @@ function RenderHeartbeat() {
 }
 
 /**
- * Fires onReady once it mounts — which only happens after Suspense resolves
- * DayNightWeather + Exterior. This prevents the explore-veil from disappearing
- * while the scene is still partially black.
+ * SceneReady — fires onReady after the scene has actually rendered a few frames
+ * AND the camera has settled into its final position.
+ * This ensures the loading veil stays until the 3D world is actually visible.
  *
- * Also fires after a 5 s timeout as a safety net: if Suspense hangs or
- * a component error keeps this from mounting, the veil still lifts so the
- * user isn't stuck on a permanent dark screen. The Explore screen has its
- * own 8 s fallback, but firing earlier here gives a faster recovery.
+ * We wait for 3 actual rendered frames after the camera has settled,
+ * with a 10s safety timeout as a fallback.
  */
 function SceneReady({ onReady }: { onReady?: () => void }) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { onReady?.() }, [])
+  const frameCount = useRef(0)
+  const readyCalled = useRef(false)
+  const lastPos = useRef(new Vector3())
+  const hasStarted = useRef(false)
+
+  // Get access to the camera position from the R3F store
+  const camera = useThree((s) => s.camera)
+  
+  useFrame(() => {
+    const currentPos = camera.position.clone()
+    
+    if (!hasStarted.current) {
+      lastPos.current.copy(camera.position)
+      hasStarted.current = true
+      frameCount.current = 0
+      return
+    }
+
+    const delta = camera.position.distanceTo(lastPos.current)
+    lastPos.current.copy(camera.position)
+
+    // Camera has settled if movement is negligible
+    if (delta < 0.001) {
+      frameCount.current += 1
+      if (frameCount.current >= 3 && !readyCalled.current) {
+        readyCalled.current = true
+        onReady?.()
+      }
+    } else {
+      // Camera still moving, reset frame counter
+      frameCount.current = 0
+    }
+  })
+
+  // Safety timeout: if frames don't arrive in 10 seconds, force ready
   useEffect(() => {
-    const t = setTimeout(() => onReady?.(), 5000)
-    return () => clearTimeout(t)
+    const timeout = setTimeout(() => {
+      if (!readyCalled.current) {
+        readyCalled.current = true
+        onReady?.()
+      }
+    }, 10000)
+
+    return () => {
+      clearTimeout(timeout)
+    }
   }, [onReady])
+
   return null
 }
 

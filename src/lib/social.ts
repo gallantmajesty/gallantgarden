@@ -17,6 +17,7 @@ function mapPublic(row: Record<string, unknown>): PublicProfile {
     avatar_url: (row.avatar_url as string | null) ?? null,
     country: (row.country as string | null) ?? null,
     rank: (row.rank as string | null) ?? null,
+    rank_xp: (row.rank_xp as number | null) ?? null,
     public_profile: parseProfilePublic(row.public_profile),
     created_at: (row.created_at as string) ?? '',
     last_seen_at: (row.last_seen_at as string | null) ?? null,
@@ -28,7 +29,7 @@ function mapPublic(row: Record<string, unknown>): PublicProfile {
 // PostgREST tolerates selecting them once present; before that, callers should
 // have the migration applied (see migrations/*_add-chat-system.sql).
 const PUBLIC_COLS =
-  'id, player_id, display_name, avatar, avatar_url, country, rank, public_profile, created_at, last_seen_at, study_status'
+  'id, player_id, display_name, avatar, avatar_url, country, rank, rank_xp, public_profile, created_at, last_seen_at, study_status'
 
 // ---------------------------------------------------------------- follow edges
 

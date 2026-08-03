@@ -50,10 +50,12 @@ interface ProfileState {
   pub: ProfilePublic
 
   // ---- progression (synced from DB, authoritative) ----
-  /** total leaves (regular XP) */
+  /** total leaves (regular XP, spendable wallet) */
   xp: number
-  /** total golden leaves (premium XP) */
+  /** total golden leaves (premium XP, spendable wallet) */
   premiumXp: number
+  /** lifetime rank XP (monotonic — never lowered by spending). Drives rank. */
+  rankXp: number
   /** true when the current display name violates the new naming rules */
   nameWarning: boolean
 
@@ -92,6 +94,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   pub: { ...EMPTY_PROFILE_PUBLIC },
   xp: 0,
   premiumXp: 0,
+  rankXp: 0,
   nameWarning: false,
 
   hydrate: async (userId, fallbackName, isGuest = false) => {
@@ -112,6 +115,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
         pub: { ...EMPTY_PROFILE_PUBLIC },
         xp: 0,
         premiumXp: 0,
+        rankXp: 0,
       })
       return
     }
@@ -130,10 +134,11 @@ export const useProfile = create<ProfileState>((set, get) => ({
     let pub = { ...EMPTY_PROFILE_PUBLIC }
     let xp = 0
     let premiumXp = 0
+    let rankXp = 0
     try {
       const { data: row } = await supabase
         .from('profiles')
-        .select('player_id, display_name_changes, display_name, avatar_url, public_profile, xp, premium_xp')
+        .select('player_id, display_name_changes, display_name, avatar_url, public_profile, xp, premium_xp, rank_xp')
         .eq('id', userId)
         .maybeSingle()
       if (row) {
@@ -145,6 +150,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
         pub = parseProfilePublic(r.public_profile)
         xp = (r.xp as number) ?? 0
         premiumXp = (r.premium_xp as number) ?? 0
+        rankXp = (r.rank_xp as number) ?? 0
       }
     } catch {
       /* offline / columns missing — fall back to empties */
@@ -155,18 +161,19 @@ export const useProfile = create<ProfileState>((set, get) => ({
       displayName = fallbackName || 'Explorer'
     }
 
-    set({ userId, data, onboarded: data.completed, ready: true, playerId, displayName, displayNameChanges, avatarUrl, pub, xp, premiumXp, nameWarning: !isNameValid(displayName) })
+    set({ userId, data, onboarded: data.completed, ready: true, playerId, displayName, displayNameChanges, avatarUrl, pub, xp, premiumXp, rankXp, nameWarning: !isNameValid(displayName) })
 
-    // Award daily login golden leaves (first open of the day)
+    // Award daily login GREEN leaves (first open of the day). Golden is
+    // purchase/rank-up only, so this stays a green grind-track reward.
     try {
       const loginResult = checkDailyLogin(xp, premiumXp, data.rank || 'bronze-1')
-      if (loginResult.goldenLeaves > 0) {
-        const newXp = xp
-        const newPremiumXp = premiumXp + loginResult.goldenLeaves
-        set({ premiumXp: newPremiumXp })
+      if (loginResult.leaves > 0) {
+        const newXp = xp + loginResult.leaves
+        const newRankXp = rankXp + loginResult.leaves
+        set({ xp: newXp, rankXp: newRankXp })
         // Sync to DB
         const { supabase: ins } = await import('../lib/supabase')
-        await ins.from('profiles').upsert([{ id: userId, premium_xp: newPremiumXp }], { onConflict: 'id' })
+        await ins.from('profiles').upsert([{ id: userId, xp: newXp, rank_xp: newRankXp }], { onConflict: 'id' })
       }
     } catch { /* ignore — login bonus is best-effort */ }
   },
@@ -263,12 +270,16 @@ export const useProfile = create<ProfileState>((set, get) => ({
     try {
       const { data: row } = await supabase
         .from('profiles')
-        .select('xp, premium_xp')
+        .select('xp, premium_xp, rank_xp')
         .eq('id', userId)
         .maybeSingle()
       if (row) {
         const r = row as Record<string, unknown>
-        set({ xp: (r.xp as number) ?? 0, premiumXp: (r.premium_xp as number) ?? 0 })
+        set({
+          xp: (r.xp as number) ?? 0,
+          premiumXp: (r.premium_xp as number) ?? 0,
+          rankXp: (r.rank_xp as number) ?? 0,
+        })
       }
     } catch { /* offline */ }
   },
@@ -301,6 +312,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       pub: { ...EMPTY_PROFILE_PUBLIC },
       xp: 0,
       premiumXp: 0,
+      rankXp: 0,
       nameWarning: false,
     }),
 }))

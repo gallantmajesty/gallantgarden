@@ -17,6 +17,8 @@ export interface Banner {
   category: BannerCategory
   /** price in leaves — 0 means free */
   price: number
+  /** currency spent. 'green' (🍃 leaves) or 'gold' (🌟 gold leaves). Default green. */
+  currency?: 'green' | 'gold'
   /** if true, banner is light-colored and name text should be dark */
   textDark?: boolean
 }
@@ -87,6 +89,54 @@ export const BANNERS: Banner[] = [
     name: 'Mystic',
     css: 'linear-gradient(120deg, #1a0f2e 0%, #4a2b7a 42%, #c065e0 78%, #ff9ec4 100%)',
     glow: '#c065e0',
+    category: 'gradient',
+    price: 0,
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset',
+    css: 'linear-gradient(120deg, #2a0e1e 0%, #7a2a4a 38%, #ff7a4a 74%, #ffd08a 100%)',
+    glow: '#ff7a4a',
+    category: 'gradient',
+    price: 0,
+  },
+  {
+    id: 'arctic',
+    name: 'Arctic',
+    css: 'linear-gradient(120deg, #0e1e2a 0%, #1e4a6b 45%, #9adbe8 82%, #eaf6fb 100%)',
+    glow: '#9adbe8',
+    category: 'gradient',
+    price: 0,
+  },
+  {
+    id: 'candy',
+    name: 'Candy',
+    css: 'linear-gradient(120deg, #3a1230 0%, #c65a8a 40%, #ff9ec4 70%, #ffd6ec 100%)',
+    glow: '#ff86b0',
+    category: 'gradient',
+    price: 0,
+  },
+  {
+    id: 'neonlight',
+    name: 'Neon',
+    css: 'linear-gradient(120deg, #05030f 0%, #1a0f4a 40%, #ba2bd6 78%, #00ffd0 100%)',
+    glow: '#00ffd0',
+    category: 'gradient',
+    price: 0,
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean',
+    css: 'linear-gradient(120deg, #031a26 0%, #0a4a6b 45%, #2a9ac9 80%, #b8ecff 100%)',
+    glow: '#4fc3e8',
+    category: 'gradient',
+    price: 0,
+  },
+  {
+    id: 'lilac',
+    name: 'Lilac',
+    css: 'linear-gradient(120deg, #1a1030 0%, #5a3a7a 42%, #b08ad6 80%, #ffe0f0 100%)',
+    glow: '#b08ad6',
     category: 'gradient',
     price: 0,
   },
@@ -165,7 +215,7 @@ export const BANNERS: Banner[] = [
     category: 'others',
     price: 1000,
   },
-  {
+{
     id: 'vaporwave_glitch',
     name: 'Vaporwave Glitch',
     css: 'linear-gradient(120deg, #0a0015 0%, #2a004a 35%, #ff66ff 70%, #66ffff 100%)',
@@ -173,6 +223,105 @@ export const BANNERS: Banner[] = [
     image: '/banners/vaporwave_glitch_banner.webp',
     category: 'others',
     price: 1000,
+  },
+
+  // ── Green-currency premium banners ─────────────────────────────────────
+  {
+    id: 'anime_sunset',
+    name: 'Anime Sunset',
+    css: 'linear-gradient(120deg, #1a0e2a 0%, #6a2a6a 38%, #ff6a8a 66%, #ffd08a 100%)',
+    glow: '#ff8ab0',
+    category: 'others',
+    price: 800,
+  },
+  {
+    id: 'scholar_collage',
+    name: 'Scholar Collage',
+    css: 'linear-gradient(120deg, #1a1a2e 0%, #3a3a5a 45%, #8a6cff 85%, #ffd08a 100%)',
+    glow: '#8a6cff',
+    category: 'others',
+    price: 900,
+  },
+  {
+    id: 'forest_canopy',
+    name: 'Forest Canopy',
+    css: 'linear-gradient(120deg, #0a1a12 0%, #2f6b3c 45%, #6bbf4f 80%, #7ae8a0 100%)',
+    glow: '#6bbf4f',
+    category: 'others',
+    price: 1000,
+  },
+  {
+    id: 'rainy_tokyo',
+    name: 'Rainy Tokyo',
+    css: 'linear-gradient(120deg, #050a14 0%, #16213e 40%, #2a6a9a 78%, #ff8ab0 100%)',
+    glow: '#5ec6e6',
+    category: 'others',
+    price: 1000,
+  },
+  {
+    id: 'ink_mountains',
+    name: 'Ink Mountains',
+    css: 'linear-gradient(120deg, #0a0a0f 0%, #2a2a3a 40%, #4a5a7a 78%, #c9e0ff 100%)',
+    glow: '#7aaae0',
+    category: 'others',
+    price: 1200,
+  },
+
+  // ── Golden-currency premium banners (🌟) ───────────────────────────────
+  {
+    id: 'crown_gold',
+    name: 'Crown Gold',
+    css: 'linear-gradient(120deg, #1a1408 0%, #4a3a10 40%, #c9a44a 80%, #fff2c9 100%)',
+    glow: '#ffd700',
+    category: 'others',
+    price: 180,
+    currency: 'gold',
+    textDark: true,
+  },
+  {
+    id: 'royal_purple',
+    name: 'Royal Purple',
+    css: 'linear-gradient(120deg, #0a0520 0%, #2a0f5a 40%, #8a3ae8 75%, #ff9ec4 100%)',
+    glow: '#c065e0',
+    category: 'others',
+    price: 200,
+    currency: 'gold',
+  },
+  {
+    id: 'dragon_ember',
+    name: 'Dragon Ember',
+    css: 'linear-gradient(120deg, #1a0500 0%, #7a2a04 35%, #ff5a14 68%, #ffd08a 100%)',
+    glow: '#ff6a1a',
+    category: 'others',
+    price: 280,
+    currency: 'gold',
+  },
+  {
+    id: 'phoenix_sky',
+    name: 'Phoenix Sky',
+    css: 'linear-gradient(120deg, #1a0710 0%, #7a1a4a 38%, #ff5a8a 70%, #ffc86a 100%)',
+    glow: '#ff5a8a',
+    category: 'others',
+    price: 320,
+    currency: 'gold',
+  },
+  {
+    id: 'mythic_prism',
+    name: 'Mythic Prism',
+    css: 'linear-gradient(120deg, #0a0a1f 0%, #2a3a7a 35%, #8a5aff 60%, #00ffd0 82%, #ff5a8a 100%)',
+    glow: '#b0aaff',
+    category: 'others',
+    price: 300,
+    currency: 'gold',
+  },
+  {
+    id: 'aurora_grace',
+    name: 'Aurora Grace',
+    css: 'linear-gradient(120deg, #0a162a 0%, #2a4a6b 30%, #4fd1c5 55%, #8a6cff 80%, #ff9ec4 100%)',
+    glow: '#4fd1c5',
+    category: 'others',
+    price: 150,
+    currency: 'gold',
   },
 ]
 
@@ -193,6 +342,8 @@ export interface Logo {
   dim?: boolean
   category: LogoCategory
   price: number
+  /** currency spent. 'green' (🍃) or 'gold' (🌟). Default green. */
+  currency?: 'green' | 'gold'
 }
 
 export const LOGOS: Logo[] = [
@@ -215,6 +366,11 @@ export const LOGOS: Logo[] = [
   { id: 'kawaii_angel', name: 'Kawaii Angel', image: '/banners/kawaii_angel_logo.webp', dim: true, category: 'others', price: 800 },
   { id: 'neon_chibi_warrior', name: 'Neon Warrior', image: '/banners/neon_chibi_warrior_logo.webp', dim: true, category: 'others', price: 800 },
   { id: 'star_child', name: 'Star Child', image: '/banners/star_child_logo.webp', dim: true, category: 'others', price: 800 },
+  // Golden-currency logos (🌟)
+  { id: 'holo_ring', name: 'Hologram Ring', css: 'radial-gradient(circle at center, #b0aaff 0%, #2a1a5a 60%, transparent 70%)', category: 'others', price: 150, currency: 'gold' },
+  { id: 'dragon_ember_logo', name: 'Dragon Ember', css: 'radial-gradient(circle at center, #ff8a2a 0%, #7a2a04 65%, transparent 75%)', category: 'others', price: 200, currency: 'gold' },
+  { id: 'legendary_crown', name: 'Legendary Crown', css: 'radial-gradient(circle at center, #ffd700 0%, #4a3a10 60%, transparent 72%)', category: 'others', price: 180, currency: 'gold', dim: true },
+  { id: 'phoenix_logo', name: 'Phoenix', css: 'radial-gradient(circle at center, #ff5a8a 0%, #7a1a2a 60%, transparent 72%)', category: 'others', price: 220, currency: 'gold' },
 ]
 
 export const DEFAULT_LOGO_ID = ''

@@ -7,6 +7,7 @@ import { AuthProvider } from './store/auth'
 import { supabaseConfigured } from './lib/supabase'
 import { initSentry } from './lib/sentry'
 import { SentryUserTracker } from './components/SentryUserTracker'
+import { KeepAwakeProvider } from './components/KeepAwakeProvider'
 import './i18n'
 
 // Global error display — any crash now shows the message on screen instead
@@ -52,6 +53,7 @@ if (!supabaseConfigured) {
     createRoot(rootEl).render(
       <BrowserRouter>
         <AuthProvider>
+          <KeepAwakeProvider />
           <SentryUserTracker />
           <App />
         </AuthProvider>

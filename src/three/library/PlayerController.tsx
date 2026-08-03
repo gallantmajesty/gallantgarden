@@ -21,7 +21,7 @@ import { useSeatFlow } from '../../store/seatFlow'
 import { EmoteLabel } from './EmoteLabel'
 import { useAvatar } from '../../avatar/store'
 import { useProfile } from '../../store/profile'
-import { rankForTotalXp } from '../../lib/ranks'
+import { rankForLifetime } from '../../lib/ranks'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
 import { PlayerTimerBar } from './PlayerTimerBar'
 
@@ -634,7 +634,7 @@ export function PlayerController() {
 
   const displayName = useProfile((s) => s.displayName)
   const playerId = useProfile((s) => s.playerId)
-  const rank = useProfile((s) => rankForTotalXp(s.xp + s.premiumXp).id)
+  const rank = useProfile((s) => rankForLifetime(s.rankXp, s.xp, s.premiumXp).id)
   const country = useProfile((s) => s.data.country)
   const banner = useProfile((s) => s.pub.banner)
   const logo = useProfile((s) => s.pub.logo)

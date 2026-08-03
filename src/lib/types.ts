@@ -121,6 +121,8 @@ export interface PublicProfile {
   avatar_url: string | null
   country: string | null
   rank: string | null
+  /** lifetime rank XP — drives cross-user rank display (0/absent pre-migration). */
+  rank_xp?: number | null
   public_profile: ProfilePublic
   created_at: string
   /** presence (from the chat migration); null/absent before it's applied. */

@@ -5,6 +5,7 @@ import { TrainStationScene } from '../three/train/TrainStationScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
 import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
+import { PreRoomLoader } from '../components/PreRoomLoader'
 import {
   useSettings,
   MIN_BRIGHTNESS,
@@ -19,6 +20,9 @@ import {
 import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
 import { usePomodoro, SESSION_OPTIONS, computeSegments, suggestBreakActivity } from '../store/pomodoro'
+import { hardcoreMultiplier, minWagerFor } from '../store/hardcore'
+import { useDeviceBoost } from '../lib/deviceBoost'
+import { DeviceConnect } from '../components/focus/DeviceConnect'
 import type { TimerType } from '../store/pomodoro'
 import { getRemoteOccupied, setLocalTimer } from '../multiplayer/net'
 import { useWorld } from '../store/world'
@@ -236,15 +240,17 @@ export function Explore({ defaultWorld }: ExploreProps) {
     <div className="explore-root">
       {/* Realm fullscreen enforcement — mobile/tablet only. Desktop is untouched. */}
       <RealmFullscreenGate />
-      {isTrain ? (
-        <TrainStationScene onReady={() => setReady(true)} />
-      ) : isUkCafe ? (
-        <LibraryScene onReady={() => setReady(true)} />
-      ) : (
-        <LibraryScene
-          onReady={() => setReady(true)}
-        />
-      )}
+      <PreRoomLoader isLoading={!ready} minDuration={2000} message="Preparing your study world…">
+        {isTrain ? (
+          <TrainStationScene onReady={() => setReady(true)} />
+        ) : isUkCafe ? (
+          <LibraryScene onReady={() => setReady(true)} />
+        ) : (
+          <LibraryScene
+            onReady={() => setReady(true)}
+          />
+        )}
+</PreRoomLoader>
       <PomodoroTicker />
       {!cinematic && <RealmConnection />}
 
@@ -252,11 +258,9 @@ export function Explore({ defaultWorld }: ExploreProps) {
           machine via useWorld.cineFade (0 = transparent, 1 = fully black). */}
       <div className="cine-fade" style={{ opacity: cineFade }} />
 
-      {!ready && <div className="explore-veil" />}
-
       {/* Library seat-selection overlay — shown before the player commits to a seat.
           Once a seat is chosen we fall through to the normal in-world HUD. */}
-{!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
+      {!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
 
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
       {!isTrain && <CinematicEntry />}
@@ -955,7 +959,7 @@ function RewardPopup() {
 }
 
 function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
-  const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, segmentsCompleted, segmentIndex, totalSessionLeaves } = usePomodoro()
+  const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, setFocusMode, focusMode, segmentsCompleted, segmentIndex, totalSessionLeaves } = usePomodoro()
   const show = useSettings((s) => s.pomo.showTimer)
   const chimeVolume = useSettings((s) => s.pomo.chimeVolume)
   const setChimeVolume = useSettings((s) => s.setPomo)
@@ -964,18 +968,9 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const [pickType, setPickType] = useState<TimerType>(timerType)
   const [pickDur, setPickDur] = useState(sessionMinutes)
   const [pickBreaks, setPickBreaks] = useState(breakCount)
-  const chipRef = useRef<HTMLDivElement>(null)
-  const [chipDrag, setChipDrag] = useState<{ x: number; y: number } | null>(() => {
-    try {
-      const raw = localStorage.getItem('pomo-chip-pos')
-      if (raw) {
-        const p = JSON.parse(raw)
-        if (typeof p?.x === 'number' && typeof p?.y === 'number') return { x: p.x, y: p.y }
-      }
-    } catch { /* ignore */ }
-    return null
-  })
-  const chipDragAbort = useRef<AbortController | null>(null)
+  const [pickMode, setPickMode] = useState<'easy' | 'medium' | 'hardcore'>(focusMode === 'medium' ? 'medium' : focusMode === 'hardcore' ? 'hardcore' : 'easy')
+  const [showConnect, setShowConnect] = useState(false)
+  const deviceCount = useDeviceBoost((s) => s.deviceCount)
   if (!show) return null
   const hh = String(Math.floor(remaining / 3600)).padStart(2, '0')
   const mm = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')
@@ -984,7 +979,9 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const totalSec = sessionMinutes * 60
   const progress = phase === 'idle' ? 0 : 1 - (remaining / totalSec)
 
-  const ringColor = phase === 'running' ? '#4ade80'
+  const ringColor = focusMode === 'hardcore' ? '#f87171'
+    : focusMode === 'medium' ? '#fbbf24'
+    : phase === 'running' ? '#34d399'
     : phase === 'break' ? '#60a5fa'
     : phase === 'paused' ? '#fbbf24'
     : '#6b7280'
@@ -996,7 +993,14 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
 
   const handleStart = () => {
     configure(pickType, pickDur, pickType === 'pomodoro' ? pickBreaks : 0)
+    setFocusMode(pickMode)
     setConfigOpen(false)
+    // Medium/Hardcore need fullscreen enforcement + (for hardcore) a wager, which
+    // are configured inside the Focus Domain. Route there with the config applied.
+    if (pickMode !== 'easy') {
+      onFullscreen?.()
+      return
+    }
     toggle()
   }
 
@@ -1005,59 +1009,13 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
     setPickType(timerType)
     setPickDur(sessionMinutes)
     setPickBreaks(breakCount)
+    setPickMode(focusMode === 'medium' ? 'medium' : focusMode === 'hardcore' ? 'hardcore' : 'easy')
     setConfigOpen(!configOpen)
   }
 
-  // Reset chip drag when config closes or phase starts
-  useEffect(() => {
-    if (phase !== 'idle') setChipDrag(null)
-  }, [phase])
-
-  const [chipDragging, setChipDragging] = useState(false)
-
-  const startChipDrag = useCallback(() => {
-    const el = chipRef.current
-    if (!el) return
-    setChipDragging(true)
-    const rect = el.getBoundingClientRect()
-    const bx = rect.left
-    const by = rect.top
-    const startX = bx
-    const startY = by
-    let last = { x: bx, y: by }
-    const ac = new AbortController()
-    chipDragAbort.current = ac
-    const move = (ev: PointerEvent) => {
-      const x = Math.max(10, Math.min(startX + (ev.clientX - startX), window.innerWidth - el.offsetWidth - 10))
-      const y = Math.max(10, Math.min(startY + (ev.clientY - startY), window.innerHeight - el.offsetHeight - 10))
-      last = { x, y }
-      el.style.left = `${x}px`
-      el.style.top = `${y}px`
-      el.style.right = 'auto'
-      el.style.bottom = 'auto'
-    }
-    const finish = () => {
-      ac.abort()
-      chipDragAbort.current = null
-      setChipDragging(false)
-      setChipDrag(last)
-      try { localStorage.setItem('pomo-chip-pos', JSON.stringify(last)) } catch { /* ignore */ }
-    }
-    window.addEventListener('pointermove', move, { signal: ac.signal })
-    window.addEventListener('pointerup', finish, { signal: ac.signal })
-    window.addEventListener('pointercancel', finish, { signal: ac.signal })
-  }, [])
-
-  const chipStyle = chipDrag
-    ? { left: chipDrag.x, top: chipDrag.y, right: 'auto' as const, bottom: 'auto' as const, position: 'fixed' as const }
-    : undefined
-
   return (
     <div
-      className={`explore-pomo-wrap ${chipDragging ? 'dragging' : ''}`}
-      ref={chipRef}
-      style={chipStyle}
-      onDoubleClick={startChipDrag}
+      className="explore-pomo-wrap"
       data-no-hotkeys
     >
       <RewardPopup />
@@ -1126,6 +1084,14 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
       {configOpen && phase === 'idle' && (
         <div className="pomo-config">
           <div className="pomo-config-row">
+            <span className="pomo-config-label">Tier</span>
+            <div className="pomo-config-btns">
+              <button className={`pomo-config-btn ${pickMode === 'easy' ? 'active' : ''}`} onClick={() => setPickMode('easy')}>🟢 Easy</button>
+              <button className={`pomo-config-btn ${pickMode === 'medium' ? 'active' : ''}`} onClick={() => setPickMode('medium')}>🟡 Medium</button>
+              <button className={`pomo-config-btn ${pickMode === 'hardcore' ? 'active' : ''}`} onClick={() => setPickMode('hardcore')}>🔴 Hardcore</button>
+            </div>
+          </div>
+          <div className="pomo-config-row">
             <span className="pomo-config-label">Mode</span>
             <div className="pomo-config-btns">
               <button className={`pomo-config-btn ${pickType === 'focus' ? 'active' : ''}`} onClick={() => setPickType('focus')}>Focus</button>
@@ -1158,6 +1124,13 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
               </div>
             </div>
           )}
+          {pickMode === 'hardcore' && (
+            <div className="pomo-config-row pomo-config-info" style={{ justifyContent: 'center' }}>
+              <span style={{ fontSize: '0.66rem', color: '#f87171' }}>
+                🔴 Hardcore: min wager <b>{minWagerFor(pickDur)} 🍃</b> · {hardcoreMultiplier(pickDur)}× · opens in the Focus Domain
+              </span>
+            </div>
+          )}
           <div className="pomo-config-row">
             <span className="pomo-config-label">Chime Volume</span>
             <div className="pomo-config-btns">
@@ -1185,8 +1158,25 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
             </div>
           </div>
           <button className="pomo-config-start" onClick={handleStart}>
-            Start {pickType === 'pomodoro' && pickBreaks > 0 ? `• ${pickBreaks} break${pickBreaks > 1 ? 's' : ''}` : ''} Session
+            Start {pickMode === 'easy' ? '🟢' : pickMode === 'medium' ? '🟡' : '🔴'} {pickMode} {pickType === 'pomodoro' && pickBreaks > 0 ? `• ${pickBreaks} break${pickBreaks > 1 ? 's' : ''}` : ''} Session
           </button>
+          <button className="pomo-config-start pomo-config-connect" onClick={() => setShowConnect(true)}>
+            🔗 Hardcore Connect {deviceCount > 0 ? `· ${deviceCount} device${deviceCount > 1 ? 's' : ''}` : ''}
+          </button>
+        </div>
+      )}
+
+      {showConnect && (
+        <div className="udm-overlay" onClick={() => setShowConnect(false)}>
+          <div className="udm-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="udm-head">
+              <div className="udm-head-left"><span className="udm-head-name">Hardcore Connect</span></div>
+              <button className="udm-close" onClick={() => setShowConnect(false)}>×</button>
+            </div>
+            <div className="udm-body" style={{ maxHeight: '70vh', overflow: 'auto', padding: '0.75rem' }}>
+              <DeviceConnect />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1353,6 +1343,14 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               label="Night Mode"
               value={s.nightMode}
               onChange={(v) => s.set('nightMode', v)}
+            />
+          </Section>
+
+          <Section title="Power">
+            <Toggle
+              label="Keep screen awake (prevent sleep while studying)"
+              value={s.keepAwake}
+              onChange={(v) => s.set('keepAwake', v)}
             />
           </Section>
 

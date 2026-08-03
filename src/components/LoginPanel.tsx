@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../store/magnet'
 import { getDailyEngagement, syncXpToDb, XP_VALUES, DAILY_CAPS } from '../lib/xpEngine'
-import { rankForTotalXp, RANKS } from '../lib/ranks'
+import { rankForLifetime, RANKS } from '../lib/ranks'
 import './LoginPanel.css'
 
 export function LoginPanel({ onClose }: { onClose: () => void }) {
@@ -27,17 +27,18 @@ useEffect(() => {
 
   const handleClose = () => {
     localStorage.setItem('sf.loginPanel.lastShown', String(Date.now()))
-    if (userId) syncXpToDb(userId, data.xp, data.premiumXp)
+    if (userId) syncXpToDb(userId, data.xp, data.premiumXp, data.rankXp)
     onClose()
   }
 
   const totalXp = data.xp + data.premiumXp
-  const currentRank = rankForTotalXp(totalXp)
-  const nextRank = rankForTotalXp(totalXp + 1)
+  const lifetimeXp = data.rankXp > 0 ? data.rankXp : totalXp
+  const currentRank = rankForLifetime(data.rankXp, data.xp, data.premiumXp)
+  const nextRank = rankForLifetime(lifetimeXp + 1, data.xp, data.premiumXp)
   const rankIdx = RANKS.indexOf(currentRank)
   const nextRankIdx = rankIdx + 1
   const rankProgress = nextRankIdx < RANKS.length
-    ? (totalXp - currentRank.threshold) / (RANKS[nextRankIdx].threshold - currentRank.threshold)
+    ? (lifetimeXp - currentRank.threshold) / (RANKS[nextRankIdx].threshold - currentRank.threshold)
     : 1
 
   return (

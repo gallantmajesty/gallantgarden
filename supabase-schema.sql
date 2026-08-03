@@ -78,13 +78,22 @@ ALTER TABLE profiles
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS xp integer NOT NULL DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS premium_xp integer NOT NULL DEFAULT 0;
 
+-- Lifetime rank XP — monotonic counter separate from the spendable wallet.
+-- Spending leaves (xp) / goldens (premium_xp) must never demote the player.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_xp integer NOT NULL DEFAULT 0;
+
+-- One-time backfill: existing players get their lifetime rank XP seeded from
+-- their current wallet total so nobody drops to Bronze on migration.
+UPDATE profiles SET rank_xp = xp + premium_xp
+WHERE rank_xp = 0 AND (xp > 0 OR premium_xp > 0);
+
 -- Inventory
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS inventory jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 -- public_profiles view (FINAL version with all columns)
 CREATE OR REPLACE VIEW public_profiles AS
   SELECT id, username, display_name, avatar, avatar_url, country, rank,
-         xp, premium_xp, inventory, public_profile, created_at,
+         xp, premium_xp, rank_xp, inventory, public_profile, created_at,
          last_seen_at, study_status
   FROM profiles;
 

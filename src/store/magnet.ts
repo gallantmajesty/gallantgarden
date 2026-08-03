@@ -465,10 +465,10 @@ export const useMagnet = create<MagnetState>((set, get) => {
             const rankBase = d.rankXp ?? (d.xp + d.premiumXp)
             const currentRank = rankForTotalXp(rankBase)
             const result = awardDailyTaskCompletion(d.xp, d.premiumXp, currentRank.id, rankBase)
-            if (result.goldenLeaves > 0) {
-              const newXp = d.xp
-              const newPremiumXp = d.premiumXp + result.goldenLeaves
-              const newRankXp = rankBase + result.goldenLeaves
+            if (result.leaves > 0) {
+              const newXp = d.xp + result.leaves
+              const newPremiumXp = d.premiumXp
+              const newRankXp = rankBase + result.leaves
               const userId = get().userId
               if (userId) syncXpToDb(userId, newXp, newPremiumXp, newRankXp)
               return { ...d, tasks, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
@@ -764,10 +764,10 @@ export const useMagnet = create<MagnetState>((set, get) => {
         if (fresh.length) next = { ...next, achievements: [...fresh, ...next.achievements] }
         // Award regular XP for focus time (train source for diminishing returns)
         const result = award(next, 'train', Math.max(0, Math.round(xp)))
-        // Award premium XP for journey commitment (golden leaves, uncapped)
+        // Journey commitment bonus — GREEN (golden is purchase/rank-up only).
         const rankBase = result.rankXp ?? (result.xp + result.premiumXp)
-        const pResult = awardGoldenLeaves(result.xp, result.premiumXp, XP_VALUES.journeyPremium, rankForTotalXp(rankBase).id, rankBase)
-        return { ...result, premiumXp: result.premiumXp + pResult.goldenLeaves, rankXp: rankBase + pResult.goldenLeaves }
+        const pResult = awardLeaves(result.xp, result.premiumXp, 'login', XP_VALUES.journeyPremium, rankForTotalXp(rankBase).id, rankBase)
+        return { ...result, xp: result.xp + pResult.leaves, rankXp: rankBase + pResult.leaves }
       })},
 
     addSubject: (name) =>

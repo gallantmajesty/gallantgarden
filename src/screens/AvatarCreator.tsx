@@ -143,7 +143,10 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
   const isOwned = useShop((s) => s.isOwned)
   const canAfford = useShop((s) => s.canAfford)
   const purchase = useShop((s) => s.purchase)
+  const canAffordGold = useShop((s) => s.canAffordGold)
+  const purchaseGold = useShop((s) => s.purchaseGold)
   const userXp = useProfile((s) => s.xp)
+  const userPremiumXp = useProfile((s) => s.premiumXp)
 
   const filtered = activeTab === 'Owned'
     ? characters.filter(c => isOwned(c.id))
@@ -159,7 +162,23 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
   const handleBuy = (ch: typeof characters[0], e: React.MouseEvent) => {
     e.stopPropagation()
     const price = ch.price ?? 0
-    if (price <= 0 || !canAfford(price, userXp)) return
+    const gold = ch.currency === 'gold'
+    if (price <= 0) return
+    if (gold) {
+      if (!canAffordGold(price, userPremiumXp)) return
+      const newGold = purchaseGold(ch.id, price, userPremiumXp)
+      if (newGold !== userPremiumXp) {
+        useProfile.setState({ premiumXp: newGold })
+        const userId = useProfile.getState().userId
+        if (userId) {
+          import('../lib/supabase').then(({ supabase }) =>
+            supabase.from('profiles').upsert([{ id: userId, premium_xp: newGold }], { onConflict: 'id' })
+          ).catch(() => {})
+        }
+      }
+      return
+    }
+    if (!canAfford(price, userXp)) return
     const newXp = purchase(ch.id, price, userXp)
     if (newXp !== userXp) {
       useProfile.setState({ xp: newXp })
@@ -196,7 +215,10 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
         {filtered.map((ch) => {
           const owned = isOwned(ch.id)
           const price = ch.price ?? 0
-          const affordable = canAfford(price, userXp)
+          const gold = ch.currency === 'gold'
+          const affordable = gold
+            ? canAffordGold(price, userPremiumXp)
+            : canAfford(price, userXp)
           const isSelected = current === ch.id && owned
           return (
             <div
@@ -208,7 +230,7 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
                 <img className="ac-char-img" src={ch.icon} alt={ch.name} />
                 {!owned && price > 0 && (
                   <div className={`ac-char-price ${affordable ? 'affordable' : ''}`}>
-                    🍃 {price}
+                    {gold ? '🌟' : '🍃'} {price}
                   </div>
                 )}
               </div>
@@ -224,7 +246,7 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
                   onClick={(e) => handleBuy(ch, e)}
                   disabled={!affordable}
                 >
-                  {affordable ? `Buy 🍃${price}` : `Need 🍃${price}`}
+                  {affordable ? `Buy ${gold ? '🌟' : '🍃'}${price}` : `Need ${gold ? '🌟' : '🍃'}${price}`}
                 </button>
               )}
               {/* Equip button for owned but not selected */}
@@ -733,19 +755,29 @@ function PreviewAvatar({ config }: { config: AvatarConfig }) {
 
 function ShopTab() {
   const xp = useProfile((s) => s.xp)
+  const premiumXp = useProfile((s) => s.premiumXp)
   const savePublic = useProfile((s) => s.savePublic)
   const pub = useProfile((s) => s.pub)
   const [shopTab, setShopTab] = useState<'banners' | 'logos'>('banners')
   const [flash, setFlash] = useState<string | null>(null)
 
-  const buy = (id: string, price: number) => {
+  const gold = (c?: string) => c === 'gold'
+  const buy = (id: string, price: number, cur?: string) => {
     if (useShop.getState().isOwned(id)) return
-    if (!useShop.getState().canAfford(price, xp)) return
-    const newLeaves = useShop.getState().purchase(id, price, xp)
-    useProfile.setState({ xp: newLeaves })
+    if (gold(cur)) {
+      if (!useShop.getState().canAffordGold(price, premiumXp)) return
+      const newGold = useShop.getState().purchaseGold(id, price, premiumXp)
+      useProfile.setState({ premiumXp: newGold })
+    } else {
+      if (!useShop.getState().canAfford(price, xp)) return
+      const newLeaves = useShop.getState().purchase(id, price, xp)
+      useProfile.setState({ xp: newLeaves })
+    }
     setFlash(id)
     setTimeout(() => setFlash(null), 800)
   }
+  const affordable = (price: number, cur?: string) =>
+    gold(cur) ? useShop.getState().canAffordGold(price, premiumXp) : useShop.getState().canAfford(price, xp)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -789,14 +821,14 @@ function ShopTab() {
                         }} />
                         <div style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: 11, fontWeight: 600, color: '#f6efe2' }}>{b.name}</span>
-                          <button onClick={() => buy(b.id, b.price)} disabled={!useShop.getState().canAfford(b.price, xp)} style={{
+                          <button onClick={() => buy(b.id, b.price, b.currency)} disabled={!affordable(b.price, b.currency)} style={{
                             background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
                             borderRadius: 4, color: '#f0c840', fontSize: 10, fontWeight: 700,
-                            padding: '2px 6px', cursor: useShop.getState().canAfford(b.price, xp) ? 'pointer' : 'not-allowed',
-                            opacity: useShop.getState().canAfford(b.price, xp) ? 1 : 0.35,
+                            padding: '2px 6px', cursor: affordable(b.price, b.currency) ? 'pointer' : 'not-allowed',
+                            opacity: affordable(b.price, b.currency) ? 1 : 0.35,
                             display: 'flex', alignItems: 'center', gap: 2,
                           }}>
-                            🍃 {b.price}
+                            {gold(b.currency) ? '🌟' : '🍃'} {b.price}
                           </button>
                         </div>
                       </div>
@@ -827,14 +859,14 @@ function ShopTab() {
                   )}
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#f6efe2', marginBottom: 4 }}>{l.name}</div>
-                <button onClick={() => buy(l.id, l.price)} disabled={!useShop.getState().canAfford(l.price, xp)} style={{
+                <button onClick={() => buy(l.id, l.price, l.currency)} disabled={!affordable(l.price, l.currency)} style={{
                   background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
                   borderRadius: 4, color: '#f0c840', fontSize: 10, fontWeight: 700,
-                  padding: '3px 8px', cursor: useShop.getState().canAfford(l.price, xp) ? 'pointer' : 'not-allowed',
-                  opacity: useShop.getState().canAfford(l.price, xp) ? 1 : 0.35,
+                  padding: '3px 8px', cursor: affordable(l.price, l.currency) ? 'pointer' : 'not-allowed',
+                  opacity: affordable(l.price, l.currency) ? 1 : 0.35,
                   display: 'flex', alignItems: 'center', gap: 2, margin: '0 auto',
                 }}>
-                  🍃 {l.price}
+                  {gold(l.currency) ? '🌟' : '🍃'} {l.price}
                 </button>
               </div>
             )

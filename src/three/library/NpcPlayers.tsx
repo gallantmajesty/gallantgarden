@@ -14,12 +14,19 @@ import { ACCESSORIES } from '../../avatar/config'
 import { useWorld } from '../../store/world'
 import { useNpcProfile } from '../../store/npcProfile'
 import type { NpcProfileData } from '../../store/npcProfile'
+import { ImpostorSprite, useImpostorTexture } from './ImpostorSprites'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TOTAL_NPC_POOL = 28
+
+// Impostor swap thresholds — same hysteresis as RemotePlayers: a seated NPC
+// beyond SWAP_OUT renders as a baked billboard (1 draw call vs ~110 meshes);
+// the full rig comes back once the player re-enters SWAP_IN.
+const SWAP_OUT = 16
+const SWAP_IN  = 12
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Zone-based density
@@ -326,6 +333,7 @@ function NpcTag({ npc, onInfoClick }: { npc: NpcProfile; onInfoClick: () => void
 
 function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
   const group = useRef<Group>(null)
+  const bodyGroup = useRef<Group>(null)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
   const nearLod = useRef<'near' | 'far' | 'cull'>('near')
   const showProfile = useNpcProfile((s) => s.show)
@@ -335,7 +343,11 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     return { ...ch.fallback, accessories: npc.accessories }
   }, [npc.characterId, npc.accessories])
 
-  useFrame(({ clock }) => {
+  // Impostor sprite (baked seated, since NPCs live at their desks).
+  const impostor = useImpostorTexture(config, 'sit')
+  const spriteOn = useRef(false)
+
+  useFrame(({ clock, camera }) => {
     const g = group.current
     if (!g) return
     g.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
@@ -343,6 +355,19 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     loco.current.seated = true
     loco.current.speed = 0
     g.scale.y = 1 + Math.sin(clock.elapsedTime * 0.8 + npc.totalXp) * 0.003
+
+    // ---- Impostor swap (hysteresis) ----
+    // The swap only happens once the baked sprite is ready — until then the
+    // seated 3D rig stays visible, so an NPC never vanishes mid-bake.
+    const dist = camera.position.distanceTo(g.position)
+    if (spriteOn.current) {
+      if (dist < SWAP_IN) spriteOn.current = false
+    } else if (impostor && dist > SWAP_OUT) {
+      spriteOn.current = true
+    }
+    const body = bodyGroup.current
+    if (body && body.visible !== !spriteOn.current) body.visible = !spriteOn.current
+    nearLod.current = spriteOn.current ? 'cull' : 'near'
   })
 
   const handleInfoClick = useCallback(() => {
@@ -363,7 +388,10 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
 
   return (
     <group ref={group}>
-      <CharacterAvatar config={config} locomotion={loco} lod={nearLod} preview={false} />
+      <group ref={bodyGroup}>
+        <CharacterAvatar config={config} locomotion={loco} lod={nearLod} preview={false} />
+      </group>
+      <ImpostorSprite entry={impostor} onRef={spriteOn} />
       <NpcTag npc={npc} onInfoClick={handleInfoClick} />
     </group>
   )

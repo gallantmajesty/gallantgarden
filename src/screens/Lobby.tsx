@@ -11,7 +11,7 @@ import { LobbySettings } from '../components/settings/LobbySettings'
 import { ResourceBar } from '../components/ResourceBar'
 import { ScorePanel } from '../components/ScorePanel'
 import { LoginPanel } from '../components/LoginPanel'
-import { RANKS, getRank, rankProgress, rankForTotalXp } from '../lib/ranks'
+import { RANKS, getRank, rankProgress, rankForLifetime } from '../lib/ranks'
 import { getDailyEngagement } from '../lib/xpEngine'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
@@ -71,7 +71,8 @@ export function Lobby() {
   const [showLoginPanel, setShowLoginPanel] = useState(false)
   const userXp = useProfile((s) => s.xp)
   const userPremiumXp = useProfile((s) => s.premiumXp)
-  const rank = useProfile((s) => rankForTotalXp(s.xp + s.premiumXp).id)
+  const userRankXp = useProfile((s) => s.rankXp)
+  const rank = useProfile((s) => rankForLifetime(s.rankXp, s.xp, s.premiumXp).id)
   const incomingCount = useFriends((s) => s.incoming.length)
   const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
   const isDesktop = useIsDesktop()
@@ -109,7 +110,8 @@ export function Lobby() {
   const rankIdx = RANKS.indexOf(rankObj)
   const rankTier = Math.max(1, Math.floor(rankIdx / 3) + 1) // 1=Bronze, 2=Silver, 3=Gold, 4=Platinum, 5=Diamond, 6=Crystal, 7=Focuster
   const totalXp = userXp + userPremiumXp
-  const { pct: xpPctRaw, nextRank } = rankProgress(totalXp)
+  const rankXp = userRankXp || totalXp
+  const { pct: xpPctRaw, nextRank } = rankProgress(rankXp)
   const xpPct = Math.round(xpPctRaw * 100)
 
   useEffect(() => {

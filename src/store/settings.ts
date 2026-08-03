@@ -240,6 +240,8 @@ interface SettingsState {
   timePaused: boolean
   // pomodoro
   pomo: PomodoroSettings
+  // keep awake
+  keepAwake: boolean
 
   set: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void
   setPomo: (patch: Partial<PomodoroSettings>) => void
@@ -369,6 +371,7 @@ const DEFAULTS: SettingsData = {
   timePaused: false,
   pomo: { study: 25, break: 5, longBreak: 15, autoStart: false, sound: true, chimeVolume: 0.5, showTimer: true },
   showAllUserInfo: false,
+  keepAwake: false,
 }
 
 export const useSettings = create<SettingsState>((set, get) => {

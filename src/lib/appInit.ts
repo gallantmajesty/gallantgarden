@@ -10,8 +10,9 @@ import { useHardcore, applyPendingRefund } from '../store/hardcore'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
 import { globalRunOnce, userRunOnce } from './runOnce'
-import { awardLeaves } from './xpEngine'
+import { awardFocusLeaves } from './xpEngine'
 import { rankForTotalXp } from './ranks'
+import { boostCodeFromUrl, useDeviceBoost } from './deviceBoost'
 
 /**
  * App initialization orchestrator. Centralises the "run once" wiring so the UI
@@ -39,6 +40,9 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   // Guests skip all cloud operations — local-only state.
   if (guest) {
     await useProfile.getState().hydrate(user.id, user.profile?.name, true)
+    // Guest devices can still act as connectors (?boost=CODE).
+    const boostCode = boostCodeFromUrl()
+    if (boostCode) useDeviceBoost.getState().connect(boostCode)
     return
   }
 
@@ -49,6 +53,13 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   //    don't immediately echo the freshly-loaded values back to the server.
   useSettings.getState().hydrateFromCloud(cloud.app)
   useSettings.getState().bindCloud(user.id)
+
+  // 2a. If this page was opened with ?boost=CODE, this tab is a connector device
+  //     for a hardcore session (multi-device boost). Connect automatically.
+  const boostCode = boostCodeFromUrl()
+  if (boostCode) {
+    useDeviceBoost.getState().connect(boostCode)
+  }
 
   // 2b. Hydrate the onboarding/profile store from the same cloud document. This
   //     finishes before `loading` flips false (auth awaits runUserInit), so the
@@ -102,26 +113,41 @@ function bindFocusPresence(): void {
 // Bridge the focus timer into Task Magnet analytics + XP awards: every completed
 // study segment awards leaves and logs to Task Magnet's world-growing analytics.
 function bindFocusLogging(): void {
-  setPomodoroFocusSink((minutes, subject) => {
-    useMagnet.getState().logFocus(minutes, subject)
+  setPomodoroFocusSink((minutes, subject, opts) => {
+    if (opts?.log !== false) {
+      useMagnet.getState().logFocus(minutes, subject)
+    }
 
-    // Hardcore sessions are credited entirely by the hardcore store on a win
-    // (wager back + 10x rate). Skip the normal per-minute award here.
-    if (useHardcore.getState().active) return
+    // The sink can be invoked purely for analytics (Medium per-segment and
+    // Hardcore segments) — those tiers credit leaves at session end instead.
+    const award = opts?.award !== false
+    const hc = useHardcore.getState()
+    if (!award || (hc.active && hc.mode === 'hardcore')) return
 
-    // Award leaves (regular XP) for the completed segment
+    // Award leaves (regular GREEN XP) for the completed segment, applying the
+    // deep-dive rebalance multipliers (subject bonus + first-session-of-day
+    // + soft daily cap). Golden stays purchase/rank-up only.
     try {
-      const { xp, premiumXp } = useProfile.getState()
-      const currentRank = rankForTotalXp(xp + premiumXp)
-      const baseLeaves = Math.round(minutes * 1.32) // XP_PER_MIN from pomodoro store
-      const leafResult = awardLeaves(xp, premiumXp, 'focus', baseLeaves, currentRank.id)
-      if (leafResult.leaves > 0) {
-        const newXp = xp + leafResult.leaves
-        useProfile.setState({ xp: newXp })
+      const { xp, premiumXp, rankXp } = useProfile.getState()
+      const rankBase = rankXp || xp + premiumXp
+      const currentRank = rankForTotalXp(rankBase)
+      const result = awardFocusLeaves({
+        currentLeaves: xp,
+        currentGoldenLeaves: premiumXp,
+        durationMin: minutes,
+        currentRankId: currentRank.id,
+        rankXp: rankBase,
+        hasSubject: !!subject,
+        ratePerMin: opts?.ratePerMin,
+      })
+      if (result.leaves > 0) {
+        const newXp = xp + result.leaves
+        const newRankXp = rankBase + result.leaves
+        useProfile.setState({ xp: newXp, rankXp: newRankXp })
         const userId = useProfile.getState().userId
         if (userId) {
           import('./supabase').then(({ supabase }) =>
-            supabase.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
+            supabase.from('profiles').upsert([{ id: userId, xp: newXp, rank_xp: newRankXp }], { onConflict: 'id' })
           ).catch(() => {})
         }
       }

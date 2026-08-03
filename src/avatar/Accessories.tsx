@@ -7,7 +7,16 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
-import { DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace } from 'three'
+import {
+  BufferGeometry,
+  CatmullRomCurve3,
+  DoubleSide,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  SRGBColorSpace,
+  TubeGeometry,
+  Vector3,
+} from 'three'
 import {
   type Color,
   boxGeo,
@@ -55,6 +64,35 @@ function makeRgbGamingPalette() {
     complimentGlowMid: m(compliment, 0.4, 0.2),
     rgb: WARM_GLOW,
   }
+}
+
+// Cached custom geometry for the curved accessory parts (headbands, arcs, tubes)
+// that don't map onto the shared box/taper/lathe primitives. Built once, reused
+// across every avatar so the accessory layer stays allocation-free.
+const customGeoCache = new Map<string, BufferGeometry>()
+
+function cachedCustomGeo(key: string, make: () => BufferGeometry): BufferGeometry {
+  let g = customGeoCache.get(key)
+  if (!g) {
+    g = make()
+    customGeoCache.set(key, g)
+  }
+  return g
+}
+
+/** Top half of a ring in the XY plane (arc from angle 0..PI), radius `r`, tube `t`.
+ *  Used for headphone headbands — ends sit at (∓r, 0) so cups mount cleanly. */
+function arcBandGeo(r: number, t: number): BufferGeometry {
+  const key = `arc:${r}:${t}`
+  return cachedCustomGeo(key, () => {
+    const seg = 24
+    const pts: Vector3[] = []
+    for (let i = 0; i <= seg; i++) {
+      const a = (i / seg) * Math.PI
+      pts.push(new Vector3(Math.cos(a) * r, Math.sin(a) * r, 0))
+    }
+    return new TubeGeometry(new CatmullRomCurve3(pts), seg, t, 12, false)
+  })
 }
 
 function BalloonProp() {
@@ -1705,6 +1743,231 @@ case 'book_stack': {
             <PositionsUI cx={0} cy={0} w={0.22} h={0.24} depth={0.002} />
           </group>
         </group>
+      </group>
+    )
+  }
+  case 'water_bottle': {
+    // Brushed stainless bottle with a dark cap and a blue wrap band.
+    const steel = m('#aeb6bf', 0.22, 0.9)
+    const steelDark = m('#6f7782', 0.3, 0.85)
+    const capMat = m('#2a2d33', 0.35, 0.6)
+    const bandMat = m('#3a6ea5', 0.45, 0.3)
+    return (
+      <group>
+        <mesh geometry={latheGeo([
+          [0.042, 0], [0.045, 0.005], [0.044, 0.02], [0.049, 0.06], [0.052, 0.12], [0.048, 0.15], [0.042, 0.16],
+        ])} material={steel} castShadow />
+        {/* shoulder flaring up into the neck */}
+        <mesh geometry={latheGeo([
+          [0.042, 0.16], [0.05, 0.17], [0.026, 0.185], [0.022, 0.19],
+        ])} material={steel} />
+        {/* screw cap */}
+        <mesh geometry={taperGeo(0.024, 0.024, 0.02)} material={capMat} position={[0, 0.205, 0]} />
+        <mesh geometry={torusGeo(0.028, 0.0035, 8, 24)} material={steelDark} position={[0, 0.19, 0]} rotation={[Math.PI / 2, 0, 0]} />
+        {/* blue wrap band */}
+        <mesh geometry={torusGeo(0.0515, 0.005, 8, 32)} material={bandMat} position={[0, 0.085, 0]} rotation={[Math.PI / 2, 0, 0]} />
+      </group>
+    )
+  }
+  case 'headphones': {
+    // Over-ear headphones standing upright: top arc band + two leather pads.
+    const bandMat = m('#22252b', 0.3, 0.55)
+    const cupMat = m('#14161b', 0.4, 0.6)
+    const padMat = tm('#4a5162', 0.85, 0, 'leather')
+    const accentMat = glowMaterial('#4a86ff', 1.0)
+    return (
+      <group>
+        <mesh geometry={arcBandGeo(0.06, 0.011)} material={bandMat} position={[0, 0.06, 0]} castShadow />
+        {[-1, 1].map((sx) => (
+          <group key={`cup${sx}`} position={[sx * 0.057, 0.05, 0]}>
+            <mesh geometry={boxGeo(0.052, 0.075, 0.028)} material={cupMat} castShadow />
+            <mesh geometry={boxGeo(0.056, 0.078, 0.012)} material={padMat} position={[sx * 0.014, 0, 0]} />
+            <mesh geometry={circleGeo(0.006)} material={accentMat} position={[sx * 0.011, 0, 0.012]} />
+          </group>
+        ))}
+      </group>
+    )
+  }
+  case 'desk_lamp': {
+    // Articulated study lamp: weighted base, tilt hinge, angled shade + glow bulb.
+    const baseMat = m('#3a3f4b', 0.4, 0.5)
+    const armMat = m('#2b2f38', 0.35, 0.6)
+    const shadeMat = m('#1f6f4a', 0.45, 0.2)
+    const innerMat = glowMaterial('#ffd9a8', 1.2)
+    const jointMat = m('#caa24a', 0.3, 0.6)
+    return (
+      <group>
+        <mesh geometry={taperGeo(0.09, 0.08, 0.025)} material={baseMat} position={[0, 0.0125, 0]} castShadow />
+        <mesh geometry={boxGeo(0.022, 0.16, 0.022)} material={armMat} position={[0, 0.105, 0]} />
+        <mesh geometry={sphereGeo(0.018)} material={jointMat} position={[0, 0.19, 0]} />
+        <mesh geometry={boxGeo(0.02, 0.17, 0.02)} material={armMat} position={[0.035, 0.26, 0]} rotation={[0, 0, -0.45]} />
+        <group position={[0.1, 0.335, 0]} rotation={[0, 0, 0.5]}>
+          <mesh geometry={taperGeo(0.022, 0.055, 0.05)} material={shadeMat} castShadow />
+          <mesh geometry={sphereGeo(0.018)} material={innerMat} position={[0, -0.024, 0]} />
+        </group>
+      </group>
+    )
+  }
+  case 'plant': {
+    // Fuller potted plant: ceramic pot, soil, stems and layered leaf blobs.
+    const potMat = tm('#b85d38', 0.6, 0, 'ceramic')
+    const soilMat = m('#3a2416', 0.9)
+    const leafMat = m('#2f7d3f', 0.5)
+    const leafLight = m('#57b257', 0.5)
+    return (
+      <group>
+        <mesh geometry={latheGeo([[0.05, 0], [0.06, 0.03], [0.064, 0.07], [0.06, 0.1], [0.052, 0.12]])} material={potMat} castShadow />
+        <mesh geometry={sphereGeo(0.058)} material={soilMat} position={[0, 0.108, 0]} scale={[1, 0.3, 1]} />
+        {[[0, 0.02, 0.3], [-0.05, 0.1, 0.22], [0.05, 0.08, 0.25], [-0.03, 0.16, 0.18], [0.035, 0.18, 0.15]].map(([px, py, len], i) => (
+          <mesh key={`st${i}`} geometry={boxGeo(0.006, 1, 0.006)} material={leafMat} position={[px, py + len / 2, 0]} scale={[1, len, 1]} />
+        ))}
+        {[[0, 0.32], [-0.06, 0.36], [0.06, 0.34], [-0.035, 0.46], [0.04, 0.44], [0, 0.52]].map(([lx, ly], i) => (
+          <mesh key={`lf${i}`} geometry={sphereGeo(0.032)} material={i % 2 ? leafLight : leafMat} position={[lx, ly, 0]} scale={[1.25, 0.55, 0.8]} />
+        ))}
+      </group>
+    )
+  }
+  case 'globe': {
+    // Desk globe: wooden base, brass meridian ring, oceans + land blobs.
+    const standMat = tm('#5c3a21', 0.6, 0, 'wood')
+    const ringMat = m('#b87333', 0.35, 0.6)
+    const oceanMat = m('#3a6ea5', 0.35, 0.15)
+    const landMat = m('#4c9a4f', 0.6, 0.05)
+    return (
+      <group>
+        <mesh geometry={taperGeo(0.09, 0.075, 0.02)} material={standMat} position={[0, 0.01, 0]} castShadow />
+        <mesh geometry={torusGeo(0.105, 0.008, 12, 40)} material={ringMat} position={[0, 0.105, 0]} rotation={[0, 0, Math.PI / 2.4]} />
+        <mesh geometry={boxGeo(0.008, 0.22, 0.008)} material={ringMat} position={[0, 0.105, 0]} rotation={[0, 0, Math.PI / 2.4]} />
+        <mesh geometry={sphereGeo(0.085)} material={oceanMat} position={[0, 0.105, 0]} castShadow />
+        {[[-0.02, 0.02], [0.035, 0.03], [0.005, 0.06], [0.03, -0.03], [-0.03, -0.02]].map(([lx, ly], i) => (
+          <mesh key={`l${i}`} geometry={sphereGeo(0.028)} material={landMat} position={[lx, 0.105 + ly, 0.07]} scale={[0.85, 0.9, 0.45]} />
+        ))}
+      </group>
+    )
+  }
+  case 'microscope': {
+    // Student microscope: base, pillar arm, head tube, eyepiece, objective, stage.
+    const bodyMat = m('#3a3f4b', 0.35, 0.55)
+    const accentMat = m('#caa24a', 0.3, 0.6)
+    const glassMat = m('#9fd4ff', 0.15, 0.6)
+    const stageMat = m('#23262c', 0.4, 0.5)
+    return (
+      <group>
+        <mesh geometry={boxGeo(0.15, 0.018, 0.1)} material={bodyMat} position={[0, 0.009, 0]} castShadow />
+        <mesh geometry={boxGeo(0.022, 0.11, 0.024)} material={bodyMat} position={[-0.045, 0.073, 0]} />
+        <mesh geometry={boxGeo(0.13, 0.024, 0.024)} material={bodyMat} position={[0.015, 0.145, 0]} rotation={[0, 0, 0.08]} />
+        <mesh geometry={taperGeo(0.03, 0.026, 0.09)} material={bodyMat} position={[0.075, 0.21, 0]} rotation={[0, 0, Math.PI / 2]} />
+        <mesh geometry={taperGeo(0.014, 0.02, 0.035)} material={accentMat} position={[0.03, 0.245, 0]} />
+        <mesh geometry={taperGeo(0.014, 0.02, 0.045)} material={glassMat} position={[0.095, 0.17, 0]} rotation={[Math.PI, 0, 0]} />
+        <mesh geometry={boxGeo(0.07, 0.012, 0.06)} material={stageMat} position={[0.08, 0.115, 0]} />
+        <mesh geometry={torusGeo(0.016, 0.005, 10, 20)} material={accentMat} position={[0.015, 0.115, 0]} rotation={[Math.PI / 2, 0, 0]} />
+      </group>
+    )
+  }
+  case 'art_palette': {
+    // Artist palette with paint blobs + a resting brush.
+    const palMat = tm('#e8dcc8', 0.7, 0, 'wood')
+    const paints: Array<[string, number, number]> = [
+      ['#d94f4f', -0.045, 0.015], ['#4f9bd9', 0.0, 0.005], ['#d9b84f', 0.045, 0.015],
+      ['#4f9b6a', 0.03, -0.03], ['#c96fd9', -0.035, -0.03], ['#e88a5a', -0.008, -0.038],
+    ]
+    const handleMat = m('#5c3a21', 0.5, 0)
+    const bristleMat = m('#caa24a', 0.8, 0)
+    return (
+      <group>
+        <mesh geometry={sphereGeo(0.09)} material={palMat} position={[0, 0.012, 0]} scale={[1.4, 0.14, 1]} castShadow />
+        {/* thumb-hole shadow */}
+        <mesh geometry={circleGeo(0.02)} material={m('#2a2a2a', 0.9)} position={[0.1, 0.0165, 0]} rotation={[Math.PI / 2, 0, 0]} />
+        {paints.map(([hex, px, pz], i) => (
+          <mesh key={`p${i}`} geometry={sphereGeo(0.015)} material={m(hex, 0.6)} position={[px, 0.02, pz]} />
+        ))}
+        <group position={[-0.02, 0.045, -0.05]} rotation={[0, 0.5, 0]}>
+          <mesh geometry={boxGeo(0.006, 0.008, 0.12)} material={handleMat} />
+          <mesh geometry={taperGeo(0.012, 0.008, 0.03)} material={bristleMat} position={[0, 0, 0.075]} />
+        </group>
+      </group>
+    )
+  }
+  case 'game_controller': {
+    // Gamepad: body, grips, d-pad, face buttons, sticks, center bar.
+    const bodyMat = m('#2f3542', 0.4, 0.3)
+    const gripMat = m('#23272f', 0.45, 0.2)
+    const btnA = glowMaterial('#3a86ff', 1.0)
+    const btnB = glowMaterial('#ff3b5c', 1.0)
+    const stickMat = m('#1b1e24', 0.5, 0.3)
+    const accentMat = m('#e8ecf0', 0.6)
+    return (
+      <group>
+        <mesh geometry={boxGeo(0.2, 0.03, 0.1)} material={bodyMat} position={[0, 0.015, 0]} castShadow />
+        <mesh geometry={boxGeo(0.07, 0.06, 0.1)} material={gripMat} position={[-0.075, 0.015, 0]} rotation={[0, 0, 0.18]} />
+        <mesh geometry={boxGeo(0.07, 0.06, 0.1)} material={gripMat} position={[0.075, 0.015, 0]} rotation={[0, 0, -0.18]} />
+        <mesh geometry={boxGeo(0.018, 0.014, 0.05)} material={accentMat} position={[-0.05, 0.034, 0]} />
+        <mesh geometry={boxGeo(0.05, 0.014, 0.018)} material={accentMat} position={[-0.05, 0.034, 0]} />
+        {([[0.045, 0.022, btnA], [0.058, 0.008, btnB], [0.045, -0.006, btnA], [0.032, 0.008, btnB]] as const).map(([bx, bz, bm], i) => (
+          <mesh key={`b${i}`} geometry={sphereGeo(0.012)} material={bm} position={[bx, 0.033, bz]} scale={[1, 0.5, 1]} />
+        ))}
+        <mesh geometry={taperGeo(0.018, 0.014, 0.02)} material={stickMat} position={[-0.02, 0.035, -0.03]} />
+        <mesh geometry={taperGeo(0.018, 0.014, 0.02)} material={stickMat} position={[0.02, 0.035, 0.03]} />
+        <mesh geometry={boxGeo(0.012, 0.01, 0.03)} material={accentMat} position={[0, 0.034, 0]} />
+      </group>
+    )
+  }
+  case 'plush_toy': {
+    // Standing teddy-bear plush: round head, ears, muzzle, limbs with paw pads.
+    const furMat = tm('#b98a5e', 0.95, 0, 'leather')
+    const bellyMat = tm('#e8d5b8', 0.9, 0, 'leather')
+    const eyeMat = m('#241a12', 0.9)
+    const snoutMat = tm('#e2c9a5', 0.9, 0, 'leather')
+    return (
+      <group>
+        <mesh geometry={sphereGeo(0.05)} material={furMat} position={[0, 0.07, 0]} scale={[0.8, 1, 0.7]} castShadow />
+        <mesh geometry={sphereGeo(0.036)} material={bellyMat} position={[0, 0.07, 0.012]} scale={[0.7, 0.85, 0.5]} />
+        <mesh geometry={sphereGeo(0.042)} material={furMat} position={[0, 0.155, 0]} castShadow />
+        {[-0.03, 0.03].map((ex) => (
+          <group key={`ear${ex}`} position={[ex, 0.2, 0]}>
+            <mesh geometry={sphereGeo(0.016)} material={furMat} />
+            <mesh geometry={sphereGeo(0.009)} material={bellyMat} position={[0, 0, 0.006]} />
+          </group>
+        ))}
+        <mesh geometry={sphereGeo(0.018)} material={snoutMat} position={[0, 0.145, 0.038]} scale={[1, 0.8, 0.7]} />
+        <mesh geometry={sphereGeo(0.006)} material={eyeMat} position={[-0.016, 0.168, 0.038]} />
+        <mesh geometry={sphereGeo(0.006)} material={eyeMat} position={[0.016, 0.168, 0.038]} />
+        <mesh geometry={sphereGeo(0.005)} material={eyeMat} position={[0, 0.142, 0.05]} />
+        <mesh geometry={sphereGeo(0.018)} material={furMat} position={[-0.055, 0.095, 0]} scale={[0.7, 1.2, 0.7]} />
+        <mesh geometry={sphereGeo(0.018)} material={furMat} position={[0.055, 0.095, 0]} scale={[0.7, 1.2, 0.7]} />
+        <mesh geometry={sphereGeo(0.02)} material={furMat} position={[-0.02, 0.022, 0.012]} scale={[0.8, 0.7, 0.9]} />
+        <mesh geometry={sphereGeo(0.02)} material={furMat} position={[0.02, 0.022, 0.012]} scale={[0.8, 0.7, 0.9]} />
+        <mesh geometry={sphereGeo(0.008)} material={bellyMat} position={[-0.02, 0.018, 0.028]} scale={[1, 0.6, 0.8]} />
+        <mesh geometry={sphereGeo(0.008)} material={bellyMat} position={[0.02, 0.018, 0.028]} scale={[1, 0.6, 0.8]} />
+      </group>
+    )
+  }
+  case 'telescope': {
+    // Tripod telescope angled skyward: wood legs, mount, tube, eyepiece, lens.
+    const tubeMat = m('#2a4a6a', 0.4, 0.4)
+    const tubeAccent = m('#3a86ff', 0.5, 0.3)
+    const mountMat = m('#3a3f4b', 0.35, 0.55)
+    const woodMat = tm('#5c3a21', 0.6, 0, 'wood')
+    const lensMat = m('#9fd4ff', 0.1, 0.6)
+    const starMat = glowMaterial('#ffd9a8', 1.2)
+    return (
+      <group>
+        {[0, 1, 2].map((i) => {
+          const a = (i / 3) * Math.PI * 2
+          return (
+            <mesh key={`leg${i}`} geometry={boxGeo(0.012, 0.13, 0.012)} material={woodMat}
+              position={[Math.cos(a) * 0.05, 0.065, Math.sin(a) * 0.05]}
+              rotation={[Math.sin(a) * 0.22, 0, -Math.cos(a) * 0.22]} />
+          )
+        })}
+        <mesh geometry={sphereGeo(0.018)} material={mountMat} position={[0, 0.135, 0]} />
+        <group position={[0.04, 0.19, 0]} rotation={[0, 0, -0.28]}>
+          <mesh geometry={taperGeo(0.045, 0.05, 0.14)} material={tubeMat} castShadow />
+          <mesh geometry={taperGeo(0.014, 0.02, 0.035)} material={mountMat} position={[0, 0.088, 0]} />
+          <mesh geometry={circleGeo(0.044)} material={lensMat} position={[0, 0, -0.071]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={torusGeo(0.048, 0.006, 10, 28)} material={tubeAccent} position={[0, 0, -0.02]} rotation={[Math.PI / 2, 0, 0]} />
+        </group>
+        <mesh geometry={sphereGeo(0.008)} material={starMat} position={[-0.04, 0.3, -0.03]} />
       </group>
     )
   }

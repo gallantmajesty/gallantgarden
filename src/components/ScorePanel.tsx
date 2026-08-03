@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDailyEngagement, DAILY_CAPS } from '../lib/xpEngine'
-import { rankForTotalXp, RANKS } from '../lib/ranks'
+import { rankForLifetime, RANKS } from '../lib/ranks'
 import { useMagnet } from '../store/magnet'
 import './ScorePanel.css'
 
@@ -119,7 +119,7 @@ export function ScorePanel({ onClose }: { onClose: () => void }) {
     const tk = todayKey()
     let rec = todayRecord
     if (!rec) {
-      rec = { date: tk, login: true, activeMin: engagement.activeMinToday, earned: 0, lost: 0, net: 0,     rankId: rankForTotalXp(data.xp + data.premiumXp).id }
+      rec = { date: tk, login: true, activeMin: engagement.activeMinToday, earned: 0, lost: 0, net: 0,     rankId: rankForLifetime(data.rankXp, data.xp, data.premiumXp).id }
       setHistory((prev) => {
         const next = [...prev, rec!].slice(-DAYS)
         saveHistory(next)

@@ -8,6 +8,7 @@ import type { Lod } from '../../avatar/AvatarAnimator'
 import { getTarget, useRealmNet } from '../../multiplayer/net'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
 import { PlayerTimerBar } from './PlayerTimerBar'
+import { ImpostorBakeStage, ImpostorSprite, useImpostorTexture } from './ImpostorSprites'
 
 // Every OTHER player in the realm, rendered from the live roster. The set of
 // avatars only changes on join/leave (cheap React work); each avatar then drives
@@ -27,6 +28,13 @@ import { PlayerTimerBar } from './PlayerTimerBar'
 
 const LOD_FAR  = 12   // metres — full detail inside this radius
 const LOD_CULL = 28   // metres — cull animation beyond this radius
+
+// Impostor sprite swap thresholds (metres). Past SWAP_OUT the body hides and a
+// baked billboard takes over (1 draw call vs ~110); the body only comes back
+// once the player re-enters SWAP_IN, so a player hovering on the boundary never
+// flickers between the two.
+const SWAP_OUT = 16
+const SWAP_IN  = 12
 
 const MAX_VISIBLE   = 10   // render only the nearest N avatars
 const RANK_INTERVAL = 0.4  // seconds between nearest-set recomputes
@@ -88,6 +96,7 @@ export function RemotePlayers() {
 
   return (
     <>
+      <ImpostorBakeStage />
       {Object.values(roster).map((p) => (
         <RemotePlayerAvatar key={p.id} id={p.id} p={p} config={p.avatar} visible={visibleIds.has(p.id)} />
       ))}
@@ -102,7 +111,13 @@ const CHASE = 12
 
 function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: string; name: string; country: string | null; rank: string; avatar: AvatarConfig }; config: AvatarConfig; visible: boolean }) {
   const group   = useRef<Group>(null)
+  const bodyGroup = useRef<Group>(null)
   const camera  = useThree((s) => s.camera)
+  // Baked billboard for this look (shared across every player with the same
+  // appearance). Null until the offscreen bake completes.
+  const impostor = useImpostorTexture(config, 'idle')
+  // Impostor mode, with hysteresis so a player on the boundary doesn't flicker.
+  const spriteOn = useRef(false)
   // Locomotion fed to the shared avatar animator (same type the local player
   // uses) so remote bodies idle / walk / run / sit in sync with their motion.
   const loco    = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
@@ -121,14 +136,6 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     const g = group.current
     if (!g) return
 
-    // Hidden by the visibility cap: drop out of every pass and skip all work.
-    if (!visible) {
-      if (g.visible) g.visible = false
-      lodRef.current = 'cull'
-      return
-    }
-    if (!g.visible) g.visible = true
-
     const t = getTarget(id)
     if (!t) return
 
@@ -139,7 +146,6 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
       tagShownRef.current = wantTag
       setTagShown(wantTag)
     }
-
 
     if (!render.current) {
       render.current = { x: t.x, y: t.y, z: t.z, yaw: t.yaw }
@@ -163,13 +169,27 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     l.seated   = t.seated
 
     // ---- Distance-based LOD -------------------------------------------------
-    // Compute avatar→camera distance and map to a LOD tier. This runs cheaply
-    // on the already-required useFrame and avoids allocations by reusing the
-    // module-level Vector3 temporaries.
     _camPos.copy(camera.position)
     _avatarPos.set(r.x, r.y, r.z)
     const dist = _camPos.distanceTo(_avatarPos)
-    lodRef.current = dist < LOD_FAR ? 'near' : dist < LOD_CULL ? 'far' : 'cull'
+
+    // ---- Impostor swap (hysteresis) ----------------------------------------
+    // Enter sprite mode past SWAP_OUT (or when outside the visibility cap — a
+    // billboard costs ~1 draw call so there's no reason to hide far players
+    // anymore). Only leave it once the player re-enters SWAP_IN. The swap only
+    // happens once the bake is ready — until then the 3D body simply stays, so
+    // nothing ever pops.
+    if (spriteOn.current) {
+      if (dist < SWAP_IN) spriteOn.current = false
+    } else if (impostor && (dist > SWAP_OUT || !visible)) {
+      spriteOn.current = true
+    }
+
+    const bodyOn = visible && !spriteOn.current
+    const body = bodyGroup.current
+    if (body && body.visible !== bodyOn) body.visible = bodyOn
+
+    lodRef.current = bodyOn ? (dist < LOD_FAR ? 'near' : dist < LOD_CULL ? 'far' : 'cull') : 'cull'
 
     // ---- Shadow LOD ---------------------------------------------------------
     // Only 'near' bodies cast/receive shadows — skinned/multi-mesh avatars are
@@ -190,7 +210,10 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
 
   return (
     <group ref={group}>
-      <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
+      <group ref={bodyGroup}>
+        <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
+      </group>
+      <ImpostorSprite entry={impostor} onRef={spriteOn} />
       {tagShown && (
         <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} banner={p.banner} logo={p.logo} />
       )}

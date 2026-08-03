@@ -202,6 +202,16 @@ export type AccessoryId =
   | 'chair_balloon'
   | 'bento_box'
   | 'hourglass'
+  | 'water_bottle'
+  | 'headphones'
+  | 'desk_lamp'
+  | 'plant'
+  | 'globe'
+  | 'microscope'
+  | 'art_palette'
+  | 'game_controller'
+  | 'plush_toy'
+  | 'telescope'
 
 export interface AccessoryDef {
   id: AccessoryId
@@ -233,6 +243,16 @@ export const ACCESSORIES: AccessoryDef[] = [
   { id: 'chair_balloon', name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy' },
   { id: 'bento_box', name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack' },
   { id: 'hourglass', name: 'Focus Hourglass', icon: '⏳', color: '#d4af37', blurb: 'Sands of flow state' },
+  { id: 'water_bottle', name: 'Water Bottle', icon: '🚰', color: '#7ba7c9', blurb: 'Stay hydrated' },
+  { id: 'headphones', name: 'Headphones', icon: '🎧', color: '#2a2a35', blurb: 'Focus in sound' },
+  { id: 'desk_lamp', name: 'Desk Lamp', icon: '💡', color: '#caa24a', blurb: 'Warm study glow' },
+  { id: 'plant', name: 'Potted Plant', icon: '🪴', color: '#3f7d52', blurb: 'Lush desk greenery' },
+  { id: 'globe', name: 'Globe', icon: '🌍', color: '#3a6ea5', blurb: 'Wander from your desk' },
+  { id: 'microscope', name: 'Microscope', icon: '🔬', color: '#4a4f5c', blurb: 'Explore the tiny world' },
+  { id: 'art_palette', name: 'Art Palette', icon: '🎨', color: '#d98e73', blurb: 'Paint your ideas' },
+  { id: 'game_controller', name: 'Game Controller', icon: '🎮', color: '#2f3542', blurb: 'Break-time fun' },
+  { id: 'plush_toy', name: 'Plush Toy', icon: '🧸', color: '#b98a5e', blurb: 'Comfort buddy' },
+  { id: 'telescope', name: 'Telescope', icon: '🔭', color: '#6b4a2e', blurb: 'Reach for the stars' },
 ]
 
 export function accessoryById(id: string): AccessoryDef | undefined {

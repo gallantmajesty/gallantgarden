@@ -1,7 +1,26 @@
+// Focus timer store — Easy / Medium / Hardcore tiers, segments, breaks,
+// split-vs-end rewards, tab + fullscreen enforcement, history & presets.
+//
+// Tier model (see store/hardcore.ts for the enforcement store):
+//   🟢 Easy     — tab tracking only. With breaks the reward is SPLIT (each
+//                 completed segment banks its leaves immediately); no-break
+//                 sessions grant everything at the end. 1.32 leaves/min.
+//   🟡 Medium   — fullscreen enforced. Rewards granted ONLY at the end of the
+//                 session (per-segment segments log analytics but award nothing
+//                 until the finish). 2.64 leaves/min.
+//   🔴 Hardcore — fullscreen + wager enforced by the hardcore store. Per-segment
+//                 segments log analytics only; wager + scaled earnings (10–14×)
+//                 are credited by the hardcore store on a win.
+//
+// A universal 20-second warning applies: leaving the enforced surface (tab for
+// Easy, fullscreen for Medium/Hardcore) starts a 20s countdown — come back in
+// time and the session resumes, miss it and the session fails (Easy keeps
+// already-banked split leaves; Medium/Hardcore lose the unearned reward).
+
 import { create } from 'zustand'
 import { useSettings } from './settings'
 import { getAmbient } from '../audio/ambient'
-import { useHardcore, HARDCORE_RATE } from './hardcore'
+import { useHardcore, rateForMode, EASY_RATE, MEDIUM_RATE, type FocusMode } from './hardcore'
 
 // ---- Types ----
 
@@ -37,6 +56,7 @@ export interface SessionHistoryEntry {
   id: string
   date: string // ISO string
   timerType: TimerType
+  focusMode: FocusMode
   sessionMinutes: number
   breakCount: number
   breakDurations: BreakDurations
@@ -74,9 +94,10 @@ export const BREAK_ACTIVITIES = [
 
 interface PomodoroState {
   // Config
+  focusMode: FocusMode
   timerType: TimerType
-  sessionMinutes: number     // total session length in minutes (60, 120, 180, 240, 360, 480)
-  breakCount: number         // number of breaks (0 for focus mode, 1-8 for pomodoro)
+  sessionMinutes: number     // total session length in minutes
+  breakCount: number         // number of breaks (0 for focus mode)
   breakDurations: BreakDurations  // custom break durations per index
 
   // Presets
@@ -98,7 +119,7 @@ interface PomodoroState {
   // Tab tracking
   tabAlwaysVisible: boolean
   tabLeftAt: number | null
-  tabReturnDeadline: number | null  // 60s grace period end
+  tabReturnDeadline: number | null  // 20s grace period end
 
   // XP
   pendingRewards: SegmentReward[]
@@ -113,6 +134,7 @@ interface PomodoroState {
   history: SessionHistoryEntry[]
 
   // Actions
+  setFocusMode: (mode: FocusMode) => void
   configure: (type: TimerType, sessionMin: number, breaks: number, breakDurations?: BreakDurations) => void
   setBreakDuration: (breakIndex: number, minutes: number) => void
   resetBreakDurations: () => void
@@ -145,29 +167,27 @@ interface PomodoroState {
 // ---- Constants ----
 
 const MINIMUM_SESSION_SEC = 5 * 60    // 5 minutes minimum before any XP
-const TAB_GRACE_SEC = 60               // 60 seconds to return before forced pause
-const XP_PER_MIN = 1.32               // base leaves per minute
+const TAB_GRACE_SEC = 20              // universal 20-second warning before failure
+const XP_PER_MIN = 1.32               // base leaves per minute (Easy)
 
-const SESSION_OPTIONS = [60, 120, 180, 240, 360, 480] // minutes
-
-// Default break duration calculation (when not customized)
-function defaultBreakDuration(totalMin: number, breakCount: number, breakIndex: number): number {
-  // Even split by default, with a minimum of 2 minutes
-  const evenSplit = Math.round(totalMin / (breakCount + 1) * 0.2)
-  return Math.max(2, evenSplit)
-}
-
-// Long break after every 4 segments (traditional Pomodoro)
-function defaultLongBreakDuration(totalMin: number, breakCount: number, breakIndex: number): number {
-  // Every 4th break (index 3, 7, 11...) is a long break (15-30 min)
-  const isLongBreak = (breakIndex + 1) % 4 === 0
-  if (isLongBreak) return Math.max(15, Math.round(totalMin / (breakCount + 1) * 0.5))
-  return defaultBreakDuration(totalMin, breakCount, breakIndex)
-}
+// Fixed preset durations — no free custom input keeps the reward tables honest.
+const SESSION_OPTIONS = [20, 40, 60, 90, 120, 180, 240, 300, 360, 420, 480] as const
 
 // ---- Focus Sink ----
+// The sink is wired by appInit: it logs to Task Magnet and (when `award` is
+// true) grants green leaves via the XP engine with an optional rate override.
 
-type FocusSink = (minutes: number, subject: string) => void
+export interface FocusSinkOpts {
+  /** credit leaves (true) or only log analytics (false). Default true. */
+  award?: boolean
+  /** log focus to analytics. Default true — set false for end-credit calls that
+   *  follow per-segment logging so the session isn't double counted. */
+  log?: boolean
+  /** per-minute rate override (Medium 2.64 / Easy 1.32). Default = Easy. */
+  ratePerMin?: number
+}
+
+type FocusSink = (minutes: number, subject: string, opts?: FocusSinkOpts) => void
 let focusSink: FocusSink | null = null
 export function setPomodoroFocusSink(sink: FocusSink | null): void {
   focusSink = sink
@@ -178,6 +198,7 @@ export function setPomodoroFocusSink(sink: FocusSink | null): void {
 const DONE_KEY = 'sg.pomo.completed'
 const MIN_KEY = 'sg.pomo.totalmin'
 const SUBJECT_KEY = 'sg.pomo.subject'
+const MODE_KEY = 'sg.pomo.focusMode'
 
 function loadNum(key: string): number {
   try {
@@ -197,6 +218,11 @@ function loadStr(key: string): string {
 
 function saveStr(key: string, v: string) {
   try { localStorage.setItem(key, v) } catch { /* ignore */ }
+}
+
+function loadMode(): FocusMode {
+  const m = loadStr(MODE_KEY)
+  return m === 'medium' || m === 'hardcore' ? m : 'easy'
 }
 
 // ---- Break duration management ----
@@ -249,6 +275,7 @@ function saveHistory(history: SessionHistoryEntry[]) {
 const SESSION_KEY = 'sg.pomo.activeSession'
 
 interface ActiveSessionSnapshot {
+  focusMode: FocusMode
   timerType: TimerType
   sessionMinutes: number
   breakCount: number
@@ -285,16 +312,13 @@ function loadActiveSession(): ActiveSessionSnapshot | null {
     if (!s || (s.phase !== 'running' && s.phase !== 'break' && s.phase !== 'paused')) return null
 
     if (s.phase === 'paused') {
-      // Paused sessions restore exactly as-is (no wall-clock drift while paused).
       return { ...s, running: false }
     }
 
-    // Running/break: advance the clock by the time the page was closed.
     const awaySec = Math.max(0, Math.round((Date.now() - s.savedAt) / 1000))
     const remaining = s.remaining - awaySec
     const totalElapsed = s.phase === 'running' ? s.totalElapsed + awaySec : s.totalElapsed
     if (remaining <= 0) {
-      // Session expired while away — drop it rather than auto-completing.
       return null
     }
     return { ...s, remaining, totalElapsed, running: true }
@@ -303,8 +327,7 @@ function loadActiveSession(): ActiveSessionSnapshot | null {
 
 // ---- Segment calculation ----
 
-/** Given total session minutes, break count, and custom break durations, compute segment durations in minutes.
- *  Breaks are placed evenly. Each segment = total / (breakCount + 1) by default, but custom durations override. */
+/** Given total session minutes, break count, and custom break durations, compute segment durations in minutes. */
 function computeSegments(totalMin: number, breakCount: number, breakDurations?: Record<number, number>): number[] {
   if (breakCount <= 0) return [totalMin]
   const segCount = breakCount + 1
@@ -322,7 +345,6 @@ function getBreakDuration(breakIndex: number, totalMin: number, breakCount: numb
   if (customDurations && customDurations[breakIndex] !== undefined) {
     return customDurations[breakIndex]
   }
-  // Default: traditional pomodoro - short breaks (5 min), long break after 4 segments (15-30 min)
   const isLongBreak = (breakIndex + 1) % 4 === 0
   return isLongBreak ? 15 : 5
 }
@@ -332,9 +354,9 @@ function getAllBreakDurations(totalMin: number, breakCount: number, customDurati
   return Array.from({ length: breakCount }, (_, i) => getBreakDuration(i, totalMin, breakCount, customDurations))
 }
 
-/** Calculate XP for a single segment. Hardcore sessions earn 10x (HARDCORE_RATE). */
-function calcSegmentXP(minutes: number, tabVisible: boolean, hasSubject: boolean): SegmentReward['leaves'] {
-  const rate = useHardcore.getState().active ? HARDCORE_RATE : XP_PER_MIN
+/** Calculate XP for a single segment using the active tier's rate. */
+function calcSegmentXP(minutes: number, tabVisible: boolean, hasSubject: boolean, mode: FocusMode, sessionMinutes: number): SegmentReward['leaves'] {
+  const rate = rateForMode(mode, sessionMinutes)
   const base = Math.round(minutes * rate)
   const noTab = tabVisible ? Math.round(base * 0.30) : 0
   const subj = hasSubject ? 5 : 0
@@ -345,15 +367,14 @@ function calcSegmentXP(minutes: number, tabVisible: boolean, hasSubject: boolean
 
 export const usePomodoro = create<PomodoroState>((set, get) => {
 
-  // Restore an in-progress session (resume on reload). Recomputes remaining
-  // from wall-clock so focus time kept accruing while the page was closed.
   const restored = loadActiveSession()
 
   function awardSegment(state: PomodoroState): PomodoroState {
     const segMin = computeSegments(state.sessionMinutes, state.breakCount, state.breakDurations)
     const minutes = segMin[state.segmentIndex] ?? 25
-    const rate = useHardcore.getState().active ? HARDCORE_RATE : XP_PER_MIN
-    const leaves = calcSegmentXP(minutes, state.tabAlwaysVisible, state.subject.length > 0)
+    const mode = state.focusMode
+    const rate = rateForMode(mode, state.sessionMinutes)
+    const leaves = calcSegmentXP(minutes, state.tabAlwaysVisible, state.subject.length > 0, mode, state.sessionMinutes)
     const reward: SegmentReward = {
       segmentIndex: state.segmentIndex,
       minutes,
@@ -361,18 +382,30 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       noTabBonus: state.tabAlwaysVisible ? Math.round(Math.round(minutes * rate) * 0.30) : 0,
       subjectBonus: state.subject.length > 0 ? 5 : 0,
     }
-    focusSink?.(minutes, state.subject)
+
+    // Easy splits rewards: each completed segment banks its leaves immediately.
+    // Medium/Hardcore log analytics per segment but award ONLY at the end
+    // (their leaves are credited by the end-credit / hardcore win paths). The
+    // per-segment popup is also Easy-only so players aren't shown a "reward"
+    // for segments that won't pay out until the session completes.
+    const awardNow = mode === 'easy'
+    focusSink?.(minutes, state.subject, {
+      award: awardNow,
+      ratePerMin: awardNow ? EASY_RATE : mode === 'medium' ? MEDIUM_RATE : undefined,
+    })
+
     return {
       ...state,
       segmentsCompleted: state.segmentsCompleted + 1,
       segmentIndex: state.segmentIndex + 1,
       pendingRewards: [...state.pendingRewards, reward],
-      lastReward: reward,
+      lastReward: awardNow ? reward : state.lastReward,
       totalSessionLeaves: state.totalSessionLeaves + leaves,
     }
   }
 
   return {
+    focusMode: restored?.focusMode ?? loadMode(),
     timerType: restored?.timerType ?? 'focus',
     sessionMinutes: restored?.sessionMinutes ?? 60,
     breakCount: restored?.breakCount ?? 0,
@@ -400,6 +433,11 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     completed: loadNum(DONE_KEY),
     totalFocusMin: loadNum(MIN_KEY),
     history: loadHistory(),
+
+    setFocusMode: (focusMode) => {
+      saveStr(MODE_KEY, focusMode)
+      set({ focusMode })
+    },
 
     setSubject: (subject) => {
       saveStr(SUBJECT_KEY, subject)
@@ -461,10 +499,8 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
           tabReturnDeadline: null,
         })
       } else if (s.phase === 'paused') {
-        // Return from tab switch — resume
         set({ phase: 'running', running: true, pausedAt: null, tabLeftAt: null, tabReturnDeadline: null, lastTickAt: Date.now() })
       } else {
-        // Pause/resume — reset the wall-clock anchor so no phantom gap accrues
         set({ running: !s.running, lastTickAt: Date.now() })
       }
     },
@@ -472,25 +508,24 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     forfeit: () => {
       const s = get()
       const hc = useHardcore.getState()
-      // Covers both live hardcore sessions and ones already failed by the
-      // fullscreen grace timer (fail() flips active off before FocusDomain
-      // calls forfeit to settle the timer).
-      const wasHardcore = hc.active || hc.status === 'failed'
+      const wasEnforced = hc.active || hc.status === 'failed'
 
-      // Hardcore: forfeiting fails the session — the wagered leaves are lost
-      // and partial-XP recording is skipped (earnings only exist on a win).
-      if (wasHardcore) {
+      // Hardcore: forfeiting fails the session — the wagered leaves are lost.
+      // Medium: fail() just ends the (wager-free) fullscreen enforcement.
+      if (wasEnforced) {
         hc.fail()
       }
 
-      // If minimum time passed, award partial XP for completed segments only
-      if (!wasHardcore && s.totalElapsed >= MINIMUM_SESSION_SEC && s.segmentsCompleted > 0) {
+      // Record the real elapsed focus time to lifetime stats (honest metric —
+      // those minutes genuinely happened). Leaf payouts differ by tier:
+      // Easy already banked its split leaves per segment (kept on forfeit);
+      // Medium/Hardcore grant rewards only at the end, so a forfeit awards nothing.
+      if (s.totalElapsed >= MINIMUM_SESSION_SEC) {
         const totalMin = s.totalElapsed / 60
         const existingMin = loadNum(MIN_KEY)
         saveNum(MIN_KEY, existingMin + Math.round(totalMin))
-        const completed = s.completed + 1
-        saveNum(DONE_KEY, completed)
       }
+
       set({
         phase: 'idle',
         remaining: 0,
@@ -515,9 +550,6 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (!s.running) return
       const pomo = useSettings.getState().pomo
 
-      // Wall-clock drift correction: count real elapsed time so the timer keeps
-      // running even when the tab is hidden (intervals get throttled). Gaps are
-      // capped at 10 minutes per tick to avoid absurd jumps.
       const now = Date.now()
       const last = s.lastTickAt || now - 1000
       const gap = Math.min(600, Math.max(0, Math.round((now - last) / 1000)))
@@ -531,17 +563,9 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
           const segments = computeSegments(s.sessionMinutes, s.breakCount, s.breakDurations)
           const nextMin = segments[s.segmentIndex] ?? 25
           if (pomo.autoStart && s.timerType === 'pomodoro' && s.segmentIndex < segments.length) {
-            set({
-              phase: 'running',
-              remaining: nextMin * 60,
-              running: true,
-              startedAt: Date.now(),
-            })
+            set({ phase: 'running', remaining: nextMin * 60, running: true, startedAt: Date.now() })
           } else {
-            set({
-              phase: 'running',
-              remaining: nextMin * 60,
-            })
+            set({ phase: 'running', remaining: nextMin * 60 })
           }
         }
         return
@@ -553,24 +577,30 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         const newElapsed = s.totalElapsed + gap
         set({ remaining: s.remaining - gap, totalElapsed: newElapsed })
       } else {
-        // Segment or session complete
         const segments = computeSegments(s.sessionMinutes, s.breakCount, s.breakDurations)
         const state = get()
         const updated = awardSegment(state)
 
         if (updated.segmentIndex >= segments.length) {
-          // All segments done — session complete
+          // All segments done — session complete.
           const totalMin = state.sessionMinutes
           const existingMin = loadNum(MIN_KEY)
           saveNum(MIN_KEY, existingMin + totalMin)
           const completed = updated.completed + 1
           saveNum(DONE_KEY, completed)
           if (pomo.sound) getAmbient().chime()
-          
-          // Add to history
+
+          // Medium end-credit: the whole session's leaves are granted once here.
+          // (Per-segment calls already logged analytics — skip re-logging.)
+          if (state.focusMode === 'medium') {
+            focusSink?.(totalMin, state.subject, { award: true, log: false, ratePerMin: MEDIUM_RATE })
+          }
+          // Hardcore: win() (from FocusDomain) credits wager + scaled earnings.
+
           const historyEntry = {
             date: new Date().toISOString(),
             timerType: state.timerType,
+            focusMode: state.focusMode,
             sessionMinutes: state.sessionMinutes,
             breakCount: state.breakCount,
             breakDurations: state.breakDurations,
@@ -581,8 +611,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
             segmentRewards: updated.pendingRewards,
           }
           get().addToHistory(historyEntry)
-          
-          // Auto-start next session
+
           if (pomo.autoStart && state.timerType === 'pomodoro') {
             set({
               ...updated,
@@ -615,8 +644,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         } else {
           // Break time (pomodoro mode)
           if (pomo.sound) getAmbient().chime()
-          // Use custom break duration if set, otherwise default to 5min short break, 15min long break (every 4th)
-          const breakIndex = updated.segmentIndex - 1 // segmentIndex was incremented in awardSegment
+          const breakIndex = updated.segmentIndex - 1
           const defaultBreakMin = (breakIndex + 1) % 4 === 0 ? 15 : 5
           const breakMin = s.breakDurations[breakIndex] ?? defaultBreakMin
           set({
@@ -633,8 +661,8 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       const s = get()
       if (s.phase !== 'running' && s.phase !== 'break') return
 
-      // Hardcore: the tab may be switched freely — the timer keeps running and
-      // only leaving fullscreen can fail the session.
+      // Medium/Hardcore: switching tabs is allowed — the timer keeps running and
+      // only leaving fullscreen can fail the session (enforced by hardcore.ts).
       if (useHardcore.getState().active) {
         set({ tabAlwaysVisible: false })
         return
@@ -642,17 +670,14 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
       const now = Date.now()
 
-      // Breaks earn no XP — pause them instantly, no 60s grace needed.
+      // Breaks earn no XP — pause them instantly, no grace needed.
       if (s.phase === 'break') {
-        set({
-          running: false,
-          tabLeftAt: now,
-          tabReturnDeadline: null,
-          tabAlwaysVisible: false,
-        })
+        set({ running: false, tabLeftAt: now, tabReturnDeadline: null, tabAlwaysVisible: false })
         return
       }
 
+      // Easy: start the universal 20-second warning. Come back in time and the
+      // session resumes; miss it and the session forfeits (lose unearned leaves).
       set({
         running: false,
         tabLeftAt: now,
@@ -666,20 +691,19 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (s.phase !== 'running' && s.phase !== 'paused' && s.phase !== 'break') return
       const now = Date.now()
 
-      // Hardcore never paused — just restore the visible flag.
+      // Medium/Hardcore never paused — just restore the visible flag.
       if (useHardcore.getState().active) {
         set({ tabAlwaysVisible: true })
         return
       }
 
-      // If we have a deadline and it passed, auto-pause
+      // Easy: if the 20s grace already expired, the session is forfeited.
       if (s.tabReturnDeadline && now > s.tabReturnDeadline) {
-        set({ phase: 'paused', running: false, tabLeftAt: null, tabReturnDeadline: null })
+        get().forfeit()
         return
       }
 
-      // If tab was hidden and we're still in grace period (or on a paused
-      // break), resume
+      // Still inside the grace window — resume seamlessly.
       if (s.tabLeftAt) {
         set({ running: true, tabLeftAt: null, tabReturnDeadline: null, lastTickAt: Date.now() })
       }
@@ -727,7 +751,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         ...entry,
         id: `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       }
-      const history = [newEntry, ...loadHistory()].slice(0, 1000) // Keep last 1000 sessions
+      const history = [newEntry, ...loadHistory()].slice(0, 1000)
       saveHistory(history)
       set({ history })
     },
@@ -749,12 +773,11 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
           : 0,
         currentStreak: 0,
         longestStreak: 0,
-         sessionsByType: { focus: 0, pomodoro: 0, tabata: 0 },
+        sessionsByType: { focus: 0, pomodoro: 0, tabata: 0 },
         sessionsByDay: {},
         recentSessions: history.slice(0, 10),
       }
 
-      // Calculate streak
       const sortedHistory = [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       let streak = 0
       let longestStreak = 0
@@ -782,12 +805,10 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       summary.currentStreak = streak
       summary.longestStreak = longestStreak
 
-      // Count by type
       for (const session of history) {
         summary.sessionsByType[session.timerType]++
       }
 
-      // Count by day
       for (const session of history) {
         const day = session.date.split('T')[0]
         summary.sessionsByDay[day] = (summary.sessionsByDay[day] || 0) + 1
@@ -795,13 +816,14 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
       return summary
     },
+
+    setAutoStartNext: (v) => {
+      useSettings.getState().setPomo({ autoStart: v })
+    },
   }
 })
 
 // ---- Active-session persistence subscriber ----
-// Saves a snapshot whenever the session is in a restorable phase; clears it
-// when the session returns to idle/finished. Throttled to once per second so
-// the per-tick updates don't hammer localStorage.
 let lastSessionSave = 0
 usePomodoro.subscribe((s) => {
   const restorable = s.phase === 'running' || s.phase === 'break' || s.phase === 'paused'
@@ -813,6 +835,7 @@ usePomodoro.subscribe((s) => {
   if (now - lastSessionSave < 1000) return
   lastSessionSave = now
   saveActiveSession({
+    focusMode: s.focusMode,
     timerType: s.timerType,
     sessionMinutes: s.sessionMinutes,
     breakCount: s.breakCount,
@@ -846,8 +869,7 @@ if (typeof document !== 'undefined') {
 
 // ---- Helper exports ----
 
-/** Pick a break activity deterministically per break index so the mini chip and
- *  the fullscreen domain suggest the same thing for a given break. */
+/** Pick a break activity deterministically per break index. */
 export function suggestBreakActivity(breakIndex: number) {
   const idx = Math.abs(breakIndex) % BREAK_ACTIVITIES.length
   return BREAK_ACTIVITIES[idx]

@@ -1,13 +1,18 @@
 // Renders equipped accessories placed ON the library table surface for each
 // seated player. Each accessory appears in front of the seat, sitting on the
 // tabletop — replacing the old AccessoryTray that floated at the avatar's feet.
-import { useMemo, useState, useEffect } from 'react'
-import { AccessoryModel } from '../../avatar/Accessories'
+//
+// Rendering is delegated to InstancedAccessoryBatch: seats near the camera keep
+// the full original AccessoryModel (text, lights, shadows) while distant seats
+// are drawn from a handful of merged InstancedMeshes — identical appearance,
+// a fraction of the draw calls at 100+ players.
+import { useMemo } from 'react'
 import { ACCESSORIES, type AccessoryId } from '../../avatar/config'
 import { useAvatar } from '../../avatar/store'
 import { useWorld } from '../../store/world'
 import { seatAnchors, TABLE } from './furniture'
 import { getTarget, useRealmNet } from '../../multiplayer/net'
+import { InstancedAccessoryBatch, type PlacedAccessory } from './InstancedAccessories'
 
 // Table top Y = floor (0) + table height (0.95) + top slab (0.12) = 1.07
 const TABLE_TOP_Y = TABLE.h + 0.12
@@ -23,8 +28,10 @@ export function TableAccessories() {
   const localSeatId = useWorld((s) => s.seat)
   const roster = useRealmNet((s) => s.roster)
 
-  // Build a map of seatId → accessories for every seated player.
-  const seatAccessories = useMemo(() => {
+  // Build a seatId → accessory placement for every seated player. Recomputes
+  // only on join/leave/seat changes (the roster slice is stable across moves),
+  // so accessory rendering stays quiet while players walk around.
+  const placements = useMemo<PlacedAccessory[]>(() => {
     const map = new Map<number, string[]>()
 
     // Local player
@@ -51,36 +58,30 @@ export function TableAccessories() {
       }
     }
 
-    return map
+    const list: PlacedAccessory[] = []
+    for (const [seatId, accessories] of map) {
+      const seat = seats[seatId]
+      if (!seat) continue
+      const accIds = accessories.filter((a) => ACCESSORIES.some((d) => d.id === a)) as AccessoryId[]
+      if (accIds.length === 0) continue
+
+      // Place the accessory on the table in front of this seat.
+      // Seat yaw > 0 means left side of table (facing right), so offset toward
+      // table centre (inward from the left edge). Vice versa for right side.
+      const tableX = seat.pos[0] + (seat.yaw > 0 ? -1 : 1) * (TABLE.w / 2 - EDGE_INSET)
+      const tableZ = seat.pos[2]
+
+      // Render the first equipped accessory on the table (max 1 shown).
+      // Rotate 180° from the seat direction so the accessory faces the user.
+      list.push({
+        kind: accIds[0],
+        seatId,
+        position: [tableX, TABLE_TOP_Y + ELEVATION, tableZ],
+        rotationY: -seat.yaw + Math.PI,
+      })
+    }
+    return list
   }, [localSeatId, localAccessories, roster, seats])
 
-  return (
-    <group>
-      {Array.from(seatAccessories.entries()).map(([seatId, accessories]) => {
-        const seat = seats[seatId]
-        if (!seat) return null
-        const accIds = accessories.filter((a) => ACCESSORIES.some((d) => d.id === a)) as AccessoryId[]
-        if (accIds.length === 0) return null
-
-        // Place the accessory on the table in front of this seat.
-        // Seat yaw > 0 means left side of table (facing right), so offset toward
-        // table centre (inward from the left edge). Vice versa for right side.
-        const tableX = seat.pos[0] + (seat.yaw > 0 ? -1 : 1) * (TABLE.w / 2 - EDGE_INSET)
-        const tableZ = seat.pos[2]
-
-        // Render the first equipped accessory on the table (max 1 shown).
-        // Rotate 180° from the seat direction so the accessory faces the user.
-        const id = accIds[0]
-        return (
-          <group
-            key={`ta-${seatId}`}
-            position={[tableX, TABLE_TOP_Y + ELEVATION, tableZ]}
-            rotation={[0, -seat.yaw + Math.PI, 0]}
-          >
-            <AccessoryModel id={id} />
-          </group>
-        )
-      })}
-    </group>
-  )
+  return <InstancedAccessoryBatch placements={placements} />
 }

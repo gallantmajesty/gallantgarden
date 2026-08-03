@@ -12,7 +12,7 @@ const FREE_PLAYER_ID = -1
 // Common characters are always owned (free starter characters)
 const STARTER_CHARACTER_IDS = ['james', 'claire', 'mia', 'ruslan']
 // Free banners and logos are always owned
-const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn', 'tide', 'mystic']
+const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn', 'tide', 'mystic', 'sunset', 'arctic', 'candy', 'neonlight', 'ocean', 'lilac']
 const STARTER_LOGO_IDS = ['default_logo']
 const ALL_STARTERS = [...STARTER_THEME_IDS, ...STARTER_CHARACTER_IDS, ...STARTER_BANNER_IDS, ...STARTER_LOGO_IDS]
 
@@ -31,6 +31,10 @@ interface ShopState {
   canAfford: (price: number, currentLeaves: number) => boolean
   /** Purchase an item — deducts leaves, adds to owned, persists */
   purchase: (itemId: string, price: number, currentLeaves: number) => number
+  /** Golden-leaves purchase path (premium currency). Returns the new gold balance. */
+  canAffordGold: (price: number, currentGold: number) => boolean
+  /** Buy a premium (gold) item with golden leaves. Returns new gold balance. */
+  purchaseGold: (itemId: string, price: number, currentGold: number) => number
   /** Batch-check ownership for multiple items */
   getOwned: (itemIds: string[]) => string[]
 }
@@ -109,6 +113,37 @@ export const useShop = create<ShopState>((set, get) => ({
     const playerId = useProfile.getState().playerId
     if (playerId === FREE_PLAYER_ID) return true
     return currentLeaves >= price
+  },
+
+  // Golden (premium) currency affordability. FREE_PLAYER bypasses for dev/testing.
+  canAffordGold: (price, currentGold) => {
+    const playerId = useProfile.getState().playerId
+    if (playerId === FREE_PLAYER_ID) return true
+    return currentGold >= price
+  },
+
+  // Golden-leaves purchase: deducts golden leaves (premium_xp), not green.
+  purchaseGold: (itemId, price, currentGold) => {
+    const playerId = useProfile.getState().playerId
+    if (playerId === FREE_PLAYER_ID) {
+      if (get().isOwned(itemId)) return currentGold
+      const newOwned = [...get().ownedItems, itemId]
+      set({ ownedItems: newOwned })
+      saveLocal(newOwned)
+      syncToDb(get().userId ?? '', newOwned)
+      return currentGold
+    }
+    if (!get().canAffordGold(price, currentGold)) return currentGold
+    if (get().isOwned(itemId)) return currentGold
+
+    const newGold = currentGold - price
+    const newOwned = [...get().ownedItems, itemId]
+    set({ ownedItems: newOwned })
+    saveLocal(newOwned)
+
+    const uid = get().userId
+    if (uid) syncToDb(uid, newOwned)
+    return newGold
   },
 
   purchase: (itemId, price, currentLeaves) => {
