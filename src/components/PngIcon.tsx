@@ -26,6 +26,26 @@ export type PngIconName =
 | 'games'
 | 'game-controller'
 | 'focus-lily-logo'
+| 'shop'
+| 'outfit'
+| 'body'
+| 'accessories'
+
+/** Maps friendly icon names to actual filenames in /public/icons/ */
+const ICON_FILE: Record<string, string> = {
+  tasks: 'fantasy_taskmagnet',
+  notes: 'fantasy_blueprints (1)',
+  settings: 'Setting or customization logo',
+  streaks: 'score_icon',
+  realm: 'fantasy_realm (1)',
+  games: 'fantasy_games',
+  'study-rooms': 'door_realms',
+  profile: 'big_character_icon',
+  shop: 'custom_shop',
+  outfit: 'custom_outfit',
+  body: 'custom_body_fixed',
+  accessories: 'custom_accessories',
+}
 
 export function PngIcon({
   name,
@@ -65,10 +85,12 @@ export function PngIcon({
     )
   }
 
+  const file = ICON_FILE[name] ?? name
+
   return (
     <img
       className={`png-icon ${className}`.trim()}
-      src={`/icons/${name}.png`}
+      src={`/icons/${file}.png`}
       width={size}
       height={size}
       alt={alt}

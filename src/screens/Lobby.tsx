@@ -33,14 +33,14 @@ const OBJECTS: LobbyObject[] = [
   { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: true },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose' },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', soon: true },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games', soon: true },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', soon: true },
 ]
 
 const MOBILE_WORLDS: LobbyObject[] = [
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose', accent: '#6bbf4f' },
   { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: true },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa', soon: true },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'focus-lily-logo', route: '/games', accent: '#8a6cff', soon: true },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', accent: '#8a6cff', soon: true },
 ]
 
 const DAILY_QUESTS = [
@@ -214,14 +214,14 @@ useEffect(() => {
           <button className="lobby-exit sf-btn water" onClick={() => { signOut(); navigate('/') }}>Exit</button>
         </div>
         <div className="lobby-topright">
-          <button className="lobby-round" title="Score" onClick={() => setPanel('score')}>
-            <Glyph name="trophy" />
+          <button className="lobby-round lobby-round--score" title="Score" onClick={() => setPanel('score')}>
+            <PngIcon name="streaks" size={40} />
           </button>
           <button className="lobby-round" title="Avatar" onClick={() => navigate('/avatar')}>
-            <Glyph name="stickman" />
+            <PngIcon name="profile" size={32} />
           </button>
            <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
-             <Glyph name="gear" />
+             <PngIcon name="settings" size={32} />
            </button>
           {/* Inbox dropdown */}
           <div className="lobby-inbox-wrap">
@@ -318,7 +318,7 @@ useEffect(() => {
                   }}
                 >
                   <div className="lobby-object-orb">
-                    <PngIcon name={o.png} size={64} alt={t(o.labelKey)} />
+                    <PngIcon name={o.png} size={80} alt={t(o.labelKey)} />
                   </div>
                   <div className="lobby-object-label">{t(o.labelKey)}</div>
                   <div className="lobby-object-caption">{t(o.captionKey)}</div>
@@ -396,7 +396,7 @@ useEffect(() => {
             {incomingCount > 0 && <span className="lm-bell-dot" />}
           </button>
           <button className="lm-score-btn" onClick={() => setPanel('score')} title="Focus Score">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <PngIcon name="streaks" size={26} />
           </button>
         </div>
         {panel === 'inbox' && (
@@ -570,7 +570,7 @@ useEffect(() => {
             <button key={o.key} className="lm-world-card" onClick={() => pickMobile(o)} style={{ '--card-accent': o.accent } as React.CSSProperties}>
               <div className="lm-world-card-glow" />
               <div className="lm-world-card-icon">
-                <PngIcon name={o.png} size={40} alt={t(o.labelKey)} />
+                <PngIcon name={o.png} size={56} alt={t(o.labelKey)} />
               </div>
               <div className="lm-world-card-info">
                 <strong>{t(o.labelKey)}</strong>

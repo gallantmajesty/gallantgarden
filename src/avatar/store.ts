@@ -105,7 +105,7 @@ export const useAvatar = create<AvatarState>((set, get) => ({
     const config = get().config
     persist(config)
     // FUTURE (InsForge): upsert into a `profiles` table keyed by auth.uid():
-    //   await insforge.from('profiles').upsert([{ id: userId, avatar: config }])
+    //   await supabase.from('profiles').upsert([{ id: userId, avatar: config }])
     // The shape is already a plain JSON-serializable AvatarConfig (lib/types.ts).
   },
 }))

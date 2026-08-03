@@ -98,7 +98,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="study-rooms" size={72} alt="Public Realm" />
+            <PngIcon name="realm" size={88} alt="Public Realm" />
           </div>
           <h2>Public Realm</h2>
           <p>Join a shared study hall — Library halls or Train Station platforms alongside others.</p>
@@ -119,7 +119,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="realm" size={72} alt="Private Realm" />
+            <PngIcon name="study-rooms" size={88} alt="Private Realm" />
           </div>
           <h2>Private Realm</h2>
           <p>Create a realm for you and your friends. Share the code and password to join together.</p>
@@ -159,7 +159,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="study-rooms" size={72} alt="Library" />
+            <PngIcon name="realm" size={88} alt="Library" />
           </div>
           <h2>📚 Library</h2>
           <p>Grand reading halls, cozy nooks, and the Knowledge Tree at the heart of it all.</p>
@@ -180,7 +180,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="realm" size={72} alt="Train Station" />
+            <PngIcon name="realm" size={88} alt="Train Station" />
           </div>
           <h2>🚂 Train Station</h2>
           <p>Board a magical train and commit to a real study journey — from Express to Grand Journey.</p>
@@ -201,7 +201,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           }}
         >
           <div className="realm-card-orb">
-            <PngIcon name="realm" size={72} alt="UK Cafe" />
+            <PngIcon name="realm" size={88} alt="UK Cafe" />
           </div>
           <h2>☕ UK Cafe</h2>
           <p>A cozy Edinburgh-style cafe with exposed brick, warm lighting, and fresh pastries.</p>
@@ -305,7 +305,7 @@ function LibraryRealm() {
           return (
 <div key={r.id} className="realm-room water-glass">
                 <div className="realm-room-icon">
-                  <PngIcon name="study-rooms" size={40} alt="" />
+                  <PngIcon name="study-rooms" size={48} alt="" />
                 </div>
                 <div className="realm-room-body">
                   <div className="roomlet-room-top">
@@ -375,7 +375,7 @@ function UkCafeRealm() {
           return (
             <div key={r.id} className="realm-room water-glass">
               <div className="realm-room-icon">
-                <PngIcon name="realm" size={40} alt="" />
+                <PngIcon name="study-rooms" size={48} alt="" />
               </div>
               <div className="realm-room-body">
                 <div className="roomlet-room-top">
@@ -445,7 +445,7 @@ function TrainRealm() {
           return (
             <div key={r.id} className="realm-room water-glass">
               <div className="realm-room-icon">
-                <PngIcon name="realm" size={40} alt="" />
+                <PngIcon name="study-rooms" size={48} alt="" />
               </div>
               <div className="realm-room-body">
                 <div className="realm-room-top">

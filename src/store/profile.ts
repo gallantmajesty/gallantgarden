@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import {
   getCachedProfileSettings,
   loadProfileSettings,
@@ -131,7 +131,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     let xp = 0
     let premiumXp = 0
     try {
-      const { data: row } = await insforge
+      const { data: row } = await supabase
         .from('profiles')
         .select('player_id, display_name_changes, display_name, avatar_url, public_profile, xp, premium_xp')
         .eq('id', userId)
@@ -165,7 +165,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
         const newPremiumXp = premiumXp + loginResult.goldenLeaves
         set({ premiumXp: newPremiumXp })
         // Sync to DB
-        const { insforge: ins } = await import('../lib/insforge')
+        const { supabase: ins } = await import('../lib/supabase')
         await ins.from('profiles').upsert([{ id: userId, premium_xp: newPremiumXp }], { onConflict: 'id' })
       }
     } catch { /* ignore — login bonus is best-effort */ }
@@ -192,7 +192,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       const row: Record<string, unknown> = { id: userId }
       if (data.country) row.country = data.country
       if (data.rank) row.rank = data.rank
-      await insforge.from('profiles').upsert([row], { onConflict: 'id' })
+      await supabase.from('profiles').upsert([row], { onConflict: 'id' })
     } catch {
       /* column missing / offline — jsonb copy still has it */
     }
@@ -205,7 +205,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     if (get().isGuest) { set({ playerId }); return true }
-    const { error } = await insforge
+    const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
     if (error) return false
@@ -224,7 +224,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     // Block only if no warning AND changes used up
     if (!warningActive && changes >= DISPLAY_NAME_CHANGES_MAX) return false
     if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false }); return true }
-    const { error } = await insforge
+    const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
     if (error) return false
@@ -237,7 +237,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     if (!userId) return false
     const pub: ProfilePublic = { ...get().pub, ...patch }
     if (get().isGuest) { set({ pub }); return true }
-    const { error } = await insforge
+    const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, public_profile: pub }], { onConflict: 'id' })
     if (error) { console.error('[profile] savePublic failed:', error.message); return false }
@@ -249,7 +249,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     if (get().isGuest) { set({ avatarUrl: url }); return true }
-    const { error } = await insforge
+    const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, avatar_url: url }], { onConflict: 'id' })
     if (error) { console.error('[profile] setAvatarUrl failed:', error.message); return false }
@@ -261,7 +261,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId || get().isGuest) return
     try {
-      const { data: row } = await insforge
+      const { data: row } = await supabase
         .from('profiles')
         .select('xp, premium_xp')
         .eq('id', userId)

@@ -31,7 +31,7 @@ export async function claimSession(): Promise<boolean> {
   const sid = getSessionId()
   if (!sid) return false
 
-  const { supabase } = await import('./insforge')
+  const { supabase } = await import('./supabase')
   const { data, error } = await supabase.rpc('claim_session', {
     p_session_id: sid,
     p_device_label: getDeviceLabel(),
@@ -49,7 +49,7 @@ export async function heartbeatSession(): Promise<boolean> {
   const sid = getSessionId()
   if (!sid) return false
 
-  const { supabase } = await import('./insforge')
+  const { supabase } = await import('./supabase')
   const { data, error } = await supabase.rpc('session_heartbeat', {
     p_session_id: sid,
   })
@@ -63,7 +63,7 @@ export async function heartbeatSession(): Promise<boolean> {
 }
 
 export async function releaseSession(): Promise<void> {
-  const { supabase } = await import('./insforge')
+  const { supabase } = await import('./supabase')
   await supabase.rpc('release_session')
 }
 

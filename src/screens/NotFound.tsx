@@ -1,24 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 export function NotFound() {
   const { t } = useTranslation()
-  const [showAlert, setShowAlert] = useState(false)
-  const [showQuote, setShowQuote] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number>(0)
-  const timestamp = new Date().toLocaleString()
-
-  useEffect(() => {
-    setShowAlert(true)
-    const timer = setTimeout(() => setShowAlert(false), 6000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowQuote(true), 5000)
-    return () => clearTimeout(timer)
-  }, [])
+  const timeRef = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -36,38 +23,63 @@ export function NotFound() {
     const W = canvas.width
     const H = canvas.height
 
-    const pts: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: string }[] = []
-    for (let i = 0; i < 40; i++) {
-      pts.push({
+    interface Dust {
+      x: number; y: number; vx: number; vy: number;
+      size: number; life: number; maxLife: number; alpha: number
+    }
+
+    const dust: Dust[] = []
+    for (let i = 0; i < 30; i++) {
+      dust.push({
         x: Math.random() * W,
         y: Math.random() * H,
         vx: (Math.random() - 0.5) * 0.15,
-        vy: -Math.random() * 0.25 - 0.05,
-        life: Math.random() * 300,
-        maxLife: 300 + Math.random() * 300,
+        vy: -Math.random() * 0.2 - 0.02,
         size: Math.random() * 1.5 + 0.3,
-        color: Math.random() > 0.5 ? 'rgba(0,200,255,0.4)' : 'rgba(0,255,150,0.3)',
+        life: Math.random() * 500,
+        maxLife: 500 + Math.random() * 500,
+        alpha: Math.random() * 0.3 + 0.1
       })
     }
 
     function draw() {
+      timeRef.current += 0.016
+      const t = timeRef.current
+
       ctx.clearRect(0, 0, W, H)
-      for (const p of pts) {
-        p.x += p.vx
-        p.y += p.vy
-        p.life++
-        const alpha = Math.max(0, 0.5 * (1 - p.life / p.maxLife))
-        ctx.fillStyle = p.color
-        ctx.globalAlpha = alpha
+
+      ctx.fillStyle = '#0d0b08'
+      ctx.fillRect(0, 0, W, H)
+
+      const grad = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, Math.max(W, H) * 0.7)
+      grad.addColorStop(0, 'rgba(60, 45, 25, 0.15)')
+      grad.addColorStop(1, 'rgba(20, 15, 8, 0)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, W, H)
+
+      for (const d of dust) {
+        d.x += d.vx + Math.sin(t * 0.3 + d.x * 0.001) * 0.05
+        d.y += d.vy + Math.cos(t * 0.25 + d.y * 0.001) * 0.03
+        d.life++
+
+        const lifeRatio = d.life / d.maxLife
+        const a = d.alpha * (1 - lifeRatio)
+
+        ctx.globalAlpha = a
+        ctx.fillStyle = '#c9b896'
         ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2)
         ctx.fill()
-        if (p.life > p.maxLife) {
-          p.x = Math.random() * W
-          p.y = H + 10
-          p.life = 0
+
+        if (d.life > d.maxLife) {
+          d.x = Math.random() * W
+          d.y = H + 10
+          d.life = 0
+          d.vx = (Math.random() - 0.5) * 0.15
+          d.vy = -Math.random() * 0.2 - 0.02
         }
       }
+
       ctx.globalAlpha = 1
       frameRef.current = requestAnimationFrame(draw)
     }
@@ -86,9 +98,9 @@ export function NotFound() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 50%, #0a0e1a 100%)',
-      color: '#00d4ff',
-      fontFamily: 'var(--font-serif-heading)',
+      background: '#0d0b08',
+      color: '#d4c4a0',
+      fontFamily: 'Georgia, "Times New Roman", serif',
       padding: '2rem',
       position: 'relative',
       overflow: 'hidden',
@@ -107,222 +119,140 @@ export function NotFound() {
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'radial-gradient(ellipse at center, rgba(0,40,80,0.3) 0%, #0a0e1a 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '2px',
-        background: 'linear-gradient(90deg, transparent, #00d4ff, transparent)',
-        opacity: 0.6,
-      }} />
-
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.01) 2px, rgba(0,212,255,0.01) 4px)',
+        background: `
+          radial-gradient(ellipse 60% 40% at 50% 30%, rgba(80, 60, 30, 0.08) 0%, transparent 70%),
+          radial-gradient(ellipse 40% 60% at 50% 80%, rgba(40, 50, 30, 0.06) 0%, transparent 70%)
+        `,
         pointerEvents: 'none',
       }} />
 
       <style>{`
-        @keyframes pulse-glow {
-          0%, 100% { text-shadow: 0 0 20px rgba(0,212,255,0.4), 0 0 40px rgba(0,212,255,0.2); }
-          50% { text-shadow: 0 0 30px rgba(0,212,255,0.6), 0 0 60px rgba(0,212,255,0.3); }
-        }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes fade-in-scale {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
+        @keyframes gentle-pulse {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 1; }
         }
       `}</style>
-
-      {showAlert && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10000,
-          padding: '0.75rem 1.5rem',
-          background: 'rgba(0,20,40,0.9)',
-          border: '1px solid rgba(0,212,255,0.4)',
-          borderRadius: 4,
-          boxShadow: '0 0 20px rgba(0,212,255,0.2)',
-          backdropFilter: 'blur(10px)',
-          animation: 'fade-in 0.5s ease-out',
-          maxWidth: 450,
-          textAlign: 'center',
-        }}>
-          <div style={{
-            fontSize: '0.65rem',
-            letterSpacing: '0.2em',
-            color: '#00d4ff',
-            fontWeight: 700,
-            marginBottom: '0.25rem',
-            fontFamily: 'var(--font-serif-heading)',
-          }}>
-            ℹ SYSTEM NOTICE
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#80e0ff',
-            lineHeight: 1.5,
-          }}>
-            This page was not found. Your activity is safe and secure. Redirecting you shortly.
-          </div>
-        </div>
-      )}
 
       <div style={{
         position: 'relative',
         zIndex: 1,
         textAlign: 'center',
-        maxWidth: 580,
+        maxWidth: 520,
         width: '100%',
+        animation: 'fade-in-up 1s ease-out',
       }}>
         <div style={{
-          fontSize: '8rem',
-          fontWeight: 900,
+          fontSize: '0.65rem',
+          letterSpacing: '0.25em',
+          color: '#887858',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          marginBottom: '1.5rem',
+        }}>
+          Path Uncharted
+        </div>
+
+        <div style={{
+          fontSize: '7rem',
+          fontWeight: 700,
           lineHeight: 1,
-          marginBottom: '0.25rem',
-          color: '#00d4ff',
-          textShadow: '0 0 30px rgba(0,212,255,0.5), 0 0 60px rgba(0,212,255,0.2)',
-          letterSpacing: '0.05em',
-          animation: 'pulse-glow 3s ease-in-out infinite',
+          marginBottom: '0.75rem',
+          color: '#c9b896',
+          letterSpacing: '-0.03em',
         }}>
           404
         </div>
 
         <div style={{
-          width: 80,
-          height: 3,
-          margin: '0 auto 1rem',
-          background: 'linear-gradient(90deg, transparent, #00d4ff, transparent)',
-          boxShadow: '0 0 10px rgba(0,212,255,0.4)',
+          width: '80px',
+          height: '1px',
+          margin: '0 auto 1.5rem',
+          background: 'linear-gradient(90deg, transparent, #887858, transparent)',
         }} />
 
         <h1 style={{
-          fontSize: '1.2rem',
-          marginBottom: '0.75rem',
-          letterSpacing: '0.15em',
-          color: '#60e0ff',
-          fontWeight: 700,
-          textTransform: 'uppercase',
+          fontSize: '1.3rem',
+          marginBottom: '1rem',
+          color: '#b8a888',
+          fontWeight: 400,
+          lineHeight: 1.4,
+          fontStyle: 'italic',
         }}>
-          {t('notFound.title') || 'Page Not Found'}
+          "{t('notFound.subtitle') || 'The page you seek has faded from the map.'}"
         </h1>
 
         <p style={{
-          color: '#80c0e0',
-          marginBottom: '1.5rem',
-          lineHeight: 1.6,
-          fontSize: '0.9rem',
+          color: '#887858',
+          marginBottom: '2rem',
+          lineHeight: 1.7,
+          fontSize: '0.95rem',
+          maxWidth: 420,
+          margin: '0 auto 2rem',
         }}>
-          {t('notFound.subtitle') || "Oops! You've reached a dead link."}
+          {t('notFound.description') || "Some corridors lead to forgotten archives. Others simply end. No harm done — the library is vast, and every wrong turn teaches the way."}
         </p>
-
-        <div style={{
-          padding: '1.25rem',
-          border: '1px solid rgba(0,212,255,0.2)',
-          background: 'rgba(0,20,40,0.5)',
-          borderRadius: 4,
-          marginBottom: '1.5rem',
-          boxShadow: '0 0 20px rgba(0,212,255,0.05)',
-        }}>
-          <p style={{
-            color: '#80d0ff',
-            lineHeight: 1.7,
-            fontSize: '0.85rem',
-            margin: 0,
-          }}>
-            {t('notFound.description') || "The page you tried to access doesn't exist or is restricted. Don't worry — your activity is safe and secure."}
-          </p>
-        </div>
-
-        <div style={{
-          padding: '0.75rem 1.25rem',
-          border: '1px solid rgba(0,212,255,0.15)',
-          background: 'rgba(0,15,30,0.4)',
-          borderRadius: 4,
-          marginBottom: '1.5rem',
-        }}>
-          <div style={{
-            fontSize: '0.55rem',
-            letterSpacing: '0.2em',
-            color: '#00a0cc',
-            fontWeight: 700,
-            marginBottom: '0.4rem',
-            fontFamily: 'var(--font-serif-heading)',
-          }}>
-            ℹ SYSTEM LOG
-          </div>
-          <div style={{
-            fontSize: '0.65rem',
-            color: '#6090b0',
-            lineHeight: 1.5,
-            fontFamily: 'monospace',
-          }}>
-            Attempt recorded at {timestamp}. No harm done. Navigation errors are tracked to improve your experience.
-          </div>
-        </div>
 
         <button
           onClick={() => window.location.href = '/lobby'}
           style={{
-            padding: '0.75rem 2rem',
-            fontSize: '0.9rem',
-            fontFamily: 'var(--font-serif-heading)',
-            letterSpacing: '0.1em',
-            background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,100,150,0.15))',
-            border: '1px solid rgba(0,212,255,0.4)',
-            color: '#00d4ff',
-            borderRadius: 4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '0.85rem 2rem',
+            fontSize: '0.95rem',
+            fontFamily: 'Georgia, serif',
+            letterSpacing: '0.05em',
+            background: 'rgba(40, 30, 18, 0.9)',
+            border: '1px solid rgba(180, 150, 100, 0.3)',
+            color: '#d4c4a0',
+            borderRadius: '4px',
             cursor: 'pointer',
-            transition: 'all 0.3s',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.25), rgba(0,100,150,0.25))'
-            e.currentTarget.style.boxShadow = '0 0 20px rgba(0,212,255,0.2)'
+            e.currentTarget.style.background = 'rgba(55, 42, 25, 0.95)'
+            e.currentTarget.style.borderColor = 'rgba(200, 170, 110, 0.5)'
+            e.currentTarget.style.transform = 'translateY(-1px)'
+            e.currentTarget.style.boxShadow = '0 6px 25px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,100,150,0.15))'
-            e.currentTarget.style.boxShadow = 'none'
+            e.currentTarget.style.background = 'rgba(40, 30, 18, 0.9)'
+            e.currentTarget.style.borderColor = 'rgba(180, 150, 100, 0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
           }}
         >
-          Return to Dashboard
+          <svg viewBox="0 0 20 20" fill="none" width="18" height="18" style={{ opacity: 0.9 }}>
+            <path d="M10 3 L10 17 M4 10 L10 4 L16 10" stroke="#c9b896" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Return to the Great Hall
         </button>
-      </div>
 
-      {showQuote && (
         <div style={{
-          position: 'absolute',
-          left: '30px',
-          top: '50%',
-          transform: 'translateY(-50%) rotate(-90deg)',
-          whiteSpace: 'nowrap',
-          opacity: showQuote ? 1 : 0,
-          transition: 'opacity 1s ease',
-          zIndex: 2,
+          marginTop: '2.5rem',
+          padding: '1rem 1.5rem',
+          border: '1px solid rgba(140, 120, 90, 0.15)',
+          background: 'rgba(25, 20, 12, 0.6)',
+          borderRadius: 4,
+          maxWidth: 440,
+          margin: '2.5rem auto 0',
         }}>
-          <span style={{
-            fontSize: '1.3rem',
-            color: 'rgba(0,255,150,0.35)',
-            fontFamily: 'var(--font-serif-heading)',
+          <p style={{
+            color: '#786848',
+            lineHeight: 1.6,
+            fontSize: '0.8rem',
+            margin: 0,
             fontStyle: 'italic',
-            letterSpacing: '0.15em',
-            textShadow: '0 0 15px rgba(0,255,150,0.2)',
           }}>
-            "Stay focused — keep learning"
-          </span>
+            "Every lost path adds a page to your story. The library remembers what you've read — and what you haven't found yet."
+          </p>
         </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -76,6 +76,7 @@ function emptyData(): MagnetData {
     templates: [],
     xp: 0,
     premiumXp: 0,
+    rankXp: 0,
     font: 'Inter',
     lastVisit: null,
     pomoBackfilled: false,
@@ -137,6 +138,9 @@ function load(userId: string): MagnetData {
     merged.habits = (merged.habits ?? []).map((h) => ({ ...h, freezeDays: h.freezeDays ?? [] }))
     merged.projects = (merged.projects ?? []).map((p) => ({ ...p, goalId: p.goalId ?? null }))
     merged.goals = (merged.goals ?? []).map((g) => ({ ...g, projectId: g.projectId ?? null }))
+    // Backfill lifetime rank XP from the wallet total for accounts created
+    // before rankXp existed (rank never dips again when they spend leaves).
+    merged.rankXp = typeof merged.rankXp === 'number' ? merged.rankXp : (merged.xp ?? 0) + (merged.premiumXp ?? 0)
     return merged
   } catch {
     return emptyData()
@@ -244,22 +248,25 @@ export const useMagnet = create<MagnetState>((set, get) => {
     // Award XP via the engine (with caps/cooldown), detect rank changes, sync to DB.
     // Tasks/habits/milestones give 0 leaves — only study sources earn currency.
     function award(d: MagnetData, source: 'focus' | 'login' | 'tree' | 'note' | 'train', amount: number): MagnetData {
-      const currentRank = rankForTotalXp(d.xp + d.premiumXp)
+      const rankBase = d.rankXp ?? (d.xp + d.premiumXp)
+      const currentRank = rankForTotalXp(rankBase)
 
       const result = source === 'login'
-        ? awardGoldenLeaves(d.xp, d.premiumXp, amount, currentRank.id)
-        : awardLeaves(d.xp, d.premiumXp, source, amount, currentRank.id)
+        ? awardGoldenLeaves(d.xp, d.premiumXp, amount, currentRank.id, rankBase)
+        : awardLeaves(d.xp, d.premiumXp, source, amount, currentRank.id, rankBase)
 
     if (result.onCooldown || (result.leaves === 0 && result.goldenLeaves === 0)) return d
 
     const xp = d.xp + result.leaves
     const premiumXp = d.premiumXp + result.goldenLeaves
+    // Lifetime rank XP: climbs with every award, never fires on purchases.
+    const rankXp = rankBase + Math.max(0, result.leaves) + result.goldenLeaves
     let achievements = d.achievements
     let toastQueued: { title: string; body: string; icon: string } | null = null
 
     // Check rank change
     if (result.rankChanged && result.newRankId) {
-      const newRank = rankForTotalXp(xp + premiumXp)
+      const newRank = rankForTotalXp(rankXp)
       const rankAch: Achievement = {
         id: uid('ach'),
         title: `Rank Up: ${newRank.name}!`,
@@ -274,16 +281,15 @@ export const useMagnet = create<MagnetState>((set, get) => {
         icon: 'star',
       }
       // Award premium XP for rank up
-      const rankUpResult = awardGoldenLeaves(xp, premiumXp, XP_VALUES.rankUp, currentRank.id)
+      const rankUpResult = awardGoldenLeaves(xp, premiumXp, XP_VALUES.rankUp, currentRank.id, rankXp)
       if (rankUpResult.goldenLeaves > 0) {
         achievements = [{ id: uid('ach'), title: 'Rank Up Bonus', detail: `+${rankUpResult.goldenLeaves} Golden Leaves`, icon: 'star', at: nowIso() }, ...achievements]
       }
     }
 
-    // Level-up celebration
-    const totalXp = xp + premiumXp
-    const level = Math.floor(Math.sqrt(totalXp / 100)) + 1
-    const prevLevel = Math.floor(Math.sqrt((d.xp + d.premiumXp) / 100)) + 1
+    // Level-up celebration (level mirrors rankXp for lifetime progress)
+    const level = Math.floor(Math.sqrt(rankXp / 100)) + 1
+    const prevLevel = Math.floor(Math.sqrt(rankBase / 100)) + 1
 
     if (level > prevLevel && !toastQueued) {
       toastQueued = {
@@ -297,9 +303,9 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
     // Sync to DB (debounced)
     const userId = get().userId
-    if (userId) syncXpToDb(userId, xp, premiumXp)
+    if (userId) syncXpToDb(userId, xp, premiumXp, rankXp)
 
-    return { ...d, xp, premiumXp, achievements }
+    return { ...d, xp, premiumXp, rankXp, achievements }
   }
 
   return {
@@ -325,12 +331,15 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
        // Check inactivity penalty on daily load
        try {
-         const currentRank = rankForTotalXp(data.xp + data.premiumXp)
-         const penaltyResult = checkInactivityPenalty(data.xp, data.premiumXp, currentRank.id)
+         const rankBase = data.rankXp ?? (data.xp + data.premiumXp)
+         const currentRank = rankForTotalXp(rankBase)
+         const penaltyResult = checkInactivityPenalty(data.xp, data.premiumXp, currentRank.id, rankBase)
          if (penaltyResult.leaves < 0 || penaltyResult.goldenLeaves > 0) {
            const newXp = data.xp + penaltyResult.leaves
            const newPremiumXp = data.premiumXp + penaltyResult.goldenLeaves
-           const newRank = rankForTotalXp(newXp + newPremiumXp)
+           // Inactivity penalties lower rankXp too — the one legit "rank down".
+           const newRankXp = rankBase + penaltyResult.leaves
+           const newRank = rankForTotalXp(newRankXp)
            let achievements = data.achievements
            if (penaltyResult.rankChanged && newRank.id !== currentRank.id) {
              achievements = [
@@ -338,7 +347,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
                ...achievements,
              ]
            }
-           const updated = { ...data, xp: newXp, premiumXp: newPremiumXp, achievements }
+           const updated = { ...data, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp, achievements }
            persist(updated)
            set({ data: updated })
   if (penaltyResult.leaves < 0) {
@@ -453,14 +462,16 @@ export const useMagnet = create<MagnetState>((set, get) => {
           const dueToday = tasks.filter((t) => t.due === today || (!t.due && !t.done))
           const allDailyDone = dueToday.length > 0 && dueToday.every((t) => t.done)
           if (allDailyDone) {
-            const currentRank = rankForTotalXp(d.xp + d.premiumXp)
-            const result = awardDailyTaskCompletion(d.xp, d.premiumXp, currentRank.id)
+            const rankBase = d.rankXp ?? (d.xp + d.premiumXp)
+            const currentRank = rankForTotalXp(rankBase)
+            const result = awardDailyTaskCompletion(d.xp, d.premiumXp, currentRank.id, rankBase)
             if (result.goldenLeaves > 0) {
               const newXp = d.xp
               const newPremiumXp = d.premiumXp + result.goldenLeaves
+              const newRankXp = rankBase + result.goldenLeaves
               const userId = get().userId
-              if (userId) syncXpToDb(userId, newXp, newPremiumXp)
-              return { ...d, tasks, xp: newXp, premiumXp: newPremiumXp }
+              if (userId) syncXpToDb(userId, newXp, newPremiumXp, newRankXp)
+              return { ...d, tasks, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
             }
           }
         }
@@ -754,8 +765,9 @@ export const useMagnet = create<MagnetState>((set, get) => {
         // Award regular XP for focus time (train source for diminishing returns)
         const result = award(next, 'train', Math.max(0, Math.round(xp)))
         // Award premium XP for journey commitment (golden leaves, uncapped)
-        const pResult = awardGoldenLeaves(result.xp, result.premiumXp, XP_VALUES.journeyPremium, rankForTotalXp(result.xp + result.premiumXp).id)
-        return { ...result, premiumXp: result.premiumXp + pResult.goldenLeaves }
+        const rankBase = result.rankXp ?? (result.xp + result.premiumXp)
+        const pResult = awardGoldenLeaves(result.xp, result.premiumXp, XP_VALUES.journeyPremium, rankForTotalXp(rankBase).id, rankBase)
+        return { ...result, premiumXp: result.premiumXp + pResult.goldenLeaves, rankXp: rankBase + pResult.goldenLeaves }
       })},
 
     addSubject: (name) =>
@@ -781,6 +793,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
           subjects: merged.subjects ?? d.subjects,
           xp: merged.xp ?? 0,
           premiumXp: merged.premiumXp ?? 0,
+          rankXp: typeof merged.rankXp === 'number' ? merged.rankXp : (merged.xp ?? 0) + (merged.premiumXp ?? 0),
         }
       }),
     setFont: (font) => commit((d) => ({ ...d, font })),

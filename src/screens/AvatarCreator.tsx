@@ -165,8 +165,8 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
       useProfile.setState({ xp: newXp })
       const userId = useProfile.getState().userId
       if (userId) {
-        import('../lib/insforge').then(({ insforge }) =>
-          insforge.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
+        import('../lib/supabase').then(({ supabase }) =>
+          supabase.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
         ).catch(() => {})
       }
     }

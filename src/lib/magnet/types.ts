@@ -148,6 +148,10 @@ export interface MagnetData {
   // progression / connection to Focus Lily
   xp: number
   premiumXp: number // golden leaves — premium XP from high-commitment achievements
+  /** Lifetime rank XP (monotonic — NEVER lowered by spending leaves/goldens).
+   *  Drives rank + rank progress so the leaderboard can't be gamed by
+   *  saving up a wallet. Backfilled from xp+premiumXp on first load. */
+  rankXp: number
 
   // personalization
   font: string

@@ -238,6 +238,10 @@
   transition: width 1s linear;
   box-shadow: 0 0 4px rgba(74, 222, 128, 0.5);
 }
+.ptb-fill-break {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  box-shadow: 0 0 4px rgba(96, 165, 250, 0.5);
+}
 .ptb-time {
   font-size: 9px;
   font-weight: 700;
@@ -245,4 +249,7 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   font-family: var(--sans, system-ui, sans-serif);
+}
+.ptb-time-break {
+  color: #60a5fa;
 }

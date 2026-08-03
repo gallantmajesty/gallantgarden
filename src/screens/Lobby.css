@@ -296,8 +296,8 @@
 }
 
 .lobby-round {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -316,8 +316,17 @@
   box-shadow: 0 1px 0 var(--wood-dark);
 }
 .lobby-round .glyph {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
+}
+.lobby-round .png-icon {
+  width: 38px;
+  height: 38px;
+}
+.lobby-round--score .png-icon {
+  width: 90px;
+  height: 90px;
+  transform: translateY(-12px);
 }
 
 /* ---- center stage ---- */
@@ -639,8 +648,8 @@
   height: 38px;
 }
 .lobby-object-orb .png-icon {
-  width: 66px;
-  height: 66px;
+  width: 76px;
+  height: 76px;
   filter: drop-shadow(0 1px 2px rgba(58, 42, 23, 0.18));
 }
 .lobby-object-label {
@@ -878,13 +887,14 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   .lobby-xp__medal { width: 32px; height: 32px; }
   .lobby-xp__name { font-size: 11px; max-width: 80px; }
   .lobby-round {
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
     background: rgba(16, 20, 28, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.12);
   }
-   .lobby-round .glyph { width: 18px; height: 18px; }
+   .lobby-round .glyph { width: 22px; height: 22px; }
+   .lobby-round .png-icon { width: 30px; height: 30px; }
 
     /* --- Exit button mobile --- */
     .lobby-exit {
@@ -995,7 +1005,7 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
     animation: none;
   }
   .lobby-object-orb .glyph { width: 28px; height: 28px; }
-  .lobby-object-orb .png-icon { width: 44px; height: 44px; }
+  .lobby-object-orb .png-icon { width: 50px; height: 50px; }
 
   .lobby-object-label {
     font-size: 15px;

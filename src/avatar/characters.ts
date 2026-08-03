@@ -279,12 +279,12 @@ export const CHARACTERS: Character[] = [
     model: 'elephant.glb',
     scale: 1,
     yOffset: 0,
-    fallback: look('animal', {
+    fallback: look('female', {
+      characterId: 'elephant',
       skin: 'light', hair: 'none', hairColor: 'black', eyes: 'brown',
       top: 'tee', bottom: 'pants', shoes: 'sneakers',
-      buildOverrides: { height: 0.55, neckLen: 0.04, armLen: 0.2, headSize: 1.9, shoulderWidth: 0.45, torsoLen: 0.45 },
     }),
-    description: 'A gentle gray elephant with sturdy pillar legs, a long forward-sweeping trunk, curved ivory tusks, large fan ears, a visible tail tuft, and wrinkled skin',
+    description: 'A gentle gray elephant with a big round head, huge floppy ears, a thick trunk, curved ivory tusks, and a smart navy shirt',
     icon: '/icons/characters/elephant.svg',
     rarity: 'Epic',
     color: '#8a8f94',

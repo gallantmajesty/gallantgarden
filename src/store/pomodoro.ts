@@ -507,7 +507,6 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         tabAlwaysVisible: true,
         tabLeftAt: null,
         tabReturnDeadline: null,
-        breakDurations: {},
       })
     },
 
@@ -632,7 +631,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
     onTabHidden: () => {
       const s = get()
-      if (s.phase !== 'running') return
+      if (s.phase !== 'running' && s.phase !== 'break') return
 
       // Hardcore: the tab may be switched freely — the timer keeps running and
       // only leaving fullscreen can fail the session.
@@ -642,6 +641,18 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       }
 
       const now = Date.now()
+
+      // Breaks earn no XP — pause them instantly, no 60s grace needed.
+      if (s.phase === 'break') {
+        set({
+          running: false,
+          tabLeftAt: now,
+          tabReturnDeadline: null,
+          tabAlwaysVisible: false,
+        })
+        return
+      }
+
       set({
         running: false,
         tabLeftAt: now,
@@ -652,7 +663,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
     onTabVisible: () => {
       const s = get()
-      if (s.phase !== 'running' && s.phase !== 'paused') return
+      if (s.phase !== 'running' && s.phase !== 'paused' && s.phase !== 'break') return
       const now = Date.now()
 
       // Hardcore never paused — just restore the visible flag.
@@ -667,7 +678,8 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         return
       }
 
-      // If tab was hidden and we're still in grace period, resume
+      // If tab was hidden and we're still in grace period (or on a paused
+      // break), resume
       if (s.tabLeftAt) {
         set({ running: true, tabLeftAt: null, tabReturnDeadline: null, lastTickAt: Date.now() })
       }

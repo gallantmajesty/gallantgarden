@@ -1,5 +1,52 @@
+# Supabase configuration — StudyForest (Focus Lily)
+# Merged: edge functions + auth + storage + realtime + schedules.
+# (Formally insforge.toml — renamed to the standard Supabase location.)
+
 # Supabase Edge Functions Configuration
 
 [functions.ai-proxy]
   verify_jwt = false
   import_map = "./supabase/functions/import_map.json"
+[auth]
+# Origins allowed as OAuth `redirectTo` targets. The client passes
+# window.location.origin, so every origin Focus Lily is served from must be
+# listed here. Add your production domain(s) alongside the local dev origin.
+allowed_redirect_urls = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "https://www.focuslily.com",
+  "https://focuslily.com",
+]
+# Email verification stays OFF: there is no SMTP server configured (see [auth.smtp]),
+# so requiring a verification code would make email/password signup impossible. OAuth
+# (GitHub/Google) is the primary, frictionless path; email is a working fallback.
+# Turn this back on only after SMTP is configured AND a code-entry screen exists.
+require_email_verification = false
+verify_email_method = "code"
+reset_password_method = "code"
+disable_signup = false
+
+[auth.password]
+min_length = 8
+require_number = true
+require_lowercase = true
+require_uppercase = true
+require_special_char = true
+
+[auth.smtp]
+enabled = false
+host = ""
+port = 465
+username = ""
+sender_email = ""
+sender_name = ""
+min_interval_seconds = 60
+
+[storage]
+max_file_size_mb = 50
+
+[realtime]
+retention_days = 0
+
+[schedules]
+retention_days = 7

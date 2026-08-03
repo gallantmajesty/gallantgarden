@@ -1,4 +1,4 @@
-import { insforge } from './insforge'
+import { supabase } from './supabase'
 import { parseProfilePublic, type PublicProfile, type StudyStatus } from './types'
 
 // Social graph helpers — follow/unfollow plus the read paths that power profile
@@ -35,7 +35,7 @@ const PUBLIC_COLS =
 /** Follow a user. Idempotent (upsert on the composite PK). */
 export async function followUser(meId: string, targetId: string): Promise<boolean> {
   if (meId === targetId) return false
-  const { error } = await insforge
+  const { error } = await supabase
     .from('follows')
     .upsert([{ follower_id: meId, following_id: targetId }], {
       onConflict: 'follower_id,following_id',
@@ -45,7 +45,7 @@ export async function followUser(meId: string, targetId: string): Promise<boolea
 
 /** Unfollow a user. */
 export async function unfollowUser(meId: string, targetId: string): Promise<boolean> {
-  const { error } = await insforge
+  const { error } = await supabase
     .from('follows')
     .delete()
     .eq('follower_id', meId)
@@ -55,14 +55,14 @@ export async function unfollowUser(meId: string, targetId: string): Promise<bool
 
 /** Ids of everyone `userId` follows. */
 export async function getFollowingIds(userId: string): Promise<string[]> {
-  const { data, error } = await insforge.rpc('get_following_ids', { p_user_id: userId })
+  const { data, error } = await supabase.rpc('get_following_ids', { p_user_id: userId })
   if (error || !data) return []
   return data as string[]
 }
 
 /** Ids of everyone who follows `userId`. */
 export async function getFollowerIds(userId: string): Promise<string[]> {
-  const { data, error } = await insforge.rpc('get_follower_ids', { p_user_id: userId })
+  const { data, error } = await supabase.rpc('get_follower_ids', { p_user_id: userId })
   if (error || !data) return []
   return data as string[]
 }
@@ -74,14 +74,14 @@ export interface FollowCounts {
 
 /** Follower + following counts for a user (derived from the follows table). */
 export async function getCounts(userId: string): Promise<FollowCounts> {
-  const { data, error } = await insforge.rpc('get_follow_count', { p_user_id: userId })
+  const { data, error } = await supabase.rpc('get_follow_count', { p_user_id: userId })
   if (error || !data) return { followers: 0, following: 0 }
   return data as FollowCounts
 }
 
 /** Does `meId` follow `targetId`? */
 export async function isFollowing(meId: string, targetId: string): Promise<boolean> {
-  const { data, error } = await insforge.rpc('get_is_following', {
+  const { data, error } = await supabase.rpc('get_is_following', {
     p_follower_id: meId,
     p_following_id: targetId,
   })
@@ -91,7 +91,7 @@ export async function isFollowing(meId: string, targetId: string): Promise<boole
 
 /** Users that BOTH `a` and `b` follow in common (mutual connections). */
 export async function getMutualIds(a: string, b: string): Promise<string[]> {
-  const { data, error } = await insforge.rpc('get_mutual_following_ids', { p_a: a, p_b: b })
+  const { data, error } = await supabase.rpc('get_mutual_following_ids', { p_a: a, p_b: b })
   if (error || !data) return []
   return data as string[]
 }
@@ -101,7 +101,7 @@ export async function getMutualIds(a: string, b: string): Promise<string[]> {
 /** Resolve a batch of user ids into public profiles (for list rendering). */
 export async function getProfilesByIds(ids: string[]): Promise<PublicProfile[]> {
   if (!ids.length) return []
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .in('id', ids)
@@ -111,7 +111,7 @@ export async function getProfilesByIds(ids: string[]): Promise<PublicProfile[]> 
 
 /** Fetch one public profile by Player ID (the /u/:playerId route). */
 export async function getPublicProfileByPlayerId(playerId: number): Promise<PublicProfile | null> {
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .eq('player_id', playerId)
@@ -122,7 +122,7 @@ export async function getPublicProfileByPlayerId(playerId: number): Promise<Publ
 
 /** Fetch one public profile by id. */
 export async function getPublicProfileById(id: string): Promise<PublicProfile | null> {
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .eq('id', id)
@@ -151,7 +151,7 @@ export async function searchUsers(query: string, limit = 20): Promise<PublicProf
   const safe = q.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 50)
   if (!safe) return []
   const like = `%${safe.replace(/[%_]/g, '')}%`
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('public_profiles')
     .select(PUBLIC_COLS)
     .ilike('display_name', like)

@@ -1,4 +1,4 @@
-import { insforge } from './insforge'
+import { supabase } from './supabase'
 
 // Username system. A username is a globally-unique, case-insensitive handle used
 // for mentions, profile links (/u/:username), search and friend requests. It is
@@ -44,7 +44,7 @@ export function validateUsername(raw: string): UsernameCheck {
  *  the DB unique index remains the final guard. */
 export async function isUsernameAvailable(raw: string, selfId?: string): Promise<boolean> {
   const u = normalizeUsername(raw)
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('public_profiles')
     .select('id')
     .eq('username', u)

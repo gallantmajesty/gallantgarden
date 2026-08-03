@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { supabase } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
 import { initSession, claimSession, startHeartbeat } from '../lib/session'
 import { networkId } from '../multiplayer/net'

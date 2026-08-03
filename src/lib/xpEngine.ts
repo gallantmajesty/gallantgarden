@@ -13,7 +13,7 @@
 //   2. Train journeys have diminishing returns per day
 //   3. No hard cap on focus — it requires real time commitment
 
-import { insforge } from './insforge'
+import { supabase } from './supabase'
 import { rankForTotalXp } from './ranks'
 
 // ---- XP values per action ---------------------------------------------------
@@ -90,11 +90,17 @@ export function calcPomoLeaves(
   return { base, noTabBonus, subjectBonus, total: base + noTabBonus + subjectBonus }
 }
 
-// ---- Daily cap for train journeys (anti-spam) --------------------------------
+// ---- Daily earning tiers (anti-spam, no hard stop) ---------------------------
 export const DAILY_CAPS = {
   total: 999,
-  /** Max minutes of active XP earning per day (after this, no more XP) */
-  activeMinCap: 20,
+  /** Soft diminishing tiers (minutes of active earning per day). Real study is
+   *  never hard-capped — the rate just eases so grinding bots can't flood the
+   *  economy while genuine students still earn full value. */
+  tier1MaxMin: 60, //   0–60  min → 100% rate
+  tier2MaxMin: 120, // 60–120 min →  50% rate
+  tier3Rate: 0.25, // 120+     min →  25% rate forever
+  /** UI compatibility — "full-rate" minutes shown in cap meters. */
+  activeMinCap: 120,
 } as const
 
 // Focus minutes and train journeys are NOT capped — they require real time.
@@ -213,6 +219,8 @@ export function checkInactivityPenalty(
   currentLeaves: number,
   currentGoldenLeaves: number,
   currentRankId: string,
+  /** Lifetime rank XP — see awardLeaves. */
+  rankXp?: number,
 ): AwardResult {
   const daily = loadDaily()
   if (daily.penaltyApplied) {
@@ -245,7 +253,7 @@ export function checkInactivityPenalty(
   // Penalty applies — user was inactive for 1hr+ AND didn't hit focus target.
   daily.penaltyApplied = true
   saveDaily(daily)
-  return awardLeaves(currentLeaves, currentGoldenLeaves, 'focus', -XP_VALUES.inactivityPenalty, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'focus', -XP_VALUES.inactivityPenalty, currentRankId, rankXp)
 }
 export interface AwardResult {
   leaves: number
@@ -263,53 +271,58 @@ export function awardLeaves(
    source: 'focus' | 'train' | 'login' | 'tree' | 'note' | 'library',
    baseAmount: number,
    currentRankId: string,
+   /** Lifetime rank XP (monotonic, never lowered by spending). Falls back to the
+    *  wallet total (leaves + golden) when omitted — backward compatible. */
+   rankXp?: number,
  ): AwardResult {
    const isPenalty = baseAmount < 0
    let actualLeaves = Math.round(baseAmount)
    let capped = false
 
-   if (!isPenalty && source !== 'login') {
-     const daily = loadDaily()
+    if (!isPenalty && source !== 'login') {
+      const daily = loadDaily()
 
-     // 20-min daily active cap — stop earning XP after the limit
-     if (daily.activeMinToday >= DAILY_CAPS.activeMinCap) {
-       return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: true, onCooldown: false }
-     }
+      // Convert baseAmount to active minutes for tracking
+      const minutesPerUnit = source === 'train' ? XP_VALUES.journeyMin : XP_VALUES.focusMin
+      const activeMinutes = Math.ceil(baseAmount / minutesPerUnit)
 
-     // Convert baseAmount to active minutes for tracking
-     const minutesPerUnit = source === 'train' ? XP_VALUES.journeyMin : XP_VALUES.focusMin
-     const activeMinutes = Math.ceil(baseAmount / minutesPerUnit)
-     const remaining = DAILY_CAPS.activeMinCap - daily.activeMinToday
+      // Soft diminishing returns — never a hard stop. Real study always earns
+      // something: 100% rate first 60 min, 50% next 60 min, 25% after.
+      if (daily.activeMinToday >= DAILY_CAPS.tier2MaxMin) {
+        actualLeaves = Math.round(actualLeaves * DAILY_CAPS.tier3Rate)
+        capped = true
+      } else if (daily.activeMinToday >= DAILY_CAPS.tier1MaxMin) {
+        actualLeaves = Math.round(actualLeaves * 0.5)
+        capped = true
+      }
 
-     if (activeMinutes > remaining) {
-       actualLeaves = Math.round(remaining * minutesPerUnit)
-       capped = true
-     }
+      if (source === 'train') {
+        const journaled = daily.journeyMinutes
+        if (journaled >= 120) {
+          return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: true, onCooldown: false }
+        }
+        if (journaled >= 60) {
+          const overBy = journaled - 60
+          const factor = Math.max(0.25, 1 - (overBy / 60) * 0.75)
+          actualLeaves = Math.round(actualLeaves * factor)
+        }
+        daily.journeyMinutes += Math.round(baseAmount / XP_VALUES.journeyMin)
+      }
 
-     if (source === 'train') {
-       const journaled = daily.journeyMinutes
-       if (journaled >= 120) {
-         return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: true, onCooldown: false }
-       }
-       if (journaled >= 60) {
-         const overBy = journaled - 60
-         const factor = Math.max(0.25, 1 - (overBy / 60) * 0.75)
-         actualLeaves = Math.round(actualLeaves * factor)
-       }
-       daily.journeyMinutes += Math.round(baseAmount / XP_VALUES.journeyMin)
-     }
-
-     daily.activeMinToday += Math.min(activeMinutes, remaining)
-     saveDaily(daily)
-   }
+      daily.activeMinToday += activeMinutes
+      saveDaily(daily)
+    }
 
    // Prevent leaves from going below 0
    const effectiveLeaves = Math.max(-currentLeaves, actualLeaves)
 
-   // Check rank change
-   const newTotal = currentLeaves + effectiveLeaves + currentGoldenLeaves
+   // Rank is driven by rankXp (lifetime, never lowered by purchases). Spending
+   // leaves no longer demotes the player. Inactivity penalties still lower it
+   // (preserves the existing "rank down" behaviour).
+   const rankBase = rankXp ?? (currentLeaves + currentGoldenLeaves)
+   const newTotal = rankBase + effectiveLeaves
    const newRank = rankForTotalXp(newTotal)
-   const rankChanged = newRank.id !== currentRankId
+   const rankChanged = newRank.id !== rankForTotalXp(rankBase).id
 
    return {
      leaves: effectiveLeaves,
@@ -327,11 +340,15 @@ export function awardGoldenLeaves(
   currentGoldenLeaves: number,
   baseAmount: number,
   currentRankId: string,
+  /** Lifetime rank XP — see awardLeaves. */
+  rankXp?: number,
 ): AwardResult {
   const amount = Math.max(0, Math.round(baseAmount))
-  const newTotal = currentLeaves + currentGoldenLeaves + amount
+  // Rank driven by rankXp (lifetime). Spending goldens never demotes either.
+  const rankBase = rankXp ?? (currentLeaves + currentGoldenLeaves)
+  const newTotal = rankBase + amount
   const newRank = rankForTotalXp(newTotal)
-  const rankChanged = newRank.id !== currentRankId
+  const rankChanged = newRank.id !== rankForTotalXp(rankBase).id
 
   return {
     leaves: 0,
@@ -345,7 +362,8 @@ export function awardGoldenLeaves(
 
 // ---- Engagement tracking helpers --------------------------------------------
 
-/** Call on first app open of the day. Awards daily login golden leaves. */
+/** Call on first app open of the day. Awards a small daily GREEN-leaf login bonus.
+ *  Golden leaves are premium-only (real-money + rank-up trickle) — never free. */
 export function checkDailyLogin(
   currentLeaves: number,
   currentGoldenLeaves: number,
@@ -357,18 +375,18 @@ export function checkDailyLogin(
   }
   daily.loginAwarded = true
   saveDaily(daily)
-  return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.dailyLogin, currentRankId)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.dailyLogin, currentRankId)
 }
 
-/** Call when streak hits 7 or 30 days. */
+/** Call when streak hits 7 or 30 days. Awards GREEN leaves (golden is premium-only). */
 export function awardStreakMilestone(
   currentLeaves: number,
   currentGoldenLeaves: number,
   streakDays: number,
   currentRankId: string,
 ): AwardResult {
-  if (streakDays === 7) return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.streak7, currentRankId)
-  if (streakDays === 30) return awardGoldenLeaves(currentLeaves, currentGoldenLeaves, XP_VALUES.streak30, currentRankId)
+  if (streakDays === 7) return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.streak7, currentRankId)
+  if (streakDays === 30) return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.streak30, currentRankId)
   return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
 }
 
@@ -469,6 +487,8 @@ export function awardDailyTaskCompletion(
   currentLeaves: number,
   currentGoldenLeaves: number,
   currentRankId: string,
+  /** Lifetime rank XP — see awardLeaves. */
+  rankXp?: number,
 ): AwardResult {
   const daily = loadDaily()
   if (daily.dailyTaskAwarded) {
@@ -616,7 +636,7 @@ let pendingGoldenLeaves = 0
  * Queue a DB sync. Batches rapid-fire writes (debounced to max 1 per 3s).
  * Best-effort: if the write fails, XP is still in localStorage.
  */
-export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number) {
+export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number, rankXp?: number) {
   pendingLeaves = leaves
   pendingGoldenLeaves = goldenLeaves
 
@@ -626,9 +646,11 @@ export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number)
     const l = pendingLeaves
     const g = pendingGoldenLeaves
     try {
-        await insforge
+        const payload: Record<string, unknown> = { id: userId, xp: l, premium_xp: g }
+        if (typeof rankXp === 'number') payload.rank_xp = rankXp
+        await supabase
         .from('profiles')
-        .upsert([{ id: userId, xp: l, premium_xp: g }], { onConflict: 'id' })
+        .upsert([payload], { onConflict: 'id' })
     } catch {
       /* offline / column missing — localStorage is still authoritative */
     }

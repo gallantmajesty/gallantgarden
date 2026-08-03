@@ -1,4 +1,4 @@
-import { insforge } from './insforge'
+import { supabase } from './supabase'
 
 // Custom realms — the client side of the `realms` table + its RPCs
 // (see migrations/..._add-realms.sql). Realms are persisted server-side so an
@@ -35,7 +35,7 @@ export async function createRealm(
   password?: string,
 ): Promise<Realm | null> {
   try {
-    const { data, error } = await insforge.rpc('create_realm', {
+    const { data, error } = await supabase.rpc('create_realm', {
       p_name: name,
       p_visibility: visibility,
       p_limit: playerLimit,
@@ -55,7 +55,7 @@ export async function getRealmByCode(
   password?: string,
 ): Promise<{ realm?: Realm; error?: string }> {
   try {
-    const { data, error } = await insforge.rpc('get_realm_by_code', {
+    const { data, error } = await supabase.rpc('get_realm_by_code', {
       p_code: code,
       p_password: password || null,
     })
@@ -73,7 +73,7 @@ export async function updateRealm(
   patch: { name?: string; visibility?: RealmVisibility; playerLimit?: number; password?: string },
 ): Promise<Realm | null> {
   try {
-    const { data, error } = await insforge.rpc('update_realm', {
+    const { data, error } = await supabase.rpc('update_realm', {
       p_id: id,
       p_name: patch.name ?? null,
       p_visibility: patch.visibility ?? null,
@@ -90,7 +90,7 @@ export async function updateRealm(
 /** Owner-only: close a realm (drops it from discovery and rejects new joins). */
 export async function closeRealm(id: string): Promise<boolean> {
   try {
-    const { error } = await insforge.rpc('close_realm', { p_id: id })
+    const { error } = await supabase.rpc('close_realm', { p_id: id })
     return !error
   } catch {
     return false
@@ -100,7 +100,7 @@ export async function closeRealm(id: string): Promise<boolean> {
 /** Open, public realms for the discovery feed (excludes expired). */
 export async function listPublicRealms(): Promise<Realm[]> {
   try {
-    const { data, error } = await insforge.rpc('list_public_realms', {})
+    const { data, error } = await supabase.rpc('list_public_realms', {})
     if (error || !Array.isArray(data)) return []
     return data as Realm[]
   } catch {
@@ -111,7 +111,7 @@ export async function listPublicRealms(): Promise<Realm[]> {
 /** Search public realms by name (excludes expired). */
 export async function searchPublicRealms(query: string): Promise<Realm[]> {
   try {
-    const { data, error } = await insforge.rpc('search_public_realms', {
+    const { data, error } = await supabase.rpc('search_public_realms', {
       p_query: query,
     })
     if (error || !Array.isArray(data)) return []

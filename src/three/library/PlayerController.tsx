@@ -23,6 +23,7 @@ import { useAvatar } from '../../avatar/store'
 import { useProfile } from '../../store/profile'
 import { rankForTotalXp } from '../../lib/ranks'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
+import { PlayerTimerBar } from './PlayerTimerBar'
 
 // Seated camera pivot height above the seat base. Tuned to the chibi rig: the
 // seated head is ~1.2 tall, so the pivot sits around chest/eye level (~1.15) —
@@ -649,6 +650,7 @@ export function PlayerController() {
       <group visible={cinematic || cameraModeR !== 'first'}>
         <CharacterAvatar config={avatarCfg} locomotion={loco} />
         <PlayerNameTag3D name={localName} rank={rank} country={country} playerId={playerId} self headY={2.55} hidden={cinematic} banner={banner} logo={logo} />
+        <PlayerTimerBar self headY={2.9} />
       </group>
     </group>
   )

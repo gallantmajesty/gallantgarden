@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from './insforge'
+import { supabase } from './supabase'
 import { networkId } from '../multiplayer/net'
 import type { StudyStatus } from './types'
 import type { RealtimeChannel } from '@supabase/supabase-js'

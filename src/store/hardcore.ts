@@ -13,7 +13,7 @@
 
 import { create } from 'zustand'
 import { useProfile } from './profile'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 
 /** Hardcore earnings per minute — 10x the normal 1.32 leaves/min. */
 export const HARDCORE_RATE = 13.2
@@ -59,7 +59,7 @@ interface HardcoreState {
 function persistXp(xp: number): void {
   const { userId, isGuest } = useProfile.getState()
   if (!userId || isGuest) return
-  insforge
+  supabase
     .from('profiles')
     .upsert([{ id: userId, xp }], { onConflict: 'id' })
     .catch(() => {

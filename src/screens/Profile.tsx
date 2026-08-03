@@ -5,7 +5,7 @@ import { useProfile } from '../store/profile'
 import { useSocial } from '../store/social'
 import { usePomodoro } from '../store/pomodoro'
 import { useMagnet } from '../store/magnet'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import {
   getProfilesByIds,
   getFollowerIds,
@@ -769,9 +769,9 @@ function BannerPicker({ view }: { view: ProfileView }) {
     setBusy(true)
     try {
       const path = `avatars/${crypto.randomUUID()}`
-      const { error } = await insforge.storage.from('avatars').upload(path, file)
+      const { error } = await supabase.storage.from('avatars').upload(path, file)
       if (!error) {
-        const { data: pub } = insforge.storage.from('avatars').getPublicUrl(path)
+        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
         savePublic({ bannerImage: pub.publicUrl, bannerPos: 50 })
       }
     } finally { setBusy(false) }
@@ -838,7 +838,7 @@ function BannerPicker({ view }: { view: ProfileView }) {
 /* ------------------------------------------------- helper: fetch by player ID */
 
 async function getPublicProfileByPlayerId(playerId: number): Promise<PublicProfile | null> {
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('public_profiles')
     .select('*')
     .eq('player_id', playerId)

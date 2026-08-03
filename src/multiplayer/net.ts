@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { create } from 'zustand'
-import { supabase } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import { normalizeAvatar, type AvatarConfig } from '../avatar/config'
 import { getDeviceLabel } from '../lib/session'
 import type { PlayerIdentity, PlayerState, RosterEntry } from './types'
@@ -131,7 +131,7 @@ let currentChannel: string | null = null
 let selfId: string | null = null
 let selfIdentity: PlayerIdentity | null = null
 let localSubject = ''
-let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' }
+let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, timerPhase: '', subject: '' }
 let supabaseChannel: RealtimeChannel | null = null
 let moveTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -140,6 +140,11 @@ let lastPub: PlayerState | null = null
 let lastPubTime = 0
 
 const MAX_NAME_LEN = 30
+
+/** Parse the wire timer-phase field defensively (older clients send nothing). */
+function parseTimerPhase(v: unknown): 'focus' | 'break' | '' {
+  return v === 'break' ? 'break' : v === 'focus' ? 'focus' : ''
+}
 
 function helloPayload() {
   return {
@@ -193,6 +198,7 @@ function handleHello(payload: { payload: Record<string, unknown> }) {
       seatId: typeof st.seatId === 'number' ? st.seatId : undefined,
       timerStartedAt: Number(st.timerStartedAt) || 0,
       timerDurationMs: Number(st.timerDurationMs) || 0,
+      timerPhase: parseTimerPhase(st.timerPhase),
       subject: (st.subject as string) || '',
       cinematic: st.cinematic === true,
     })
@@ -216,6 +222,7 @@ function handleMove(payload: { payload: Record<string, unknown> }) {
     seatId: typeof body.seatId === 'number' ? body.seatId : undefined,
     timerStartedAt: Number(body.timerStartedAt) || 0,
     timerDurationMs: Number(body.timerDurationMs) || 0,
+    timerPhase: parseTimerPhase(body.timerPhase),
     subject: (body.subject as string) || '',
     cinematic: body.cinematic === true,
   })
@@ -302,6 +309,7 @@ function moved(a: PlayerState, b: PlayerState): boolean {
     a.seatId !== b.seatId ||
     a.timerStartedAt !== b.timerStartedAt ||
     a.timerDurationMs !== b.timerDurationMs ||
+    a.timerPhase !== b.timerPhase ||
     a.subject !== b.subject ||
     a.cinematic !== b.cinematic
   )
@@ -328,6 +336,7 @@ export interface RemotePlayer {
   realmId: string | null
   timerStartedAt: number
   timerDurationMs: number
+  timerPhase: 'focus' | 'break' | ''
   subject: string
 }
 
@@ -347,6 +356,7 @@ export function getRemotePlayers(): RemotePlayer[] {
       realmId: channel,
       timerStartedAt: st?.timerStartedAt ?? 0,
       timerDurationMs: st?.timerDurationMs ?? 0,
+      timerPhase: st?.timerPhase ?? '',
       subject: st?.subject ?? '',
     })
   }
@@ -392,7 +402,7 @@ export function publishSeatRelease(seatIndex: number): void {
 }
 
 export function setLocalState(s: PlayerState): void {
-  localState = s
+  localState = { ...localState, ...s }
 }
 
 /** Set the seat id for the local player (called when sitting in the library). */
@@ -400,9 +410,10 @@ export function setLocalSeatId(seatId: number | undefined): void {
   localState = { ...localState, seatId }
 }
 
-/** Set the local player's timer state (called when starting/stopping a study session). */
-export function setLocalTimer(startedAt: number, durationMs: number): void {
-  localState = { ...localState, timerStartedAt: startedAt, timerDurationMs: durationMs }
+/** Set the local player's timer state (called when starting/stopping a study session).
+ *  `phase` tells remote players whether the session is focus time or a pomodoro break. */
+export function setLocalTimer(startedAt: number, durationMs: number, phase: 'focus' | 'break' | '' = 'focus'): void {
+  localState = { ...localState, timerStartedAt: startedAt, timerDurationMs: durationMs, timerPhase: phase }
 }
 
 /** Set the local player's current study subject (broadcast to other players). */

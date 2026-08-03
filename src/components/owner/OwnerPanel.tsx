@@ -393,7 +393,7 @@ export function OwnerPanel() {
           <div>
             <h3 style={{ color: "var(--color-genshin-gold)", fontSize: "0.85rem", letterSpacing: "0.05em", marginBottom: "1rem" }}>USERS & AUTHENTICATION</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
-              {card("AUTH PROVIDER", "InsForge / Supabase", "Backend: e29j97zj.us-east.insforge.app")}
+              {card("AUTH PROVIDER", "InsForge / Supabase", "Backend: e29j97zj.us-east.supabase.app")}
               {card("OWNER AUTH", "PIN-based", "Client-side gate (VITE_OWNER_PIN)")}
               {card("RLS POLICIES", "Supabase", "Database row-level security active")}
               {card("OAUTH", "Configured", "See docs/OAUTH_SETUP.md")}

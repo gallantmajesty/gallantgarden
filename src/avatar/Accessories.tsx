@@ -7,12 +7,11 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
-import { DoubleSide, MeshStandardMaterial, SRGBColorSpace } from 'three'
+import { DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial, SRGBColorSpace } from 'three'
 import {
   type Color,
   boxGeo,
   circleGeo,
-  coneGeo,
   glowMaterial,
   latheGeo,
   sphereGeo,
@@ -508,9 +507,13 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
   case 'laptop':
   case 'gaming_laptop': {
     const isGaming = id === 'gaming_laptop'
-    const shell = isGaming ? m('#0a0a0f', 0.35, 0.55) : tm('#b8a48c', 0.5, 0.1, 'leather')
-    const base = isGaming ? m('#0a0a0f', 0.4, 0.5) : tm('#9a8468', 0.6, 0, 'wood')
-    const keyMat = !isGaming ? m('#e9dcc4', 0.5) : null
+    // Premium aluminum materials with proper PBR values
+    const aluminumBody = m('#b8c0c8', 0.2, 0.88) // brushed aluminum body
+    const aluminumDeck = m('#c8d0d8', 0.25, 0.85) // lighter palm rest area
+    const keyCapMat = m('#1a1a1c', 0.75, 0.08) // matte black keycaps
+    const shell = isGaming ? m('#0a0a0f', 0.35, 0.55) : aluminumBody
+    const palmRest = isGaming ? m('#0a0a0f', 0.4, 0.5) : aluminumDeck
+    const keyMat = !isGaming ? keyCapMat : null
 
     // Real gaming palette: near-black body (#0a0a0f), gunmetal edges (#2a2a2a),
     // matte black keys (#1c1c1c) with cyan/magenta per-key RGB backlight.
@@ -522,14 +525,16 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
     const RGB_BLUE = glowMaterial('#4466ff', 1.1)
     const RGB_WAVE = [RGB_CYAN, RGB_MAGENTA, RGB_BLUE]
 
-    const screenGlow = isGaming ? glowMaterial('#0d0d18', 0.8) : m('#c9924a', 0.35)
-    const logo = isGaming ? glowMaterial('#00e5ff', 1.6) : m('#caa24a', 0.4, 0.3)
-    // On-screen UI palette — neon gaming HUD on a dark OLED panel
-    const scrBg = m(isGaming ? '#07070d' : '#14100c', 0.9)
-    const scrLine = m(isGaming ? '#1a1a2a' : '#3a2f22', 0.8)
-    const scrAccent = isGaming ? glowMaterial('#00e5ff', 1.3) : m('#e0b878', 0.5)
-    const scrAccent2 = isGaming ? glowMaterial('#ff2ed1', 1.3) : m('#a06a3a', 0.5)
-    const scrText = isGaming ? glowMaterial('#e8f6ff', 1.2) : m('#e8d4a0', 0.6)
+    const screenBg = m('#0a0a0c', 0.95, 0.02) // true black OLED-like screen
+    const screenGloss = m('#ffffff', 0.05, 0.98) // ultra-glossy screen surface
+    const bezelMat = m('#1a1a1c', 0.8, 0.15) // thin black bezel
+    const logo = isGaming ? glowMaterial('#00e5ff', 1.6) : m('#a8b0b8', 0.25, 0.85)
+    // Desktop UI colors
+    const uiBg = m(isGaming ? '#07070d' : '#1e2832', 0.9)
+    const uiWindow = m('#262c34', 0.85)
+    const uiAccent = isGaming ? glowMaterial('#00e5ff', 1.3) : m('#5294e2', 0.7)
+    const uiGreen = m('#73d216', 0.75)
+    const uiText = m('#e8ecf0', 0.8)
 
     const keys = []
     const colsK = isGaming ? 13 : 11
@@ -622,21 +627,24 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
         }
       }
     } else {
+      // Realistic individual keys with bevels and spacing
       for (let r = 0; r < rowsK; r++) {
         for (let c = 0; c < colsK; c++) {
           const kx = -((colsK - 1) * keySpacing) / 2 + c * keySpacing
           const kz = 0.015 + r * 0.026
-          const keyPalette = ['#e9dcc4']
           const label = (rowLabels[r] && c < rowLabels[r].length) ? rowLabels[r][c] : ''
           const isSpace = r === 4 && c === 0
           const kw = isSpace ? keySpacing * (colsK - 1) + keyW : keyW
           keys.push(
             <group key={`k${r}-${c}`} position={[kx, keyY, kz]}>
-              <mesh geometry={boxGeo(kw, keyH, keyD)} material={keyMat ? keyMat : m(keyPalette[0], 0.45, 0.2)} />
+              {/* Key cap with subtle bevel */}
+              <mesh geometry={boxGeo(kw, keyH, keyD)} material={keyMat ? keyMat : m('#2a2a2c', 0.7, 0.05)} castShadow />
+              {/* Top surface slightly lighter for bevel effect */}
+              <mesh geometry={boxGeo(kw * 0.92, keyH * 0.4, keyD * 0.9)} material={m('#3a3a3c', 0.65, 0.08)} position={[0, keyH / 2 + 0.0005, 0]} />
               {label ? (
                 <Text
-                  fontSize={0.009}
-                  color={'#3a2a1a'}
+                  fontSize={0.008}
+                  color={'#c0c8d0'}
                   anchorX="center"
                   anchorY="middle"
                   position={[0, keyH / 2 + 0.001, 0]}
@@ -697,61 +705,140 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
         <mesh geometry={sphereGeo(0.0035)} material={glowMaterial('#00e5ff', 1.6)} position={[0.162, -0.075, 0.003]} />
       </group>
     ) : (
-      <group position={[0, 0.16, 0.012]}>
-        {/* window chrome */}
-        <mesh geometry={boxGeo(0.4, 0.018, 0.001)} material={scrLine} position={[0, 0.108, 0]} />
-        {[-0.17, -0.155, -0.14].map((dx, i) => (
-          <mesh key={`wc${i}`} geometry={sphereGeo(0.004)} material={m(['#c03030', '#d4a030', '#30a050'][i], 0.5)} position={[dx, 0.108, 0.001]} />
+      // Realistic desktop OS UI with window, taskbar, icons
+      <group position={[0, 0.148, 0.004]}>
+        {/* Desktop wallpaper - subtle gradient */}
+        <mesh geometry={boxGeo(0.42, 0.23, 0.0005)} material={m('#1e2832', 0.88)} position={[0, 0, -0.001]} />
+        
+        {/* Main window - code editor or browser */}
+        <mesh geometry={boxGeo(0.32, 0.16, 0.001)} material={m('#24282e', 0.82)} position={[0, 0.01, 0]} />
+        {/* Window title bar */}
+        <mesh geometry={boxGeo(0.32, 0.012, 0.001)} material={uiWindow} position={[0, 0.084, 0.001]} />
+        {/* Window control buttons (close, minimize, maximize) */}
+        {[-0.145, -0.13, -0.115].map((dx, i) => (
+          <mesh key={`wc${i}`} geometry={sphereGeo(0.003)} material={m(['#e85d4a', '#e8b84a', '#5cb85c'][i], 0.6)} position={[dx, 0.084, 0.002]} />
         ))}
-        {/* sidebar */}
-        <mesh geometry={boxGeo(0.07, 0.2, 0.001)} material={scrLine} position={[-0.16, 0, 0]} />
-        {Array.from({ length: 6 }).map((_, i) => (
-          <mesh key={`sb${i}`} geometry={boxGeo(0.05, 0.008, 0.001)} material={scrText} position={[-0.16, 0.08 - i * 0.03, 0.001]} />
+        {/* Window title text */}
+        <Text fontSize={0.004} color="#b0b8c0" anchorX="left" anchorY="middle" position={[-0.1, 0.084, 0.002]}>
+          Terminal — bash
+        </Text>
+        
+        {/* Sidebar/file tree */}
+        <mesh geometry={boxGeo(0.06, 0.15, 0.001)} material={m('#1c2026', 0.85)} position={[-0.13, 0.005, 0.001]} />
+        {/* Folder icons in sidebar */}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <group key={`folder${i}`} position={[-0.13, 0.065 - i * 0.028, 0.002]}>
+            <mesh geometry={boxGeo(0.008, 0.006, 0.001)} material={uiAccent} />
+            <Text fontSize={0.003} color="#b8c0c8" anchorX="left" anchorY="middle" position={[0.006, 0, 0]}>
+              {['src', 'components', 'lib', 'assets', 'tests'][i]}
+            </Text>
+          </group>
         ))}
-        {/* code lines — varied widths + colours like syntax highlighting */}
-        {Array.from({ length: 9 }).map((_, i) => {
-          const lw = [0.2, 0.14, 0.22, 0.1, 0.18, 0.24, 0.12, 0.2, 0.16][i]
-          const indent = [0, 1, 1, 2, 1, 0, 1, 2, 0][i] * 0.02
-          const cols = [scrAccent, scrText, scrAccent2, scrText]
+        
+        {/* Code content area with syntax highlighting */}
+        {Array.from({ length: 7 }).map((_, i) => {
+          const lw = [0.18, 0.14, 0.2, 0.11, 0.16, 0.22, 0.13][i]
+          const indent = [0, 1, 1, 2, 2, 1, 1][i] * 0.015
+          const cols = [uiAccent, uiText, uiGreen, uiText, uiAccent, uiText, uiGreen]
           return (
-            <mesh key={`cl${i}`} geometry={boxGeo(lw, 0.011, 0.001)} material={cols[i % cols.length]} position={[-0.04 + indent + lw / 2 - 0.1, 0.085 - i * 0.021, 0.001]} />
+            <mesh key={`cl${i}`} geometry={boxGeo(lw, 0.008, 0.001)} material={cols[i]} position={[-0.04 + indent + lw / 2 - 0.07, 0.055 - i * 0.018, 0.002]} />
           )
         })}
-        {/* blinking cursor */}
-        <mesh geometry={boxGeo(0.008, 0.013, 0.001)} material={scrText} position={[0.1, -0.095, 0.001]} />
+        {/* Blinking cursor */}
+        <mesh geometry={boxGeo(0.006, 0.01, 0.001)} material={uiText} position={[0.08, -0.07, 0.002]} />
+        
+        {/* Bottom taskbar */}
+        <mesh geometry={boxGeo(0.42, 0.014, 0.001)} material={m('#1a1e24', 0.9)} position={[0, -0.107, 0.001]} />
+        {/* App icons in taskbar */}
+        {[-0.18, -0.15, -0.12, -0.09].map((dx, i) => (
+          <mesh key={`tbi${i}`} geometry={boxGeo(0.011, 0.011, 0.001)} material={m(['#4a90e2', '#e85d4a', '#5cb85c', '#f0ad4e'][i], 0.65)} position={[dx, -0.107, 0.002]} />
+        ))}
+        {/* System tray icons (wifi, battery, clock) */}
+        <Text fontSize={0.004} color="#b0b8c0" anchorX="right" anchorY="middle" position={[0.195, -0.107, 0.002]}>
+          5:54 PM
+        </Text>
+        <mesh geometry={boxGeo(0.007, 0.005, 0.001)} material={uiAccent} position={[0.16, -0.107, 0.002]} />
+        <mesh geometry={boxGeo(0.005, 0.007, 0.001)} material={uiGreen} position={[0.145, -0.107, 0.002]} />
       </group>
     )
 
     return (
       <group>
-        {/* thin RGB underglow strip along the front edge (nothing protruding) */}
+        {/* ==================== BASE CONSTRUCTION ==================== */}
+        
+        {/* Bottom case - aluminum unibody with rubber feet */}
+        <mesh geometry={boxGeo(0.48, 0.006, 0.32)} material={shell} position={[0, 0.003, 0]} castShadow receiveShadow />
+        
+        {/* Rubber feet - four corners */}
+        {!isGaming && [
+          <mesh key="f1" geometry={sphereGeo(0.006)} material={m('#1a1a1c', 0.95, 0.05)} position={[-0.22, 0.003, -0.14]} />,
+          <mesh key="f2" geometry={sphereGeo(0.006)} material={m('#1a1a1c', 0.95, 0.05)} position={[0.22, 0.003, -0.14]} />,
+          <mesh key="f3" geometry={sphereGeo(0.006)} material={m('#1a1a1c', 0.95, 0.05)} position={[-0.22, 0.003, 0.14]} />,
+          <mesh key="f4" geometry={sphereGeo(0.006)} material={m('#1a1a1c', 0.95, 0.05)} position={[0.22, 0.003, 0.14]} />,
+        ]}
+        
+        {/* Keyboard deck - darker aluminum */}
+        <mesh geometry={boxGeo(0.46, 0.004, 0.28)} material={m('#9aa2aa', 0.3, 0.83)} position={[0, 0.009, 0.01]} />
+        
+        {/* Palm rest area - lighter brushed aluminum */}
+        <mesh geometry={boxGeo(0.46, 0.003, 0.11)} material={palmRest} position={[0, 0.0095, 0.195]} receiveShadow />
+        
+        {/* Recessed trackpad well */}
+        <mesh geometry={boxGeo(0.11, 0.002, 0.07)} material={m('#8a9298', 0.35, 0.8)} position={[0, 0.0085, 0.195]} />
+        {/* Glass trackpad surface */}
+        <mesh geometry={boxGeo(0.105, 0.0015, 0.065)} material={m('#1a1e22', 0.15, 0.92)} position={[0, 0.01, 0.195]} />
+        {/* Trackpad separator line */}
+        <mesh geometry={boxGeo(0.105, 0.0005, 0.001)} material={m('#0a0a0c', 0.9)} position={[0, 0.0105, 0.175]} />
+        
+        {/* ==================== INDIVIDUAL KEYCAPS ==================== */}
+        {keys}
+        
+        {/* Subtle keyboard backlight glow (non-gaming) */}
+        {!isGaming && (
+          <mesh geometry={boxGeo(0.38, 0.001, 0.14)} material={m('#ffffff', 0.02)} position={[0, 0.0305, 0.08]} />
+        )}
+        
         {isGaming && (
-          <group position={[0, 0.002, 0.265]}>
-            <mesh geometry={boxGeo(0.4, 0.0025, 0.003)} material={RGB_CYAN} />
-            <mesh geometry={boxGeo(0.32, 0.0025, 0.003)} material={RGB_MAGENTA} position={[0.015, 0.001, 0.002]} />
+          <group>
+            {/* RGB underglow */}
+            <group position={[0, 0.002, 0.265]}>
+              <mesh geometry={boxGeo(0.4, 0.0025, 0.003)} material={RGB_CYAN} />
+              <mesh geometry={boxGeo(0.32, 0.0025, 0.003)} material={RGB_MAGENTA} position={[0.015, 0.001, 0.002]} />
+            </group>
+            {/* RGB backlight through key gaps */}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <mesh key={`bl${i}`} geometry={boxGeo(0.405, 0.002, 0.0025)} material={RGB_WAVE[i % RGB_WAVE.length]} position={[0, 0.0287, 0.038 + i * 0.0245]} />
+            ))}
           </group>
         )}
-
-        {/* wedge chassis — thicker at the back for cooling, thin at the front */}
-        <mesh geometry={boxGeo(0.48, 0.03, 0.22)} material={isGaming ? DARK_BODY : shell} position={[0, 0.016, -0.09]} castShadow />
-        <mesh geometry={boxGeo(0.48, 0.014, 0.3)} material={isGaming ? DARK_BODY : shell} position={[0, 0.007, 0.12]} castShadow />
-        <mesh geometry={boxGeo(0.44, 0.012, 0.26)} material={base} position={[0, 0.02, 0.02]} />
-        {keys}
-
-        {/* RGB backlight bleeding through the gaps between keys (rainbow wave) */}
-        {isGaming &&
-          Array.from({ length: 6 }).map((_, i) => (
-            <mesh key={`bl${i}`} geometry={boxGeo(0.405, 0.002, 0.0025)} material={RGB_WAVE[i % RGB_WAVE.length]} position={[0, 0.0287, 0.038 + i * 0.0245]} />
-          ))}
-
-        {/* compact recessed trackpad — small, dark, unobtrusive */}
-        <mesh geometry={boxGeo(0.085, 0.0035, 0.05)} material={isGaming ? m('#0c0c12', 0.6, 0.4) : m('#d9c8a8', 0.5)} position={[0, 0.028, 0.185]} />
-        <mesh geometry={boxGeo(0.075, 0.0015, 0.04)} material={m('#000000', 0.7)} position={[0, 0.0285, 0.185]} />
-        {/* thin gunmetal edges — NOT gold/copper */}
-        <mesh geometry={boxGeo(0.005, 0.016, 0.42)} material={GUNMETAL} position={[-0.238, 0.012, 0.02]} />
-        <mesh geometry={boxGeo(0.005, 0.016, 0.42)} material={GUNMETAL} position={[0.238, 0.012, 0.02]} />
-
-        {/* aggressive rear exhaust vents — grille with visible copper heatsink fins */}
+        
+        {/* Side edges with proper ports */}
+        <mesh geometry={boxGeo(0.004, 0.011, 0.32)} material={m('#7a8288', 0.35, 0.85)} position={[-0.239, 0.0085, 0]} />
+        <mesh geometry={boxGeo(0.004, 0.011, 0.32)} material={m('#7a8288', 0.35, 0.85)} position={[0.239, 0.0085, 0]} />
+        
+        {/* Left ports - USB-C × 2, headphone */}
+        {!isGaming && [
+          <mesh key="usbc1" geometry={boxGeo(0.005, 0.009, 0.004)} material={m('#2a2a2c', 0.6)} position={[-0.24, 0.0085, 0.05]} />,
+          <mesh key="usbc2" geometry={boxGeo(0.005, 0.009, 0.004)} material={m('#2a2a2c', 0.6)} position={[-0.24, 0.0085, -0.02]} />,
+          <mesh key="audio" geometry={sphereGeo(0.0035)} material={m('#1a1a1c', 0.7)} position={[-0.24, 0.0085, -0.1]} />,
+        ]}
+        
+        {/* Right ports - USB-A, HDMI */}
+        {!isGaming && [
+          <mesh key="usba" geometry={boxGeo(0.005, 0.011, 0.006)} material={m('#2a5a8a', 0.75)} position={[0.24, 0.0085, 0.05]} />,
+          <mesh key="hdmi" geometry={boxGeo(0.005, 0.006, 0.004)} material={m('#1a1a1c', 0.7)} position={[0.24, 0.0085, -0.02]} />,
+        ]}
+        
+        {/* Speaker grilles */}
+        {!isGaming && [-0.2, 0.2].map((sx, i) => (
+          <group key={`spk${i}`} position={[sx, 0.009, 0.15]}>
+            {Array.from({ length: 8 }).map((_, d) => (
+              <mesh key={`h${d}`} geometry={boxGeo(0.06, 0.0008, 0.0015)} material={m('#1a1a1c', 0.8)} position={[0, 0, -0.075 + d * 0.022]} />
+            ))}
+          </group>
+        ))}
+        
+        {/* Gaming laptop exhaust vents */}
         {isGaming && (
           <group position={[0, 0.014, -0.2]}>
             <mesh geometry={boxGeo(0.42, 0.024, 0.008)} material={m('#0b0b10', 0.5, 0.5)} />
@@ -760,39 +847,60 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
             ))}
           </group>
         )}
-
-        {/* fine speaker grilles flanking the keyboard */}
-        {[-0.215, 0.215].map((sx, i) => (
-          <group key={`spk${i}`} position={[sx, 0.016, 0.12]}>
-            {Array.from({ length: 6 }).map((_, d) => (
-              <mesh key={`sd${d}`} geometry={boxGeo(0.05, 0.0015, 0.003)} material={m('#050507', 0.7)} position={[0, 0, -0.055 + d * 0.022]} />
-            ))}
-          </group>
-        ))}
-
-        {/* screen lid — angular hinge + glossy lit panel + glowing logo */}
-        <group position={[0, 0.028, -0.14]} rotation={[-0.22, 0, 0]}>
-          {/* angular hinge block */}
-          <mesh geometry={boxGeo(0.5, 0.012, 0.02)} material={GUNMETAL} position={[0, 0.003, 0.004]} />
-          {/* thin RGB bar on the hinge */}
-          {isGaming && (
-            <mesh geometry={boxGeo(0.42, 0.0035, 0.004)} material={RGB_CYAN} position={[0, 0.0015, 0.008]} />
-          )}
-          <mesh geometry={boxGeo(0.48, 0.32, 0.014)} material={shell} position={[0, 0.16, 0]} castShadow />
-          <mesh geometry={boxGeo(0.44, 0.28, 0.004)} material={scrBg} position={[0, 0.16, 0.009]} />
-          <mesh geometry={boxGeo(0.42, 0.25, 0.002)} material={screenGlow} position={[0, 0.16, 0.011]} />
-          {/* live on-screen content */}
+        
+        {/* ==================== SCREEN ASSEMBLY ==================== */}
+        <group position={[0, 0.011, -0.16]} rotation={[-0.3, 0, 0]}>
+          {/* Proper hinge mechanism */}
+          <mesh geometry={boxGeo(0.48, 0.012, 0.018)} material={m('#5a6268', 0.4, 0.78)} position={[0, 0.008, 0.007]} castShadow />
+          {[-0.2, 0.2].map((hx, i) => (
+            <group key={`h${i}`} position={[hx, 0.008, 0.011]}>
+              <mesh geometry={sphereGeo(0.007)} material={m('#4a5258', 0.35, 0.82)} position={[-0.008, 0, 0]} />
+              <mesh geometry={sphereGeo(0.007)} material={m('#4a5258', 0.35, 0.82)} />
+              <mesh geometry={sphereGeo(0.007)} material={m('#4a5258', 0.35, 0.82)} position={[0.008, 0, 0]} />
+            </group>
+          ))}
+          
+          {/* Aluminum lid back */}
+          <mesh geometry={boxGeo(0.48, 0.28, 0.008)} material={shell} position={[0, 0.148, -0.006]} castShadow receiveShadow />
+          
+          {/* Thin black bezel */}
+          <mesh geometry={boxGeo(0.44, 0.24, 0.003)} material={bezelMat} position={[0, 0.148, 0.001]} />
+          
+          {/* True black OLED screen base */}
+          <mesh geometry={boxGeo(0.42, 0.23, 0.001)} material={screenBg} position={[0, 0.148, 0.003]} />
+          
+          {/* Glossy screen surface layer */}
+          <mesh geometry={boxGeo(0.42, 0.23, 0.0005)} material={screenGloss} position={[0, 0.148, 0.0035]} />
+          
+          {/* Screen content */}
           {screenContent}
-          {/* glowing backlit emblem on the lid (ROG-style) */}
-          <mesh geometry={sphereGeo(0.014)} material={logo} position={[0, 0.035, -0.008]} />
-          <mesh geometry={torusGeo(0.02, 0.0025)} material={GUNMETAL} position={[0, 0.035, -0.008]} />
-          {/* webcam dot + subtle lens ring */}
-          <mesh geometry={sphereGeo(0.004)} material={m('#1a1a2a', 0.3)} position={[0, 0.31, 0.01]} />
-          <mesh geometry={torusGeo(0.006, 0.0015)} material={m('#3a3a4a', 0.4)} position={[0, 0.31, 0.01]} />
+          
+          {/* Webcam in top bezel */}
+          <mesh geometry={sphereGeo(0.003)} material={m('#0a0a0c', 0.3)} position={[0, 0.262, 0.002]} />
+          <mesh geometry={torusGeo(0.0045, 0.0012)} material={m('#2a2a2c', 0.5)} position={[0, 0.262, 0.002]} />
+          
+          {/* Subtle logo on lid back */}
+          <mesh geometry={sphereGeo(isGaming ? 0.014 : 0.008)} material={logo} position={[0, 0.06, -0.01]} />
+          {!isGaming && (
+            <mesh geometry={torusGeo(0.01, 0.0015)} material={m('#9aa2aa', 0.3, 0.83)} position={[0, 0.06, -0.01]} />
+          )}
+          {isGaming && (
+            <mesh geometry={torusGeo(0.02, 0.0025)} material={GUNMETAL} position={[0, 0.06, -0.01]} />
+          )}
         </group>
-
-        {/* screen glow — the bright display casts coloured light onto the keyboard */}
-        {isGaming && <pointLight position={[0, 0.3, -0.12]} color="#6ee7ff" intensity={0.55} distance={0.9} />}
+        
+        {/* ==================== LIGHTING & SHADOWS ==================== */}
+        
+        {/* Soft screen glow reflecting on keyboard */}
+        {!isGaming && (
+          <pointLight position={[0, 0.18, -0.12]} color="#e8f0f8" intensity={0.4} distance={0.5} decay={2} />
+        )}
+        {isGaming && (
+          <pointLight position={[0, 0.2, -0.14]} color="#6ee7ff" intensity={0.55} distance={0.7} />
+        )}
+        
+        {/* Contact shadow on table surface */}
+        <mesh geometry={boxGeo(0.5, 0.001, 0.34)} material={m('#000000', 0.25)} position={[0, -0.001, 0.01]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow />
       </group>
     )
   }
@@ -1239,85 +1347,125 @@ case 'trading_laptop': {
       )
     }
     case 'hourglass': {
-      // Vintage brass focus hourglass — transparent pear-shaped glass bulbs
-      // with visible wall thickness, golden sand streaming through the neck,
-      // 4 lathe-turned brass pillars, walnut plates with brass trim, a wider
-      // decorative base with feet and engraved minutes.
+      // Vintage brass focus hourglass v2 — crystal-clear glass (no drawn edges),
+      // warm golden sand with natural irregular mounds, thin smooth pillars,
+      // thin plates, brass cups where glass meets wood, flat beveled base.
       const walnut = tm('#5c3a21', 0.6, 0, 'wood')
       const walnutDark = tm('#4a3319', 0.65, 0, 'wood')
-      const brass = m('#b87333', 0.4, 0.6)
-      const brassCap = m('#caa24a', 0.35, 0.6)
+      const brass = m('#b87333', 0.38, 0.65)
+      const brassCap = m('#caa24a', 0.32, 0.65)
       const grain = sandGrainTex()
-      const sandMat = new MeshStandardMaterial({ color: '#e6c687', roughness: 0.95, metalness: 0, bumpMap: grain, bumpScale: 0.012 })
-      const sandMound = new MeshStandardMaterial({ color: '#f2dca8', roughness: 0.95, metalness: 0, bumpMap: grain, bumpScale: 0.01 })
-      const glassOuter = new MeshStandardMaterial({ color: '#d4e8f0', transparent: true, opacity: 0.15, roughness: 0.05, metalness: 0.05, side: DoubleSide, depthWrite: false })
-      const glassInner = new MeshStandardMaterial({ color: '#cfe4ee', transparent: true, opacity: 0.08, roughness: 0.05, metalness: 0.05, side: DoubleSide, depthWrite: false })
+      const sandMat = new MeshStandardMaterial({ color: '#e6c687', roughness: 0.95, metalness: 0, bumpMap: grain, bumpScale: 0.016 })
+      const moundMat = new MeshStandardMaterial({ color: '#e0b878', roughness: 0.95, metalness: 0, bumpMap: grain, bumpScale: 0.014 })
+      // real glass: PBR transmission (refraction + thickness + ior) instead of
+      // a flat tinted shell — one transmissive shell per bulb, faint blue tint
+      const glass = new MeshPhysicalMaterial({
+        color: '#eaf5fb',
+        metalness: 0,
+        roughness: 0.04,
+        transparent: true,
+        transmission: 1,
+        ior: 1.45,
+        thickness: 0.012,
+        attenuationColor: '#bfe3f5',
+        attenuationDistance: 0.15,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.08,
+        side: DoubleSide,
+        depthWrite: false,
+      })
       const streamMat = glowMaterial('#d4a84b', 1.1)
-      const streak = glowMaterial('#ffffff', 0.55)
-      // pear bulb: narrow neck (y 0) → widest just above neck → taper to plate
-      const outerBulb = [[0.014, 0.001], [0.052, 0.02], [0.052, 0.03], [0.04, 0.05], [0.028, 0.068], [0.025, 0.083]]
-      const innerBulb = outerBulb.map(([r, y]) => [Math.max(r - 0.004, 0.008), y])
-      // lathe-turned column like a chess piece (3 swells)
+      const grainMat = glowMaterial('#e6c687', 0.9)
+      // pear bulb, tight neck (r 0.008): neck → flare → widest (r 0.051) → taper
+      const outerBulb = [[0.008, 0.002], [0.022, 0.006], [0.042, 0.012], [0.05, 0.022], [0.051, 0.032], [0.042, 0.05], [0.031, 0.067], [0.025, 0.083]]
+      // thin, smooth pillar with a barely-there waist (no lathe knobs)
       const pillarProfile = [
-        [0.006, 0], [0.009, 0.0035], [0.006, 0.007],
-        [0.0045, 0.025], [0.006, 0.04], [0.009, 0.045], [0.0055, 0.051],
-        [0.0045, 0.08], [0.006, 0.095], [0.009, 0.1], [0.0055, 0.106],
-        [0.0045, 0.14], [0.006, 0.155], [0.009, 0.16], [0.006, 0.166], [0.005, 0.17],
+        [0.004, 0], [0.0048, 0.012], [0.0042, 0.05], [0.0038, 0.085], [0.0042, 0.12], [0.0048, 0.158], [0.004, 0.17],
       ]
+      // natural sand pile via maths: angle of repose (~34°: r0/h ≈ 0.67),
+      // slightly concave curve (pow 0.9) + seeded irregularity so the rim is
+      // never a perfect geometric circle. apexUp = mound, else inverted pile.
+      const sandPile = (r0: number, h: number, seed: number, apexUp: boolean): Array<[number, number]> => {
+        let s = seed >>> 0
+        const rnd = () => {
+          s = (s * 1664525 + 1013904223) >>> 0
+          return s / 4294967296
+        }
+        const n = 10
+        const pts: Array<[number, number]> = []
+        for (let i = 0; i <= n; i++) {
+          const t = i / n
+          const isApex = apexUp ? i === n : i === 0
+          const r = isApex ? 0.0006 : r0 * (apexUp ? Math.pow(1 - t, 0.9) : Math.pow(t, 0.9)) * (1 + (rnd() - 0.5) * 0.1)
+          pts.push([r, h * t])
+        }
+        return pts
+      }
       return (
         // shift up so the base feet rest on the surface (bottom at y = 0)
         <group position={[0, 0.098, 0]}>
-          {/* wider decorative base: beveled walnut disc + brass rims + feet */}
-          <mesh geometry={taperGeo(0.1, 0.085, 0.013)} material={walnutDark} position={[0, -0.0915, 0]} castShadow />
-          <mesh geometry={torusGeo(0.098, 0.0035)} material={brass} position={[0, -0.0855, 0]} rotation={[Math.PI / 2, 0, 0]} />
-          <mesh geometry={torusGeo(0.093, 0.003)} material={brassCap} position={[0, -0.0925, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          {/* flat beveled base (no raised rim): flat top, beveled lower edge,
+              brass inlay ring at the bottom edge, 3 feet, engraved minutes */}
+          <mesh geometry={latheGeo([[0.095, 0], [0.095, 0.008], [0.085, 0.013]])} material={walnutDark} position={[0, -0.0915, 0]} castShadow />
+          <mesh geometry={torusGeo(0.086, 0.0022)} material={brassCap} position={[0, -0.0975, 0]} rotation={[Math.PI / 2, 0, 0]} />
           {[[0.065, 0], [-0.0325, 0.0563], [-0.0325, -0.0563]].map(([fx, fz], i) => (
             <mesh key={`ft${i}`} geometry={boxGeo(0.014, 0.006, 0.024)} material={walnutDark} position={[fx, -0.101, fz]} castShadow />
           ))}
-          {/* engraved minutes on the base rim */}
-          <Text fontSize={0.007} color="#caa24a" anchorX="center" anchorY="middle" position={[0, -0.0835, 0.082]} rotation={[-Math.PI / 2, 0, 0]}>
+          <Text fontSize={0.008} color="#e0c060" anchorX="center" anchorY="middle" position={[0, -0.0835, 0.082]} rotation={[-Math.PI / 2, 0, 0]}>
             15 · 30 · 60
           </Text>
 
-          {/* top plate: thin walnut disc + brass edge + finial knob */}
-          <mesh geometry={taperGeo(0.075, 0.075, 0.006)} material={walnut} position={[0, 0.088, 0]} castShadow />
-          <mesh geometry={torusGeo(0.073, 0.003)} material={brass} position={[0, 0.089, 0]} rotation={[Math.PI / 2, 0, 0]} />
-          <mesh geometry={boxGeo(0.004, 0.008, 0.004)} material={brass} position={[0, 0.096, 0]} />
-          <mesh geometry={sphereGeo(0.01)} material={brassCap} position={[0, 0.103, 0]} />
-          <mesh geometry={sphereGeo(0.005)} material={brass} position={[0, 0.109, 0]} />
+          {/* thin top plate + brass edge + finial */}
+          <mesh geometry={taperGeo(0.075, 0.075, 0.004)} material={walnut} position={[0, 0.087, 0]} castShadow />
+          <mesh geometry={torusGeo(0.073, 0.0025)} material={brass} position={[0, 0.087, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={boxGeo(0.0035, 0.006, 0.0035)} material={brass} position={[0, 0.0925, 0]} />
+          <mesh geometry={sphereGeo(0.0085)} material={brassCap} position={[0, 0.098, 0]} />
+          <mesh geometry={sphereGeo(0.004)} material={brass} position={[0, 0.103, 0]} />
 
-          {/* 4 slim lathe-turned brass pillars with cap rings */}
+          {/* 4 thin smooth brass pillars with tiny cap rings */}
           {[[-0.0495, -0.0495], [0.0495, -0.0495], [-0.0495, 0.0495], [0.0495, 0.0495]].map(([px, pz], i) => (
             <group key={`p${i}`}>
               <mesh geometry={latheGeo(pillarProfile)} material={brass} position={[px, -0.085, pz]} />
-              <mesh geometry={torusGeo(0.008, 0.002)} material={brassCap} position={[px, 0.084, pz]} rotation={[Math.PI / 2, 0, 0]} />
-              <mesh geometry={torusGeo(0.008, 0.002)} material={brassCap} position={[px, -0.084, pz]} rotation={[Math.PI / 2, 0, 0]} />
+              <mesh geometry={torusGeo(0.006, 0.0018)} material={brassCap} position={[px, 0.084, pz]} rotation={[Math.PI / 2, 0, 0]} />
+              <mesh geometry={torusGeo(0.006, 0.0018)} material={brassCap} position={[px, -0.084, pz]} rotation={[Math.PI / 2, 0, 0]} />
             </group>
           ))}
 
-          {/* glass bulbs — inner + outer shells for visible wall thickness */}
-          <mesh geometry={latheGeo(outerBulb)} material={glassOuter} />
-          <mesh geometry={latheGeo(innerBulb)} material={glassInner} />
-          <mesh geometry={latheGeo(outerBulb)} material={glassOuter} rotation={[Math.PI, 0, 0]} />
-          <mesh geometry={latheGeo(innerBulb)} material={glassInner} rotation={[Math.PI, 0, 0]} />
+          {/* crystal glass bulbs — single transmissive shell each (real
+              refraction/thickness via PBR), tiny glass collar hides the raw
+              lathe rim at the neck; a warm light catches the curved surface */}
+          <mesh geometry={latheGeo(outerBulb)} material={glass} />
+          <mesh geometry={latheGeo(outerBulb)} material={glass} rotation={[Math.PI, 0, 0]} />
+          <mesh geometry={torusGeo(0.009, 0.002)} material={glass} rotation={[Math.PI / 2, 0, 0]} />
+          <pointLight position={[0.11, 0.03, 0.09]} color="#ffffff" intensity={0.5} distance={0.5} />
 
-          {/* brass caps where glass meets the plates */}
-          <mesh geometry={torusGeo(0.029, 0.004)} material={brassCap} position={[0, 0.084, 0]} rotation={[Math.PI / 2, 0, 0]} />
-          <mesh geometry={torusGeo(0.029, 0.004)} material={brassCap} position={[0, -0.084, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          {/* brass cups where glass meets the plates */}
+          <mesh geometry={taperGeo(0.031, 0.034, 0.009)} material={brassCap} position={[0, 0.0805, 0]} />
+          <mesh geometry={taperGeo(0.031, 0.034, 0.009)} material={brassCap} position={[0, -0.0805, 0]} />
+          <mesh geometry={torusGeo(0.031, 0.0025)} material={brass} position={[0, 0.084, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={torusGeo(0.031, 0.0025)} material={brass} position={[0, -0.084, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={torusGeo(0.034, 0.0025)} material={brass} position={[0, 0.0765, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={torusGeo(0.034, 0.0025)} material={brass} position={[0, -0.0765, 0]} rotation={[Math.PI / 2, 0, 0]} />
 
-          {/* sand — top bulb nearly empty (inverted cone at the neck), bottom
-              mound with ~34° angle of repose */}
-          <mesh geometry={coneGeo(0.018, 0.026)} material={sandMat} position={[0, 0.016, 0]} rotation={[Math.PI, 0, 0]} />
-          <mesh geometry={coneGeo(0.019, 0.028)} material={sandMound} position={[0, -0.0575, 0]} />
-
-          {/* visible sand stream through the neck (thin, slightly curling) */}
-          {[[0.002, -0.009, 0.001], [-0.009, -0.02, -0.001], [-0.02, -0.031, 0.0008], [-0.031, -0.0435, -0.0005]].map(([y1, y2, ox], i) => (
-            <mesh key={`s${i}`} geometry={boxGeo(0.0028, y1 - y2, 0.0028)} material={streamMat} position={[ox, (y1 + y2) / 2, 0]} />
+          {/* sand — natural lathe piles (angle of repose + seeded irregularity):
+              top bulb nearly empty (inverted pile), bottom mound growing */}
+          <mesh geometry={latheGeo(sandPile(0.015, 0.02, 11, false))} material={sandMat} position={[0, 0.003, 0]} />
+          <mesh geometry={latheGeo(sandPile(0.017, 0.026, 23, true))} material={moundMat} position={[0, -0.0715, 0]} />
+          {[[0.014, 0.026, 0.004], [-0.012, 0.025, -0.003], [0.006, 0.0285, -0.006], [-0.004, 0.028, 0.007]].map(([gx, gy, gz], i) => (
+            <mesh key={`gp${i}`} geometry={sphereGeo(0.0022)} material={grainMat} position={[gx, gy, gz]} />
+          ))}
+          {[[0.015, -0.07, 0.003], [-0.014, -0.069, -0.003], [0.004, -0.068, 0.014], [-0.008, -0.0695, -0.011], [0.012, -0.071, -0.008]].map(([gx, gy, gz], i) => (
+            <mesh key={`gm${i}`} geometry={sphereGeo(i % 2 ? 0.0028 : 0.002)} material={grainMat} position={[gx, gy, gz]} />
           ))}
 
-          {/* white specular streaks catching the light on each bulb */}
-          <mesh geometry={boxGeo(0.0025, 0.035, 0.0025)} material={streak} position={[0.047, 0.03, 0.012]} rotation={[0, 0, 0.25]} />
-          <mesh geometry={boxGeo(0.0025, 0.035, 0.0025)} material={streak} position={[0.047, -0.03, 0.012]} rotation={[0, 0, 0.25]} />
+          {/* sand stream — sine-swayed curve from the pile apex to the mound
+              apex, with loose grains caught in the flow */}
+          {[[0.003, -0.005, 0.0004], [-0.005, -0.013, -0.001], [-0.013, -0.021, 0.0013], [-0.021, -0.029, -0.0012], [-0.029, -0.037, 0.0006], [-0.037, -0.0455, -0.0003]].map(([y1, y2, ox], i) => (
+            <mesh key={`s${i}`} geometry={boxGeo(0.0034, y1 - y2, 0.0034)} material={streamMat} position={[ox, (y1 + y2) / 2, 0]} />
+          ))}
+          {[[0.0025, -0.014, 0], [-0.0015, -0.026, 0.001], [0.001, -0.037, 0], [-0.0008, -0.044, 0.0005]].map(([gx, gy, gz], i) => (
+            <mesh key={`st${i}`} geometry={sphereGeo(0.0016 + (i % 2) * 0.0006)} material={grainMat} position={[gx, gy, gz]} />
+          ))}
         </group>
       )
     }

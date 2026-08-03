@@ -10,7 +10,7 @@ import {
 } from '../lib/chat'
 import type { Message, StudyStatus } from '../lib/types'
 import { setStudyStatus } from '../lib/presence'
-import { supabase } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // Chat runtime state for the library. v2 delivery is Supabase realtime:

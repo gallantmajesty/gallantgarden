@@ -37,7 +37,7 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  opacity: 1;
+  opacity: 1
 }
 .intro-glow-img {
   width: min(260px, 42vw);

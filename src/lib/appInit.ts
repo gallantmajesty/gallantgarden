@@ -120,8 +120,8 @@ function bindFocusLogging(): void {
         useProfile.setState({ xp: newXp })
         const userId = useProfile.getState().userId
         if (userId) {
-          import('./insforge').then(({ insforge }) =>
-            insforge.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
+          import('./supabase').then(({ supabase }) =>
+            supabase.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
           ).catch(() => {})
         }
       }

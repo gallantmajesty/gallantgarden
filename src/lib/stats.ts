@@ -1,4 +1,4 @@
-import { insforge } from './insforge'
+import { supabase } from './supabase'
 import { rankForTotalXp, RANKS } from './ranks'
 
 // Profile statistics. We surface REAL numbers wherever a data source exists
@@ -46,7 +46,7 @@ export interface StudyCounts {
 /** Count the user's blueprints (owner-scoped via RLS). */
 export async function loadStudyCounts(userId: string): Promise<StudyCounts> {
   const [notes] = await Promise.all([
-    insforge
+    supabase
       .from('blueprints')
       .select('*', { count: 'exact', head: true })
       .eq('owner_id', userId),

@@ -240,8 +240,8 @@ newBoard: (title) => {
     const result = awardBlueprint(xp, premiumXp, currentRank.id)
     if (result.goldenLeaves > 0) {
       useProfile.setState({ premiumXp: premiumXp + result.goldenLeaves })
-      import('../lib/insforge').then(({ insforge }) =>
-        insforge.from('profiles').upsert([{ id: uidv, premium_xp: premiumXp + result.goldenLeaves }], { onConflict: 'id' })
+      import('../lib/supabase').then(({ supabase }) =>
+        supabase.from('profiles').upsert([{ id: uidv, premium_xp: premiumXp + result.goldenLeaves }], { onConflict: 'id' })
       ).catch(() => {})
     }
   } catch { /* ignore — bonus is best-effort */ }

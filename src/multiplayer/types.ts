@@ -39,6 +39,9 @@ export interface PlayerState {
   timerStartedAt: number
   /** total session duration in ms (e.g. 3600000 for 1 hour) — 0 when no timer */
   timerDurationMs: number
+  /** timer phase — 'focus' for a live study session, 'break' for a pomodoro
+   *  break, '' when no timer. Drives the remote player timer bar styling. */
+  timerPhase?: 'focus' | 'break' | ''
   /** current study subject / task name — empty string when not studying */
   subject: string
   /** true while this player is driving / watching the shared Cinematic Tour — their

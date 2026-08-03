@@ -194,20 +194,21 @@ export function Explore({ defaultWorld }: ExploreProps) {
   }, [])
 
   // Sync local pomodoro timer state into multiplayer so other players can see
-  // your live study progress as a small bar above your head.
+  // your live study progress as a small bar above your head. Breaks are
+  // broadcast as a fresh short countdown so friends see you're on a break.
   useEffect(() => {
-    const unsub = usePomodoro.subscribe((s) => {
+    const push = (s: ReturnType<typeof usePomodoro.getState>) => {
       if (s.phase === 'running' && s.startedAt) {
-        setLocalTimer(s.startedAt, s.sessionMinutes * 60 * 1000)
+        setLocalTimer(s.startedAt, s.sessionMinutes * 60 * 1000, 'focus')
+      } else if (s.phase === 'break' && s.remaining > 0) {
+        setLocalTimer(Date.now(), s.remaining * 1000, 'break')
       } else {
-        setLocalTimer(0, 0)
+        setLocalTimer(0, 0, '')
       }
-    })
-    // Set initial state
-    const s = usePomodoro.getState()
-    if (s.phase === 'running' && s.startedAt) {
-      setLocalTimer(s.startedAt, s.sessionMinutes * 60 * 1000)
     }
+    const unsub = usePomodoro.subscribe(push)
+    // Set initial state
+    push(usePomodoro.getState())
     return unsub
   }, [])
 

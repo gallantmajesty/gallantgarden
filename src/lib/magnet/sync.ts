@@ -6,7 +6,7 @@
 // Privacy note: this is intentionally the SAME private data that already lives
 // per-user in localStorage. RLS restricts each row to its owner (auth.uid()).
 
-import { insforge, supabaseConfigured } from '../insforge'
+import { supabase, supabaseConfigured } from '../supabase'
 import type { MagnetData } from './types'
 
 const TABLE = 'magnet_data'
@@ -30,7 +30,7 @@ export function pushMagnet(userId: string, data: MagnetData) {
 
 async function doPush(userId: string, data: MagnetData) {
   try {
-    await insforge
+    await supabase
       .from(TABLE)
       .upsert([{ id: userId, data, synced_at: new Date().toISOString() }], { onConflict: 'id' })
   } catch {
@@ -46,7 +46,7 @@ async function doPush(userId: string, data: MagnetData) {
 export async function pullMagnet(userId: string): Promise<MagnetData | null> {
   if (!supabaseConfigured) return null
   try {
-    const { data, error } = await insforge.from(TABLE).select('data').eq('id', userId).maybeSingle()
+    const { data, error } = await supabase.from(TABLE).select('data').eq('id', userId).maybeSingle()
     if (error || !data) return null
     return (data as { data: MagnetData }).data ?? null
   } catch {

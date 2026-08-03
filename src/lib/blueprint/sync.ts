@@ -9,7 +9,7 @@
 // seen only locally. All network failures are swallowed and retried on the
 // next change, so the feature works fully offline.
 
-import { insforge } from '../insforge'
+import { supabase } from '../supabase'
 import type { BoardDoc, BoardMeta } from './types'
 
 const PREFIX = 'sf.blueprint.v1'
@@ -116,14 +116,14 @@ interface CloudRow {
 /** Upsert one board to the cloud (update-by-id, insert if it didn't exist). */
 async function pushBoard(uid: string, doc: BoardDoc): Promise<void> {
   const payload = { title: doc.title, doc, updated_at: doc.updatedAt }
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('blueprints')
     .update(payload)
     .eq('id', doc.id)
     .select('id')
   if (error) return // swallow — retried on next change
   if (!data || data.length === 0) {
-    await insforge
+    await supabase
       .from('blueprints')
       .insert([{ id: doc.id, owner_id: uid, ...payload }])
       .select('id')
@@ -147,14 +147,14 @@ export function queueCloudPush(uid: string, doc: BoardDoc): void {
 }
 
 export async function deleteBoardCloud(boardId: string): Promise<void> {
-  await insforge.from('blueprints').delete().eq('id', boardId)
+  await supabase.from('blueprints').delete().eq('id', boardId)
 }
 
 // ---- media uploads ----------------------------------------------------------
 // Reuse the existing public `note-images` bucket so pasted/uploaded images
 // resolve to a stable public URL we can embed and export.
 export async function uploadMedia(file: File): Promise<string | null> {
-  const { data, error } = await insforge.storage.from('note-images').upload(file)
+  const { data, error } = await supabase.storage.from('note-images').upload(file)
   if (error || !data) return null
   return data.url
 }
@@ -168,7 +168,7 @@ export async function reconcile(uid: string): Promise<BoardMeta[]> {
   const localMetas = listBoardsLocal(uid)
   const localById = new Map(localMetas.map((m) => [m.id, m]))
 
-  const { data, error } = await insforge
+  const { data, error } = await supabase
     .from('blueprints')
     .select('id, title, doc, updated_at')
   if (error || !data) return localMetas // offline / error — local only

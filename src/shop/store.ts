@@ -3,7 +3,7 @@
 // Persistence: localStorage (instant) + InsForge DB sync (debounced).
 
 import { create } from 'zustand'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import { useProfile } from '../store/profile'
 import { STARTER_THEME_IDS } from '../lib/magnet/themes'
 
@@ -64,7 +64,7 @@ function syncToDb(userId: string, items: string[]) {
     syncTimer = null
     const toSave = pendingItems
     try {
-      await insforge
+      await supabase
         .from('profiles')
         .upsert([{ id: userId, inventory: toSave }], { onConflict: 'id' })
     } catch {
@@ -86,7 +86,7 @@ export const useShop = create<ShopState>((set, get) => ({
     // Async DB sync — merge DB inventory with local
     ;(async () => {
       try {
-        const { data: row } = await insforge
+        const { data: row } = await supabase
           .from('profiles')
           .select('inventory')
           .eq('id', userId)

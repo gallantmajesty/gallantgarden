@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { insforge } from '../lib/insforge'
+import { supabase } from '../lib/supabase'
 import './AvatarCropper.css'
 
 const VIEW = 320
@@ -95,9 +95,9 @@ export function AvatarCropper({
       if (!blob) return
       const out = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
       const path = `avatars/${crypto.randomUUID()}.jpg`
-      const { data, error } = await insforge.storage.from('avatars').upload(path, out)
+      const { data, error } = await supabase.storage.from('avatars').upload(path, out)
       if (!error) {
-        const { data: pub } = insforge.storage.from('avatars').getPublicUrl(path)
+        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
         onDone(pub.publicUrl)
       }
     } finally {

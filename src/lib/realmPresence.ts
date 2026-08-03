@@ -1,4 +1,4 @@
-import { insforge } from './insforge'
+import { supabase } from './supabase'
 
 // Realm presence / capacity / auto-instancing — the client side of the
 // `realm_presence` table + its RPCs (see migrations/..._add-realm-presence.sql).
@@ -31,7 +31,7 @@ export interface InstanceOccupancy {
  *  instance 1 for guests / when the backend is unreachable so play never blocks. */
 export async function assignInstance(roomKey: string, capacity = REALM_CAPACITY): Promise<number> {
   try {
-    const { data, error } = await insforge.rpc('assign_realm_instance', {
+    const { data, error } = await supabase.rpc('assign_realm_instance', {
       p_room_key: roomKey,
       p_capacity: capacity,
     })
@@ -45,7 +45,7 @@ export async function assignInstance(roomKey: string, capacity = REALM_CAPACITY)
 /** Live per-instance counts for a room (for the pre-join chooser). [] on failure. */
 export async function occupancy(roomKey: string): Promise<InstanceOccupancy[]> {
   try {
-    const { data, error } = await insforge.rpc('realm_occupancy', { p_room_key: roomKey })
+    const { data, error } = await supabase.rpc('realm_occupancy', { p_room_key: roomKey })
     if (error || !Array.isArray(data)) return []
     return data as InstanceOccupancy[]
   } catch {
@@ -60,7 +60,7 @@ export function totalOccupants(rows: InstanceOccupancy[]): number {
 
 async function heartbeat(roomKey: string, instance: number): Promise<void> {
   try {
-    await insforge.rpc('realm_heartbeat', { p_room_key: roomKey, p_instance: instance })
+    await supabase.rpc('realm_heartbeat', { p_room_key: roomKey, p_instance: instance })
   } catch {
     /* transient — next tick retries */
   }
@@ -69,7 +69,7 @@ async function heartbeat(roomKey: string, instance: number): Promise<void> {
 /** Drop the caller's presence row immediately on leave. */
 export async function leavePresence(): Promise<void> {
   try {
-    await insforge.rpc('leave_realm_presence', {})
+    await supabase.rpc('leave_realm_presence', {})
   } catch {
     /* the 30s active window will drop us anyway */
   }
