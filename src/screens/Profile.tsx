@@ -31,6 +31,7 @@ import { FollowButton } from '../components/FollowButton'
 import { AddFriendButton } from '../components/AddFriendButton'
 import { UserListModal } from '../components/UserListModal'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
+import { AchievementsPanel } from '../components/profile/AchievementsPanel'
 import { useShop } from '../shop/store'
 import './Profile.css'
 
@@ -45,6 +46,8 @@ interface ProfileView {
   country: string | null
   rankId: string | null
   pub: ProfilePublic
+  /** claimed tierKey map for public profiles (parsed from the remote blob) */
+  earned?: Record<string, string>
 }
 
 export function Profile() {
@@ -103,6 +106,7 @@ export function Profile() {
         country: remote.country,
         rankId: remote.rank_xp ? rankForTotalXp(remote.rank_xp).id : remote.rank,
         pub: remote.public_profile,
+        earned: parseRemoteEarned(remote),
       }
     }
     return null
@@ -436,6 +440,11 @@ function ProfileBody({
           <div className="pf-character-wrap">
             <CharacterPortrait3D config={avatarConfig} size={280} />
           </div>
+        </div>
+
+        {/* ========== ACHIEVEMENTS ========== */}
+        <div className="pf-achievements-section">
+          <AchievementsPanel isOwn={isOwn} earned={view.earned} />
         </div>
       </div>
 
@@ -837,6 +846,19 @@ function BannerPicker({ view }: { view: ProfileView }) {
 }
 
 /* ------------------------------------------------- helper: fetch by player ID */
+
+/** Parse the earned tierKey map out of a remote profile's public achievements
+ *  blob (the `achievements.claimed` jsonb), so other players can view trophies. */
+function parseRemoteEarned(remote: PublicProfile): Record<string, string> | undefined {
+  const blob = (remote as PublicProfile & { achievements?: Record<string, unknown> }).achievements
+  const claimed = blob?.claimed
+  if (!claimed || typeof claimed !== 'object') return undefined
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(claimed)) {
+    if (typeof v === 'string') out[k] = v
+  }
+  return out
+}
 
 async function getPublicProfileByPlayerId(playerId: number): Promise<PublicProfile | null> {
   const { data, error } = await supabase

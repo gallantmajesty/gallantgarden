@@ -17,6 +17,7 @@ import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { useIsDesktop } from '../components/DesktopOnly'
+import { PendingDot } from '../components/pending/PendingDot'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -205,6 +206,7 @@ useEffect(() => {
             title={`${displayName} · ${rankObj.name}`}
             style={{ ['--xp' as string]: rankAccent, ['--pct' as string]: xpPct, ['--xpi' as string]: rankTier }}
           >
+            <PendingDot />
             <span className="lobby-xp__medal">
               <RankBadge rankId={rank} size={36} />
             </span>
@@ -217,9 +219,11 @@ useEffect(() => {
         </div>
         <div className="lobby-topright">
           <button className="lobby-round lobby-round--score" title="Score" onClick={() => setPanel('score')}>
+            <PendingDot size={9} />
             <PngIcon name="streaks" size={40} />
           </button>
           <button className="lobby-round" title="Avatar" onClick={() => navigate('/avatar')}>
+            <PendingDot size={9} />
             <PngIcon name="profile" size={32} />
           </button>
            <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
@@ -398,6 +402,7 @@ useEffect(() => {
             {incomingCount > 0 && <span className="lm-bell-dot" />}
           </button>
           <button className="lm-score-btn" onClick={() => setPanel('score')} title="Focus Score">
+            <PendingDot size={8} />
             <PngIcon name="streaks" size={26} />
           </button>
         </div>
@@ -433,6 +438,7 @@ useEffect(() => {
       {/* User card */}
       <div className="lm-user-card">
         <button className="lm-user-left" onClick={() => navigate('/profile')}>
+          <PendingDot />
           <div className="lm-avatar-wrap">
             <RankBadge rankId={rank} size={48} />
             <div className="lm-avatar-ring" />
@@ -602,6 +608,7 @@ useEffect(() => {
             onClick={() => { setMobileNav(item.id); if (item.id !== 'home') navigate(item.path) }}
           >
             {mobileNav === item.id && <div className="lm-nav-indicator" />}
+            {item.id === 'profile' && <PendingDot size={7} />}
             <svg className="lm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d={item.icon} />
             </svg>

@@ -267,7 +267,26 @@ export const BANNERS: Banner[] = [
     price: 1200,
   },
 
-  // ── Golden-currency premium banners (🌟) ───────────────────────────────
+  // ── Achievement-exclusive banners (granted via claim, also purchasable) ──
+  {
+    id: 'sage_ivy',
+    name: 'Sage Ivy',
+    css: 'linear-gradient(120deg, #0a1a10 0%, #2f6b3c 38%, #7ab34f 72%, #d8c47a 100%)',
+    glow: '#a8d86a',
+    category: 'others',
+    price: 2000,
+  },
+  {
+    id: 'golden_wings',
+    name: 'Golden Wings',
+    css: 'linear-gradient(120deg, #1a1408 0%, #6b4a10 30%, #e0b03a 60%, #fff2c9 90%, #ffd700 100%)',
+    glow: '#ffd700',
+    category: 'others',
+    price: 3000,
+    textDark: true,
+  },
+
+  // ── Golden-currency premium banners (🌟) ──────────────────────────────
   {
     id: 'crown_gold',
     name: 'Crown Gold',
@@ -371,6 +390,8 @@ export const LOGOS: Logo[] = [
   { id: 'dragon_ember_logo', name: 'Dragon Ember', css: 'radial-gradient(circle at center, #ff8a2a 0%, #7a2a04 65%, transparent 75%)', category: 'others', price: 200, currency: 'gold' },
   { id: 'legendary_crown', name: 'Legendary Crown', css: 'radial-gradient(circle at center, #ffd700 0%, #4a3a10 60%, transparent 72%)', category: 'others', price: 180, currency: 'gold', dim: true },
   { id: 'phoenix_logo', name: 'Phoenix', css: 'radial-gradient(circle at center, #ff5a8a 0%, #7a1a2a 60%, transparent 72%)', category: 'others', price: 220, currency: 'gold' },
+  // Achievement-exclusive logo (granted via claim, also purchasable)
+  { id: 'owl_guardian', name: 'Owl Guardian', css: 'radial-gradient(circle at center, #e8d8a8 0%, #8a6b2a 45%, #2f6b3c 75%, transparent 82%)', dim: true, category: 'others', price: 1500 },
 ]
 
 export const DEFAULT_LOGO_ID = ''

@@ -35,6 +35,8 @@ interface ShopState {
   canAffordGold: (price: number, currentGold: number) => boolean
   /** Buy a premium (gold) item with golden leaves. Returns new gold balance. */
   purchaseGold: (itemId: string, price: number, currentGold: number) => number
+  /** Free grant (achievement/event rewards) — adds items to inventory, persists. */
+  grantItems: (itemIds: string[]) => void
   /** Batch-check ownership for multiple items */
   getOwned: (itemIds: string[]) => string[]
 }
@@ -174,5 +176,17 @@ export const useShop = create<ShopState>((set, get) => ({
   getOwned: (itemIds) => {
     const owned = get().ownedItems
     return itemIds.filter((id) => owned.includes(id))
+  },
+
+  // Free item grant (achievement rewards, event drops). Idempotent — never
+  // deducts currency. Appended to the shared owned-inventory persistence.
+  grantItems: (itemIds) => {
+    const additions = itemIds.filter((id) => !get().ownedItems.includes(id))
+    if (additions.length === 0) return
+    const newOwned = [...get().ownedItems, ...additions]
+    set({ ownedItems: newOwned })
+    saveLocal(newOwned)
+    const uid = get().userId
+    if (uid) syncToDb(uid, newOwned)
   },
 }))

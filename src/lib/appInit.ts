@@ -6,6 +6,7 @@ import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { usePomodoro, setPomodoroFocusSink } from '../store/pomodoro'
 import { useMagnet } from '../store/magnet'
+import { useAchievements } from '../store/achievements'
 import { useHardcore, applyPendingRefund } from '../store/hardcore'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
@@ -40,6 +41,8 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   // Guests skip all cloud operations — local-only state.
   if (guest) {
     await useProfile.getState().hydrate(user.id, user.profile?.name, true)
+    // Achievements work locally for guests (cloud read fails silently).
+    useAchievements.getState().hydrate(user.id)
     // Guest devices can still act as connectors (?boost=CODE).
     const boostCode = boostCodeFromUrl()
     if (boostCode) useDeviceBoost.getState().connect(boostCode)
@@ -85,6 +88,10 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   //     completed focus blocks log into analytics no matter where they study.
   useMagnet.getState().hydrate(user.id)
   bindFocusLogging()
+
+  // 2f. Hydrate the achievement store (counters + claimed, local + cloud) so
+  //     the profile panel + event tracking are live from the first frame.
+  useAchievements.getState().hydrate(user.id)
 
   // 3. One-time per-user seeding: create the profile row with the current
   //    settings the first time we ever see this account.
@@ -165,6 +172,7 @@ export function runUserTeardown(): void {
   useSocial.getState().reset()
   useFriends.getState().reset()
   useChat.getState().reset()
+  useAchievements.getState().reset()
   stopHeartbeat()
   clearProfileSettingsCache()
 }

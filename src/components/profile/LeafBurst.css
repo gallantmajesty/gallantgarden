@@ -1,0 +1,22 @@
+.leaf-burst {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.leaf-fly {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  will-change: transform, opacity;
+}
+
+.leaf-fly img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(120, 200, 90, 0.7));
+}

@@ -298,6 +298,7 @@
 .lobby-round {
   width: 48px;
   height: 48px;
+  position: relative;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -1806,6 +1807,7 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
 .lm-score-btn {
   width: 42px;
   height: 42px;
+  position: relative;
   display: grid;
   place-items: center;
   border-radius: 14px;
@@ -1941,6 +1943,7 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
 }
 
 .lm-user-left {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2435,6 +2438,7 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
 
 .lm-nav-item {
   flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
