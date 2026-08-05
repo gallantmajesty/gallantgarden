@@ -285,39 +285,102 @@ export function phoneHomeScreenTex(): CanvasTexture {
       ctx.closePath()
     }
 
-    // 4×6 home-screen app grid (iOS-ish tile colors + emoji glyphs)
+    // ── iOS-style widgets row (weather + music) — kills the "keypad" look ──
+    const widgetY = h * 0.135
+    const widgetH = h * 0.088
+    const widgetGap = w * 0.04
+    const widgetW = (w - w * 0.12 - widgetGap) / 2
+    const wx = w * 0.06
+    // weather card
+    let wg = ctx.createLinearGradient(wx, widgetY, wx + widgetW, widgetY + widgetH)
+    wg.addColorStop(0, '#2f7de1')
+    wg.addColorStop(1, '#55b0f5')
+    ctx.fillStyle = wg
+    rr(wx, widgetY, widgetW, widgetH, 24)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'
+    ctx.font = `bold ${widgetH * 0.4}px "Segoe UI", Arial, sans-serif`
+    ctx.textAlign = 'left'
+    ctx.fillText('72°', wx + widgetW * 0.12, widgetY + widgetH * 0.42)
+    ctx.font = `600 ${widgetH * 0.19}px "Segoe UI", Arial, sans-serif`
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fillText('Sunny', wx + widgetW * 0.12, widgetY + widgetH * 0.66)
+    ctx.font = `${widgetH * 0.44}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+    ctx.textAlign = 'right'
+    ctx.fillText('☀️', wx + widgetW - widgetW * 0.1, widgetY + widgetH * 0.48)
+    // music card
+    const mx = wx + widgetW + widgetGap
+    ctx.fillStyle = '#1d1d1f'
+    rr(mx, widgetY, widgetW, widgetH, 24)
+    ctx.fill()
+    // album art circle
+    ctx.fillStyle = '#5856d6'
+    ctx.beginPath()
+    ctx.arc(mx + widgetW * 0.16, widgetY + widgetH * 0.5, widgetH * 0.26, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `${widgetH * 0.26}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+    ctx.textAlign = 'center'
+    ctx.fillText('🎧', mx + widgetW * 0.16, widgetY + widgetH * 0.55)
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `600 ${widgetH * 0.17}px "Segoe UI", Arial, sans-serif`
+    ctx.fillText('Focus Flow', mx + widgetW * 0.3, widgetY + widgetH * 0.42)
+    ctx.font = `600 ${widgetH * 0.14}px "Segoe UI", Arial, sans-serif`
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.fillText('Study Beats', mx + widgetW * 0.3, widgetY + widgetH * 0.6)
+    // play button triangle
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'
+    ctx.beginPath()
+    ctx.moveTo(mx + widgetW * 0.88, widgetY + widgetH * 0.62)
+    ctx.lineTo(mx + widgetW * 0.88 + widgetH * 0.1, widgetY + widgetH * 0.5)
+    ctx.lineTo(mx + widgetW * 0.88, widgetY + widgetH * 0.38)
+    ctx.closePath()
+    ctx.fill()
+
+    // 4×5 home-screen app grid (iOS rounded-square tiles + emoji glyphs)
     const GRID: Array<[string, string]> = [
       ['📞', '#34c759'], ['✉️', '#007aff'], ['⛅', '#4aa8ff'], ['📅', '#ff3b30'],
       ['📷', '#8e8e93'], ['🎵', '#fa2d48'], ['🗺️', '#007aff'], ['💬', '#34c759'],
       ['⏰', '#2c2c2e'], ['⚙️', '#6e6e73'], ['🗒️', '#ffcc00'], ['📚', '#007aff'],
-      ['📈', '#34c759'], ['🎧', '#af52de'], ['📺', '#1c1c1e'], ['👛', '#1c1c1e'],
-      ['🏠', '#f2f2f7'], ['❤️', '#ff3b30'], ['🧭', '#0a84ff'], ['🎨', '#ff9f0a'],
-      ['🎙️', '#30d158'], ['🎮', '#1c1c1e'], ['🎬', '#ff2d55'], ['🌐', '#1c1c1e'],
+      ['📈', '#34c759'], ['🎧', '#af52de'], ['📺', '#1c1c1e'], ['❤️', '#ff3b30'],
+      ['🏠', '#f2f2f7'], ['🧭', '#0a84ff'], ['🎨', '#ff9f0a'], ['🎮', '#1c1c1e'],
     ]
     ctx.textAlign = 'center'
-    const iw = 88, gap = 24
+    const iw = 84, gap = 24, rowGap = 20
     const x0 = (w - (iw * 4 + gap * 3)) / 2
+    const firstY = h * 0.27
     GRID.forEach(([glyph, color], i) => {
-      const cx = x0 + (i % 4) * (iw + gap) + iw / 2
-      const cy = h * 0.155 + Math.floor(i / 4) * (iw + 20)
+      const col = i % 4
+      const row = Math.floor(i / 4)
+      const cx = x0 + col * (iw + gap) + iw / 2
+      const cy = firstY + row * (iw + rowGap) + iw / 2
       rr(cx - iw / 2, cy - iw / 2, iw, iw, 24)
       ctx.fillStyle = color
       ctx.fill()
       const hg = ctx.createLinearGradient(0, cy - iw / 2, 0, cy - iw / 2 + iw * 0.5)
-      hg.addColorStop(0, 'rgba(255,255,255,0.14)')
+      hg.addColorStop(0, 'rgba(255,255,255,0.16)')
       hg.addColorStop(1, 'rgba(255,255,255,0)')
       ctx.fillStyle = hg
       ctx.fill()
-      ctx.font = `44px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+      ctx.font = `42px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
       ctx.fillText(glyph, cx, cy + 2)
     })
 
-    // dock — translucent rounded bar + 4 pinned apps (phone, safari, messages, music)
+    // page dots under the grid
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath()
+      ctx.arc(w / 2 - 30 + i * 20, h * 0.80, 3, 0, Math.PI * 2)
+      ctx.fillStyle = i === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)'
+      ctx.fill()
+    }
+
+    // dock — translucent rounded bar + 4 pinned apps (safari, messages, phone, music)
     rr(x0, h * 0.86, w - x0 * 2, h * 0.1, 28)
     ctx.fillStyle = 'rgba(255,255,255,0.16)'
     ctx.fill()
     const DOCK: Array<[string, string]> = [
-      ['📞', '#34c759'], ['🧭', '#0a84ff'], ['💬', '#34c759'], ['🎵', '#fa2d48'],
+      ['🧭', '#0a84ff'], ['💬', '#34c759'], ['📞', '#34c759'], ['🎵', '#fa2d48'],
     ]
     const dw = 78, dgap = 24
     const dx0 = (w - (dw * 4 + dgap * 3)) / 2
@@ -336,4 +399,34 @@ export function phoneHomeScreenTex(): CanvasTexture {
     ctx.fillStyle = 'rgba(255,255,255,0.85)'
     ctx.fill()
   }, 512, 1024)
+}
+
+/** Polished silver "apple" back logo on transparent — body + bite + leaf, drawn
+ *  with a smooth squircle-ish silhouette so it reads as the real thing at phone
+ *  scale. Used on the back panel of the phone accessory. */
+export function appleBackLogoTex(): CanvasTexture {
+  return cachedTexture('apple-back-logo', (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h)
+    const cx = w / 2
+    ctx.fillStyle = 'rgba(226,226,232,0.92)'
+    // apple body — two overlapping rounded lobes with a bite cut on the right
+    ctx.beginPath()
+    ctx.arc(cx - 8, h * 0.46, w * 0.17, 0, Math.PI * 2)
+    ctx.arc(cx + 10, h * 0.56, w * 0.19, 0, Math.PI * 2)
+    ctx.arc(cx + 26, h * 0.30, w * 0.16, 0, Math.PI * 2) // bite (overlap punch)
+    ctx.fill('evenodd')
+    // leaf
+    ctx.fillStyle = 'rgba(226,226,232,0.92)'
+    ctx.beginPath()
+    ctx.ellipse(cx - 4, h * 0.24, w * 0.075, w * 0.04, -0.6, 0, Math.PI * 2)
+    ctx.fill()
+    // stem
+    ctx.strokeStyle = 'rgba(226,226,232,0.92)'
+    ctx.lineWidth = w * 0.035
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(cx + 6, h * 0.24)
+    ctx.quadraticCurveTo(cx + 10, h * 0.15, cx + 2, h * 0.08)
+    ctx.stroke()
+  }, 128, 128)
 }

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { FocusEvent, EventItem, OwnedItem, SavedBundle } from "../../data/events";
 import { DEFAULT_EVENTS, DEFAULT_BUNDLES } from "../../data/events";
+import { getOwnerContent, setOwnerContent } from "../../lib/ownerContent";
 
 // ---- localStorage helpers ----
 const EVENTS_KEY = "sg.events.all";
@@ -71,6 +72,29 @@ export function useEventShop() {
   useEffect(() => { saveJSON(EVENTS_KEY, events); }, [events]);
   useEffect(() => { saveJSON(PURCHASES_KEY, purchases); }, [purchases]);
   useEffect(() => { saveJSON(WALLET_KEY, balance); }, [balance]);
+
+  // ── DB sync: fetch events from DB on mount, debounced push on change ──
+  const dbSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getOwnerContent("events").then((dbData) => {
+      if (cancelled || !dbData) return;
+      const dbEvents = dbData.events as FocusEvent[] | undefined;
+      if (Array.isArray(dbEvents) && dbEvents.length > 0) {
+        setEvents(dbEvents);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (dbSyncRef.current) clearTimeout(dbSyncRef.current);
+    dbSyncRef.current = setTimeout(() => {
+      setOwnerContent("events", { events });
+    }, 1500);
+    return () => { if (dbSyncRef.current) clearTimeout(dbSyncRef.current); };
+  }, [events]);
 
   const activeEvent = getActiveEvent(events);
 
@@ -176,6 +200,29 @@ export function useBundles() {
 
   useEffect(() => {
     saveJSON(BUNDLES_KEY, bundles);
+  }, [bundles]);
+
+  // ── DB sync for bundles ──
+  const dbSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getOwnerContent("events").then((dbData) => {
+      if (cancelled || !dbData) return;
+      const dbBundles = dbData.bundles as SavedBundle[] | undefined;
+      if (Array.isArray(dbBundles) && dbBundles.length > 0) {
+        setBundles(dbBundles);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (dbSyncRef.current) clearTimeout(dbSyncRef.current);
+    dbSyncRef.current = setTimeout(() => {
+      setOwnerContent("bundles", { bundles });
+    }, 1500);
+    return () => { if (dbSyncRef.current) clearTimeout(dbSyncRef.current); };
   }, [bundles]);
 
   const saveBundle = useCallback((bundle: SavedBundle) => {

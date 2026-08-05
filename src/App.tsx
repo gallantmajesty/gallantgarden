@@ -6,6 +6,7 @@ import { useProfile } from './store/profile'
 import { applyVisualSettings, useSettings } from './store/settings'
 import { useWebTheme } from './store/webTheme'
 import { applyWebTheme } from './lib/webThemes'
+import { syncOverridesFromDb } from './lib/ownerOverrides'
 import { WebBackground } from './components/WebBackground'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
@@ -15,6 +16,7 @@ import GlobalClickSpark from './components/GlobalClickSpark'
 import './screens/Explore.css'
 import { AuthScreen } from './screens/AuthScreen'
 import { GuestMode } from './screens/GuestMode'
+import { ShotHarness } from './screens/ShotHarness'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
 const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ default: m.ComingSoon })))
@@ -67,6 +69,8 @@ export default function App() {
       applyWebTheme(w.themeId, w.accent, w.fontColor, w.bgId)
     }
     apply()
+    // Sync owner overrides from DB on startup (non-blocking)
+    syncOverridesFromDb().catch(() => {})
     const offSettings = useSettings.subscribe(apply)
     const offWeb = useWebTheme.subscribe(apply)
     return () => {
@@ -75,7 +79,7 @@ export default function App() {
     }
   }, [])
 
-  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo'])
+  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo', '/__shot'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
 
   // Public marketing pages render without WebBackground/IntroVeil
@@ -86,7 +90,8 @@ export default function App() {
     return (
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
-          <Routes>
+           <Routes>
+            <Route path="/__shot" element={<ShotHarness />} />
             <Route path="/guest" element={<GuestMode />} />
             <Route path="/" element={<Landing />} />
             <Route path="/about" element={<About />} />

@@ -1,7 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import { ACCESSORIES, type AccessoryId } from "../../avatar/config";
+import { AccessoryModel } from "../../avatar/Accessories";
 import { useEventShop, useInventory, useBundles } from "../../hooks/focus/useEventShop";
 import { ALL_CHARACTERS as CHAR_ROSTER } from "../../avatar/characters";
+import OwnerDataTab from "./OwnerDataTab";
+import OwnerRewardsTab from "./OwnerRewardsTab";
+import OwnerAchievementsTab from "./OwnerAchievementsTab";
+import OwnerTrainTab from "./OwnerTrainTab";
+import OwnerPricingTab from "./OwnerPricingTab";
 import type { Character } from "../../avatar/characters";
 import { BANNERS, LOGOS } from "../../lib/banners";
 import { RANKS } from "../../lib/ranks";
@@ -24,7 +33,7 @@ export function OwnerPanel() {
   const { events, activeEvent, saveEvent, deleteEvent, toggleEventActive, balance, addLeaves } = useEventShop();
   const { items } = useInventory();
   const { bundles, saveBundle, deleteBundle } = useBundles();
-  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "settings">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "settings">("dashboard");
   const [editing, setEditing] = useState<FocusEvent | null>(null);
   const [bundleEditing, setBundleEditing] = useState<SavedBundle | null>(null);
 
@@ -105,12 +114,12 @@ export function OwnerPanel() {
   const blankEvent: FocusEvent = { id: `evt-${Date.now()}`, name: "", description: "", icon: "📅", active: false, createdAt: new Date().toISOString(), items: [] };
 
   return (
-  <div style={{ minHeight: "100vh", background: "#0a0a14", fontFamily: "var(--font-serif-heading)" }}>
+  <div style={{ height: "100vh", overflowY: "auto", background: "#0a0a14", fontFamily: "var(--font-serif-heading)" }}>
       {/* ─── Top bar ────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.7rem 1.25rem", borderBottom: "1px solid var(--color-genshin-divider)", background: "rgba(26,20,16,0.9)", position: "sticky" as const, top: 0, zIndex: 50 }}>
         <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-genshin-gold)" }}>⟡ STUDYFOREST OWNER</span>
         <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" as const }}>
-          {(["dashboard", "events", "items", "bundles", "shop", "wallet", "users", "settings"] as const).map((t) => (
+          {(["dashboard", "events", "items", "bundles", "shop", "wallet", "users", "accessories", "data", "rewards", "achievements", "train", "pricing", "settings"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t}</button>
           ))}
         </div>
@@ -168,7 +177,7 @@ export function OwnerPanel() {
                       <div>
                         <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-genshin-gold)" }}>{characterEquipped.name}</div>
                         <div style={{ fontSize: "0.65rem", color: "var(--color-genshin-bronze)" }}>{characterEquipped.rarity} · {characterEquipped.gender}</div>
-                        {characterEquipped.price > 0 && <div style={{ fontSize: "0.65rem", color: "var(--color-genshin-gold)" }}>{characterEquipped.price} 🍃</div>}
+                        {(characterEquipped.price ?? 0) > 0 && <div style={{ fontSize: "0.65rem", color: "var(--color-genshin-gold)" }}>{characterEquipped.price} 🍃</div>}
                       </div>
                     </div>
                     <div style={{ fontSize: "0.7rem", color: "var(--color-genshin-bronze)", marginBottom: "0.25rem" }}>{characterEquipped.description}</div>
@@ -414,6 +423,54 @@ export function OwnerPanel() {
         )}
 
         {/* ════════════════════════════════════════════════════ */}
+        {/*  ACCESSORIES — 3D preview gallery                      */}
+        {/* ════════════════════════════════════════════════════ */}
+        {tab === "accessories" && (
+          <div>
+            <h3 style={{ color: "var(--color-genshin-gold)", fontSize: "0.85rem", letterSpacing: "0.05em", marginBottom: "1rem" }}>ACCESSORY GALLERY ({ACCESSORIES.length})</h3>
+            <div style={{ fontSize: "0.68rem", color: "var(--color-genshin-bronze)", marginBottom: "1.25rem", lineHeight: 1.6 }}>
+              Every desk accessory rendered from the shared 3D models in one live stage. Drag to orbit the whole collection, scroll to zoom. The <strong style={{ color: "var(--color-genshin-gold)" }}>Study Timer</strong> hand sweeps with the real pomodoro countdown.
+            </div>
+            <AccessoryStage />
+            {/* quick-reference legend */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: "0.4rem", marginTop: "1.25rem" }}>
+              {ACCESSORIES.map((a) => (
+                <div key={a.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center", padding: "0.45rem 0.6rem", background: "rgba(26,20,16,0.4)", border: "1px solid rgba(139,109,46,0.1)", borderRadius: 2 }}>
+                  <span style={{ fontSize: "1rem", width: 22, textAlign: "center" as const }}>{a.icon}</span>
+                  <span style={{ flex: 1, fontSize: "0.68rem", color: "var(--color-genshin-gold-light)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</span>
+                  <code style={{ fontSize: "0.55rem", color: "var(--color-genshin-bronze)", opacity: 0.85 }}>{a.id}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════════ */}
+        {/*  DATA MANAGER                                        */}
+        {/* ════════════════════════════════════════════════════ */}
+        {tab === "data" && <OwnerDataTab />}
+
+        {/* ════════════════════════════════════════════════════ */}
+        {/*  REWARDS & XP                                        */}
+        {/* ════════════════════════════════════════════════════ */}
+        {tab === "rewards" && <OwnerRewardsTab />}
+
+        {/* ════════════════════════════════════════════════════ */}
+        {/*  ACHIEVEMENTS                                        */}
+        {/* ════════════════════════════════════════════════════ */}
+        {tab === "achievements" && <OwnerAchievementsTab />}
+
+        {/* ════════════════════════════════════════════════════ */}
+        {/*  TRAIN                                               */}
+        {/* ════════════════════════════════════════════════════ */}
+        {tab === "train" && <OwnerTrainTab />}
+
+        {/* ════════════════════════════════════════════════════ */}
+        {/*  PRICING                                             */}
+        {/* ════════════════════════════════════════════════════ */}
+        {tab === "pricing" && <OwnerPricingTab />}
+
+        {/* ════════════════════════════════════════════════════ */}
         {/*  SETTINGS                                             */}
         {/* ════════════════════════════════════════════════════ */}
         {tab === "settings" && (
@@ -620,5 +677,95 @@ function BundleEditor({ bundle, items, onSave, onCancel }: {
         <button onClick={onCancel} style={{ fontSize: "0.68rem", color: "var(--color-genshin-bronze)", background: "transparent", border: "none", cursor: "pointer", padding: "0.5rem" }}>Cancel</button>
       </div>
     </div>
+  );
+}
+
+// ─── Accessory 3D stage ───────────────────────────────────────────────────────
+// ONE shared Canvas for the whole gallery: every accessory sits on its own grid
+// cell and gently auto-rotates in place. A single WebGL context avoids the
+// browser's per-page context cap (~16) that 26 mini-canvases would blow past.
+// Drag orbits the collection, scroll zooms; the Study Timer hand still sweeps
+// live with the pomodoro countdown.
+function AccessoryStage() {
+  const COLS = 6;
+  const CELL = 1.05; // world units between cell centres
+  const rows = Math.ceil(ACCESSORIES.length / COLS);
+  const gridW = (COLS - 1) * CELL;
+  const gridD = (rows - 1) * CELL;
+
+  return (
+    <div style={{ height: "min(74vh, 600px)", background: "rgba(10,8,14,0.6)", border: "1px solid var(--color-genshin-divider)", borderRadius: 4, overflow: "hidden" }}>
+      <Canvas
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 2.6, 5.6], fov: 45, near: 0.1, far: 40 }}
+        gl={{ antialias: true, alpha: true, powerPreference: "default" }}
+      >
+        <hemisphereLight args={["#ffe8c0", "#3a2a18", 0.8]} />
+        <directionalLight position={[3, 5, 2]} intensity={1.2} color="#ffecd0" />
+        <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
+        <ambientLight intensity={0.3} color="#ffe8d0" />
+
+        {/* big dark stage floor under the whole grid */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+          <planeGeometry args={[gridW + 2.4, gridD + 2.4]} />
+          <meshStandardMaterial color="#1c1410" roughness={0.95} metalness={0.05} />
+        </mesh>
+
+        {ACCESSORIES.map((a, i) => {
+          const col = i % COLS;
+          const row = Math.floor(i / COLS);
+          return (
+            <StageCell
+              key={a.id}
+              def={a}
+              position={[col * CELL - gridW / 2, 0, row * CELL - gridD / 2]}
+            />
+          );
+        })}
+
+        <OrbitControls
+          enablePan={false}
+          enableDamping
+          dampingFactor={0.08}
+          autoRotate={false}
+          rotateSpeed={0.7}
+          minDistance={1.5}
+          maxDistance={14}
+          minPolarAngle={0.3}
+          maxPolarAngle={Math.PI / 1.8}
+          target={[0, 0.12, 0]}
+        />
+      </Canvas>
+      <div style={{ padding: "0.5rem 0.75rem", borderTop: "1px solid rgba(139,109,46,0.1)", fontSize: "0.6rem", color: "var(--color-genshin-bronze)", opacity: 0.8 }}>
+        Drag to rotate · scroll to zoom · every accessory auto-spins in place
+      </div>
+    </div>
+  );
+}
+
+// One grid cell: the model on a small stage disc, gently auto-rotating.
+function StageCell({ def, position }: { def: (typeof ACCESSORIES)[number]; position: [number, number, number] }) {
+  const ref = useRef<any>(null);
+  const id = def.id as string;
+  const big = id === "trading_desktop_3side" || id === "trading_laptop" || id === "piano";
+  const scale = id === "trading_desktop_3side" ? 0.5 : id === "trading_laptop" ? 0.62 : big ? 0.85 : 1;
+
+  // gentle per-cell spin — batched into R3F's single render loop, frame-rate
+  // independent (delta-based), and auto-cleaned when the stage unmounts.
+  useFrame((_, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.25;
+  });
+
+  return (
+    <group position={position}>
+      {/* small stage disc under each model */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]}>
+        <circleGeometry args={[0.42, 40]} />
+        <meshStandardMaterial color="#241a12" roughness={0.9} metalness={0.05} />
+      </mesh>
+      <group ref={ref} scale={scale}>
+        <AccessoryModel id={def.id as AccessoryId} />
+      </group>
+    </group>
   );
 }

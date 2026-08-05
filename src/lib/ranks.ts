@@ -53,14 +53,27 @@ export const DEFAULT_RANK_ID = 'bronze-1'
 
 const BY_ID = new Map(RANKS.map((r) => [r.id, r]))
 
+import { getOverride } from './ownerOverrides'
+
 export function getRank(id: string | null | undefined): Rank {
   return (id && BY_ID.get(id)) || RANKS[0]
 }
 
+/** Get effective ranks with owner overrides applied to thresholds. */
+export function getEffectiveRanks(): Rank[] {
+  const overrides = getOverride('ranks', 'thresholds', {} as Record<string, number>)
+  if (Object.keys(overrides).length === 0) return RANKS
+  return RANKS.map((r) => ({
+    ...r,
+    threshold: r.id in overrides ? overrides[r.id] : r.threshold,
+  }))
+}
+
 /** Compute the rank for a given total XP (leaves + golden leaves). */
 export function rankForTotalXp(totalXp: number): Rank {
-  let rank = RANKS[0]
-  for (const r of RANKS) {
+  const effective = getEffectiveRanks()
+  let rank = effective[0]
+  for (const r of effective) {
     if (totalXp >= r.threshold) rank = r
     else break
   }
@@ -89,17 +102,19 @@ export function rankIndex(rankId: string): number {
 
 /** How much XP until the next rank. Returns 0 if already max rank. */
 export function xpToNextRank(totalXp: number): number {
+  const effective = getEffectiveRanks()
   const current = rankForTotalXp(totalXp)
-  const idx = RANKS.indexOf(current)
-  if (idx >= RANKS.length - 1) return 0
-  return RANKS[idx + 1].threshold - totalXp
+  const idx = effective.indexOf(current)
+  if (idx >= effective.length - 1) return 0
+  return effective[idx + 1].threshold - totalXp
 }
 
 /** Progress within the current rank (0..1). */
 export function rankProgress(totalXp: number): { rank: Rank; nextRank: Rank | null; pct: number } {
   const rank = rankForTotalXp(totalXp)
-  const idx = RANKS.indexOf(rank)
-  const nextRank = idx < RANKS.length - 1 ? RANKS[idx + 1] : null
+  const effective = getEffectiveRanks()
+  const idx = effective.indexOf(rank)
+  const nextRank = idx < effective.length - 1 ? effective[idx + 1] : null
   if (!nextRank) return { rank, nextRank: null, pct: 1 }
   const span = nextRank.threshold - rank.threshold
   const into = totalXp - rank.threshold

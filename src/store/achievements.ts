@@ -14,7 +14,7 @@
 
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import { ACHIEVEMENTS, tierKey, type AchievementDef, type MetricKey } from '../lib/achievements'
+import { ACHIEVEMENTS, tierKey, effectiveLeaves, effectiveComingSoon, type AchievementDef, type MetricKey } from '../lib/achievements'
 import { usePomodoro } from './pomodoro'
 import { useMagnet } from './magnet'
 import { useFriends } from './friends'
@@ -450,7 +450,7 @@ export const useAchievements = create<AchievementState>((set, get) => ({
   claim: async (def, idx) => {
     const tier = def.tiers[idx]
     if (!tier) return false
-    if (def.comingSoon) return false
+    if (effectiveComingSoon(def.id, !!def.comingSoon)) return false
     const key = tierKey(def.id, idx)
     const s = get()
     if (s.claimed[key]) return true
@@ -459,10 +459,11 @@ export const useAchievements = create<AchievementState>((set, get) => ({
     // 1. Green leaves — never golden (golden stays premium-only). Both the
     //    profile wallet and the magnet snapshot get the credit so the profile
     //    top bar + rank bar stay consistent.
-    if (tier.leaves > 0) {
+    const leaves = effectiveLeaves(def.id, idx, tier.leaves)
+    if (leaves > 0) {
       const p = useProfile.getState()
-      const newXp = p.xp + tier.leaves
-      const newRankXp = p.rankXp + tier.leaves
+      const newXp = p.xp + leaves
+      const newRankXp = p.rankXp + leaves
       useProfile.setState({ xp: newXp, rankXp: newRankXp })
       try {
         const md = useMagnet.getState().data
@@ -470,8 +471,8 @@ export const useAchievements = create<AchievementState>((set, get) => ({
           useMagnet.setState({
             data: {
               ...md,
-              xp: (md.xp ?? 0) + tier.leaves,
-              rankXp: (md.rankXp ?? 0) + tier.leaves,
+              xp: (md.xp ?? 0) + leaves,
+              rankXp: (md.rankXp ?? 0) + leaves,
             },
           })
         }

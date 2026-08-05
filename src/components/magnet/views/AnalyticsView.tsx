@@ -96,7 +96,7 @@ export function AnalyticsView() {
     e.preventDefault()
     const m = Number(focusMin)
     if (!m || m <= 0) return
-    logFocus(m, focusSubject.trim())
+    logFocus(m, focusSubject.trim(), { award: true })
     setFocusOpen(false)
   }
 

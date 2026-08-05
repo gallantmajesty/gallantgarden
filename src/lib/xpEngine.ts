@@ -23,6 +23,7 @@
 
 import { supabase } from './supabase'
 import { rankForTotalXp } from './ranks'
+import { getOverride } from './ownerOverrides'
 
 // ---- XP values per action ---------------------------------------------------
 // Tasks/habits/milestones award 0 — leaves are study-only currency
@@ -96,9 +97,12 @@ export function calcPomoLeaves(
   tabAlwaysVisible: boolean,
   hasSubject: boolean,
 ): { base: number; noTabBonus: number; subjectBonus: number; total: number } {
-  const base = Math.round(durationMin * POMO_REWARDS.basePerMin)
-  const noTabBonus = tabAlwaysVisible ? Math.round(base * POMO_REWARDS.noTabBonusPct) : 0
-  const subjectBonus = hasSubject ? POMO_REWARDS.subjectBonusFlat : 0
+  const basePerMin = getOverride('pomoRewards', 'basePerMin', POMO_REWARDS.basePerMin)
+  const noTabBonusPct = getOverride('pomoRewards', 'noTabBonusPct', POMO_REWARDS.noTabBonusPct)
+  const subjectBonusFlat = getOverride('pomoRewards', 'subjectBonusFlat', POMO_REWARDS.subjectBonusFlat)
+  const base = Math.round(durationMin * basePerMin)
+  const noTabBonus = tabAlwaysVisible ? Math.round(base * noTabBonusPct) : 0
+  const subjectBonus = hasSubject ? subjectBonusFlat : 0
   return { base, noTabBonus, subjectBonus, total: base + noTabBonus + subjectBonus }
 }
 
@@ -125,7 +129,8 @@ export const STREAK_XP_TIERS: { minDays: number; mult: number }[] = [
 
 /** Best streak multiplier for a streak length (>=1, else 1). */
 export function streakXpMultiplier(streakDays: number): number {
-  for (const t of STREAK_XP_TIERS) {
+  const tiers = getOverride('streakTiers', 'tiers', STREAK_XP_TIERS)
+  for (const t of tiers) {
     if (streakDays >= t.minDays) return t.mult
   }
   return 1
@@ -281,7 +286,24 @@ export function checkInactivityPenalty(
   // Penalty applies — user was inactive for 1hr+ AND didn't hit focus target.
   daily.penaltyApplied = true
   saveDaily(daily)
-  return awardLeaves(currentLeaves, currentGoldenLeaves, 'focus', -XP_VALUES.inactivityPenalty, currentRankId, rankXp)
+
+  // Deduct directly from rankXp (lifetime) instead of using awardLeaves which
+  // clamps to the spendable wallet — an empty wallet would silently skip the
+  // penalty. The wallet is also reduced, but rankXp always takes the hit.
+  const penalty = XP_VALUES.inactivityPenalty
+  const rankBase = rankXp ?? (currentLeaves + currentGoldenLeaves)
+  const newRankTotal = rankBase - penalty
+  const newRank = rankForTotalXp(newRankTotal)
+  const rankChanged = newRank.id !== rankForTotalXp(rankBase).id
+
+  return {
+    leaves: -Math.min(currentLeaves, penalty),
+    goldenLeaves: 0,
+    rankChanged,
+    newRankId: newRank.id,
+    capped: false,
+    onCooldown: false,
+  }
 }
 export interface AwardResult {
   leaves: number
@@ -302,6 +324,9 @@ export function awardLeaves(
    /** Lifetime rank XP (monotonic, never lowered by spending). Falls back to the
     *  wallet total (leaves + golden) when omitted — backward compatible. */
    rankXp?: number,
+   /** Actual study duration in minutes — used for daily cap tracking.
+    *  When omitted, falls back to deriving from baseAmount (legacy callers). */
+   durationMin?: number,
  ): AwardResult {
    const isPenalty = baseAmount < 0
    let actualLeaves = Math.round(baseAmount)
@@ -310,16 +335,21 @@ export function awardLeaves(
     if (!isPenalty && source !== 'login') {
       const daily = loadDaily()
 
-      // Convert baseAmount to active minutes for tracking
-      const minutesPerUnit = source === 'train' ? XP_VALUES.journeyMin : XP_VALUES.focusMin
-      const activeMinutes = Math.ceil(baseAmount / minutesPerUnit)
+      // Use actual duration for cap tracking (avoids overcounting from multipliers).
+      // Legacy callers that don't pass durationMin fall back to the old derivation.
+      const activeMinutes = durationMin != null
+        ? Math.ceil(durationMin)
+        : Math.ceil(baseAmount / (source === 'train' ? XP_VALUES.journeyMin : XP_VALUES.focusMin))
 
       // Soft diminishing returns — never a hard stop. Real study always earns
       // something: 100% rate first 60 min, 50% next 60 min, 25% after.
-      if (daily.activeMinToday >= DAILY_CAPS.tier2MaxMin) {
-        actualLeaves = Math.round(actualLeaves * DAILY_CAPS.tier3Rate)
+      const tier1Max = getOverride('dailyCaps', 'tier1MaxMin', DAILY_CAPS.tier1MaxMin)
+      const tier2Max = getOverride('dailyCaps', 'tier2MaxMin', DAILY_CAPS.tier2MaxMin)
+      const tier3Rate = getOverride('dailyCaps', 'tier3Rate', DAILY_CAPS.tier3Rate)
+      if (daily.activeMinToday >= tier2Max) {
+        actualLeaves = Math.round(actualLeaves * tier3Rate)
         capped = true
-      } else if (daily.activeMinToday >= DAILY_CAPS.tier1MaxMin) {
+      } else if (daily.activeMinToday >= tier1Max) {
         actualLeaves = Math.round(actualLeaves * 0.5)
         capped = true
       }
@@ -383,7 +413,7 @@ export interface FocusAwardInput {
 }
 
 export function awardFocusLeaves(input: FocusAwardInput): AwardResult {
-  const rate = input.ratePerMin ?? POMO_REWARDS.basePerMin
+  const rate = input.ratePerMin ?? getOverride('pomoRewards', 'basePerMin', POMO_REWARDS.basePerMin)
   const base = Math.round(input.durationMin * rate)
 
   let total = base
@@ -392,7 +422,7 @@ export function awardFocusLeaves(input: FocusAwardInput): AwardResult {
   if (input.quality) total = Math.round(total * 1.5)
 
   // Subject bonus (flat) when a subject tag was entered.
-  if (input.hasSubject) total += POMO_REWARDS.subjectBonusFlat
+  if (input.hasSubject) total += getOverride('pomoRewards', 'subjectBonusFlat', POMO_REWARDS.subjectBonusFlat)
 
   // Streak-tier multiplier on top.
   total = Math.round(total * streakXpMultiplier(input.streakDays ?? 1))
@@ -411,6 +441,7 @@ export function awardFocusLeaves(input: FocusAwardInput): AwardResult {
     total,
     input.currentRankId,
     input.rankXp,
+    input.durationMin,
   )
 }
 
@@ -691,7 +722,7 @@ export function getDailyEngagement() {
     penaltyApplied: daily.penaltyApplied,
     penaltyThresholdMin: XP_VALUES.inactivityThresholdMin,
     activeMinToday: daily.activeMinToday,
-    activeMinCap: DAILY_CAPS.activeMinCap,
+    activeMinCap: getOverride('dailyCaps', 'activeMinCap', DAILY_CAPS.activeMinCap),
   }
 }
 

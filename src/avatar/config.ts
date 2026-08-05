@@ -53,8 +53,15 @@ export interface AvatarConfig {
   // When set, these hex overrides win over the item's baked colour / palette id.
   topColor?: string
   bottomColor?: string
+  shoeColor?: string
   hairColorHex?: string
   skinColor?: string
+  nailColor?: string
+  // --- wearable accessories (toggles + free colour) ---
+  glasses?: boolean
+  glassesColor?: string
+  hairBand?: boolean
+  hairBandColor?: string
   // --- equipped accessories (ids from ACCESSORIES) ---
   accessories?: string[]
 }
@@ -206,12 +213,7 @@ export type AccessoryId =
   | 'headphones'
   | 'desk_lamp'
   | 'plant'
-  | 'globe'
-  | 'microscope'
-  | 'art_palette'
-  | 'game_controller'
-  | 'plush_toy'
-  | 'telescope'
+  | 'study_timer'
 
 export interface AccessoryDef {
   id: AccessoryId
@@ -247,12 +249,6 @@ export const ACCESSORIES: AccessoryDef[] = [
   { id: 'headphones', name: 'Headphones', icon: '🎧', color: '#2a2a35', blurb: 'Focus in sound' },
   { id: 'desk_lamp', name: 'Desk Lamp', icon: '💡', color: '#caa24a', blurb: 'Warm study glow' },
   { id: 'plant', name: 'Potted Plant', icon: '🪴', color: '#3f7d52', blurb: 'Lush desk greenery' },
-  { id: 'globe', name: 'Globe', icon: '🌍', color: '#3a6ea5', blurb: 'Wander from your desk' },
-  { id: 'microscope', name: 'Microscope', icon: '🔬', color: '#4a4f5c', blurb: 'Explore the tiny world' },
-  { id: 'art_palette', name: 'Art Palette', icon: '🎨', color: '#d98e73', blurb: 'Paint your ideas' },
-  { id: 'game_controller', name: 'Game Controller', icon: '🎮', color: '#2f3542', blurb: 'Break-time fun' },
-  { id: 'plush_toy', name: 'Plush Toy', icon: '🧸', color: '#b98a5e', blurb: 'Comfort buddy' },
-  { id: 'telescope', name: 'Telescope', icon: '🔭', color: '#6b4a2e', blurb: 'Reach for the stars' },
 ]
 
 export function accessoryById(id: string): AccessoryDef | undefined {
@@ -337,8 +333,12 @@ export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined)
   const hexOk = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)
   if (merged.topColor !== undefined && !hexOk(merged.topColor)) delete (merged as Partial<AvatarConfig>).topColor
   if (merged.bottomColor !== undefined && !hexOk(merged.bottomColor)) delete (merged as Partial<AvatarConfig>).bottomColor
+  if (merged.shoeColor !== undefined && !hexOk(merged.shoeColor)) delete (merged as Partial<AvatarConfig>).shoeColor
   if (merged.hairColorHex !== undefined && !hexOk(merged.hairColorHex)) delete (merged as Partial<AvatarConfig>).hairColorHex
   if (merged.skinColor !== undefined && !hexOk(merged.skinColor)) delete (merged as Partial<AvatarConfig>).skinColor
+  if (merged.nailColor !== undefined && !hexOk(merged.nailColor)) delete (merged as Partial<AvatarConfig>).nailColor
+  if (merged.glassesColor !== undefined && !hexOk(merged.glassesColor)) delete (merged as Partial<AvatarConfig>).glassesColor
+  if (merged.hairBandColor !== undefined && !hexOk(merged.hairBandColor)) delete (merged as Partial<AvatarConfig>).hairBandColor
 
   // accessories: keep only known ids.
   if (Array.isArray(merged.accessories)) {
@@ -689,6 +689,13 @@ export function coneGeo(radius: number, height: number, seg = 32): BufferGeometr
 export function torusGeo(radius: number, tube: number): BufferGeometry {
   const key = `tor:${radius}:${tube}`
   return cachedGeo(key, () => new TorusGeometry(radius, tube, 24, 48))
+}
+
+/** Partial (arc) torus — the hair band's front arc across the forehead. `arc`
+ *  is the sweep angle in radians starting at `start` (both on the +X axis). */
+export function torusArcGeo(radius: number, tube: number, arc: number, start = 0): BufferGeometry {
+  const key = `torA:${radius}:${tube}:${arc.toFixed(2)}:${start.toFixed(2)}`
+  return cachedGeo(key, () => new TorusGeometry(radius, tube, 12, 40, arc, start))
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   getMutualIds,
 } from '../lib/social'
 import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '../lib/stats'
-import { BANNERS, getBanner, LOGOS } from '../lib/banners'
+import { BANNERS, getBanner, LOGOS, logoFilter } from '../lib/banners'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { getRank, rankForLifetime, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
@@ -700,7 +700,7 @@ function EditOverlay({
                     title={l.name}
                   >
                     {l.image ? (
-                      <img src={l.image} alt="" />
+                      <img src={l.image} alt="" style={{ filter: logoFilter(l) }} />
                     ) : (
                       <span style={{ display: 'block', width: '100%', height: '100%', background: l.css || 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
                     )}

@@ -225,123 +225,6 @@ export const BANNERS: Banner[] = [
     price: 1000,
   },
 
-  // ── Green-currency premium banners ─────────────────────────────────────
-  {
-    id: 'anime_sunset',
-    name: 'Anime Sunset',
-    css: 'linear-gradient(120deg, #1a0e2a 0%, #6a2a6a 38%, #ff6a8a 66%, #ffd08a 100%)',
-    glow: '#ff8ab0',
-    category: 'others',
-    price: 800,
-  },
-  {
-    id: 'scholar_collage',
-    name: 'Scholar Collage',
-    css: 'linear-gradient(120deg, #1a1a2e 0%, #3a3a5a 45%, #8a6cff 85%, #ffd08a 100%)',
-    glow: '#8a6cff',
-    category: 'others',
-    price: 900,
-  },
-  {
-    id: 'forest_canopy',
-    name: 'Forest Canopy',
-    css: 'linear-gradient(120deg, #0a1a12 0%, #2f6b3c 45%, #6bbf4f 80%, #7ae8a0 100%)',
-    glow: '#6bbf4f',
-    category: 'others',
-    price: 1000,
-  },
-  {
-    id: 'rainy_tokyo',
-    name: 'Rainy Tokyo',
-    css: 'linear-gradient(120deg, #050a14 0%, #16213e 40%, #2a6a9a 78%, #ff8ab0 100%)',
-    glow: '#5ec6e6',
-    category: 'others',
-    price: 1000,
-  },
-  {
-    id: 'ink_mountains',
-    name: 'Ink Mountains',
-    css: 'linear-gradient(120deg, #0a0a0f 0%, #2a2a3a 40%, #4a5a7a 78%, #c9e0ff 100%)',
-    glow: '#7aaae0',
-    category: 'others',
-    price: 1200,
-  },
-
-  // ── Achievement-exclusive banners (granted via claim, also purchasable) ──
-  {
-    id: 'sage_ivy',
-    name: 'Sage Ivy',
-    css: 'linear-gradient(120deg, #0a1a10 0%, #2f6b3c 38%, #7ab34f 72%, #d8c47a 100%)',
-    glow: '#a8d86a',
-    category: 'others',
-    price: 2000,
-  },
-  {
-    id: 'golden_wings',
-    name: 'Golden Wings',
-    css: 'linear-gradient(120deg, #1a1408 0%, #6b4a10 30%, #e0b03a 60%, #fff2c9 90%, #ffd700 100%)',
-    glow: '#ffd700',
-    category: 'others',
-    price: 3000,
-    textDark: true,
-  },
-
-  // ── Golden-currency premium banners (🌟) ──────────────────────────────
-  {
-    id: 'crown_gold',
-    name: 'Crown Gold',
-    css: 'linear-gradient(120deg, #1a1408 0%, #4a3a10 40%, #c9a44a 80%, #fff2c9 100%)',
-    glow: '#ffd700',
-    category: 'others',
-    price: 180,
-    currency: 'gold',
-    textDark: true,
-  },
-  {
-    id: 'royal_purple',
-    name: 'Royal Purple',
-    css: 'linear-gradient(120deg, #0a0520 0%, #2a0f5a 40%, #8a3ae8 75%, #ff9ec4 100%)',
-    glow: '#c065e0',
-    category: 'others',
-    price: 200,
-    currency: 'gold',
-  },
-  {
-    id: 'dragon_ember',
-    name: 'Dragon Ember',
-    css: 'linear-gradient(120deg, #1a0500 0%, #7a2a04 35%, #ff5a14 68%, #ffd08a 100%)',
-    glow: '#ff6a1a',
-    category: 'others',
-    price: 280,
-    currency: 'gold',
-  },
-  {
-    id: 'phoenix_sky',
-    name: 'Phoenix Sky',
-    css: 'linear-gradient(120deg, #1a0710 0%, #7a1a4a 38%, #ff5a8a 70%, #ffc86a 100%)',
-    glow: '#ff5a8a',
-    category: 'others',
-    price: 320,
-    currency: 'gold',
-  },
-  {
-    id: 'mythic_prism',
-    name: 'Mythic Prism',
-    css: 'linear-gradient(120deg, #0a0a1f 0%, #2a3a7a 35%, #8a5aff 60%, #00ffd0 82%, #ff5a8a 100%)',
-    glow: '#b0aaff',
-    category: 'others',
-    price: 300,
-    currency: 'gold',
-  },
-  {
-    id: 'aurora_grace',
-    name: 'Aurora Grace',
-    css: 'linear-gradient(120deg, #0a162a 0%, #2a4a6b 30%, #4fd1c5 55%, #8a6cff 80%, #ff9ec4 100%)',
-    glow: '#4fd1c5',
-    category: 'others',
-    price: 150,
-    currency: 'gold',
-  },
 ]
 
 export const DEFAULT_BANNER_ID = 'default_banner'
@@ -351,6 +234,14 @@ export const DEFAULT_BANNER_ID = 'default_banner'
 // ============================================================================
 export type LogoCategory = 'default' | 'others'
 
+export interface LogoFilter {
+  brightness?: number
+  contrast?: number
+  saturate?: number
+  sepia?: number
+  hueRotate?: number
+}
+
 export interface Logo {
   id: string
   name: string
@@ -359,39 +250,72 @@ export interface Logo {
   css?: string
   /** reduce brightness for overly bright logos */
   dim?: boolean
+  /** 0–2 brightness multiplier (default 1.0). Overrides dim when set. */
+  brightness?: number
+  /** Deep filter controls — all optional, 0–2 range (hueRotate in degrees). */
+  filter?: LogoFilter
   category: LogoCategory
   price: number
   /** currency spent. 'green' (🍃) or 'gold' (🌟). Default green. */
   currency?: 'green' | 'gold'
 }
 
+/** Build a CSS filter string from a LogoFilter + legacy dim/brightness fields. */
+export function logoFilter(l: Logo): string | undefined {
+  const f: LogoFilter = {}
+  // precedence: deep filter > brightness > dim
+  if (l.filter) {
+    Object.assign(f, l.filter)
+  } else {
+    if (l.brightness !== undefined) f.brightness = l.brightness
+    else if (l.dim) f.brightness = 0.85
+  }
+  const parts: string[] = []
+  if (f.brightness !== undefined) parts.push(`brightness(${f.brightness})`)
+  if (f.contrast !== undefined) parts.push(`contrast(${f.contrast})`)
+  if (f.saturate !== undefined) parts.push(`saturate(${f.saturate})`)
+  if (f.sepia !== undefined) parts.push(`sepia(${f.sepia})`)
+  if (f.hueRotate !== undefined) parts.push(`hue-rotate(${f.hueRotate}deg)`)
+  return parts.length ? parts.join(' ') : undefined
+}
+
 export const LOGOS: Logo[] = [
   { id: 'default_logo', name: 'Default', image: '/banners/default logo.webp', category: 'default', price: 0 },
-  { id: 'neon_avatar', name: 'Neon', image: '/banners/neon_anime_avatar.webp', category: 'others', price: 800 },
-  { id: 'angel_logo', name: 'Angel', image: '/banners/chibi_angel_logo_1.webp', dim: true, category: 'others', price: 800 },
+  { id: 'neon_avatar', name: 'Neon', image: '/banners/neon_anime_avatar.webp', category: 'others', price: 800,
+    filter: { brightness: 0.68, contrast: 1.15, saturate: 1.2 } },
+  { id: 'angel_logo', name: 'Angel', image: '/banners/chibi_angel_logo_1.webp', category: 'others', price: 800,
+    filter: { brightness: 0.78, contrast: 1.1, saturate: 0.9 } },
   { id: 'mystic_star', name: 'Mystic Star', css: 'linear-gradient(135deg, #2a1a4a 0%, #8a45d6 50%, #ff9ec4 100%)', category: 'others', price: 1200 },
-  { id: 'chibi_angel_2', name: 'Angel II', image: '/banners/chibi_angel_logo_2.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_angel_3', name: 'Angel III', image: '/banners/chibi_angel_logo_3.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_cat_girl', name: 'Cat Girl', image: '/banners/chibi_cat_girl_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_cyberpunk', name: 'Cyber Chibi', image: '/banners/chibi_cyberpunk_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'cyberpunk_warrior', name: 'Cyber Warrior', image: '/banners/chibi_cyberpunk_warrior_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_mage', name: 'Mage', image: '/banners/chibi_mage_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_moon_spirit', name: 'Moon Spirit', image: '/banners/chibi_moon_spirit_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_dragon', name: 'Rainbow Dragon', image: '/banners/chibi_rainbow_dragon_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_robot', name: 'Robot', image: '/banners/chibi_robot_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'chibi_samurai', name: 'Samurai', image: '/banners/chibi_samurai_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'cloud_angel', name: 'Cloud Angel', image: '/banners/cloud_angel_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'glitch_chibi', name: 'Glitch Chibi', image: '/banners/glitch_chibi_avatar_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'kawaii_angel', name: 'Kawaii Angel', image: '/banners/kawaii_angel_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'neon_chibi_warrior', name: 'Neon Warrior', image: '/banners/neon_chibi_warrior_logo.webp', dim: true, category: 'others', price: 800 },
-  { id: 'star_child', name: 'Star Child', image: '/banners/star_child_logo.webp', dim: true, category: 'others', price: 800 },
-  // Golden-currency logos (🌟)
-  { id: 'holo_ring', name: 'Hologram Ring', css: 'radial-gradient(circle at center, #b0aaff 0%, #2a1a5a 60%, transparent 70%)', category: 'others', price: 150, currency: 'gold' },
-  { id: 'dragon_ember_logo', name: 'Dragon Ember', css: 'radial-gradient(circle at center, #ff8a2a 0%, #7a2a04 65%, transparent 75%)', category: 'others', price: 200, currency: 'gold' },
-  { id: 'legendary_crown', name: 'Legendary Crown', css: 'radial-gradient(circle at center, #ffd700 0%, #4a3a10 60%, transparent 72%)', category: 'others', price: 180, currency: 'gold', dim: true },
-  { id: 'phoenix_logo', name: 'Phoenix', css: 'radial-gradient(circle at center, #ff5a8a 0%, #7a1a2a 60%, transparent 72%)', category: 'others', price: 220, currency: 'gold' },
-  // Achievement-exclusive logo (granted via claim, also purchasable)
-  { id: 'owl_guardian', name: 'Owl Guardian', css: 'radial-gradient(circle at center, #e8d8a8 0%, #8a6b2a 45%, #2f6b3c 75%, transparent 82%)', dim: true, category: 'others', price: 1500 },
+  { id: 'chibi_angel_2', name: 'Angel II', image: '/banners/chibi_angel_logo_2.webp', category: 'others', price: 800,
+    filter: { brightness: 0.78, contrast: 1.1, saturate: 0.9 } },
+  { id: 'chibi_angel_3', name: 'Angel III', image: '/banners/chibi_angel_logo_3.webp', category: 'others', price: 800,
+    filter: { brightness: 0.8, contrast: 1.1, saturate: 0.92 } },
+  { id: 'chibi_cat_girl', name: 'Cat Girl', image: '/banners/chibi_cat_girl_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.78, contrast: 1.12, saturate: 1.05 } },
+  { id: 'chibi_cyberpunk', name: 'Cyber Chibi', image: '/banners/chibi_cyberpunk_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.72, contrast: 1.2, saturate: 1.3, hueRotate: -5 } },
+  { id: 'cyberpunk_warrior', name: 'Cyber Warrior', image: '/banners/chibi_cyberpunk_warrior_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.82, contrast: 1.15, saturate: 1.1 } },
+  { id: 'chibi_mage', name: 'Mage', image: '/banners/chibi_mage_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.6, contrast: 1.2, saturate: 1.15, hueRotate: 10 } },
+  { id: 'chibi_moon_spirit', name: 'Moon Spirit', image: '/banners/chibi_moon_spirit_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.55, contrast: 1.25, saturate: 1.1, hueRotate: -10 } },
+  { id: 'chibi_dragon', name: 'Rainbow Dragon', image: '/banners/chibi_rainbow_dragon_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.85, contrast: 1.1, saturate: 1.25 } },
+  { id: 'chibi_robot', name: 'Robot', image: '/banners/chibi_robot_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 1.0, contrast: 1.15, saturate: 0.9 } },
+  { id: 'chibi_samurai', name: 'Samurai', image: '/banners/chibi_samurai_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.85, contrast: 1.12, saturate: 1.05 } },
+  { id: 'cloud_angel', name: 'Cloud Angel', image: '/banners/cloud_angel_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.6, contrast: 1.2, saturate: 0.85 } },
+  { id: 'glitch_chibi', name: 'Glitch Chibi', image: '/banners/glitch_chibi_avatar_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.8, contrast: 1.18, saturate: 1.1, hueRotate: 5 } },
+  { id: 'kawaii_angel', name: 'Kawaii Angel', image: '/banners/kawaii_angel_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.6, contrast: 1.15, saturate: 0.9 } },
+  { id: 'neon_chibi_warrior', name: 'Neon Warrior', image: '/banners/neon_chibi_warrior_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.7, contrast: 1.2, saturate: 1.35, hueRotate: -8 } },
+  { id: 'star_child', name: 'Star Child', image: '/banners/star_child_logo.webp', category: 'others', price: 800,
+    filter: { brightness: 0.82, contrast: 1.12, saturate: 1.1 } },
 ]
 
 export const DEFAULT_LOGO_ID = ''

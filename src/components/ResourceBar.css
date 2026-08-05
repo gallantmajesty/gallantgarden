@@ -3,7 +3,7 @@
 .resource-bar {
   position: fixed;
   bottom: 18px;
-  right: 18px;
+  left: 18px;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -122,7 +122,7 @@
 @media (max-width: 480px) {
   .resource-bar {
     bottom: 12px;
-    right: 12px;
+    left: 12px;
     width: 170px;
   }
   .resource-bar__bar-icon {
@@ -144,14 +144,14 @@
   transition: none;
 }
 
-/* ---- RTL: keep resource bar pinned to the right ---- */
+/* ---- RTL: keep resource bar pinned to the left ---- */
 [dir="rtl"] .resource-bar {
-  right: auto;
   left: auto;
-  right: 18px;
+  right: auto;
+  left: 18px;
 }
 @media (max-width: 480px) {
   [dir="rtl"] .resource-bar {
-    right: 12px;
+    left: 12px;
   }
 }

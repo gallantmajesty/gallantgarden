@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Flag } from './Flag'
 import { RankBadge } from './RankBadge'
 import { getRank } from '../lib/ranks'
-import { getBanner, LOGOS } from '../lib/banners'
+import { getBanner, LOGOS, logoFilter } from '../lib/banners'
 import './PlayerNameTag.css'
 
 export interface PlayerNameTagProps {
@@ -66,7 +66,7 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
               src={logoData.image}
               alt=""
               draggable={false}
-              style={logoData.dim ? { filter: 'brightness(0.85)' } : undefined}
+              style={{ filter: logoFilter(logoData) }}
             />
           ) : (
             <span

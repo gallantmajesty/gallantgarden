@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useImperativeHandle, useMemo, useRef } from 'react'
-import { Color, Group, MeshStandardMaterial, CatmullRomCurve3, TubeGeometry, Vector3, DoubleSide, PointsMaterial, BufferGeometry, Float32BufferAttribute, AdditiveBlending, BufferAttribute } from 'three'
+import { Color, Group, MeshStandardMaterial, CatmullRomCurve3, TubeGeometry, Vector3, DoubleSide, BackSide, PointsMaterial, BufferGeometry, Float32BufferAttribute, AdditiveBlending, BufferAttribute } from 'three'
 import {
 boxGeo,
 sphereGeo,
@@ -70,6 +70,10 @@ export function AvatarRig({
 
   const P = proportionsFor(config.bodyType)
   const s = heightScale(config.height)
+
+  // Robe skirt group ref — kept so future walk-cycle cloth animation can hook
+  // into it; the robe hangs naturally (no artificial idle sway).
+  const robeSkirtRef = useRef<Group>(null)
 
   // Dino costume: a cute blue mascot on the exact same skeleton/height — the whole
   // body is recoloured blue and dino features (snout head, back plates, tail) are
@@ -143,7 +147,7 @@ export function AvatarRig({
   const sfYellowDark = sharedMaterial('#e8b800', 0.55)
   const sfBrown = sharedMaterial('#8c6c30', 0.72)
   const sfGreen = sharedMaterial('#5caa3a', 0.65)
-  const sfGreenDouble = new MeshStandardMaterial({ color: '#5caa3a', roughness: 0.65, metalness: 0, flatShading: false, side: DoubleSide })
+  const sfSkirt = new MeshStandardMaterial({ color: '#f0b53c', roughness: 0.7, metalness: 0, flatShading: false, side: DoubleSide })
   const sfSeed = sharedMaterial('#603813', 0.6)
   const sfPetalEdge = sharedMaterial('#ffe680', 0.5)
 
@@ -174,24 +178,26 @@ export function AvatarRig({
   // Elephant: a gentle gray scholar elephant — big round head, huge floppy
   // ears, thick trunk, curved ivory tusks, round glasses, navy shirt + gold belt.
   const isElephant = config.characterId === 'elephant'
-  const elMain = sharedMaterial('#8a8a8e', 0.65)
+  const elMain = sharedMaterial('#8f97a8', 0.82)
   const elDark = sharedMaterial('#6e7378', 0.6)
   const elBelly = sharedMaterial('#9a9a9a', 0.75)
   const elInner = sharedMaterial('#c4a0a0', 0.55)
   const elTusk = sharedMaterial('#f5f0e0', 0.4)
-  const elCheek = sharedMaterial('#f48fb0', 0.55)
-  const elNavy = sharedMaterial('#1B2B5A', 0.78)
-  const elTrim = sharedMaterial('#D4AF37', 0.35, 0.5)
-  const elGlasses = sharedMaterial('#2a2a2e', 0.3, 0.4)
-  const elGlassLens = new MeshStandardMaterial({ color: '#dfe8f5', roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.22, depthWrite: false })
+  const elCheek = sharedMaterial('#f2a0b0', 0.5)
+  const elNavy = sharedMaterial('#1B2B5A', 0.82)
+  const elTrim = sharedMaterial('#F2C14E', 0.2, 0.9)
+  const elGlasses = sharedMaterial('#2a2f3a', 0.16, 0.92)
+  const elGlassLens = new MeshStandardMaterial({ color: '#e8eef8', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.25, depthWrite: false })
+  const elCrease = new MeshStandardMaterial({ color: '#5f6a76', roughness: 0.9, transparent: true, opacity: 0.35, depthWrite: false })
+  const elGlowGold = glowMaterial('#ffd766', 1.0)
 
   // Monkey: a playful brown monkey — warm brown fur, lighter tan face/belly,
   // big round ears, dark hands/feet, a long curly tail and a cheeky grin.
   const isMonkey = config.characterId === 'monkey'
-  const monkeyFur = sharedMaterial('#8B5E3C', 0.62)
-  const monkeyFace = sharedMaterial('#F5D6B4', 0.68)
-  const monkeyFaceMask = new MeshStandardMaterial({ color: '#F5D6B4', roughness: 0.68, depthWrite: false, depthTest: true })
-  const monkeyDark = sharedMaterial('#5C3A21', 0.6)
+  const monkeyFur = sharedMaterial('#96613F', 0.88)
+  const monkeyFace = sharedMaterial('#E8C69B', 0.85)
+  const monkeyFaceMask = new MeshStandardMaterial({ color: '#F5D6B4', roughness: 0.85, depthWrite: false, depthTest: true })
+  const monkeyDark = sharedMaterial('#5C3A21', 0.75)
   const monkeyBelly = sharedMaterial('#F0D5B8', 0.7)
   const monkeyEarInner = sharedMaterial('#E8C4A0', 0.65)
 
@@ -220,19 +226,42 @@ export function AvatarRig({
     skin.bumpMap = skinTex
     skin.bumpScale = 0.025
   }
-  // Elephant: subtle wrinkle/fold texture for organic skin feel
+  // Elephant: light grain texture for organic skin + soft fabric grain on the shirt
   if (isElephant) {
     const elSkinTex = skinReliefTex()
     elMain.bumpMap = elSkinTex
-    elMain.bumpScale = 0.03
-    elMain.roughness = 0.7
-    elDark.roughness = 0.65
-    elBelly.roughness = 0.75
+    elMain.bumpScale = 0.045
+    elMain.roughnessMap = elSkinTex
+    elMain.roughness = 0.72
+    elDark.bumpMap = elSkinTex
+    elDark.bumpScale = 0.04
+    elDark.roughnessMap = elSkinTex
+    elDark.roughness = 0.7
+    elBelly.roughness = 0.78
+    elNavy.bumpMap = elSkinTex
+    elNavy.bumpScale = 0.085
+    elNavy.roughnessMap = elSkinTex
+    elNavy.roughness = 0.94
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfGreen : isGrim ? grimCloak : isElephant ? elNavy : isMonkey ? monkeyFur : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  // Monkey: soft fur grain so the coat reads as fur, not plastic
+  if (isMonkey) {
+    const mkTex = skinReliefTex()
+    monkeyFur.bumpMap = mkTex
+    monkeyFur.bumpScale = 0.16
+    monkeyFur.roughnessMap = mkTex
+    monkeyFur.roughness = 0.82
+    monkeyDark.bumpMap = mkTex
+    monkeyDark.bumpScale = 0.12
+    monkeyDark.roughnessMap = mkTex
+    monkeyDark.roughness = 0.75
+  }
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elNavy : isMonkey ? monkeyFur : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
   const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
-  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : isMonkey ? monkeyDark : sharedMaterial(shoeHex(config.shoes), 0.5)
+  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : isMonkey ? monkeyDark : sharedMaterial(config.shoeColor ?? shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
+  const nailM = sharedMaterial(config.nailColor ?? '#e8b4b8', 0.42, 0.12)
+  const glassesM = sharedMaterial(config.glassesColor ?? '#2a2f3a', 0.16, 0.92)
+  const hairBandM = sharedMaterial(config.hairBandColor ?? '#f4b8cf', 0.6)
 
   const bind = (name: BoneName) => (g: Group | null) => {
     if (g) bones[name] = g
@@ -275,8 +304,8 @@ export function AvatarRig({
               {/* Gold belt with buckle at the waist */}
               <mesh geometry={torusGeo(P.waistW * 1.2, P.hipBoneW * 0.05, 8, 24)} material={elTrim}
                 position={[0, P.spineLen * 0.55, 0]} rotation={[Math.PI / 2, 0, 0]} />
-              <mesh geometry={boxGeo(P.waistW * 0.24, P.waistW * 0.18, P.torsoD * 0.05)} material={elTrim}
-                position={[0, P.spineLen * 0.55, P.torsoD * 1.35]} />
+              <mesh geometry={boxGeo(P.waistW * 0.28, P.waistW * 0.2, P.torsoD * 0.05)} material={elTrim}
+                position={[0, P.spineLen * 0.55, P.torsoD * 1.55]} />
 
               {/* Collar — two angled flaps at the neckline */}
               {[-1, 1].map((sx) => (
@@ -291,12 +320,24 @@ export function AvatarRig({
                   scale={[P.neckR * 0.28, P.neckR * 0.28, P.neckR * 0.14]}
                   position={[0, P.spineLen + P.chestLen * t, P.torsoD * 1.55]} />
               ))}
+              {/* Subtle placket — slightly lighter navy strip down the shirt front */}
+              <mesh geometry={boxGeo(P.chestW * 0.14, P.chestLen * 1.15, P.torsoD * 0.02)}
+                material={sharedMaterial('#2a3d78', 0.85)}
+                position={[0, P.spineLen + P.chestLen * 0.42, P.torsoD * 1.5]} />
 
-              {/* Pendant — gold chain + rectangular tag */}
-              <mesh geometry={torusGeo(P.neckR * 1.45, P.neckR * 0.09, 8, 20)} material={elTrim}
-                position={[0, P.spineLen + P.chestLen * 0.85, P.torsoD * 1.7]} rotation={[Math.PI / 2, 0, 0]} />
-              <mesh geometry={boxGeo(P.neckR * 0.7, P.neckR * 0.9, P.torsoD * 0.03)} material={elTrim}
-                position={[0, P.spineLen + P.chestLen * 0.5, P.torsoD * 1.75]} />
+
+              {/* Name badge — small cream tag with a gold pin on the left chest */}
+              <mesh geometry={boxGeo(P.chestW * 0.34, P.chestW * 0.24, P.torsoD * 0.05)} material={sharedMaterial('#f5f2ea', 0.85)}
+                position={[-P.chestW * 0.42, P.spineLen + P.chestLen * 0.7, P.torsoD * 1.38]} />
+              <mesh geometry={sphereGeo(1)} material={elTrim} scale={[P.chestW * 0.06, P.chestW * 0.06, P.chestW * 0.03]}
+                position={[-P.chestW * 0.42, P.spineLen + P.chestLen * 0.52, P.torsoD * 1.41]} />
+
+              {/* Stitching — small dark dashes along the gold belt */}
+              {[-0.9, -0.5, -0.1, 0.3, 0.7].map((t, i) => (
+                <mesh key={'st' + i} geometry={boxGeo(P.waistW * 0.03, P.waistW * 0.05, P.torsoD * 0.02)}
+                  material={sharedMaterial('#7a5f18', 0.45)}
+                  position={[t * P.waistW * 0.85, P.spineLen * 0.55, P.torsoD * 1.32]} rotation={[0, 0, 0.6]} />
+              ))}
             </>
           ) : isSunflower ? (
             /* Sunflower: use default female torso — green dress bodice */
@@ -309,6 +350,18 @@ export function AvatarRig({
               { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.08, hd: P.torsoD * 1.05 },
               { y: P.spineLen + P.chestLen, hw: P.shoulderW * 0.82, hd: P.torsoD * 0.92 },
               { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.2, hd: P.torsoD * 0.55 },
+            ])} material={topM} castShadow />
+          ) : isMonkey ? (
+            /* Monkey: wider, sturdier torso so the big head doesn't look top-heavy */
+            <mesh geometry={torsoGeo([
+              { y: -0.07, hw: P.hipBoneW * 1.16, hd: P.torsoD * 0.95 },
+              { y: -0.02, hw: P.hipBoneW * 1.1, hd: P.torsoD * 0.92 },
+              { y: P.spineLen * 0.5, hw: P.waistW * 1.12, hd: P.torsoD * 0.95 },
+              { y: P.spineLen, hw: P.chestW * 1.12, hd: P.torsoD * 1.0 },
+              { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW * 1.16, hd: P.torsoD * 1.18 },
+              { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.2, hd: P.torsoD * 1.1 },
+              { y: P.spineLen + P.chestLen, hw: P.shoulderW * 0.96, hd: P.torsoD * 0.92 },
+              { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.3, hd: P.torsoD * 0.6 },
             ])} material={topM} castShadow />
           ) : (
             <mesh geometry={torsoGeo([
@@ -457,8 +510,8 @@ export function AvatarRig({
                 ) : isGrim ? (
                   <GrimHead P={P} bone={grimBone} boneDark={grimBoneDark} cloak={grimCloak} glow={grimGlow} gold={grimGold} />
                 ) : isElephant ? (
-                  <group scale={1.24} rotation={[0, 0, 0.06]}>
-                    <ElephantHead P={P} main={elMain} dark={elDark} belly={elBelly} inner={elInner} tusk={elTusk} glasses={elGlasses} lens={elGlassLens} cheek={elCheek} />
+                  <group scale={1.06}>
+                    <ElephantHead P={P} main={elMain} dark={elDark} belly={elBelly} inner={elInner} tusk={elTusk} glasses={elGlasses} lens={elGlassLens} cheek={elCheek} crease={elCrease} />
                   </group>
                 ) : isMonkey ? (
                   <MonkeyHead P={P} fur={monkeyFur} face={monkeyFace} dark={monkeyDark} inner={monkeyEarInner} belly={monkeyBelly} />
@@ -466,7 +519,7 @@ export function AvatarRig({
                   <HackerHead P={P} skin={skin} hairM={hairM} glow={hackerGlow} config={config} />
                 ) : (
                   <>
-                    <Head P={P} skin={skin} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} characterId={config.characterId ?? 'james'} eyeHexVal={eyeCol} />
+                    <Head P={P} skin={skin} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} characterId={config.characterId ?? 'james'} eyeHexVal={eyeCol} glassesM={config.glasses ? glassesM : null} hairBandM={config.hairBand ? hairBandM : null} />
                     <Hair config={config} P={P} hairM={hairM} />
                     {config.characterId === 'wizard' ? <WizardHat P={P} />
                       : config.characterId === 'ruslan' ? <Kokoshnik P={P} />
@@ -490,10 +543,10 @@ export function AvatarRig({
             <mesh geometry={taperGeo(P.hipBoneW * 0.6, P.hipBoneW * 0.03, P.upperLeg * 1.5)} material={dinoMain} position={[0, -P.upperLeg * 0.68, 0]} castShadow />
             {/* creamy underside near the base */}
             <mesh geometry={sphereGeo(1)} material={dinoBelly} scale={[P.hipBoneW * 0.4, P.upperLeg * 0.36, P.hipBoneW * 0.28]} position={[0, -P.upperLeg * 0.24, P.hipBoneW * 0.26]} />
-            {/* golden ridge spikes running down the tail */}
+            {/* golden ridge spikes running down the tail — riding the spine centerline */}
             {[0.12, 0.3, 0.48, 0.66].map((t, i) => (
               <mesh key={`k${i}`} geometry={taperGeo(P.hipBoneW * 0.01, P.hipBoneW * 0.12 * (1 - t * 0.55), P.hipBoneW * 0.34 * (1 - t * 0.45))}
-                material={dinoPlate} position={[0, -P.upperLeg * 1.5 * t, -P.hipBoneW * 0.16 * (1 - t)]} rotation={[0.35, 0, 0]} />
+                material={dinoPlate} position={[0, -P.upperLeg * 1.5 * t, 0]} rotation={[0.35, 0, 0]} />
             ))}
           </group>
         )}
@@ -531,8 +584,75 @@ export function AvatarRig({
             hair tuft (body + shirt are rendered in the spine group) */}
         {isElephant && (
           <group>
+            {/* Legendary long robe — full-length navy robe with gold trim and a glowing hem */}
+            <group>
+              {/* Upper robe — fitted bodice from chest to waist (stays put) */}
+              <mesh geometry={latheGeo([
+                [P.waistW * 1.32, 0.02],
+                [P.waistW * 1.3, 0.08],
+                [P.chestW * 1.16, 0.22],
+                [P.chestW * 1.1, 0.31],
+                [P.neckR * 2.4, 0.35],
+              ])} material={elNavy} position={[0, 0, 0]} castShadow />
+
+              {/* Gold collar band — wraps the robe neckline (on the bodice) */}
+              <mesh geometry={torusGeo(P.neckR * 2.62, P.neckR * 0.11, 8, 26)} material={elTrim}
+                position={[0, 0.34, 0]} rotation={[Math.PI / 2, 0, 0]} />
+
+              {/* Gold chest medallion — radiant centrepiece of the robe */}
+              <group position={[0, 0.2, P.torsoD * 1.6]}>
+                <mesh geometry={torusGeo(P.waistW * 0.17, P.waistW * 0.045, 8, 24)} material={elTrim} rotation={[Math.PI / 2, 0, 0]} />
+                <mesh geometry={sphereGeo(1)} material={elGlowGold} scale={[P.waistW * 0.1, P.waistW * 0.1, P.waistW * 0.02]} />
+              </group>
+
+              {/* Gold epaulettes on the shoulders */}
+              {[-1, 1].map((sx) => (
+                <mesh key={'ep' + sx} geometry={sphereGeo(1)} material={elTrim}
+                  scale={[P.waistW * 0.26, P.waistW * 0.1, P.waistW * 0.22]}
+                  position={[sx * P.chestW * 1.14, 0.32, 0]} />
+              ))}
+
+              {/* Gold belt over the bodice at the waist, with a glowing buckle */}
+              <mesh geometry={torusGeo(P.waistW * 1.28, P.hipBoneW * 0.055, 8, 24)} material={elTrim}
+                position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]} />
+              <mesh geometry={boxGeo(P.waistW * 0.26, P.waistW * 0.2, P.torsoD * 0.06)} material={elTrim}
+                position={[0, 0.1, P.torsoD * 1.45]} />
+              <mesh geometry={sphereGeo(1)} material={elGlowGold} scale={[P.waistW * 0.08, P.waistW * 0.1, P.waistW * 0.06]}
+                position={[0, 0.04, P.torsoD * 1.5]} />
+
+              {/* Flowing skirt — flared wide over the hips and thighs (covers the
+                  bum), hangs to just above the feet, and sways like cloth */}
+              <group ref={robeSkirtRef} position={[0, -0.02, 0]}>
+                <mesh geometry={latheGeo([
+                  [P.waistW * 1.36, 0.06],
+                  [P.hipBoneW * 1.6, -0.04],
+                  [P.hipBoneW * 1.72, -0.18],
+                  [P.hipBoneW * 1.85, -0.35],
+                ])} castShadow>
+                  <meshStandardMaterial color="#1B2B5A" roughness={0.78} side={DoubleSide} />
+                </mesh>
+
+                {/* Glowing gold hem band + a second gold trim above it (rides the skirt) */}
+                <mesh geometry={torusGeo(P.hipBoneW * 1.81, P.hipBoneW * 0.07, 8, 28)} material={elGlowGold}
+                  position={[0, -0.35, 0]} rotation={[Math.PI / 2, 0, 0]} />
+                <mesh geometry={torusGeo(P.hipBoneW * 1.63, P.hipBoneW * 0.045, 8, 24)} material={elTrim}
+                  position={[0, -0.23, 0]} rotation={[Math.PI / 2, 0, 0]} />
+
+                {/* hanging tassels that swing with the cloth */}
+                {[-P.waistW * 0.05, 0, P.waistW * 0.05].map((tx, i) => (
+                  <mesh key={'ts' + i} geometry={taperGeo(P.waistW * 0.025, P.waistW * 0.006, P.waistW * 0.28)} material={elTrim}
+                    position={[tx, -0.04, P.torsoD * 2.1]} />
+                ))}
+              </group>
+
+              {/* Gold front placket down the bodice centre */}
+              <mesh geometry={boxGeo(P.chestW * 0.16, 0.2, P.torsoD * 0.03)} material={elTrim}
+                position={[0, 0.12, P.torsoD * 1.62]} />
+
+            </group>
+
             {/* Tail — rooted on lower back rump, angled clearly outward and down so it's always visible */}
-            <group position={[0, -P.spineLen * 0.18, -P.torsoD * 0.90]} rotation={[0.32, 0, 0]}>
+            <group position={[0, -P.spineLen * 0.18, -P.torsoD * 1.55]} rotation={[0.42, 0, 0]}>
               {/* tail stem — thicker tapering rod */}
               <mesh geometry={taperGeo(P.hipBoneW * 0.12, P.hipBoneW * 0.05, P.upperLeg * 0.62 * ELEPHANT_LEG_Y)} material={elMain}
                 position={[0, -P.upperLeg * 0.3 * ELEPHANT_LEG_Y, 0]} castShadow />
@@ -563,48 +683,85 @@ export function AvatarRig({
             curly tail on the lower back */}
         {isMonkey && (
           <group>
-            {/* tan belly patch */}
-            <mesh geometry={sphereGeo(1)} material={monkeyBelly} scale={[P.chestW * 0.55, P.chestLen * 0.38, P.torsoD * 0.22]} position={[0, P.spineLen + P.chestLen * 0.15, P.torsoD * 0.86]} />
-            {/* long curling tail — a graceful spiral curve starting from lower back */}
+            {/* lighter fur chest + belly patch — cream chest, tan belly */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#F3DFC0', 0.85)} scale={[P.chestW * 0.6, P.chestLen * 0.34, P.torsoD * 0.22]} position={[0, P.spineLen + P.chestLen * 0.98, P.torsoD * 0.95]} />
+            <mesh geometry={sphereGeo(1)} material={monkeyBelly} scale={[P.chestW * 0.85, P.chestLen * 0.55, P.torsoD * 0.28]} position={[0, P.spineLen + P.chestLen * 0.12, P.torsoD * 0.95]} />
+
+            {/* leather belt band + thick gold ring with a big buckle */}
+            <mesh geometry={torusGeo(P.waistW * 1.3, P.hipBoneW * 0.1, 10, 24)} material={sharedMaterial('#4a2f17', 0.85)}
+              position={[0, P.spineLen * 0.55, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            <mesh geometry={torusGeo(P.waistW * 1.38, P.hipBoneW * 0.075, 10, 24)} material={sharedMaterial('#F2C14E', 0.2, 0.9)}
+              position={[0, P.spineLen * 0.55, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            <mesh geometry={boxGeo(P.waistW * 0.34, P.waistW * 0.24, P.torsoD * 0.07)} material={sharedMaterial('#F2C14E', 0.2, 0.9)}
+              position={[0, P.spineLen * 0.55, P.torsoD * 1.75]} />
+
+            {/* long curling tail — a smooth tapered tube sweeping down into a curl */}
             <group position={[0, -0.02, -P.torsoD * 0.85]} rotation={[0.8, 0, 0]}>
-              {/* tail base — thick root */}
-              <mesh geometry={taperGeo(P.hipBoneW * 0.1, P.hipBoneW * 0.07, P.upperLeg * 0.4)} material={monkeyFur} position={[0, -P.upperLeg * 0.2, 0]} castShadow />
-              {/* first curl — torus ring */}
-              <mesh geometry={torusGeo(P.hipBoneW * 0.22, P.hipBoneW * 0.045, 8, 20)} material={monkeyFur}
-                position={[0, -P.upperLeg * 0.45, P.hipBoneW * 0.15]} rotation={[Math.PI / 2, 0, 0]} />
-              {/* second curl — slightly smaller */}
-              <mesh geometry={torusGeo(P.hipBoneW * 0.16, P.hipBoneW * 0.035, 8, 18)} material={monkeyDark}
-                position={[0, -P.upperLeg * 0.55, P.hipBoneW * 0.3]} rotation={[Math.PI / 2, 0, 0.3]} />
-              {/* tail tip — little curl */}
-              <mesh geometry={torusGeo(P.hipBoneW * 0.1, P.hipBoneW * 0.028, 8, 14)} material={monkeyBelly}
-                position={[P.hipBoneW * 0.04, -P.upperLeg * 0.58, P.hipBoneW * 0.4]} rotation={[Math.PI / 2.5, 0.3, 0.4]} />
+              <MonkeyTail P={P} fur={monkeyFur} belly={monkeyBelly} />
             </group>
           </group>
         )}
 
         {isSunflower && (
           <group>
+            {/* Sunflower chest emblem — little bloom on the bodice */}
+            <group position={[0, P.spineLen + P.chestLen * 0.32, P.torsoD * 1.32]}>
+              {Array.from({ length: 8 }, (_, i) => {
+                const a = (i / 8) * Math.PI * 2
+                return (
+                  <mesh key={'ce' + i} geometry={sphereGeo(1)} material={sfYellowDark}
+                    scale={[P.waistW * 0.06, P.waistW * 0.13, P.torsoD * 0.018]}
+                    position={[Math.cos(a) * P.waistW * 0.11, Math.sin(a) * P.waistW * 0.11, 0]}
+                    rotation={[0, 0, a + Math.PI / 2]} />
+                )
+              })}
+              <mesh geometry={sphereGeo(1)} material={sfBrown} scale={[P.waistW * 0.08, P.waistW * 0.08, P.torsoD * 0.02]} />
+            </group>
             {/* Flared A-line skirt — fitted at body hips, gentle flare to below knees */}
             <mesh geometry={latheGeo([
-              [P.hipBoneW * 1.08, -P.upperLeg * 0.04],
-              [P.hipBoneW * 1.12, -P.upperLeg * 0.15],
-              [P.hipBoneW * 1.18, -P.upperLeg * 0.35],
-              [P.hipBoneW * 1.22, -P.upperLeg * 0.55],
-              [P.hipBoneW * 1.25, -P.upperLeg * 0.72],
-              [P.hipBoneW * 1.22, -P.upperLeg * 0.82],
-            ])} material={sfGreenDouble} castShadow />
-            {/* Yellow neckline ring */}
-            <mesh geometry={torusGeo(P.chestW * 0.35, P.chestW * 0.035, 8, 20)} material={sfYellow}
+              [P.hipBoneW * 1.1, -P.upperLeg * 0.04],
+              [P.hipBoneW * 1.16, -P.upperLeg * 0.15],
+              [P.hipBoneW * 1.26, -P.upperLeg * 0.35],
+              [P.hipBoneW * 1.34, -P.upperLeg * 0.55],
+              [P.hipBoneW * 1.4, -P.upperLeg * 0.75],
+              [P.hipBoneW * 1.38, -P.upperLeg * 0.9],
+            ])} material={sfSkirt} castShadow />
+            {/* Brown seed necklace at the neckline */}
+            <mesh geometry={torusGeo(P.chestW * 0.35, P.chestW * 0.035, 8, 20)} material={sfBrown}
               position={[0, P.chestLen * 0.85, 0]} rotation={[Math.PI / 2, 0, 0]} />
-            {/* Leafy waist sash — sits at natural waist */}
-            <mesh geometry={torusGeo(P.waistW * 0.88, P.hipBoneW * 0.045, 8, 24)} material={sfGreen}
+            {/* Brown belt at the waist */}
+            <mesh geometry={torusGeo(P.waistW * 0.88, P.hipBoneW * 0.045, 8, 24)} material={sfBrown}
               position={[0, -0.01, 0]} rotation={[Math.PI / 2, 0, 0]} />
-            {/* Small yellow petals at waist */}
+            {/* Small yellow petals ringing the waist on the skirt surface */}
             {[0, Math.PI * 0.33, Math.PI * 0.67, Math.PI, -Math.PI * 0.33, -Math.PI * 0.67].map((a, i) => (
-              <mesh key={`sp${i}`} geometry={sphereGeo(1)} material={sfYellow}
-                scale={[P.hipBoneW * 0.1, P.hipBoneW * 0.07, P.torsoD * 0.06]}
-                position={[Math.sin(a) * P.hipBoneW * 0.9, -P.upperLeg * 0.04, Math.cos(a) * P.torsoD * 0.5]} />
+              <mesh key={`sp${i}`} geometry={taperGeo(P.hipBoneW * 0.09, P.hipBoneW * 0.015, P.hipBoneW * 0.36)} material={sfYellowDark}
+                scale={[0.4, 1, 1]}
+                position={[Math.sin(a) * P.hipBoneW * 1.16, -P.upperLeg * 0.06, Math.cos(a) * P.hipBoneW * 1.16]}
+                rotation={[0.35, 0, Math.cos(a) * 0.8]} />
             ))}
+            {/* vertical pleat shadows — fold lines down the mid-skirt */}
+            {Array.from({ length: 14 }, (_, i) => {
+              const a = (i / 14) * Math.PI * 2 + 0.12
+              return (
+                <mesh key={'pl' + i} geometry={taperGeo(P.hipBoneW * 0.016, P.hipBoneW * 0.008, P.hipBoneW * 0.34)} material={sfYellowDark}
+                  scale={[0.3, 1, 1]}
+                  position={[Math.sin(a) * P.hipBoneW * 1.33, -P.upperLeg * 0.42, Math.cos(a) * P.hipBoneW * 1.33]} />
+              )
+            })}
+            {/* thin gold band mid-skirt */}
+            <mesh geometry={torusGeo(P.hipBoneW * 1.37, P.hipBoneW * 0.038, 8, 24)} material={sfYellowDark}
+              position={[0, -P.upperLeg * 0.6, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            {/* golden petal ruffle layered under the hem */}
+            {Array.from({ length: 10 }, (_, i) => {
+              const a = (i / 10) * Math.PI * 2
+              return (
+                <mesh key={'pr' + i} geometry={taperGeo(P.hipBoneW * 0.11, P.hipBoneW * 0.02, P.hipBoneW * 0.45)} material={sfBrown}
+                  scale={[0.45, 1, 1]}
+                  position={[Math.sin(a) * P.hipBoneW * 1.43, -P.upperLeg * 0.94, Math.cos(a) * P.hipBoneW * 1.43]}
+                  rotation={[0.35, 0, Math.cos(a) * 0.7]} />
+              )
+            })}
+
           </group>
         )}
 
@@ -794,8 +951,8 @@ export function AvatarRig({
 
         {/* Arms rendered LAST inside hips — always on top of clothing. The
             sarafan wears a white blouse, so its sleeves render white. */}
-        <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={isRobot ? robotGlowMat : glowBlue} isHacker={isHacker} isMonkey={isMonkey} monkeyDark={monkeyDark} isElephant={isElephant} />
-        <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={isRobot ? robotGlowMat : glowBlue} isHacker={isHacker} isMonkey={isMonkey} monkeyDark={monkeyDark} isElephant={isElephant} />
+        <Arm side="L" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={isRobot ? robotGlowMat : glowBlue} isHacker={isHacker} isMonkey={isMonkey} monkeyDark={monkeyDark} isElephant={isElephant} isSunflower={isSunflower} nailM={nailM} config={config} />
+        <Arm side="R" bind={bind} P={P} skin={skin} topM={config.top === 'sarafan' ? sharedMaterial('#f7f2e7', 0.85) : topM} isSleeved={isSleeved} isDino={isDino} isAngel={isAngel} clawM={dinoBelly} isRobot={isRobot} glowM={isRobot ? robotGlowMat : glowBlue} isHacker={isHacker} isMonkey={isMonkey} monkeyDark={monkeyDark} isElephant={isElephant} isSunflower={isSunflower} nailM={nailM} config={config} />
 
         {/* Grim Reaper scythe — a long dark handle with a curved blade and
             a skull pommel, held in the right hand */}
@@ -878,9 +1035,11 @@ function RobotHead({ P, metal, glow }: { P: Proportions; metal: Mat; glow: Mat }
     <group position={[0, cy, 0]}>
       {/* black metal helmet shell */}
       <mesh geometry={sphereGeo(1)} material={metal} scale={[r * 1.0, r * 1.02, r * 0.95]} castShadow />
-      {/* glowing blue visor band across the eyes */}
-      <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.86, r * 0.26, r * 0.72]} position={[0, r * 0.02, fz * 0.82]} />
-      {/* bright eye dots inside the visor */}
+      {/* translucent blue visor band — glass-like, you can faintly see the helmet behind it */}
+      <mesh geometry={sphereGeo(1)} scale={[r * 0.86, r * 0.26, r * 0.72]} position={[0, r * 0.02, fz * 0.82]}>
+        <meshStandardMaterial color="#3388ff" roughness={0.1} metalness={0.6} transparent opacity={0.45} />
+      </mesh>
+      {/* bright eye dots inside the visor — glow through the glass */}
       <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.13, r * 0.13, r * 0.05]} position={[-r * 0.3, r * 0.02, fz * 1.05]} />
       <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.13, r * 0.13, r * 0.05]} position={[r * 0.3, r * 0.02, fz * 1.05]} />
       {/* side ear pods */}
@@ -924,10 +1083,11 @@ function AlienHead({ P, skin, glow }: { P: Proportions; skin: Mat; glow: Mat }) 
 }
 
 function Head({
-  P, skin, hairM, bodyType, lidsRef, characterId, eyeHexVal,
+  P, skin, hairM, bodyType, lidsRef, characterId, eyeHexVal, glassesM, hairBandM,
 }: {
   P: Proportions; skin: Mat; hairM: Mat
   bodyType: AvatarConfig['bodyType']; lidsRef: React.Ref<Group>; characterId: string; eyeHexVal: string
+  glassesM: Mat | null; hairBandM: Mat | null
 }) {
   const r = P.headR
   const isF = bodyType === 'female'
@@ -938,7 +1098,7 @@ function Head({
   const eyeY = -r * 0.04
   const eyeR = r * 0.18
 
-  const blackDot = sharedMaterial('#1a1a1a', 0.6)
+  const blackDot = sharedMaterial('#3a2410', 0.6)
 
   return (
     <group position={[0, cy, 0]}>
@@ -987,6 +1147,31 @@ function Head({
       {/* Inner ear */}
       <mesh geometry={sphereGeo(1)} material={sharedMaterial(isF ? '#d4a090' : '#c49080', 0.8)} scale={[r * 0.04, r * 0.06, r * 0.03]} position={[-r * 0.88, eyeY + r * 0.02, -r * 0.03]} />
       <mesh geometry={sphereGeo(1)} material={sharedMaterial(isF ? '#d4a090' : '#c49080', 0.8)} scale={[r * 0.04, r * 0.06, r * 0.03]} position={[r * 0.88, eyeY + r * 0.02, -r * 0.03]} />
+
+      {/* Glasses — round frames around each eye, a bridge over the nose and
+          slim temple arms to the ears. Rendered only for human faces. */}
+      {glassesM && (
+        <group>
+          <mesh geometry={torusGeo(r * 0.21, r * 0.022, 12, 32)} material={glassesM} position={[-eyeX, eyeY, fz + r * 0.035]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={torusGeo(r * 0.21, r * 0.022, 12, 32)} material={glassesM} position={[eyeX, eyeY, fz + r * 0.035]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={boxGeo(r * 0.22, r * 0.035, r * 0.02)} material={glassesM} position={[0, eyeY + r * 0.055, fz + r * 0.045]} />
+          <mesh geometry={boxGeo(r * 0.05, r * 0.03, r * 0.03)} material={glassesM} position={[-eyeX - r * 0.16, eyeY + r * 0.01, fz + r * 0.03]} />
+          <mesh geometry={boxGeo(r * 0.05, r * 0.03, r * 0.03)} material={glassesM} position={[eyeX + r * 0.16, eyeY + r * 0.01, fz + r * 0.03]} />
+          <mesh geometry={boxGeo(r * 0.012, r * 0.012, r * 0.42)} material={glassesM} position={[-r * 0.85, eyeY + r * 0.01, -r * 0.1]} />
+          <mesh geometry={boxGeo(r * 0.012, r * 0.012, r * 0.42)} material={glassesM} position={[r * 0.85, eyeY + r * 0.01, -r * 0.1]} />
+        </group>
+      )}
+
+      {/* Hair band — a front arc across the forehead with round temple pads,
+          sitting just above the brows. */}
+      {hairBandM && (
+        <group>
+          <mesh geometry={torusArcGeo(r * 0.97, r * 0.045, Math.PI * 0.9, Math.PI * 0.05)} material={hairBandM}
+            position={[0, r * 0.52, 0]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={sphereGeo(1)} material={hairBandM} scale={[r * 0.09, r * 0.09, r * 0.09]} position={[r * 0.92, r * 0.52, r * 0.22]} />
+          <mesh geometry={sphereGeo(1)} material={hairBandM} scale={[r * 0.09, r * 0.09, r * 0.09]} position={[-r * 0.92, r * 0.52, r * 0.22]} />
+        </group>
+      )}
 
       {/* Eyelids for blink — sit just in front of the eye so they cover it */}
       <group ref={lidsRef} scale={[0, 0, 0]} position={[0, eyeY, fz + r * 0.075]}>
@@ -1211,10 +1396,10 @@ function DinoHead({ P, main, belly, spike }: { P: Proportions; main: Mat; belly:
       {/* smiley mouth line */}
       <mesh geometry={boxGeo(r * 0.5, r * 0.03, r * 0.02)} material={dark} position={[0, -r * 0.4, r * 1.02]} />
 
-      {/* a few cute little teeth peeking over the lip */}
+      {/* a few cute little teeth peeking over the lip — wide base hidden, narrow tip pokes up */}
       {[-0.16, -0.05, 0.05, 0.16].map((tx, i) => (
-        <mesh key={`t${i}`} geometry={taperGeo(r * 0.005, r * 0.035, r * 0.09)} material={white}
-          position={[tx * r, -r * 0.34, r * 1.02]} rotation={[Math.PI, 0, 0]} />
+        <mesh key={`t${i}`} geometry={taperGeo(r * 0.035, r * 0.005, r * 0.09)} material={white}
+          position={[tx * r, -r * 0.38, r * 1.02]} rotation={[Math.PI, 0, 0]} />
       ))}
 
       {/* rosy cheeks */}
@@ -1267,11 +1452,11 @@ function RabbitHead({ P, fur, inner, nose }: { P: Proportions; fur: Mat; inner: 
       {/* soft muzzle / cheeks */}
       <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.55, r * 0.42, r * 0.5]} position={[0, -r * 0.26, r * 0.68]} />
 
-      {/* tall upright ears with pink inner lining */}
+      {/* tall upright ears with pink inner lining — thick enough to read from the side */}
       {[-1, 1].map((sx) => (
         <group key={sx} position={[sx * r * 0.34, r * 0.95, -r * 0.02]} rotation={[-0.12, 0, sx * 0.16]}>
-          <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.24, r * 0.72, r * 0.16]} castShadow />
-          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.13, r * 0.56, r * 0.09]} position={[0, 0, r * 0.09]} />
+          <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.24, r * 0.72, r * 0.22]} castShadow />
+          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.13, r * 0.56, r * 0.14]} position={[0, 0, r * 0.09]} />
         </group>
       ))}
 
@@ -1337,20 +1522,20 @@ function PigHead({ P, main, belly, nose, dark }: { P: Proportions; main: Mat; be
         </group>
       ))}
 
-      {/* flat disc snout — the signature pig nose */}
-      <mesh geometry={sphereGeo(1)} material={nose} scale={[r * 0.5, r * 0.38, r * 0.32]} position={[0, -r * 0.24, r * 1.02]} castShadow />
-      {/* nostrils — two oval slits */}
-      <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.07, r * 0.11, r * 0.04]} position={[-r * 0.16, -r * 0.24, r * 1.32]} />
-      <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.07, r * 0.11, r * 0.04]} position={[r * 0.16, -r * 0.24, r * 1.32]} />
+      {/* flat disc snout — the signature pig nose, pulled back to sit on the face surface */}
+      <mesh geometry={sphereGeo(1)} material={nose} scale={[r * 0.5, r * 0.38, r * 0.32]} position={[0, -r * 0.24, r * 0.82]} castShadow />
+      {/* nostrils — two oval slits on the snout face */}
+      <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.07, r * 0.11, r * 0.04]} position={[-r * 0.16, -r * 0.24, r * 1.02]} />
+      <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.07, r * 0.11, r * 0.04]} position={[r * 0.16, -r * 0.24, r * 1.02]} />
 
       {/* freckles scattered across the snout */}
       {[[-0.3, 0.05], [0.0, 0.12], [0.3, 0.05], [-0.18, -0.1], [0.18, -0.1]].map(([dx, dy], i) => (
-        <mesh key={`fr${i}`} geometry={sphereGeo(1)} material={dark} scale={[r * 0.035, r * 0.035, r * 0.02]} position={[dx * r, -r * 0.18 + dy * r, r * 1.28]} />
+        <mesh key={`fr${i}`} geometry={sphereGeo(1)} material={dark} scale={[r * 0.035, r * 0.035, r * 0.02]} position={[dx * r, -r * 0.18 + dy * r, r * 1.06]} />
       ))}
 
       {/* wide happy smile under the snout */}
       <mesh geometry={torusGeo(r * 0.34, r * 0.035, 8, 20)} material={black}
-        position={[0, -r * 0.46, r * 0.98]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.6, 1]} />
+        position={[0, -r * 0.46, r * 0.82]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.6, 1]} />
 
       {/* little curly tuft of hair on top */}
       <mesh geometry={torusGeo(r * 0.12, r * 0.04, 6, 12)} material={dark}
@@ -1477,69 +1662,95 @@ function SunflowerHead({ P, yellow, dark, seed, green, petalEdge }: { P: Proport
 
   return (
     <group position={[0, cy, 0]}>
-      {/* rounded yellow skull (the face base behind the petals) */}
-      <mesh geometry={sphereGeo(1)} material={yellow} scale={[r * 1.05, r * 1.08, r * 0.92]} castShadow />
+      {/* warm honey seed disc — the sunflower centre the face sits on */}
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#c98a3d', 0.55)} scale={[r * 1.02, r * 1.0, r * 0.88]} castShadow />
 
       {/* Lily-style anime eyes — big coloured iris with dark limbal ring,
           brighter lower glow, small pupil, two catchlights, upper lash line */}
-      <Eye r={r} x={-r * 0.3} y={-r * 0.04} z={fz * 0.98} iris="#8c5a2e" />
-      <Eye r={r} x={r * 0.3} y={-r * 0.04} z={fz * 0.98} iris="#8c5a2e" />
+      <group scale={1.22}>
+        <Eye r={r} x={-r * 0.28} y={-r * 0.05} z={fz * 0.9} iris="#e0a03c" />
+        <Eye r={r} x={r * 0.28} y={-r * 0.05} z={fz * 0.9} iris="#e0a03c" />
+      </group>
 
-      {/* Lily-style eyebrows — thin, dark, gentle arch */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.16, r * 0.03, r * 0.02]} position={[-r * 0.3, -r * 0.04 + r * 0.18, fz * 0.98]} rotation={[0, 0, 0.14]} />
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.16, r * 0.03, r * 0.02]} position={[r * 0.3, -r * 0.04 + r * 0.18, fz * 0.98]} rotation={[0, 0, -0.14]} />
-
-      {/* Lily cute smile — a small centre dot + two side dots */}
-      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.045, r * 0.02, r * 0.01]} position={[0, -r * 0.51, fz * 0.92]} />
-      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.028, r * 0.018, r * 0.01]} position={[-r * 0.07, -r * 0.49, fz * 0.92]} />
-      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.028, r * 0.018, r * 0.01]} position={[r * 0.07, -r * 0.49, fz * 0.92]} />
-
-      {/* rosy cheeks */}
+      {/* soft under-eye shading — blends the eyes into the seed face */}
       {[-1, 1].map((sx) => (
-        <mesh key={`sch${sx}`} geometry={sphereGeo(1)} material={sharedMaterial('#f4a040', 0.5)} scale={[r * 0.13, r * 0.1, r * 0.05]} position={[sx * r * 0.5, -r * 0.12, fz * 0.8]} />
+        <mesh key={'esh' + sx} geometry={sphereGeo(1)} material={sharedMaterial('#a86f24', 0.5)}
+          scale={[r * 0.24, r * 0.07, r * 0.02]} position={[sx * r * 0.37, -r * 0.12, fz * 0.96]} />
+      ))}
+      {/* soft happy brows — short, high, gently arched */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.13, r * 0.03, r * 0.02]} position={[-r * 0.36, -r * 0.05 + r * 0.21, fz * 0.92]} rotation={[0, 0, 0.16]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.13, r * 0.03, r * 0.02]} position={[r * 0.36, -r * 0.05 + r * 0.26, fz * 0.92]} rotation={[0, 0, -0.22]} />
+
+      {/* Sweet smile — a small gentle curve */}
+      {[-0.08, -0.04, 0, 0.04, 0.08].map((dx, i) => (
+        <mesh key={'sm' + i} geometry={sphereGeo(1)} material={blackDot}
+          scale={[r * 0.036, r * 0.02, r * 0.01]}
+          position={[dx * r, -r * 0.46 + Math.abs(dx) * r * 0.7, fz * 0.92]} />
+      ))}
+      {[-0.09, 0.09].map((dx) => (
+        <mesh key={'smc' + dx} geometry={sphereGeo(1)} material={blackDot}
+          scale={[r * 0.022, r * 0.018, r * 0.01]}
+          position={[dx * r, -r * 0.4, fz * 0.92]} />
       ))}
 
-      {/* tiny seed dots scattered across the face as texture (no disc) */}
-      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-        const a = (i / 8) * Math.PI * 2 + 0.3
-        const dist = r * 0.65
+      {/* soft pink blush */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`sch${sx}`} geometry={sphereGeo(1)} material={sharedMaterial('#f7a8b8', 0.45)} scale={[r * 0.15, r * 0.12, r * 0.05]} position={[sx * r * 0.52, -r * 0.12, fz * 0.8]} />
+      ))}
+
+      {/* golden-angle seed spiral — the real sunflower core pattern */}
+      {Array.from({ length: 24 }, (_, i) => {
+        const a = i * 2.399963 + 0.4
+        const dist = r * (0.58 + (i / 23) * 0.14)
         return (
-          <mesh key={`sd${i}`} geometry={sphereGeo(1)} material={dark}
-            scale={[r * 0.04, r * 0.04, r * 0.03]}
-            position={[Math.cos(a) * dist, Math.sin(a) * dist * 0.7, fz * 0.8]} />
-        )
-      })}
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const a = (i / 6) * Math.PI * 2 + 0.7
-        const dist = r * 0.42
-        return (
-          <mesh key={`sd2${i}`} geometry={sphereGeo(1)} material={dark}
-            scale={[r * 0.03, r * 0.03, r * 0.02]}
-            position={[Math.cos(a) * dist, Math.sin(a) * dist * 0.7, fz * 0.84]} />
+          <mesh key={'sd' + i} geometry={sphereGeo(1)} material={seed}
+            scale={[r * (0.042 + (i % 4) * 0.005), r * (0.042 + (i % 4) * 0.005), r * 0.028]}
+            position={[Math.cos(a) * dist, Math.sin(a) * dist * 0.72, fz * 0.8]} />
         )
       })}
 
-      {/* BIG PETAL RING — petals radiating outward from the seed disc */}
-      {Array.from({ length: 18 }, (_, i) => {
-        const a = (i / 18) * Math.PI * 2
+      {/* PETAL BLOOM — bright soft rounded petals with organic variation + veins */}
+      {Array.from({ length: 16 }, (_, i) => {
+        const a = (i / 16) * Math.PI * 2
+        const sz = 1 + Math.sin(i * 1.7) * 0.09
+        const tilt = Math.cos(i * 2.1) * 0.05
         return (
-          <mesh key={`petal${i}`} geometry={sphereGeo(1)} material={petalEdge}
-            scale={[r * 0.28, r * 0.55, r * 0.05]}
-            position={[Math.cos(a) * r * 1.45, Math.sin(a) * r * 1.1, fz * 0.35]}
+          <group key={`petal${i}`} position={[Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.05, fz * 0.44]} rotation={[0, 0, a + Math.PI / 2 + tilt]}>
+            <mesh geometry={sphereGeo(1)} material={yellow} scale={[r * 0.36, r * 0.62 * sz, r * 0.05]} />
+            {/* subtle centre vein down the petal */}
+            <mesh geometry={taperGeo(r * 0.02, r * 0.006, r * 0.52)} material={dark}
+              scale={[0.16, 1, 0.3]} position={[0, 0, r * 0.035]} />
+          </group>
+        )
+      })}
+      {/* mid ring — pale gold petals tucked between, offset angle */}
+      {Array.from({ length: 16 }, (_, i) => {
+        const a = (i / 16) * Math.PI * 2 + Math.PI / 16
+        return (
+          <mesh key={`petm${i}`} geometry={sphereGeo(1)} material={petalEdge}
+            scale={[r * 0.32, r * 0.52, r * 0.05]}
+            position={[Math.cos(a) * r * 1.05, Math.sin(a) * r * 0.95, fz * 0.38]}
             rotation={[0, 0, a + Math.PI / 2]} />
         )
       })}
-      {/* inner ring of petals — slightly darker yellow, behind the outer ring */}
+      {/* inner ring — deep gold close against the disc */}
       {Array.from({ length: 14 }, (_, i) => {
         const a = (i / 14) * Math.PI * 2 + Math.PI / 18
         return (
-          <mesh key={`peti${i}`} geometry={sphereGeo(1)} material={yellow}
-            scale={[r * 0.22, r * 0.42, r * 0.05]}
-            position={[Math.cos(a) * r * 1.2, Math.sin(a) * r * 0.92, fz * 0.24]}
+          <mesh key={`peti${i}`} geometry={sphereGeo(1)} material={dark}
+            scale={[r * 0.28, r * 0.44, r * 0.05]}
+            position={[Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.85, fz * 0.32]}
             rotation={[0, 0, a + Math.PI / 2]} />
         )
       })}
 
+      {/* little green sprout leaves on top of the bloom */}
+      {[-0.5, 0.5].map((sx) => (
+        <mesh key={'spr' + sx} geometry={taperGeo(r * 0.07, r * 0.012, r * 0.4)} material={green}
+          scale={[0.5, 1, 1]}
+          position={[sx * r * 0.16, r * 1.34, r * 0.12]}
+          rotation={[0.2, 0, sx * 0.6 + 1.1]} />
+      ))}
       {/* small green leaf accent on the head */}
       <mesh geometry={sphereGeo(1)} material={green}
         scale={[r * 0.2, r * 0.35, r * 0.06]}
@@ -1613,36 +1824,46 @@ function GrimHead({ P, bone, boneDark, cloak, glow, gold }: { P: Proportions; bo
 
 /* ================================================ ELEPHANT HEAD ================================================ */
 
-/** Cute chibi elephant head — big round head, huge floppy ears, thick trunk
- *  with a graceful curl, curved ivory tusks, big sparkly eyes and round
- *  scholar glasses. Reads as an elephant first, a student second. */
-function ElephantHead({ P, main, dark, belly, inner, tusk, glasses, lens, cheek }: { P: Proportions; main: Mat; dark: Mat; belly: Mat; inner: Mat; tusk: Mat; glasses?: Mat; lens?: Mat; cheek?: Mat }) {
+/** Cute chibi elephant head matching the Pixar cafe-elephant look — big round
+ *  head, large rounded fan-like ears with soft creases that flop beside the
+ *  skull, a thick trunk hanging straight down the face centre with a soft
+ *  forward bow and a gentle inward curl at the tip, small curved tusks, soft
+ *  raised brow bumps, BIG sparkly eyes behind glossy round glasses and rosy
+ *  cheeks. Symmetric from every angle, with a warm translucent inner shell for
+ *  fake subsurface scattering. */
+function ElephantHead({ P, main, dark, belly, inner, tusk, glasses, lens, cheek, crease }: { P: Proportions; main: Mat; dark: Mat; belly: Mat; inner: Mat; tusk: Mat; glasses?: Mat; lens?: Mat; cheek?: Mat; crease?: Mat }) {
   const r = P.headR
   const cy = r * 0.92
 
-  /* wider pupil for a cute bug-eyed look */
-  const elephantIris = '#52341b'
+  const elephantIris = '#5a3314'
   const elephantPupil = '#0a0503'
   const elephantHighlight = '#ffffff'
 
-  // Thick trunk — smooth forward sweep, then a graceful upward curl at the tip
-  const trunkGeo = useMemo(() => {
+  // Thick trunk — hangs straight down the face centre (x stays 0 so the front
+  // silhouette is perfectly symmetric), bows gently forward, then eases into a
+  // soft inward curl at the tip like a relaxed elephant trunk.
+  // Thick trunk — hangs straight down the face centre, bows gently forward,
+  // and finishes in a soft curl at the tip. Tube, tip cap and nostrils are
+  // and nostrils are all computed from the SAME curve so they line up exactly.
+  const trunk = useMemo(() => {
     const curve = new CatmullRomCurve3([
-      new Vector3(0, -r * 0.12, r * 1.16),
-      new Vector3(0, -r * 0.5, r * 1.32),
-      new Vector3(r * 0.06, -r * 0.9, r * 1.38),
-      new Vector3(r * 0.14, -r * 1.3, r * 1.28),
-      new Vector3(r * 0.22, -r * 1.55, r * 1.08),
-      new Vector3(r * 0.28, -r * 1.44, r * 0.9),
+      new Vector3(0, -r * 0.05, r * 1.12),
+      new Vector3(0, -r * 0.4, r * 1.24),
+      new Vector3(0, -r * 0.75, r * 1.24),
+      new Vector3(0, -r * 1.0, r * 1.16),
+      new Vector3(0, -r * 1.15, r * 1.06),
+      new Vector3(0, -r * 1.2, r * 1.0),
     ])
-    const tubularSegs = 48
-    const radialSegs = 16
-    const geo = new TubeGeometry(curve, tubularSegs, r * 0.24, radialSegs, false)
+    const tubularSegs = 32
+    const radialSegs = 14
+    const baseR = r * 0.235
+    const taperRate = 0.5
+    const geo = new TubeGeometry(curve, tubularSegs, baseR, radialSegs, false)
     const pos = geo.attributes.position
     for (let i = 0; i < pos.count; i++) {
       const ring = Math.floor(i / (radialSegs + 1))
       const t = ring / tubularSegs
-      const taper = 1.0 - t * 0.42
+      const taper = 1.0 - t * taperRate
       const cp = curve.getPointAt(t)
       const vx = pos.getX(i) - cp.x
       const vy = pos.getY(i) - cp.y
@@ -1651,122 +1872,116 @@ function ElephantHead({ P, main, dark, belly, inner, tusk, glasses, lens, cheek 
     }
     pos.needsUpdate = true
     geo.computeVertexNormals()
-    return geo
+
+    // Tip cap anchor — end of the curve
+    const tip = curve.getPointAt(1)
+    // Nostril anchor — near the tip on the front face of the tube
+    const np = curve.getPointAt(0.86)
+    const nr = baseR * (1 - 0.86 * taperRate)
+    return { geo, tip, np, nr }
   }, [r])
 
   return (
     <group position={[0, cy, 0]}>
-      {/* Main head — big round chubby sphere */}
-      <mesh geometry={sphereGeo(1)} material={main} scale={[r * 1.3, r * 1.18, r * 1.15]} castShadow />
+      {/* Fake subsurface scattering — a warm translucent shell just outside the
+          skin scatters light around the silhouette, giving a soft organic glow */}
+      <mesh geometry={sphereGeo(1)} scale={[r * 1.36, r * 1.22, r * 1.2]}>
+        <meshStandardMaterial color="#d98a63" roughness={0.85} transparent opacity={0.22} side={BackSide} depthWrite={false} />
+      </mesh>
 
-      {/* Forehead dome — subtle darker cap for depth */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.72, r * 0.18, r * 0.6]} position={[0, r * 1.0, r * 0.2]} />
+      {/* Main head — big round chubby sphere, slightly wide for a gentle look */}
+      <mesh geometry={sphereGeo(1)} material={main} scale={[r * 1.32, r * 1.18, r * 1.16]} castShadow />
 
-      {/* Little hair tuft on the crown — cute chibi detail */}
-      <group position={[0, r * 1.1, r * 0.05]}>
-        <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.12, r * 0.14, r * 0.12]} />
-        <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.09, r * 0.11, r * 0.09]} position={[-r * 0.08, r * 0.05, r * 0.01]} />
-        <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.09, r * 0.11, r * 0.09]} position={[r * 0.08, r * 0.05, r * 0.01]} />
-      </group>
-
-      {/* Ears — huge floppy Dumbo-style ovals hanging from the skull sides,
-          with pink inner pads and wrinkle folds */}
+      {/* Ears — BIG round fan-like ears flopping beside the skull, with soft
+          pink inner pads and two gentle wrinkle folds (Pixar style) */}
       {[-1, 1].map((sx) => (
-        <group key={`ear${sx}`} position={[sx * r * 1.32, r * 0.08, -r * 0.08]} rotation={[0, sx * -0.25, sx * 0.32]}>
-          {/* main ear disc */}
-          <mesh geometry={sphereGeo(1)} material={main} scale={[r * 0.9, r * 1.22, r * 0.26]} castShadow />
-          {/* pink inner pad */}
-          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.64, r * 0.9, r * 0.16]} position={[0, 0, r * 0.05]} />
-          {/* ear fold wrinkles */}
-          <mesh geometry={torusGeo(r * 0.52, r * 0.024, 6, 20)} material={dark} position={[0, r * 0.3, r * 0.09]} rotation={[0.4, 0, 0]} />
-          <mesh geometry={torusGeo(r * 0.44, r * 0.022, 6, 20)} material={dark} position={[0, r * 0.02, r * 0.09]} rotation={[0.4, 0, 0]} />
+        <group key={`ear${sx}`} position={[sx * r * 1.34, r * 0.06, -r * 0.14]} rotation={[0, sx * -0.16, sx * 0.15]}>
+          {/* main ear disc — big round fan */}
+          <mesh geometry={sphereGeo(1)} material={main} scale={[r * 1.18, r * 1.3, r * 0.34]} castShadow />
+          {/* pink inner pad — soft and blended */}
+          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.84, r * 0.95, r * 0.22]} position={[0, -r * 0.04, r * 0.08]} />
+          {/* soft crease shading — thin darker ellipses sitting proud of the pad */}
+          <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.5, r * 0.12, r * 0.06]} position={[0, r * 0.34, r * 0.3]} rotation={[0.3, 0, 0]} />
+          <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.42, r * 0.1, r * 0.06]} position={[0, r * 0.08, r * 0.31]} rotation={[0.42, 0, 0]} />
         </group>
       ))}
 
       {/* Trunk base mound — muscular root at the mouth */}
-      <mesh geometry={sphereGeo(1)} material={main} scale={[r * 0.5, r * 0.34, r * 0.32]} position={[0, -r * 0.1, r * 1.06]} castShadow />
+      <mesh geometry={sphereGeo(1)} material={main} scale={[r * 0.52, r * 0.34, r * 0.34]} position={[0, -r * 0.08, r * 1.06]} castShadow />
 
-      {/* Trunk wrinkle rings */}
-      {[
-        [r * 0.0, -r * 0.3, r * 1.28, r * 0.22],
-        [r * 0.02, -r * 0.58, r * 1.35, r * 0.21],
-        [r * 0.05, -r * 0.86, r * 1.37, r * 0.2],
-        [r * 0.08, -r * 1.13, r * 1.33, r * 0.18],
-        [r * 0.13, -r * 1.36, r * 1.24, r * 0.17],
-      ].map(([wx, wy, wz, wrr], i) => (
-        <mesh key={`twr${i}`} geometry={torusGeo(wrr as number, r * 0.013, 8, 24)} material={dark}
-          position={[wx as number, wy as number, wz as number]} rotation={[Math.PI / 3, 0, 0]} />
-      ))}
+      {/* Trunk tube — hangs straight down, bows softly forward, curls gently at the tip */}
+      <mesh geometry={trunk.geo} material={main} castShadow />
 
-      {/* Trunk tube — thick, sweeping forward and curling up at the tip */}
-      <mesh geometry={trunkGeo} material={main} castShadow />
+      {/* Trunk tip — rounded darker cap at the curled end */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.15, r * 0.13, r * 0.15]}
+        position={[trunk.tip.x, trunk.tip.y, trunk.tip.z]} />
 
-      {/* Trunk tip */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.18, r * 0.17, r * 0.18]} position={[r * 0.28, -r * 1.44, r * 0.9]} />
+      {/* Nostrils — on the trunk surface near the tip, hugging the tube */}
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#111111', 0.2)} scale={[r * 0.045, r * 0.03, r * 0.03]}
+        position={[trunk.np.x + trunk.nr * 0.5, trunk.np.y, trunk.np.z + trunk.nr * 0.7]} />
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#111111', 0.2)} scale={[r * 0.045, r * 0.03, r * 0.03]}
+        position={[trunk.np.x - trunk.nr * 0.5, trunk.np.y, trunk.np.z + trunk.nr * 0.7]} />
 
-      {/* Nostrils on the trunk front */}
-      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#111111', 0.2)} scale={[r * 0.065, r * 0.045, r * 0.035]} position={[r * 0.2, -r * 1.1, r * 1.35]} />
-      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#111111', 0.2)} scale={[r * 0.065, r * 0.045, r * 0.035]} position={[r * 0.27, -r * 1.1, r * 1.36]} />
-
-      {/* Tusks — prominent curved ivory tusks jutting forward and outward */}
+      {/* Tusks — small curved ivory tusks jutting forward from the trunk base */}
       {[-1, 1].map((sx) => (
-        <group key={`tusk${sx}`} position={[sx * r * 0.36, -r * 0.22, r * 0.9]} rotation={[0.6, sx * -0.28, sx * -0.34]}>
-          <mesh geometry={taperGeo(r * 0.08, r * 0.024, r * 0.58)} material={tusk} castShadow />
+        <group key={`tusk${sx}`} position={[sx * r * 0.36, -r * 0.3, r * 0.95]} rotation={[0.5, sx * -0.3, sx * -0.4]}>
+          <mesh geometry={taperGeo(r * 0.07, r * 0.02, r * 0.5)} material={tusk} castShadow />
         </group>
       ))}
 
-      {/* Eyes — big round sparkly bug-eyes bulging off the face */}
+      {/* Eyes — BIG round Pixar eyes built from layered flat discs so the iris,
+          pupil and catchlights always sit IN FRONT of the white sclera */}
       {[-1, 1].map((sx) => (
-        <group key={`eye${sx}`} position={[sx * r * 0.38, r * 0.17, r * 1.08]}>
-          {/* large white sclera */}
-          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.85)} scale={[r * 0.24, r * 0.3, r * 0.16]} />
-          {/* dark iris */}
-          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantIris, 0.6)} scale={[r * 0.17, r * 0.2, r * 0.11]} position={[0, 0, r * 0.045]} />
+        <group key={`eye${sx}`} position={[sx * r * 0.4, r * 0.24, r * 1.13]}>
+          {/* white sclera — rounder cap so the eye reads full and cute */}
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.85)} scale={[r * 0.32, r * 0.36, r * 0.07]} />
+          {/* dark limbal ring around the iris edge */}
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial('#2f1d10', 0.55)} scale={[r * 0.25, r * 0.28, r * 0.06]} position={[0, 0, r * 0.02]} />
+          {/* warm brown iris */}
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantIris, 0.6)} scale={[r * 0.22, r * 0.25, r * 0.065]} position={[0, 0, r * 0.024]} />
           {/* dark pupil */}
-          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantPupil, 0.5)} scale={[r * 0.08, r * 0.09, r * 0.055]} position={[0, 0, r * 0.09]} />
-          {/* top catchlight */}
-          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantHighlight, 0.9)} scale={[r * 0.06, r * 0.06, r * 0.022]} position={[-r * 0.03, r * 0.045, r * 0.15]} />
-          {/* bottom catchlight */}
-          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantHighlight, 0.7)} scale={[r * 0.032, r * 0.032, r * 0.022]} position={[r * 0.045, -r * 0.055, r * 0.14]} />
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantPupil, 0.5)} scale={[r * 0.12, r * 0.13, r * 0.07]} position={[0, 0, r * 0.032]} />
+          {/* big top catchlight */}
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantHighlight, 0.95)} scale={[r * 0.085, r * 0.085, r * 0.07]} position={[-r * 0.035, r * 0.05, r * 0.04]} />
+          {/* small secondary highlight */}
+          <mesh geometry={sphereGeo(1)} material={sharedMaterial(elephantHighlight, 0.8)} scale={[r * 0.045, r * 0.045, r * 0.07]} position={[r * 0.05, -r * 0.055, r * 0.04]} />
         </group>
       ))}
-      {/* Upper eyelid wrinkle — soft brow line above each eye */}
+      {/* Soft raised brow bumps above the eyes — rounded, not bars */}
       {[-1, 1].map((sx) => (
-        <mesh key={`lid${sx}`} geometry={torusGeo(r * 0.15, r * 0.013, 6, 16)} material={dark}
-          position={[sx * r * 0.38, r * 0.27, r * 1.12]} rotation={[0.25, 0, 0]} />
+        <mesh key={`brow${sx}`} geometry={sphereGeo(1)} material={main}
+          scale={[r * 0.15, r * 0.09, r * 0.12]} position={[sx * r * 0.4, r * 0.49, r * 1.08]} />
+      ))}
+      {/* Soft under-eye creases — gentle shading below the eyes for depth */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`cr${sx}`} geometry={sphereGeo(1)} material={crease}
+          scale={[r * 0.3, r * 0.06, r * 0.03]} position={[sx * r * 0.4, r * 0.0, r * 1.22]} />
       ))}
 
-      {/* Round scholar glasses — dark frames, faint transparent lenses, bridge + temples */}
+      {/* Round glasses — glossy dark metallic frames, faint lenses, bridge sits above the trunk */}
       <group>
         {[-1, 1].map((sx) => (
-          <group key={`gl${sx}`} position={[sx * r * 0.38, r * 0.17, r * 1.23]}>
+          <group key={`gl${sx}`} position={[sx * r * 0.4, r * 0.24, r * 1.27]}>
             {/* faint lens */}
-            <mesh geometry={sphereGeo(1)} material={lens ?? sharedMaterial('#dfe8f5', 0.1, 0.1)} scale={[r * 0.3, r * 0.3, r * 0.035]} />
-            {/* dark round frame ring */}
-            <mesh geometry={torusGeo(r * 0.33, r * 0.019, 8, 24)} material={glasses ?? sharedMaterial('#2a2a2e', 0.3, 0.4)} rotation={[0.1, sx * 0.08, 0]} />
-            {/* temple arm back along the head */}
-            <mesh geometry={boxGeo(r * 0.024, r * 0.017, r * 0.36)} material={glasses ?? sharedMaterial('#2a2a2e', 0.3, 0.4)}
-              position={[sx * r * 0.64, r * 0.19, r * 0.88]} rotation={[0.4, 0, 0]} />
+            <mesh geometry={sphereGeo(1)} material={lens ?? sharedMaterial('#e8eef8', 0.05, 0.2)} scale={[r * 0.36, r * 0.36, r * 0.04]} />
+            {/* glossy dark frame ring — slightly thicker */}
+            <mesh geometry={torusGeo(r * 0.39, r * 0.017, 8, 24)} material={glasses ?? sharedMaterial('#2a2f3a', 0.16, 0.92)} rotation={[0.1, sx * 0.08, 0]} />
           </group>
         ))}
-        {/* bridge across the nose */}
-        <mesh geometry={boxGeo(r * 0.17, r * 0.024, r * 0.018)} material={glasses ?? sharedMaterial('#2a2a2e', 0.3, 0.4)}
-          position={[0, r * 0.34, r * 1.23]} />
+        {/* bridge arches over the trunk — higher y to clear the trunk mound */}
+        <mesh geometry={boxGeo(r * 0.2, r * 0.02, r * 0.018)} material={glasses ?? sharedMaterial('#2a2f3a', 0.16, 0.92)}
+          position={[0, r * 0.52, r * 1.27]} />
       </group>
 
-      {/* Rosy round cheeks */}
+      {/* Rosy cheeks — softly blended into the skin */}
       {[-1, 1].map((sx) => (
-        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={cheek ?? sharedMaterial('#f8a0a0', 0.55)}
-          scale={[r * 0.24, r * 0.18, r * 0.09]} position={[sx * r * 0.58, -r * 0.04, r * 1.02]} />
+        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={cheek ?? sharedMaterial('#f2a0b0', 0.5)}
+          scale={[r * 0.28, r * 0.22, r * 0.1]} position={[sx * r * 0.57, -r * 0.04, r * 1.0]} />
       ))}
 
-      {/* Tiny button nose on the trunk root */}
-      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#8a8f94', 0.7)}
-        scale={[r * 0.16, r * 0.12, r * 0.08]} position={[0, -r * 0.1, r * 1.28]} />
-
-      {/* Cute 'w' mouth below the trunk root */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.065, r * 0.04]} position={[-r * 0.09, -r * 0.47, r * 1.02]} />
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.065, r * 0.04]} position={[r * 0.09, -r * 0.47, r * 1.02]} />
+      {/* Tiny smile peeking around the trunk base */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.09, r * 0.05, r * 0.03]} position={[-r * 0.2, -r * 0.42, r * 1.08]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.09, r * 0.05, r * 0.03]} position={[r * 0.2, -r * 0.42, r * 1.08]} />
     </group>
   )
 }
@@ -1788,61 +2003,119 @@ function MonkeyHead({ P, fur, face, dark, inner, belly }: { P: Proportions; fur:
   return (
     <group position={[0, cy, 0]}>
       {/* round furry head — slightly wider than tall for a cute monkey face */}
-      <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 1.1, r * 1.05, r * 1.02]} castShadow />
-
-      {/* lighter tan face mask — heart/oval shaped, centred on the front */}
-      <mesh geometry={sphereGeo(1)} material={face} scale={[r * 0.7, r * 0.7, r * 0.62]} position={[0, -r * 0.06, r * 0.5]} />
+      <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 1.12, r * 1.1, r * 1.0]} castShadow />
+      {/* darker fur crown shading — subtle dark cap hugging the top-back of the skull */}
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#7d4f30', 0.85)} scale={[r * 1.0, r * 0.46, r * 0.97]} position={[0, r * 0.52, -r * 0.16]} />
+      {/* tan face — big bare-skin face covering the whole front of the head */}
+      <mesh geometry={sphereGeo(1)} material={face} scale={[r * 0.8, r * 0.84, r * 0.5]} position={[0, -r * 0.06, r * 0.6]} />
 
       {/* big round ears on the sides — one of the most recognizable monkey features */}
       {[-1, 1].map((sx) => (
-        <group key={`ear${sx}`} position={[sx * r * 1.0, r * 0.3, -r * 0.05]}>
+        <group key={`ear${sx}`} position={[sx * r * 1.05, r * 0.28, -r * 0.06]} rotation={[0.12, sx * -0.08, sx * 0.14]}>
           {/* outer ear — big round disc */}
-          <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.4, r * 0.5, r * 0.1]} />
+          <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.44, r * 0.54, r * 0.11]} />
           {/* inner ear — lighter pinkish/tan */}
-          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.26, r * 0.34, r * 0.06]} position={[sx * -r * 0.02, -r * 0.02, r * 0.05]} />
+          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.3, r * 0.38, r * 0.07]} position={[sx * -r * 0.02, -r * 0.02, r * 0.05]} />
         </group>
       ))}
 
-      {/* big friendly eyes — wide-set, expressive with catchlights, bulging
-          off the mask surface (were buried inside the head/mask) */}
+      {/* Monkey eyes — bright sclera, warm iris, clear dark pupil + white highlights */}
+      {[-1, 1].map((sx) => {
+        const er = r * 0.25
+        return (
+          <group key={`me${sx}`} position={[sx * r * 0.37, r * 0.08, r * 1.1]} rotation={[0, 0, sx * -0.06]}>
+            {/* white sclera */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.35)} scale={[er * 1.22, er * 1.12, r * 0.07]} />
+            {/* warm iris */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#c08a4e', 0.3)} scale={[er * 0.95, er * 0.9, r * 0.06]} position={[0, 0, r * 0.024]} />
+            {/* darker iris ring */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#8a5a26', 0.3)} scale={[er * 0.62, er * 0.56, r * 0.062]} position={[0, 0, r * 0.028]} />
+            {/* dark pupil */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#140d06', 0.45)} scale={[er * 0.42, er * 0.42, r * 0.065]} position={[0, 0, r * 0.033]} />
+            {/* big top highlight + small bottom sparkle */}
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.1)} scale={[er * 0.32, er * 0.32, r * 0.068]} position={[-er * 0.26, er * 0.28, r * 0.037]} />
+            <mesh geometry={sphereGeo(1)} material={sharedMaterial('#ffffff', 0.1)} scale={[er * 0.14, er * 0.14, r * 0.068]} position={[er * 0.24, -er * 0.2, r * 0.037]} />
+          </group>
+        )
+      })}
+
+
+      {/* flat monkey face features — no protruding muzzle, nose + mouth sit flat */}
+      {/* small flat nose */}
+      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.11, r * 0.08, r * 0.07]} position={[0, -r * 0.18, r * 1.1]} />
+      {/* close-set nostrils just below the nose */}
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#0a0a0a', 0.2)} scale={[r * 0.04, r * 0.03, r * 0.018]} position={[-r * 0.05, -r * 0.26, r * 1.14]} />
+      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#0a0a0a', 0.2)} scale={[r * 0.04, r * 0.03, r * 0.018]} position={[r * 0.05, -r * 0.26, r * 1.14]} />
+      {/* wide flat smile */}
+      {[-0.12, -0.06, 0, 0.06, 0.12].map((dx, i) => (
+        <mesh key={`sm${i}`} geometry={sphereGeo(1)} material={blackDot}
+          scale={[r * (i === 2 ? 0.05 : 0.045), r * 0.03, r * 0.022]}
+          position={[dx * r, -r * 0.4 + Math.abs(dx) * r * 0.55, r * 1.1]} />
+      ))}
+      {/* cute corner dimples */}
       {[-1, 1].map((sx) => (
-        <group key={`eye${sx}`} position={[sx * r * 0.3, r * 0.08, r * 1.02]}>
-          {/* white sclera */}
-          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.22, r * 0.25, r * 0.13]} />
-          {/* dark iris */}
-          <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.12, r * 0.14, r * 0.09]} position={[0, 0, r * 0.06]} />
-          {/* catchlights — two per eye for sparkle */}
-          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.05, r * 0.05, r * 0.02]} position={[sx * -r * 0.03, r * 0.06, r * 0.13]} />
-          <mesh geometry={sphereGeo(1)} material={white} scale={[r * 0.03, r * 0.03, r * 0.02]} position={[sx * r * 0.02, -r * 0.04, r * 0.13]} />
-        </group>
+        <mesh key={`dm${sx}`} geometry={sphereGeo(1)} material={blackDot}
+          scale={[r * 0.032, r * 0.028, r * 0.022]} position={[sx * r * 0.18, -r * 0.34, r * 1.09]} />
       ))}
-
-      {/* brow ridge — subtle fur ledge above the eyes */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.7, r * 0.08, r * 0.3]} position={[0, r * 0.22, r * 0.85]} />
-
-      {/* small dark nose — slightly protruding */}
-      <mesh geometry={sphereGeo(1)} material={blackDot} scale={[r * 0.12, r * 0.09, r * 0.1]} position={[0, -r * 0.24, r * 1.04]} />
-
-      {/* nostrils — two tiny dots */}
-      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#0a0a0a', 0.2)} scale={[r * 0.025, r * 0.025, r * 0.01]} position={[-r * 0.04, -r * 0.24, r * 1.12]} />
-      <mesh geometry={sphereGeo(1)} material={sharedMaterial('#0a0a0a', 0.2)} scale={[r * 0.025, r * 0.025, r * 0.01]} position={[r * 0.04, -r * 0.24, r * 1.12]} />
-
-      {/* wide cheeky grin — a curved mouth line */}
-      <mesh geometry={torusGeo(r * 0.3, r * 0.03, 8, 20)} material={blackDot}
-        position={[0, -r * 0.46, r * 1.0]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.55, 1]} />
-
       {/* lower lip for a fuller smile */}
-      <mesh geometry={sphereGeo(1)} material={belly} scale={[r * 0.18, r * 0.05, r * 0.08]} position={[0, -r * 0.52, r * 1.0]} />
+      <mesh geometry={sphereGeo(1)} material={belly} scale={[r * 0.18, r * 0.05, r * 0.07]} position={[0, -r * 0.5, r * 1.06]} />
 
       {/* rosy cheeks */}
       {[-1, 1].map((sx) => (
-        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.13, r * 0.09, r * 0.05]} position={[sx * r * 0.52, -r * 0.1, r * 0.92]} />
+        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.16, r * 0.11, r * 0.05]} position={[sx * r * 0.66, -r * 0.4, r * 0.84]} />
       ))}
 
-      {/* little tuft of fur on top of the head */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.14, r * 0.14, r * 0.14]} position={[0, r * 1.0, r * 0.35]} />
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.1, r * 0.1]} position={[-r * 0.08, r * 1.05, r * 0.3]} />
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.1, r * 0.1]} position={[r * 0.08, r * 1.05, r * 0.3]} />
+      {/* little tuft of fur on top of the head — seated flush on the skull */}
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.16, r * 0.18, r * 0.15]} position={[0, r * 0.95, r * 0.3]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.13, r * 0.14, r * 0.12]} position={[-r * 0.1, r * 1.0, r * 0.26]} />
+      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.13, r * 0.14, r * 0.12]} position={[r * 0.1, r * 1.0, r * 0.26]} />
+    </group>
+  )
+}
+
+/* ================================================ MONKEY TAIL ================================================ */
+
+/** Long curling monkey tail — one smooth tapered tube (like the elephant trunk)
+ *  sweeping down from the lower back and easing into a curl at the tip, with a
+ *  lighter tan tip cap. Replaces the old stack of torus rings. */
+function MonkeyTail({ P, fur, belly }: { P: Proportions; fur: Mat; belly: Mat }) {
+  const tail = useMemo(() => {
+    const curve = new CatmullRomCurve3([
+      new Vector3(0, 0, 0),
+      new Vector3(0, -P.upperLeg * 0.14, P.hipBoneW * 0.05),
+      new Vector3(0, -P.upperLeg * 0.28, P.hipBoneW * 0.09),
+      new Vector3(0, -P.upperLeg * 0.4, P.hipBoneW * 0.08),
+      new Vector3(0, -P.upperLeg * 0.5, P.hipBoneW * 0.03),
+      new Vector3(0, -P.upperLeg * 0.56, -P.hipBoneW * 0.05),
+      new Vector3(0, -P.upperLeg * 0.6, -P.hipBoneW * 0.12),
+    ])
+    const tubularSegs = 24
+    const radialSegs = 10
+    const baseR = P.hipBoneW * 0.11
+    const taperRate = 0.72
+    const geo = new TubeGeometry(curve, tubularSegs, baseR, radialSegs, false)
+    const pos = geo.attributes.position
+    for (let i = 0; i < pos.count; i++) {
+      const ring = Math.floor(i / (radialSegs + 1))
+      const t = ring / tubularSegs
+      const taper = 1.0 - t * taperRate
+      const cp = curve.getPointAt(t)
+      const vx = pos.getX(i) - cp.x
+      const vy = pos.getY(i) - cp.y
+      const vz = pos.getZ(i) - cp.z
+      pos.setXYZ(i, cp.x + vx * taper, cp.y + vy * taper, cp.z + vz * taper)
+    }
+    pos.needsUpdate = true
+    geo.computeVertexNormals()
+    const tip = curve.getPointAt(1)
+    return { geo, tip }
+  }, [P])
+  return (
+    <group>
+      <mesh geometry={tail.geo} material={fur} castShadow />
+      {/* lighter tan tip cap */}
+      <mesh geometry={sphereGeo(1)} material={belly} scale={[P.hipBoneW * 0.08, P.hipBoneW * 0.08, P.hipBoneW * 0.08]}
+        position={[tail.tip.x, tail.tip.y, tail.tip.z]} />
     </group>
   )
 }
@@ -2187,15 +2460,15 @@ function WizardHat({ P }: { P: Proportions }) {
 
 /* ================================================ ARMS ================================================ */
 
-function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isRobot, glowM, isHacker, isMonkey, monkeyDark, isElephant }: {
+function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isRobot, glowM, isHacker, isMonkey, monkeyDark, isElephant, isSunflower, nailM, config }: {
   side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-  P: Proportions; skin: Mat; topM: Mat; isSleeved: boolean; isDino?: boolean; isAngel?: boolean; clawM?: Mat; isRobot?: boolean; glowM?: Mat; isHacker?: boolean; isMonkey?: boolean; monkeyDark?: Mat; isElephant?: boolean
+  P: Proportions; skin: Mat; topM: Mat; isSleeved: boolean; isDino?: boolean; isAngel?: boolean; clawM?: Mat; isRobot?: boolean; glowM?: Mat; isHacker?: boolean; isMonkey?: boolean; monkeyDark?: Mat; isElephant?: boolean; isSunflower?: boolean; nailM?: Mat; config: AvatarConfig
 }) {
   const sign = side === 'L' ? -1 : 1
   const upper: BoneName = side === 'L' ? 'armUpperL' : 'armUpperR'
   const lower: BoneName = side === 'L' ? 'armLowerL' : 'armLowerR'
-  const armM = isElephant ? skin : isSleeved ? topM : skin
-  const gloveM = isHacker ? sharedMaterial('#0e0f13', 0.7, 0.05) : isMonkey && monkeyDark ? monkeyDark : skin
+  const armM = isSunflower ? sharedMaterial('#5caa3a', 0.65) : isElephant ? skin : isSleeved ? topM : skin
+  const gloveM = isHacker ? sharedMaterial('#0e0f13', 0.7, 0.05) : isMonkey && monkeyDark ? monkeyDark : isSunflower ? sharedMaterial('#4c9a2f', 0.7) : skin
   // Elephant arms are thick chunky columns like their legs
   const eArmElbowR = isElephant ? P.elbowR * 1.35 : P.elbowR
   const eArmWristR = isElephant ? P.wristR * 1.4 : P.wristR
@@ -2205,17 +2478,27 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
 
   return (
     <group ref={bind(upper)} position={[sign * P.shoulderW, 0.04 + P.spineLen + P.chestLen * 0.65, 0]}>
-      {/* Elephant: smooth chunky column arm (no shoulder ball). Human: deltoid
+      {/* Elephant: full navy sleeve over a chunky column arm. Human: deltoid
           that domes over and tucks up inside the torso. */}
       {isElephant ? (
-        <mesh geometry={latheGeo([
-          [eArmElbowR, -P.upperArm * eArmY],
-          [eArmElbowR * 1.12, -P.upperArm * 0.7 * eArmY],
-          [eArmTopR, -P.upperArm * 0.35 * eArmY],
-          [eArmTopR * 1.05, -P.upperArm * 0.1 * eArmY],
-          [eArmTopR * 0.8, P.upperArm * 0.12 * eArmY],
-          [eArmTopR * 0.3, P.upperArm * 0.24 * eArmY],
-        ])} material={armM} castShadow />
+        <>
+          {/* Full-length navy sleeve — soft puff at the shoulder, tapering to a
+              neat hem right at the elbow so the arm reads as one smooth limb */}
+          <mesh geometry={latheGeo([
+            [eArmElbowR * 1.04, -P.upperArm * eArmY],
+            [eArmElbowR * 1.1, -P.upperArm * 0.8 * eArmY],
+            [eArmElbowR * 1.16, -P.upperArm * 0.6 * eArmY],
+            [eArmTopR * 0.96, -P.upperArm * 0.45 * eArmY],
+            [eArmTopR * 1.08, -P.upperArm * 0.3 * eArmY],
+            [eArmTopR * 1.14, -P.upperArm * 0.1 * eArmY],
+            [eArmTopR * 1.1, P.upperArm * 0.06 * eArmY],
+            [eArmTopR * 0.7, P.upperArm * 0.16 * eArmY],
+            [eArmTopR * 0.25, P.upperArm * 0.22 * eArmY],
+          ])} material={topM} castShadow />
+          {/* Gold cuff ring at the elbow hem */}
+          <mesh geometry={torusGeo(eArmElbowR * 1.1, eArmElbowR * 0.05, 8, 20)} material={sharedMaterial('#D4AF37', 0.3, 0.65)}
+            position={[0, -P.upperArm * eArmY, P.wristR * 0.4]} rotation={[Math.PI / 2, 0, 0]} />
+        </>
       ) : (
         <mesh geometry={latheGeo([
           [P.elbowR, -P.upperArm],
@@ -2235,11 +2518,11 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
             subtle swell near the elbow. */}
         {isElephant ? (
           <mesh geometry={latheGeo([
-            [eArmElbowR, -P.lowerArm * eArmY],
-            [eArmElbowR * 1.12, -P.lowerArm * 0.7 * eArmY],
-            [eArmWristR * 1.5, -P.lowerArm * 0.4 * eArmY],
-            [eArmWristR * 1.35, -P.lowerArm * 0.15 * eArmY],
-            [eArmWristR * 1.2, 0],
+            [eArmElbowR * 1.02, -P.lowerArm * eArmY],
+            [eArmElbowR * 1.08, -P.lowerArm * 0.72 * eArmY],
+            [eArmElbowR * 1.02, -P.lowerArm * 0.48 * eArmY],
+            [eArmWristR * 1.28, -P.lowerArm * 0.24 * eArmY],
+            [eArmWristR * 1.16, 0],
           ])} material={skin} castShadow />
         ) : (
           <mesh geometry={latheGeo([
@@ -2249,17 +2532,23 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
             [P.elbowR * 1.05, -P.lowerArm * 0.35],
             [P.elbowR * 1.08, -P.lowerArm * 0.2],
             [P.elbowR, 0],
-          ])} material={isAngel ? topM : skin} castShadow />
+          ])} material={isAngel ? topM : isSunflower ? sharedMaterial('#5caa3a', 0.65) : skin} castShadow />
         )}
-        {/* Elephant: subtle dark elbow fold ring */}
-        {isElephant && (
-          <mesh geometry={torusGeo(eArmElbowR * 1.06, eArmElbowR * 0.045, 8, 20)} material={sharedMaterial('#6e7378', 0.6)}
-            position={[0, -P.lowerArm * eArmY * 0.05, P.wristR * 0.5]} rotation={[Math.PI / 2, 0, 0]} />
+        {/* Sunflower: natural cloth fold ring at the elbow */}
+        {isSunflower && (
+          <mesh geometry={torusGeo(P.elbowR * 1.06, P.elbowR * 0.055, 8, 18)} material={sharedMaterial('#4c9a2f', 0.7)}
+            position={[0, -P.lowerArm * 0.06, 0]} rotation={[Math.PI / 2, 0, 0]} />
         )}
         {/* Angel: flowing bell sleeve flared cone at the wrist */}
         {isAngel && (
           <mesh geometry={skirtGeo(P.wristR * 1.1, P.wristR * 2.4, P.wristR * 2.2)} material={topM}
             position={[0, -P.lowerArm - P.wristR * 0.3, 0]} castShadow />
+        )}
+
+        {/* Soft elbow joint — rounds the upper-arm/forearm junction */}
+        {isElephant && (
+          <mesh geometry={sphereGeo(1)} material={skin} scale={[eArmElbowR * 1.2, eArmElbowR * 1.05, eArmElbowR * 1.2]}
+            position={[0, -P.lowerArm * 0.02 * eArmY, 0]} />
         )}
 
         {/* Hand — pushed slightly forward (+Z) off the sleeve's centre line and
@@ -2268,29 +2557,83 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
             which otherwise made the hand read as "merged into the clothes"). */}
         <group position={[0, -P.lowerArm * eArmY - P.wristR * 0.2, P.wristR * 0.3]}>
           {/* exposed wrist cuff between the sleeve end and the palm (gloved for hacker) */}
-          <mesh geometry={taperGeo(P.wristR * 0.95, P.wristR * 0.7, P.wristR * 1.5)} material={gloveM} position={[0, P.wristR * 0.55, 0]} castShadow />
-          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 1.8 : 1.3), P.handLen * (isElephant ? 0.55 : 0.48), P.wristR * (isElephant ? 1.5 : 1.1)]} position={[0, -P.handLen * 0.3, 0]} castShadow />
+          <mesh geometry={taperGeo(P.wristR * 1.12, P.wristR * 0.92, P.wristR * 1.35)} material={gloveM} position={[0, P.wristR * 0.55, 0]} castShadow />
+          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 1.8 : isSunflower ? 1.6 : 1.3), P.handLen * (isElephant ? 0.55 : isSunflower ? 0.52 : 0.48), P.wristR * (isElephant ? 1.5 : isSunflower ? 1.4 : 1.1)]} position={[0, -P.handLen * 0.3, 0]} castShadow />
+          {/* Sunflower: leafy wrist cuff + a tiny green leaf bud */}
+          {isSunflower && (
+            <>
+              <mesh geometry={torusGeo(P.wristR * 1.08, P.wristR * 0.09, 8, 16)} material={sharedMaterial('#4c9a2f', 0.7)}
+                position={[0, P.wristR * 0.5, 0]} rotation={[Math.PI / 2, 0, 0]} />
+              <mesh geometry={taperGeo(P.wristR * 0.32, P.wristR * 0.01, P.wristR * 1.2)} material={sharedMaterial('#5caa3a', 0.65)}
+                scale={[0.4, 1, 1]}
+                position={[0, -P.handLen * 0.05, P.wristR * 0.2]} rotation={[0.5, 0, 1.0]} />
+            </>
+          )}
           {/* Elephant: soft lighter paw pad on the palm, like their feet */}
           {isElephant && (
             <mesh geometry={sphereGeo(1)} material={sharedMaterial('#a89da0', 0.7)}
               scale={[P.wristR * 1.0, P.handLen * 0.18, P.wristR * 0.7]}
               position={[0, -P.handLen * 0.14, P.wristR * 1.0]} />
           )}
-          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 0.4 : 0.26), P.wristR * (isElephant ? 0.4 : 0.26), P.wristR * (isElephant ? 0.4 : 0.26)]} position={[P.wristR * (isElephant ? 1.2 : 0.88), -P.handLen * 0.12, P.wristR * (isElephant ? 0.35 : 0.26)]} />
-          {[-P.wristR * 0.55, -P.wristR * 0.18, P.wristR * 0.18, P.wristR * 0.5].map((fx, i) => (
-            <group key={i} position={[fx, -P.handLen * 0.45, 0]}>
-              <mesh geometry={taperGeo(P.wristR * (isElephant ? 0.3 : 0.12), P.wristR * (isElephant ? 0.2 : 0.08), P.handLen * (isElephant ? 0.32 : 0.28 - i * 0.02))} material={gloveM} position={[0, -P.handLen * 0.12, 0]} />
-              <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 0.2 : 0.08), P.wristR * (isElephant ? 0.2 : 0.08), P.wristR * (isElephant ? 0.2 : 0.08)]} position={[0, -P.handLen * (isElephant ? 0.3 : 0.26 - i * 0.02), 0]} />
-              {/* dino claw tip */}
-              {isDino && (
-                <mesh geometry={taperGeo(P.wristR * 0.005, P.wristR * 0.09, P.handLen * 0.16)} material={clawM ?? skin} position={[0, -P.handLen * (0.32 - i * 0.02), P.wristR * 0.04]} rotation={[0.5, 0, 0]} />
-              )}
-            </group>
-          ))}
-          /* Robot: block hand (no fingers) + glowing animated line on the forearm. */
+          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 0.45 : 0.26), P.wristR * (isElephant ? 0.45 : 0.26), P.wristR * (isElephant ? 0.45 : 0.26)]} position={[sign * P.wristR * (isElephant ? 1.25 : 0.88), -P.handLen * 0.12, P.wristR * (isElephant ? 0.35 : 0.26)]} />
+          {isElephant || isSunflower ? (
+            /* Elephant/sunflower hand — four chubby stubby fingers in a row */
+            <>
+              {[-P.wristR * 0.72, -P.wristR * 0.24, P.wristR * 0.24, P.wristR * 0.72].map((fx, i) => (
+                <group key={'pf' + i} position={[fx, -P.handLen * 0.34, P.wristR * (0.08 + i * 0.07)]} rotation={[0, -0.14 + i * 0.09, (i - 1.5) * -0.06]}>
+                  {/* chunky finger base */}
+                  <mesh geometry={taperGeo(P.wristR * 0.36, P.wristR * 0.25, P.handLen * 0.26)} material={gloveM} position={[0, -P.handLen * 0.08, 0]} castShadow />
+                  {/* rounded fingertip — bigger, gently curled forward */}
+                  <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.3, P.wristR * 0.28, P.wristR * 0.32]} position={[0, -P.handLen * 0.27, P.wristR * 0.12]} />
+                </group>
+              ))}
+            </>
+          ) : isMonkey ? (
+            /* Monkey hand — five long curved fingers with knuckles + a lighter palm pad */
+            <>
+              {[-P.wristR * 0.62, -P.wristR * 0.31, 0, P.wristR * 0.31, P.wristR * 0.62].map((fx, i) => (
+                <group key={'mkf' + i} position={[fx, -P.handLen * 0.44, P.wristR * 0.06]} rotation={[0.55, 0, (i - 2) * 0.12]}>
+                  {/* knuckle */}
+                  <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.16, P.wristR * 0.17, P.wristR * 0.15]} position={[0, -P.handLen * 0.02, 0]} />
+                  {/* long curved finger */}
+                  <mesh geometry={taperGeo(P.wristR * 0.13, P.wristR * 0.08, P.handLen * 0.34)} material={gloveM} position={[0, -P.handLen * 0.18, 0]} />
+                  {/* rounded fingertip */}
+                  <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.1, P.wristR * 0.11, P.wristR * 0.11]} position={[0, -P.handLen * 0.36, 0]} />
+                </group>
+              ))}
+              {/* lighter palm pad — visible monkey grip pad */}
+              <mesh geometry={sphereGeo(1)} material={sharedMaterial('#e8c9a2', 0.75)}
+                scale={[P.wristR * 0.6, P.wristR * 0.5, P.wristR * 0.36]} position={[0, -P.handLen * 0.26, P.wristR * 1.05]} />
+            </>
+          ) : (
+            [-P.wristR * 0.55, -P.wristR * 0.18, P.wristR * 0.18, P.wristR * 0.5].map((fx, i) => (
+              <group key={i} position={[fx, -P.handLen * 0.45, 0]}>
+                <mesh geometry={taperGeo(P.wristR * 0.12, P.wristR * 0.08, P.handLen * (0.28 - i * 0.02))} material={gloveM} position={[0, -P.handLen * 0.12, 0]} />
+                <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.08, P.wristR * 0.08, P.wristR * 0.08]} position={[0, -P.handLen * (0.26 - i * 0.02), 0]} />
+                {/* polished nail capping each fingertip (bare human hands only) */}
+                {!isDino && !isHacker && nailM && (
+                  <mesh geometry={sphereGeo(1)} material={nailM} scale={[P.wristR * 0.05, P.wristR * 0.045, P.wristR * 0.06]} position={[0, -P.handLen * (0.28 - i * 0.02), P.wristR * 0.075]} />
+                )}
+                {/* dino claw tip */}
+                {isDino && (
+                  <mesh geometry={taperGeo(P.wristR * 0.005, P.wristR * 0.09, P.handLen * 0.16)} material={clawM ?? skin} position={[0, -P.handLen * (0.32 - i * 0.02), P.wristR * 0.04]} rotation={[0.5, 0, 0]} />
+                )}
+              </group>
+            ))
+          )}
+          /* Robot: block hand with 3 chunky fingers + glowing forearm line. */
           {isRobot && glowM && (
             <group>
-              <mesh geometry={boxGeo(P.wristR * 1.8, P.handLen * 0.7, P.wristR * 1.4)} material={skin} position={[0, -P.handLen * 0.4, 0]} castShadow />
+              {/* palm block */}
+              <mesh geometry={boxGeo(P.wristR * 1.8, P.handLen * 0.45, P.wristR * 1.4)} material={skin} position={[0, -P.handLen * 0.25, 0]} castShadow />
+              {/* 3 chunky fingers — each a small box, spread across the palm */}
+              {[-P.wristR * 0.55, 0, P.wristR * 0.55].map((fx, i) => (
+                <group key={'rf' + i} position={[fx, -P.handLen * 0.55, P.wristR * 0.15]}>
+                  <mesh geometry={boxGeo(P.wristR * 0.4, P.handLen * 0.28, P.wristR * 0.35)} material={skin} castShadow />
+                  <mesh geometry={boxGeo(P.wristR * 0.42, P.wristR * 0.06, P.wristR * 0.37)} material={glowM} position={[0, -P.handLen * 0.12, 0]} />
+                </group>
+              ))}
+              {/* glowing forearm accent line */}
               <mesh geometry={boxGeo(P.wristR * 0.18, P.lowerArm * 0.8, P.wristR * 0.18)} material={glowM} position={[0, P.lowerArm * 0.45, P.wristR * 1.05]} />
             </group>
           )}
@@ -2373,11 +2716,9 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               [eKneeR * 1.02, -P.lowerLeg * 0.25 * eLegY],
               [eKneeR, 0],
             ])} material={calfMat} castShadow />
-            {/* Elephant knee + shin skin folds — subtle dark wrinkle rings */}
-            <mesh geometry={torusGeo(eKneeR * 1.03, eKneeR * 0.035, 8, 24)} material={shoeM}
-              position={[0, -P.lowerLeg * eLegY * 0.05, P.ankleR * 0.6]} rotation={[Math.PI / 2, 0, 0]} />
-            <mesh geometry={torusGeo(eKneeR * 0.96, eKneeR * 0.028, 8, 24)} material={shoeM}
-              position={[0, -P.lowerLeg * eLegY * 0.3, P.ankleR * 0.55]} rotation={[Math.PI / 2, 0, 0]} />
+            {/* Natural skin fold just above the ankle — subtle, not a ring band */}
+            <mesh geometry={torusGeo(eAnkleR * 1.06, eAnkleR * 0.028, 8, 24)} material={shoeM}
+              position={[0, -P.lowerLeg * eLegY * 0.86, P.ankleR * 0.5]} rotation={[Math.PI / 2, 0, 0]} />
           </>
         ) : (
           <>
@@ -2442,32 +2783,49 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
                 material={robotDark} position={[0, -P.ankleR * 0.35, -P.footLen * 0.12]} castShadow />
             </group>
           )}
-          {/* Sunflower: earthy brown root-like feet */}
+          {/* Sunflower: cute little earthy shoes */}
           {isSunflower && sfBrown && (
             <group>
+              {/* foot base — rounded root bulb */}
               <mesh geometry={sphereGeo(1)} material={sfBrown}
-                scale={[P.ankleR * 1.2, P.ankleR * 1.0, P.footLen * 0.8]}
-                position={[0, -P.ankleR * 0.5, P.footLen * 0.3]} castShadow />
-              {[-P.ankleR * 0.35, P.ankleR * 0.35].map((tx, i) => (
-                <mesh key={`rt${i}`} geometry={taperGeo(P.ankleR * 0.04, P.ankleR * 0.1, P.ankleR * 0.6)} material={sfBrown}
-                  position={[tx, -P.ankleR * 0.65, P.footLen * 0.45]}
-                  rotation={[0.6, 0, Math.sin(i * Math.PI) * 0.5]} />
+                scale={[P.ankleR * 1.3, P.ankleR * 0.95, P.footLen * 0.9]}
+                position={[0, -P.ankleR * 0.45, P.footLen * 0.3]} castShadow />
+              {/* light sole under the foot */}
+              <mesh geometry={sphereGeo(1)} material={sharedMaterial('#a8834a', 0.65)}
+                scale={[P.ankleR * 1.4, P.ankleR * 0.3, P.footLen * 0.95]}
+                position={[0, -P.ankleR * 1.0, P.footLen * 0.32]} />
+              {/* three neat rounded toes at the front */}
+              {[-P.ankleR * 0.26, 0, P.ankleR * 0.26].map((tx, i) => (
+                <mesh key={`rt${i}`} geometry={sphereGeo(1)} material={sfBrown}
+                  scale={[P.ankleR * 0.16, P.ankleR * 0.14, P.ankleR * 0.2]}
+                  position={[tx, -P.ankleR * 0.58, P.footLen * 1.25]} />
               ))}
-              <mesh geometry={torusGeo(P.ankleR * 1.1, P.ankleR * 0.08, 8, 18)} material={sfGreen}
-                position={[0, P.ankleR * 0.15, 0]} rotation={[Math.PI / 2, 0, 0]} />
+              {/* leafy green anklet */}
+              <mesh geometry={torusGeo(P.ankleR * 1.16, P.ankleR * 0.1, 8, 18)} material={sfGreen}
+                position={[0, P.ankleR * 0.12, 0]} rotation={[Math.PI / 2, 0, 0]} />
+              {/* little leaf tips on the anklet */}
+              {[0, Math.PI * 0.5, Math.PI, Math.PI * 1.5].map((a, i) => (
+                <mesh key={'lc' + i} geometry={taperGeo(P.ankleR * 0.05, P.ankleR * 0.012, P.ankleR * 0.3)} material={sfGreen}
+                  position={[Math.sin(a) * P.ankleR * 1.12, P.ankleR * 0.1, Math.cos(a) * P.ankleR * 1.12]}
+                  rotation={[0.25, a, 0.7]} />
+              ))}
+              {/* tiny gold buckle dot at the anklet front */}
+              <mesh geometry={sphereGeo(1)} material={sharedMaterial('#e8b800', 0.55)} scale={[P.ankleR * 0.09, P.ankleR * 0.09, P.ankleR * 0.09]}
+                position={[0, P.ankleR * 0.12, P.ankleR * 1.2]} />
             </group>
           )}
-          {/* Monkey: darker brown feet like a real monkey's dark hands/feet */}
+          {/* Monkey: dark feet with visible round toes + tan pads */}
           {isMonkey && (
             <group>
+              {/* foot bulb */}
               <mesh geometry={sphereGeo(1)} material={monkeyDark}
-                scale={[P.ankleR * 1.15, P.ankleR * 0.9, P.footLen * 0.7]}
-                position={[0, -P.ankleR * 0.4, P.footLen * 0.25]} castShadow />
-              {/* toe bumps */}
-              {[-P.ankleR * 0.2, -P.ankleR * 0.07, P.ankleR * 0.07, P.ankleR * 0.2].map((tx, i) => (
+                scale={[P.ankleR * 1.2, P.ankleR * 0.95, P.footLen * 0.75]}
+                position={[0, -P.ankleR * 0.4, P.footLen * 0.3]} castShadow />
+              {/* visible round toes poking out the front */}
+              {[-P.ankleR * 0.32, -P.ankleR * 0.11, P.ankleR * 0.11, P.ankleR * 0.32].map((tx, i) => (
                 <mesh key={`mt${i}`} geometry={sphereGeo(1)} material={monkeyDark}
-                  scale={[P.ankleR * 0.12, P.ankleR * 0.1, P.footLen * 0.12]}
-                  position={[tx, -P.ankleR * 0.55, P.footLen * 0.55]} />
+                  scale={[P.ankleR * 0.17, P.ankleR * 0.19, P.ankleR * 0.17]}
+                  position={[tx, -P.ankleR * 0.55, P.footLen * 0.8]} />
               ))}
             </group>
           )}
@@ -2503,32 +2861,36 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
                 position={[0, P.lowerLeg * 0.2, P.ankleR * 0.85]} castShadow />
             </group>
           )}
-          {/* Elephant: chunky columnar foot pads with 5 ivory toenails and dark sole cushion */}
+                              {/* Elephant: clean rounded foot with soft toe ridges + ivory nails */}
           {isElephant && (
             <group>
-              {/* Main foot pad — wide, rounded elephant pad */}
+              {/* Foot pad — one smooth rounded block */}
               <mesh geometry={sphereGeo(1)} material={botM}
-                scale={[P.ankleR * 3.0, P.ankleR * 1.0, P.ankleR * 2.8]}
-                position={[0, -P.ankleR * 0.25, P.ankleR * 0.3]} castShadow />
-              {/* Heel cushion — pokes out the back of the pad */}
+                scale={[P.ankleR * 2.5, P.ankleR * 0.95, P.ankleR * 2.1]}
+                position={[0, -P.ankleR * 0.3, P.ankleR * 0.25]} castShadow />
+              {/* Heel — gentle rounded back */}
               <mesh geometry={sphereGeo(1)} material={botM}
-                scale={[P.ankleR * 1.5, P.ankleR * 0.6, P.ankleR * 1.1]}
-                position={[0, -P.ankleR * 0.35, -P.ankleR * 2.4]} castShadow />
-              {/* Dark sole cushion underneath — pokes out the pad bottom */}
+                scale={[P.ankleR * 1.3, P.ankleR * 0.7, P.ankleR * 0.9]}
+                position={[0, -P.ankleR * 0.4, -P.ankleR * 1.9]} castShadow />
+              {/* Dark sole cushion — flat bottom pad */}
               <mesh geometry={sphereGeo(1)} material={shoeM}
-                scale={[P.ankleR * 2.8, P.ankleR * 0.3, P.ankleR * 2.6]}
-                position={[0, -P.ankleR * 1.2, P.ankleR * 0.2]} castShadow />
-              {/* 5 prominent ivory toenails on the pad's front arc */}
-              {[-P.ankleR * 1.1, -P.ankleR * 0.55, 0, P.ankleR * 0.55, P.ankleR * 1.1].map((tx, i) => (
-                <mesh key={i} geometry={taperGeo(P.ankleR * 0.16, P.ankleR * 0.06, P.ankleR * 0.4)} material={shoeAccent}
-                  position={[tx, -P.ankleR * 0.5, P.ankleR * 2.7]}
-                  rotation={[0.5, 0, tx * 0.035]} />
+                scale={[P.ankleR * 2.4, P.ankleR * 0.28, P.ankleR * 2.0]}
+                position={[0, -P.ankleR * 1.1, P.ankleR * 0.2]} castShadow />
+              {/* 5 rounded toe ridges on the front face — barely proud of the pad */}
+              {[-P.ankleR * 1.0, -P.ankleR * 0.5, 0, P.ankleR * 0.5, P.ankleR * 1.0].map((tx, i) => (
+                <group key={'toe' + i} position={[tx, -P.ankleR * 0.35, P.ankleR * 2.15]}>
+                  <mesh geometry={sphereGeo(1)} material={botM}
+                    scale={[P.ankleR * 0.46, P.ankleR * 0.38, P.ankleR * 0.4]} castShadow />
+                  {/* ivory nail capping the top of each toe */}
+                  <mesh geometry={sphereGeo(1)} material={shoeAccent}
+                    scale={[P.ankleR * 0.2, P.ankleR * 0.12, P.ankleR * 0.18]}
+                    position={[0, P.ankleR * 0.34, P.ankleR * 0.3]} />
+                </group>
               ))}
-              {/* Toenail tops — rounded cap for each */}
-              {[-P.ankleR * 1.1, -P.ankleR * 0.55, 0, P.ankleR * 0.55, P.ankleR * 1.1].map((tx, i) => (
-                <mesh key={`tn${i}`} geometry={sphereGeo(1)} material={shoeAccent}
-                  scale={[P.ankleR * 0.15, P.ankleR * 0.11, P.ankleR * 0.15]}
-                  position={[tx, -P.ankleR * 0.4, P.ankleR * 3.0]} />
+              {/* dark crease lines between toes for separation */}
+              {[-P.ankleR * 0.75, 0, P.ankleR * 0.75].map((tx, i) => (
+                <mesh key={'tl' + i} geometry={boxGeo(P.ankleR * 0.06, P.ankleR * 0.3, P.ankleR * 0.3)} material={shoeM}
+                  position={[tx, -P.ankleR * 0.35, P.ankleR * 2.3]} />
               ))}
             </group>
           )}

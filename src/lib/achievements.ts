@@ -8,6 +8,8 @@
 // No blueprint / task-magnet / games achievements. Cafe + World Traveler are
 // kept but flagged `comingSoon` — they unlock when those realms ship.
 
+import { getOverride } from './ownerOverrides'
+
 export type AchievementCategory =
   | 'library'
   | 'login'
@@ -95,6 +97,18 @@ export interface AchievementDef {
 
 export function tierKey(achId: string, idx: number): string {
   return `${achId}:${idx}`
+}
+
+/** Get effective leaves for an achievement tier (applies owner overrides). */
+export function effectiveLeaves(achId: string, tierIdx: number, defaultLeaves: number): number {
+  const override = getOverride('achievements', `${achId}:${tierIdx}`, {} as { leaves?: number })
+  return override?.leaves ?? defaultLeaves
+}
+
+/** Check if an achievement is overridden as comingSoon. */
+export function effectiveComingSoon(achId: string, defaultComingSoon: boolean): boolean {
+  const override = getOverride('achievements', achId, {} as { comingSoon?: boolean })
+  return override?.comingSoon ?? defaultComingSoon
 }
 
 export function achIdFromKey(key: string): string {

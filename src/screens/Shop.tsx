@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
-import { BANNERS, LOGOS, type BannerCategory, type LogoCategory } from '../lib/banners'
+import { BANNERS, LOGOS, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
 import './Shop.css'
 
 export default function Shop() {
@@ -147,7 +147,7 @@ export default function Shop() {
                         <div key={l.id} className={`shop-logo-card ${flash === l.id ? 'shop-flash' : ''}`}>
                           <div className="shop-logo-preview">
                             {l.image ? (
-                              <img src={l.image} alt="" style={l.dim ? { filter: 'brightness(0.85)' } : undefined} />
+                              <img src={l.image} alt="" style={{ filter: logoFilter(l) }} />
                             ) : (
                               <span className="shop-logo-gradient" style={{ background: l.css || 'rgba(255,255,255,0.1)' }} />
                             )}

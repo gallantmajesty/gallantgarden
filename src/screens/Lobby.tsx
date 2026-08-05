@@ -18,6 +18,7 @@ import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { useIsDesktop } from '../components/DesktopOnly'
 import { PendingDot } from '../components/pending/PendingDot'
+import { RankUpCelebration } from '../components/RankUpCelebration'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -363,6 +364,7 @@ useEffect(() => {
         {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
         {showLoginPanel && <LoginPanel onClose={() => setShowLoginPanel(false)} />}
         <ResourceBar />
+        <RankUpCelebration />
       </div>
     )
   }
@@ -622,6 +624,7 @@ useEffect(() => {
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
       {panel === 'score' && <ScorePanel onClose={() => setPanel(null)} />}
       {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
+      <RankUpCelebration />
     </div>
   )
 }

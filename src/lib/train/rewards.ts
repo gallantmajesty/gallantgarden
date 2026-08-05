@@ -17,6 +17,7 @@
 // the realm (future: redeem for luxury skins / private trains).
 
 import type { TrainLine } from './lines'
+import { getOverride } from '../ownerOverrides'
 
 const XP_K = 2.45
 const XP_P = 0.82
@@ -55,11 +56,15 @@ function distanceFor(minutes: number): number {
 }
 
 export function xpFor(minutes: number): number {
-  return Math.round(XP_K * Math.pow(Math.max(0, minutes), XP_P))
+  const k = getOverride('train', 'xpK', XP_K)
+  const p = getOverride('train', 'xpP', XP_P)
+  return Math.round(k * Math.pow(Math.max(0, minutes), p))
 }
 
 export function coinsFor(minutes: number): number {
-  return Math.round(COIN_K * Math.pow(Math.max(0, minutes), COIN_P))
+  const k = getOverride('train', 'coinK', COIN_K)
+  const p = getOverride('train', 'coinP', COIN_P)
+  return Math.round(k * Math.pow(Math.max(0, minutes), p))
 }
 
 /** Context needed to decide which achievements a journey unlocks. */

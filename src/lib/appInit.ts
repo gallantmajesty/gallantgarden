@@ -122,7 +122,7 @@ function bindFocusPresence(): void {
 function bindFocusLogging(): void {
   setPomodoroFocusSink((minutes, subject, opts) => {
     if (opts?.log !== false) {
-      useMagnet.getState().logFocus(minutes, subject)
+      useMagnet.getState().logFocus(minutes, subject, { award: false })
     }
 
     // The sink can be invoked purely for analytics (Medium per-segment and

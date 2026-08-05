@@ -55,7 +55,7 @@ const PROBE_POLL_MS = 120 // template snapshot poll interval
 const PROBE_TIMEOUT_MS = 2500 // give drei <Text> fonts time to materialise
 
 // Accessories that animate per-frame cannot be instanced — always individual.
-const ANIMATED = new Set<AccessoryId>(['chair_balloon'])
+const ANIMATED = new Set<AccessoryId>(['chair_balloon', 'study_timer'])
 
 const _euler = new Euler()
 const _quat = new Quaternion()

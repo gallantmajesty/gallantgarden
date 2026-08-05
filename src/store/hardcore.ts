@@ -21,6 +21,7 @@
 import { create } from 'zustand'
 import { useProfile } from './profile'
 import { supabase } from '../lib/supabase'
+import { getOverride } from '../lib/ownerOverrides'
 
 // ---- Mode model -------------------------------------------------------------
 
@@ -48,7 +49,8 @@ export function hardcoreMultiplier(minutes: number): number {
 
 /** Actual leaves/min for a hardcore session of the given length. */
 export function hardcoreRateFor(minutes: number): number {
-  return (HARDCORE_BASE_RATE * hardcoreMultiplier(minutes)) / 10
+  const baseRate = getOverride('hardcore', 'baseRate', HARDCORE_BASE_RATE)
+  return (baseRate * hardcoreMultiplier(minutes)) / 10
 }
 
 /** Minimum wager required for a hardcore session length. Progressive: the
@@ -98,8 +100,8 @@ export function effectiveMultiplier(minutes: number, wager: number, devices = 0)
 /** Effective leaves/min for any mode at a given session length. */
 export function rateForMode(mode: FocusMode, minutes: number): number {
   if (mode === 'hardcore') return hardcoreRateFor(minutes)
-  if (mode === 'medium') return MEDIUM_RATE
-  return EASY_RATE
+  if (mode === 'medium') return getOverride('hardcore', 'mediumRate', MEDIUM_RATE)
+  return getOverride('hardcore', 'easyRate', EASY_RATE)
 }
 
 /** Backward-compatible alias (the deep-dive's "10× crown jewel" at 1 hour). */

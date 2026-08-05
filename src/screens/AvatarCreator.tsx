@@ -10,7 +10,7 @@ import { useAvatar } from '../avatar/store'
 import { CHARACTERS, characterById } from '../avatar/characters'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
-import { BANNERS, LOGOS, type BannerCategory, type LogoCategory } from '../lib/banners'
+import { BANNERS, LOGOS, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
 import {
   type AvatarConfig,
   type StyleOption,
@@ -19,6 +19,10 @@ import {
   EYE_COLORS,
   ACCESSORIES,
   skinHex,
+  hairHex,
+  topHex,
+  bottomHex,
+  shoeHex,
 } from '../avatar/config'
 import { BigDiningTable, AccessoryModel } from '../avatar/Accessories'
 import { ResourceBar } from '../components/ResourceBar'
@@ -317,11 +321,108 @@ function OutfitTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
 
       <SwatchField label="Eye Colour" swatches={EYE_COLORS} selected={config.eyes} onPick={(id) => set({ eyes: id })} />
 
+      <ColorField
+        label="Hair Colour"
+        value={config.hairColorHex}
+        fallback={hairHex(config.hairColor)}
+        onChange={(hex) => set({ hairColorHex: hex })}
+        onClear={() => set({ hairColorHex: undefined })}
+      />
+
+      <ColorField
+        label="T-Shirt Colour"
+        value={config.topColor}
+        fallback={topHex(config.top)}
+        onChange={(hex) => set({ topColor: hex })}
+        onClear={() => set({ topColor: undefined })}
+      />
+
+      <ColorField
+        label="Pants Colour"
+        value={config.bottomColor}
+        fallback={bottomHex(config.bottom)}
+        onChange={(hex) => set({ bottomColor: hex })}
+        onClear={() => set({ bottomColor: undefined })}
+      />
+
+      <ColorField
+        label="Shoes Colour"
+        value={config.shoeColor}
+        fallback={shoeHex(config.shoes)}
+        onChange={(hex) => set({ shoeColor: hex })}
+        onClear={() => set({ shoeColor: undefined })}
+      />
+
+      <ColorField
+        label="Nail Polish"
+        value={config.nailColor}
+        fallback="#e8b4b8"
+        onChange={(hex) => set({ nailColor: hex })}
+        onClear={() => set({ nailColor: undefined })}
+      />
+
+      <ToggleField
+        label="Glasses"
+        on={!!config.glasses}
+        onToggle={() => set({ glasses: !config.glasses })}
+      />
+      {config.glasses && (
+        <ColorField
+          label="Glasses Colour"
+          value={config.glassesColor}
+          fallback="#2a2f3a"
+          onChange={(hex) => set({ glassesColor: hex })}
+          onClear={() => set({ glassesColor: undefined })}
+        />
+      )}
+
+      <ToggleField
+        label="Hair Band"
+        on={!!config.hairBand}
+        onToggle={() => set({ hairBand: !config.hairBand })}
+      />
+      {config.hairBand && (
+        <ColorField
+          label="Hair Band Colour"
+          value={config.hairBandColor}
+          fallback="#f4b8cf"
+          onChange={(hex) => set({ hairBandColor: hex })}
+          onClear={() => set({ hairBandColor: undefined })}
+        />
+      )}
+
       <p className="ac-foot-note">
-        Outfit, hairstyle and height come from the character you pick — humans keep their
-        default shoes, costume characters (Dino, Bunny) go barefoot. Next: add one accessory.
+        Free colours apply to any outfit — pick your skin, hair, clothes, shoes, nails and
+        accessories. Next: add one desk accessory.
       </p>
     </>
+  )
+}
+
+/** Simple on/off toggle for wearable accessories (glasses, hair band). */
+function ToggleField({
+  label,
+  on,
+  onToggle,
+}: {
+  label: string
+  on: boolean
+  onToggle: () => void
+}) {
+  return (
+    <Field label={label}>
+      <button
+        className={`ac-toggle ${on ? 'on' : ''}`}
+        onClick={onToggle}
+        role="switch"
+        aria-checked={on}
+      >
+        <span className="ac-toggle-track">
+          <span className="ac-toggle-knob" />
+        </span>
+        <span className="ac-toggle-text">{on ? 'On' : 'Off'}</span>
+      </button>
+    </Field>
   )
 }
 
@@ -466,7 +567,7 @@ function AvatarCanvas({
   if (accessoryMode) {
     return (
       <Canvas
-        shadows={false}
+        shadows
         dpr={[1, 1.5]}
         camera={{ position: [0, 1.2, 3.6], fov: 42, near: 0.1, far: 50 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
@@ -476,7 +577,7 @@ function AvatarCanvas({
         {/* Three-point studio rig: key high-right, fill low-left, cool rim
             light from behind to pop the silhouette off the backdrop. */}
         <hemisphereLight args={['#ffe8c0', '#2a1c10', 0.5]} />
-        <directionalLight position={[3, 4.5, 2.2]} intensity={1.3} color="#ffecd0" />
+        <directionalLight position={[3, 4.5, 2.2]} intensity={1.3} color="#ffecd0" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
         <directionalLight position={[-3, 1.2, 1.2]} intensity={0.65} color="#ffc890" />
         <directionalLight position={[1.2, 2.8, -2.8]} intensity={0.75} color="#cfc4ee" />
         <pointLight position={[0, 1.6, 0.8]} intensity={0.35} color="#ff9040" distance={6} decay={2} />
@@ -842,27 +943,27 @@ function ShopTab() {
       )}
 
       {shopTab === 'logos' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {LOGOS.filter((l) => !useShop.getState().isOwned(l.id)).map((l) => {
             return (
               <div key={l.id} style={{
-                borderRadius: 8, overflow: 'hidden', padding: 10, textAlign: 'center',
+                borderRadius: 12, overflow: 'hidden', padding: 14, textAlign: 'center',
                 border: '1.5px solid rgba(255,255,255,0.06)',
                 background: 'rgba(255,255,255,0.03)',
                 animation: flash === l.id ? 'ac-shop-flash 0.5s ease-out' : undefined,
               }}>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', border: '2px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 10px', border: '3px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                   {l.image ? (
-                    <img src={l.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: l.dim ? 'brightness(0.85)' : undefined }} />
+                    <img src={l.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: logoFilter(l) }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', background: l.css || 'rgba(255,255,255,0.1)' }} />
                   )}
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#f6efe2', marginBottom: 4 }}>{l.name}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#f6efe2', marginBottom: 6 }}>{l.name}</div>
                 <button onClick={() => buy(l.id, l.price, l.currency)} disabled={!affordable(l.price, l.currency)} style={{
                   background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
-                  borderRadius: 4, color: '#f0c840', fontSize: 10, fontWeight: 700,
-                  padding: '3px 8px', cursor: affordable(l.price, l.currency) ? 'pointer' : 'not-allowed',
+                  borderRadius: 6, color: '#f0c840', fontSize: 11, fontWeight: 700,
+                  padding: '4px 10px', cursor: affordable(l.price, l.currency) ? 'pointer' : 'not-allowed',
                   opacity: affordable(l.price, l.currency) ? 1 : 0.35,
                   display: 'flex', alignItems: 'center', gap: 2, margin: '0 auto',
                 }}>

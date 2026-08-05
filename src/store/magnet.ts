@@ -25,6 +25,7 @@ import {
 } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
 import { pushMagnet, pullMagnet } from '../lib/magnet/sync'
+import { useProfile } from './profile'
 
 // ---- id + time helpers ------------------------------------------------------
 let counter = 0
@@ -205,7 +206,7 @@ interface MagnetState {
   setBrainDump: (text: string) => void
 
   // focus + subjects
-  logFocus: (minutes: number, subject: string) => void
+  logFocus: (minutes: number, subject: string, opts?: { award?: boolean }) => void
   /** Train Station journeys: record a completed journey as a focus session and
    *  award its (diminishing-returns) XP + any unlocked achievements in one shot.
    *  XP is passed in pre-computed (NOT per-minute) so it never double-counts. */
@@ -245,22 +246,34 @@ export const useMagnet = create<MagnetState>((set, get) => {
     })
   }
 
+  // Keep the profile store in sync when magnet awards XP. This eliminates
+  // the "two sources of truth" divergence where magnet.data.xp and
+  // profile.xp drift apart (bug #3).
+  function mirrorToProfile(d: MagnetData) {
+    try {
+      const p = useProfile.getState()
+      if (p.userId && !p.isGuest) {
+        useProfile.setState({ xp: d.xp, premiumXp: d.premiumXp, rankXp: d.rankXp })
+      }
+    } catch { /* profile store optional */ }
+  }
+
     // Award XP via the engine (with caps/cooldown), detect rank changes, sync to DB.
     // Tasks/habits/milestones give 0 leaves — only study sources earn currency.
-    function award(d: MagnetData, source: 'focus' | 'login' | 'tree' | 'note' | 'train', amount: number): MagnetData {
+    // Golden leaves are premium-only (purchases + rank-up trickle) — never
+    // awarded here. The old 'login'→awardGoldenLeaves branch was a latent trap.
+    function award(d: MagnetData, source: 'focus' | 'tree' | 'note' | 'train', amount: number): MagnetData {
       const rankBase = d.rankXp ?? (d.xp + d.premiumXp)
       const currentRank = rankForTotalXp(rankBase)
 
-      const result = source === 'login'
-        ? awardGoldenLeaves(d.xp, d.premiumXp, amount, currentRank.id, rankBase)
-        : awardLeaves(d.xp, d.premiumXp, source, amount, currentRank.id, rankBase)
+      const result = awardLeaves(d.xp, d.premiumXp, source, amount, currentRank.id, rankBase)
 
     if (result.onCooldown || (result.leaves === 0 && result.goldenLeaves === 0)) return d
 
-    const xp = d.xp + result.leaves
-    const premiumXp = d.premiumXp + result.goldenLeaves
+    let xp = d.xp + result.leaves
+    let premiumXp = d.premiumXp + result.goldenLeaves
     // Lifetime rank XP: climbs with every award, never fires on purchases.
-    const rankXp = rankBase + Math.max(0, result.leaves) + result.goldenLeaves
+    let rankXp = rankBase + Math.max(0, result.leaves) + result.goldenLeaves
     let achievements = d.achievements
     let toastQueued: { title: string; body: string; icon: string } | null = null
 
@@ -280,9 +293,12 @@ export const useMagnet = create<MagnetState>((set, get) => {
         body: "You\u2019ve been promoted.",
         icon: 'star',
       }
-      // Award premium XP for rank up
+      // Award premium XP for rank up — credit the golden leaves so they
+      // actually land in the wallet (was announced but never added before).
       const rankUpResult = awardGoldenLeaves(xp, premiumXp, XP_VALUES.rankUp, currentRank.id, rankXp)
       if (rankUpResult.goldenLeaves > 0) {
+        premiumXp += rankUpResult.goldenLeaves
+        rankXp += rankUpResult.goldenLeaves
         achievements = [{ id: uid('ach'), title: 'Rank Up Bonus', detail: `+${rankUpResult.goldenLeaves} Golden Leaves`, icon: 'star', at: nowIso() }, ...achievements]
       }
     }
@@ -305,7 +321,9 @@ export const useMagnet = create<MagnetState>((set, get) => {
     const userId = get().userId
     if (userId) syncXpToDb(userId, xp, premiumXp, rankXp)
 
-    return { ...d, xp, premiumXp, rankXp, achievements }
+    const updated = { ...d, xp, premiumXp, rankXp, achievements }
+    mirrorToProfile(updated)
+    return updated
   }
 
   return {
@@ -471,7 +489,9 @@ export const useMagnet = create<MagnetState>((set, get) => {
               const newRankXp = rankBase + result.leaves
               const userId = get().userId
               if (userId) syncXpToDb(userId, newXp, newPremiumXp, newRankXp)
-              return { ...d, tasks, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
+              const updated = { ...d, tasks, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
+              mirrorToProfile(updated)
+              return updated
             }
           }
         }
@@ -736,7 +756,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
     setBrainDump: (text) => commit((d) => ({ ...d, brainDump: text })),
 
     // ---------- focus + subjects ----------
-    logFocus: (minutes, subject) => {
+    logFocus: (minutes, subject, opts) => {
       recordActivity()
       commit((d) => {
         const session = { id: uid('foc'), date: todayKey(), minutes, subject }
@@ -744,8 +764,13 @@ export const useMagnet = create<MagnetState>((set, get) => {
         if (subject && !next.subjects.includes(subject)) {
           next = { ...next, subjects: [...next.subjects, subject] }
         }
-        // Leaves earned: 1 per focus minute (study rooms / library)
-        return award(next, 'focus', Math.round(minutes * XP_VALUES.focusMin))
+        // Analytics only by default — XP awarding is handled by the focus sink
+        // in appInit (awardFocusLeaves) so there's a single award path.
+        // Pass { award: true } for manual log-focus entries in AnalyticsView.
+        if (opts?.award) {
+          return award(next, 'focus', Math.round(minutes * XP_VALUES.focusMin))
+        }
+        return next
       })},
 
     recordJourney: ({ minutes, subject, xp, achievements }) => {

@@ -9,6 +9,8 @@
 // (east), the concourse is at −Z (south), the tracks at +Z (north). Platform 1
 // is the southern-most, platform 5 the northern-most.
 
+import { getOverride, getNestedOverride } from '../ownerOverrides'
+
 export type LineId = 'express' | 'regional' | 'mountain' | 'night' | 'grand'
 
 /** A lighting / atmosphere mood per platform so each feels unmistakably its own. */
@@ -125,7 +127,11 @@ export const TRAIN_LINES: TrainLine[] = [
 export function lineById(id: LineId): TrainLine {
   const l = TRAIN_LINES.find((x) => x.id === id)
   if (!l) throw new Error(`unknown train line: ${id}`)
-  return l
+  // Apply owner overrides for minutes, cadenceSec, boardSec
+  const minutes = getNestedOverride('train', 'lines', id, 'minutes', l.minutes)
+  const cadenceSec = getNestedOverride('train', 'lines', id, 'cadenceSec', l.cadenceSec)
+  const boardSec = getNestedOverride('train', 'lines', id, 'boardSec', l.boardSec)
+  return { ...l, minutes, cadenceSec, boardSec }
 }
 
 export function lineByPlatform(platform: number): TrainLine | undefined {

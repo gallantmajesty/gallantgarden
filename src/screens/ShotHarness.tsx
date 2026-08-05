@@ -47,13 +47,14 @@ export function ShotHarness() {
   const [params] = useSearchParams()
   const view = (params.get('view') as View) || 'front'
   const emote = (params.get('emote') as PreviewState) || 'idle'
-  const bodyType = (params.get('body') as BodyType) || 'male'
+  const bodyType = (params.get('body') as BodyType) || (params.get('char') === 'sunflower' ? 'female' : 'male')
 
   // A clean fitted tee + pants + sneakers reads the torso silhouette best (and
   // matches the reference sheets). Query params can override individual fields.
   const config = useMemo<AvatarConfig>(
     () => ({
       ...DEFAULT_AVATAR,
+      characterId: params.get('char') || undefined,
       bodyType,
       top: params.get('top') || 'tee',
       bottom: params.get('bottom') || 'pants',
@@ -75,6 +76,7 @@ export function ShotHarness() {
         <hemisphereLight args={['#cfe0ff', '#3a2f4a', 0.85]} />
         <directionalLight position={[3, 5, 2]} intensity={1.25} color="#fff3df" />
         <directionalLight position={[-3, 2, -2]} intensity={0.5} color="#9a8cff" />
+        <directionalLight position={[0, 2.5, -4]} intensity={0.8} color="#7fa8ff" />
         <ambientLight intensity={0.28} />
 
         <group position={[0, -0.9, 0]}>
