@@ -11,6 +11,10 @@ import OwnerRewardsTab from "./OwnerRewardsTab";
 import OwnerAchievementsTab from "./OwnerAchievementsTab";
 import OwnerTrainTab from "./OwnerTrainTab";
 import OwnerPricingTab from "./OwnerPricingTab";
+import OwnerUsersTab from "./OwnerUsersTab";
+import OwnerLuckyWheelTab from "./OwnerLuckyWheelTab";
+import OwnerAnnouncementsTab from "./OwnerAnnouncementsTab";
+import OwnerReportsTab from "./OwnerReportsTab";
 import type { Character } from "../../avatar/characters";
 import { BANNERS, LOGOS } from "../../lib/banners";
 import { RANKS } from "../../lib/ranks";
@@ -33,7 +37,7 @@ export function OwnerPanel() {
   const { events, activeEvent, saveEvent, deleteEvent, toggleEventActive, balance, addLeaves } = useEventShop();
   const { items } = useInventory();
   const { bundles, saveBundle, deleteBundle } = useBundles();
-  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "settings">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "wheel" | "announcements" | "reports" | "settings">("dashboard");
   const [editing, setEditing] = useState<FocusEvent | null>(null);
   const [bundleEditing, setBundleEditing] = useState<SavedBundle | null>(null);
 
@@ -119,7 +123,7 @@ export function OwnerPanel() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.7rem 1.25rem", borderBottom: "1px solid var(--color-genshin-divider)", background: "rgba(26,20,16,0.9)", position: "sticky" as const, top: 0, zIndex: 50 }}>
         <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-genshin-gold)" }}>⟡ STUDYFOREST OWNER</span>
         <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" as const }}>
-          {(["dashboard", "events", "items", "bundles", "shop", "wallet", "users", "accessories", "data", "rewards", "achievements", "train", "pricing", "settings"] as const).map((t) => (
+          {(["dashboard", "events", "items", "bundles", "shop", "wallet", "users", "accessories", "data", "rewards", "achievements", "train", "pricing", "wheel", "announcements", "reports", "settings"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t}</button>
           ))}
         </div>
@@ -398,29 +402,13 @@ export function OwnerPanel() {
         {/* ════════════════════════════════════════════════════ */}
         {/*  USERS / AUTH                                        */}
         {/* ════════════════════════════════════════════════════ */}
-        {tab === "users" && (
-          <div>
-            <h3 style={{ color: "var(--color-genshin-gold)", fontSize: "0.85rem", letterSpacing: "0.05em", marginBottom: "1rem" }}>USERS & AUTHENTICATION</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
-              {card("AUTH PROVIDER", "InsForge / Supabase", "Backend: e29j97zj.us-east.supabase.app")}
-              {card("OWNER AUTH", "PIN-based", "Client-side gate (VITE_OWNER_PIN)")}
-              {card("RLS POLICIES", "Supabase", "Database row-level security active")}
-              {card("OAUTH", "Configured", "See docs/OAUTH_SETUP.md")}
-            </div>
-            <h4 style={{ color: "var(--color-genshin-bronze)", fontSize: "0.72rem", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>ALL SHOP ITEMS ACROSS ALL EVENTS</h4>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {events.flatMap((evt) => evt.items.map((item) => (
-                <div key={`${evt.id}:${item.id}`} style={{ display: "flex", gap: "0.5rem", alignItems: "center", padding: "0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: "1px solid rgba(139,109,46,0.1)" }}>
-                  <span style={{ fontSize: "1rem", width: 28, textAlign: "center" }}>{item.icon}</span>
-                  <span style={{ flex: 1, fontSize: "0.72rem", color: "var(--color-genshin-gold-light)" }}>{item.name}</span>
-                  <span style={{ fontSize: "0.6rem", color: "var(--color-genshin-bronze)" }}>{item.type}</span>
-                  <span style={{ fontSize: "0.65rem", color: "var(--color-genshin-gold)" }}>{item.price} 🍃</span>
-                  <span style={{ fontSize: "0.6rem", color: "var(--color-genshin-bronze)" }}>in {evt.name}</span>
-                </div>
-              )))}
-            </div>
-          </div>
-        )}
+        {tab === "users" && <OwnerUsersTab />}
+
+        {tab === "wheel" && <OwnerLuckyWheelTab />}
+
+        {tab === "announcements" && <OwnerAnnouncementsTab />}
+
+        {tab === "reports" && <OwnerReportsTab />}
 
         {/* ════════════════════════════════════════════════════ */}
         {/*  ACCESSORIES — 3D preview gallery                      */}

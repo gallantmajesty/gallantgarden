@@ -18,6 +18,8 @@ import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { useIsDesktop } from '../components/DesktopOnly'
 import { PendingDot } from '../components/pending/PendingDot'
+import { LuckyWheelModal } from '../components/focus/LuckyWheelModal'
+import { NewsModal } from '../components/focus/NewsModal'
 import { RankUpCelebration } from '../components/RankUpCelebration'
 import './Lobby.css'
 
@@ -71,6 +73,8 @@ export function Lobby() {
   const navigate = useNavigate()
   const [panel, setPanel] = useState<null | 'settings' | 'friends' | 'inbox' | 'score' | 'login'>(null)
   const [showLoginPanel, setShowLoginPanel] = useState(false)
+  const [showWheel, setShowWheel] = useState(false)
+  const [showNews, setShowNews] = useState(false)
   const userXp = useProfile((s) => s.xp)
   const userPremiumXp = useProfile((s) => s.premiumXp)
   const userRankXp = useProfile((s) => s.rankXp)
@@ -395,6 +399,9 @@ useEffect(() => {
           <span className="lm-logo-text">FocusLily</span>
         </div>
         <div className="lm-header-actions">
+          <button className="lm-score-btn" onClick={() => setShowWheel(true)} title="Lucky Wheel">
+            🎡
+          </button>
           <button className="lm-inbox-btn" onClick={() => setPanel(p => p === 'inbox' ? null : 'inbox')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
             {(incomingCount > 0 || unreadCount > 0) && <span className="lm-inbox-badge" />}
@@ -428,7 +435,7 @@ useEffect(() => {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 <span>Team Support</span>
               </button>
-              <button className="lm-inbox-item" onClick={() => setPanel(null)}>
+              <button className="lm-inbox-item" onClick={() => { setPanel(null); setShowNews(true); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/><path d="M8 14h8"/><path d="M8 18h8"/><path d="M8 10h3"/></svg>
                 <span>News</span>
               </button>
@@ -624,6 +631,8 @@ useEffect(() => {
       {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
       {panel === 'score' && <ScorePanel onClose={() => setPanel(null)} />}
       {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
+      <LuckyWheelModal open={showWheel} onClose={() => setShowWheel(false)} />
+      <NewsModal open={showNews} onClose={() => setShowNews(false)} />
       <RankUpCelebration />
     </div>
   )

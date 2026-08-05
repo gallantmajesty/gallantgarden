@@ -7,6 +7,8 @@ import { applyVisualSettings, useSettings } from './store/settings'
 import { useWebTheme } from './store/webTheme'
 import { applyWebTheme } from './lib/webThemes'
 import { syncOverridesFromDb } from './lib/ownerOverrides'
+import { syncWheelFromDb } from './lib/luckyWheel'
+import { syncUpdatesFromDb, syncNewsFromDb } from './lib/announcements'
 import { WebBackground } from './components/WebBackground'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
@@ -71,6 +73,9 @@ export default function App() {
     apply()
     // Sync owner overrides from DB on startup (non-blocking)
     syncOverridesFromDb().catch(() => {})
+    syncWheelFromDb().catch(() => {})
+    syncUpdatesFromDb().catch(() => {})
+    syncNewsFromDb().catch(() => {})
     const offSettings = useSettings.subscribe(apply)
     const offWeb = useWebTheme.subscribe(apply)
     return () => {

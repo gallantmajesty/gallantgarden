@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { ALL_CHARACTERS } from "../../avatar/characters";
 import { THEMES } from "../../lib/magnet/themes";
-import { BANNERS } from "../../lib/banners";
-import { LOGOS } from "../../lib/logos";
+import { BANNERS, LOGOS } from "../../lib/banners";
 import { setOverride, getOverride, clearSystem } from "../../lib/ownerOverrides";
 
 export default function OwnerPricingTab() {

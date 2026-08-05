@@ -71,7 +71,7 @@ export default function OwnerRewardsTab() {
             const current = getOverride("streakTiers", "tiers", STREAK_XP_TIERS)[i] ?? t;
             return (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.35rem 0", borderBottom: "1px solid rgba(139,109,46,0.06)" }}>
-                <span style={{ fontSize: "0.65rem", color: "var(--color-genshin-bronze) }}>{t.minDays}d+ → {t.mult}×</span>
+                <span style={{ fontSize: "0.65rem", color: "var(--color-genshin-bronze)" }}>{t.minDays}d+ → {t.mult}×</span>
                 <input
                   type="number"
                   step="0.05"
