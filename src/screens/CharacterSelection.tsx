@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
-import { CHARACTERS } from '../avatar/characters'
+import { effectiveCharacters } from '../avatar/characters'
 
 // Derived from the single roster in src/avatar/characters.ts so editing there
-// updates both this picker and the customization screen.
-const ALL_CHARACTERS = CHARACTERS.map((c) => ({
+// updates both this picker and the customization screen. Uses the effective
+// roster so /owner rarity changes apply here automatically.
+const ALL_CHARACTERS = effectiveCharacters().map((c) => ({
   id: c.id,
   name: c.name,
   description: c.description ?? '',

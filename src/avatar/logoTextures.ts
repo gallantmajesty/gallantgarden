@@ -191,6 +191,68 @@ export function skinReliefTex(): CanvasTexture {
   }, 256, 256)
 }
 
+/** Dense woolly panda-coat texture (grayscale) — many short overlapping fur
+ *  strokes at slight angles plus scattered flecks, so the body/head read as
+ *  soft wool instead of smooth plastic. Used as bump + roughness map. */
+export function pandaFurTex(): CanvasTexture {
+  return cachedTexture('panda-fur', (ctx, w, h) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, w, h)
+    // long soft strokes — the main woolly grain
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const len = 4 + Math.random() * 9
+      const angle = (Math.random() - 0.5) * 1.1
+      const tone = 92 + Math.floor(Math.random() * 92)
+      ctx.strokeStyle = `rgba(${tone},${tone},${tone},${0.35 + Math.random() * 0.5})`
+      ctx.lineWidth = 0.6 + Math.random() * 1.5
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + Math.sin(angle) * len, y + Math.cos(angle) * len)
+      ctx.stroke()
+    }
+    // dense short curls — clump texture between strokes
+    for (let i = 0; i < 1400; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const tone = 60 + Math.floor(Math.random() * 120)
+      ctx.fillStyle = `rgba(${tone},${tone},${tone},${0.3 + Math.random() * 0.4})`
+      ctx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2)
+    }
+    // a few bright guard hairs
+    for (let i = 0; i < 180; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const tone = 190 + Math.floor(Math.random() * 60)
+      ctx.strokeStyle = `rgba(${tone},${tone},${tone},0.5)`
+      ctx.lineWidth = 0.4 + Math.random() * 0.7
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + (Math.random() - 0.5) * 2.5, y + 4 + Math.random() * 5)
+      ctx.stroke()
+    }
+  }, 256, 256)
+}
+
+/** Panda eye iris — soft radial gradient from a warm amber-brown centre to a
+ *  deep near-black rim, so the eye pops with a gentle glow instead of looking
+ *  like a flat black dot. */
+export function pandaIrisTex(): CanvasTexture {
+  return cachedTexture('panda-iris', (ctx, w, h) => {
+    const cx = w / 2, cy = h / 2
+    const grad = ctx.createRadialGradient(cx, cy, w * 0.02, cx, cy, w * 0.5)
+    grad.addColorStop(0, '#8a5426')
+    grad.addColorStop(0.45, '#5f3517')
+    grad.addColorStop(0.8, '#2c1709')
+    grad.addColorStop(1, '#140b04')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(cx, cy, w * 0.5, 0, Math.PI * 2)
+    ctx.fill()
+  }, 128, 128)
+}
+
 /** Coarse golden-sand grain (grayscale bump map) — dense irregular flecks so
  *  hourglass sand reads as granular instead of smooth clay. */
 export function sandGrainTex(): CanvasTexture {

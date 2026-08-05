@@ -13,7 +13,7 @@ import {
   getMutualIds,
 } from '../lib/social'
 import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '../lib/stats'
-import { BANNERS, getBanner, LOGOS, logoFilter } from '../lib/banners'
+import { effectiveBanners, getEffectiveBanner, effectiveLogos, logoFilter } from '../lib/banners'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { getRank, rankForLifetime, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
@@ -235,7 +235,7 @@ function ProfileBody({
 
   const rank = rankForLifetime(rankXp, xp, goldenXp)
   const levelData = levelProgress(lifetimeXp)
-  const banner = getBanner(view.pub.banner)
+  const banner = getEffectiveBanner(view.pub.banner)
 
   const formatHours = (min: number) => {
     if (min < 60) return `${min}M`
@@ -287,7 +287,7 @@ function ProfileBody({
           <div className="ff-identity">
             <div className="ff-banner-avatar">
               {(() => {
-                const selectedLogo = view.pub.logo ? LOGOS.find(l => l.id === view.pub.logo) : null
+                const selectedLogo = view.pub.logo ? effectiveLogos().find(l => l.id === view.pub.logo) : null
                 const logoUrl = selectedLogo?.image || null
                 return (
               <ProfileAvatar
@@ -676,7 +676,7 @@ function EditOverlay({
 
               <div className="pf-edit-label" style={{ marginTop: 20 }}>Banner</div>
               <div className="pf-banner-grid">
-                {BANNERS.filter((b) => useShop.getState().isOwned(b.id)).map((b) => (
+                {effectiveBanners().filter((b) => useShop.getState().isOwned(b.id)).map((b) => (
                   <button
                     key={b.id}
                     className={`pf-banner-swatch ${view.pub.banner === b.id ? 'active' : ''}`}
@@ -692,7 +692,7 @@ function EditOverlay({
 
               <div className="pf-edit-label" style={{ marginTop: 20 }}>Logo</div>
               <div className="pf-logo-grid">
-                {LOGOS.filter((l) => useShop.getState().isOwned(l.id)).map((l) => (
+                {effectiveLogos().filter((l) => useShop.getState().isOwned(l.id)).map((l) => (
                   <button
                     key={l.id}
                     className={`pf-logo-swatch ${view.pub.logo === l.id ? 'active' : ''}`}
@@ -793,7 +793,7 @@ function BannerPicker({ view }: { view: ProfileView }) {
       <div style={{
         width: '100%', height: 80, borderRadius: 10, overflow: 'hidden',
         border: '2px solid var(--pf-border)', marginBottom: 12,
-        background: hasImage ? undefined : getBanner(view.pub.banner).css,
+        background: hasImage ? undefined : getEffectiveBanner(view.pub.banner).css,
       }}>
         {hasImage && (
           <img
@@ -806,7 +806,7 @@ function BannerPicker({ view }: { view: ProfileView }) {
 
       {/* Banner grid */}
       <div className="pf-banner-picker-grid">
-        {BANNERS.map((b) => (
+        {effectiveBanners().map((b) => (
           <button
             key={b.id}
             className={`pf-banner-preview ${!hasImage && view.pub.banner === b.id ? 'active' : ''}`}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Flag } from './Flag'
 import { RankBadge } from './RankBadge'
 import { getRank } from '../lib/ranks'
-import { getBanner, LOGOS, logoFilter } from '../lib/banners'
+import { getEffectiveBanner, effectiveLogos, logoFilter } from '../lib/banners'
 import './PlayerNameTag.css'
 
 export interface PlayerNameTagProps {
@@ -25,8 +25,8 @@ export function PlayerNameTag({ name, rank, country, playerId, self, showAll, ti
   const [expanded, setExpanded] = useState(false)
   const r = getRank(rank)
   const visible = showAll || expanded
-  const b = getBanner(banner)
-  const logoData = logo ? LOGOS.find((l) => l.id === logo) : null
+  const b = getEffectiveBanner(banner)
+  const logoData = logo ? effectiveLogos().find((l) => l.id === logo) : null
   const displayName = name.length > 16 ? name.slice(0, 16) + '…' : name
 
   useEffect(() => {

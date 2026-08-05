@@ -716,6 +716,26 @@ export const DEFAULT_THEME_ID = 'mystic-forest'
 // Themes that are free from the start (level 0) — everyone owns these.
 export const STARTER_THEME_IDS = THEMES.filter((t) => t.unlockLevel === 0).map((t) => t.id)
 
+// ────────────────────────────────────────────────────────────
+// Override-aware effective catalog — /owner pricing changes in
+// the Pricing tab apply instantly to every player-facing screen.
+// ────────────────────────────────────────────────────────────
+import { getOverride } from '../ownerOverrides'
+
+/** Themes with /owner price + unlock-level overrides applied. */
+export function effectiveThemes(): MagnetTheme[] {
+  return THEMES.map((t) => {
+    const ov = getOverride('themes', t.id, {} as { price?: number; unlockLevel?: number })
+    if (!ov || (ov.price === undefined && ov.unlockLevel === undefined)) return t
+    return {
+      ...t,
+      leafPrice: ov.price ?? t.leafPrice,
+      unlockLevel: ov.unlockLevel ?? t.unlockLevel,
+    }
+  })
+}
+
 export function getTheme(id: string): MagnetTheme {
-  return THEMES.find((t) => t.id === id) ?? THEMES.find((t) => t.id === DEFAULT_THEME_ID) ?? THEMES[0]
+  const effective = effectiveThemes()
+  return effective.find((t) => t.id === id) ?? effective.find((t) => t.id === DEFAULT_THEME_ID) ?? effective[0]
 }

@@ -325,3 +325,41 @@ const BY_ID = new Map(BANNERS.map((b) => [b.id, b]))
 export function getBanner(id: string | null | undefined): Banner {
   return (id && BY_ID.get(id)) || BANNERS[0]
 }
+
+// ────────────────────────────────────────────────────────────
+// Override-aware effective catalogs — every player-facing screen
+// reads these so /owner pricing changes apply instantly.
+// ────────────────────────────────────────────────────────────
+import { getOverride } from './ownerOverrides'
+
+/** Banners with /owner price + currency overrides applied. */
+export function effectiveBanners(): Banner[] {
+  return BANNERS.map((b) => {
+    const ov = getOverride('banners', b.id, {} as { price?: number; currency?: 'green' | 'gold' })
+    if (!ov || (ov.price === undefined && ov.currency === undefined)) return b
+    return {
+      ...b,
+      price: ov.price ?? b.price,
+      currency: ov.currency ?? b.currency,
+    }
+  })
+}
+
+/** Logos with /owner price + currency overrides applied. */
+export function effectiveLogos(): Logo[] {
+  return LOGOS.map((l) => {
+    const ov = getOverride('logos', l.id, {} as { price?: number; currency?: 'green' | 'gold' })
+    if (!ov || (ov.price === undefined && ov.currency === undefined)) return l
+    return {
+      ...l,
+      price: ov.price ?? l.price,
+      currency: ov.currency ?? l.currency,
+    }
+  })
+}
+
+/** Effective banner by id (falls back to the default banner). */
+export function getEffectiveBanner(id: string | null | undefined): Banner {
+  const b = effectiveBanners().find((x) => x.id === id)
+  return b || effectiveBanners()[0]
+}

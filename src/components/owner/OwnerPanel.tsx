@@ -85,12 +85,61 @@ export function OwnerPanel() {
   const characterEquipped = charConfig ? CHAR_ROSTER.find((c: Character) => c.id === charConfig.characterId) : null;
 
   const tabStyle = (active: boolean) => ({
-    fontSize: "0.68rem", padding: "0.35rem 0.7rem", borderRadius: 2,
+    width: "100%",
+    fontSize: "0.66rem", padding: "0.42rem 0.7rem", borderRadius: 2,
     background: active ? "rgba(201,168,76,0.15)" : "transparent",
-    border: `1px solid ${active ? "var(--color-genshin-gold)" : "rgba(139,109,46,0.2)"}`,
+    border: `1px solid ${active ? "rgba(201,168,76,0.45)" : "transparent"}`,
+    borderLeft: `2px solid ${active ? "var(--color-genshin-gold)" : "transparent"}`,
     color: active ? "var(--color-genshin-gold)" : "var(--color-genshin-bronze)",
     cursor: "pointer", fontFamily: "var(--font-serif-heading)", letterSpacing: "0.05em", textTransform: "uppercase" as const,
+    textAlign: "left" as const, display: "flex", gap: "0.45rem", alignItems: "center",
   });
+
+  // ─── HQ nav groups ───────────────────────────────────────────────
+  const NAV_GROUPS: { label: string; icon: string; tabs: { id: typeof tab; label: string; icon: string }[] }[] = [
+    {
+      label: "OVERVIEW", icon: "◈",
+      tabs: [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "reports", label: "Reports & Analytics", icon: "📈" },
+        { id: "data", label: "Data Manager", icon: "🗄️" },
+      ],
+    },
+    {
+      label: "PLAYERS", icon: "☀",
+      tabs: [
+        { id: "users", label: "Player HQ", icon: "👥" },
+        { id: "wallet", label: "Wallet & Economy", icon: "💰" },
+        { id: "shop", label: "Player Inventory", icon: "🎒" },
+      ],
+    },
+    {
+      label: "SHOP CONTENT", icon: "◆",
+      tabs: [
+        { id: "events", label: "Event Shop", icon: "🎪" },
+        { id: "items", label: "Shop Items", icon: "🛍️" },
+        { id: "bundles", label: "Bundles", icon: "📦" },
+        { id: "accessories", label: "Accessories", icon: "🎀" },
+        { id: "pricing", label: "Pricing & Unlocks", icon: "🏷️" },
+      ],
+    },
+    {
+      label: "LIVE SYSTEMS", icon: "◉",
+      tabs: [
+        { id: "wheel", label: "Lucky Wheel", icon: "🎡" },
+        { id: "announcements", label: "News & Updates", icon: "📢" },
+        { id: "rewards", label: "XP & Rewards", icon: "🍃" },
+        { id: "achievements", label: "Achievements", icon: "🏆" },
+        { id: "train", label: "Train Lines", icon: "🚂" },
+      ],
+    },
+    {
+      label: "SYSTEM", icon: "✧",
+      tabs: [
+        { id: "settings", label: "Settings", icon: "⚙️" },
+      ],
+    },
+  ];
 
   const card = (label: string, value: string | number, sub?: string, accent?: string) => (
     <div style={{ background: "rgba(201,168,76,0.06)", border: "1px solid var(--color-genshin-divider)", borderRadius: 4, padding: "1rem", textAlign: "center" as const }}>
@@ -118,19 +167,42 @@ export function OwnerPanel() {
   const blankEvent: FocusEvent = { id: `evt-${Date.now()}`, name: "", description: "", icon: "📅", active: false, createdAt: new Date().toISOString(), items: [] };
 
   return (
-  <div style={{ height: "100vh", overflowY: "auto", background: "#0a0a14", fontFamily: "var(--font-serif-heading)" }}>
+  <div style={{ height: "100vh", overflowY: "hidden", background: "#0a0a14", fontFamily: "var(--font-serif-heading)", display: "flex", flexDirection: "column" }}>
       {/* ─── Top bar ────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.7rem 1.25rem", borderBottom: "1px solid var(--color-genshin-divider)", background: "rgba(26,20,16,0.9)", position: "sticky" as const, top: 0, zIndex: 50 }}>
-        <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-genshin-gold)" }}>⟡ STUDYFOREST OWNER</span>
-        <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" as const }}>
-          {(["dashboard", "events", "items", "bundles", "shop", "wallet", "users", "accessories", "data", "rewards", "achievements", "train", "pricing", "wheel", "announcements", "reports", "settings"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t}</button>
-          ))}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.7rem 1.25rem", borderBottom: "1px solid var(--color-genshin-divider)", background: "rgba(26,20,16,0.9)", zIndex: 50 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span style={{ fontSize: "1rem", color: "var(--color-genshin-gold)" }}>⟡</span>
+          <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-genshin-gold)" }}>STUDYFOREST HEADQUARTERS</span>
         </div>
-        <button onClick={() => navigate(-1)} style={{ fontSize: "0.7rem", color: "var(--color-genshin-bronze)", background: "transparent", border: "none", cursor: "pointer", padding: "0 0.6rem" }}>✕</button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <span style={{ fontSize: "0.58rem", color: "var(--color-genshin-bronze)", opacity: 0.8, letterSpacing: "0.05em" }}>{NAV_GROUPS.find((g) => g.tabs.some((t) => t.id === tab))?.label ?? ""}</span>
+          <button onClick={() => navigate(-1)} style={{ fontSize: "0.7rem", color: "var(--color-genshin-bronze)", background: "transparent", border: "none", cursor: "pointer", padding: "0 0.6rem" }}>✕</button>
+        </div>
       </div>
 
-      <div style={{ padding: "1.25rem", maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {/* ─── Sidebar nav ─────────────────────────────────────── */}
+        <nav style={{ width: 210, flexShrink: 0, overflowY: "auto", borderRight: "1px solid var(--color-genshin-divider)", background: "rgba(20,16,10,0.6)", padding: "0.9rem 0.6rem" }}>
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} style={{ marginBottom: "0.85rem" }}>
+              <div style={{ fontSize: "0.55rem", letterSpacing: "0.12em", color: "var(--color-genshin-bronze)", opacity: 0.6, padding: "0 0.5rem 0.3rem", textTransform: "uppercase" as const }}>
+                {group.icon} {group.label}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {group.tabs.map((t) => (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={tabStyle(tab === t.id)}>
+                    <span style={{ fontSize: "0.8rem", width: 18, textAlign: "center" as const }}>{t.icon}</span>
+                    <span>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* ─── Content ─────────────────────────────────────────── */}
+        <main style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "1.25rem" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
 
         {/* ══════════════════════════════════════════════════════════ */}
         {/*  DASHBOARD — your personal Google Analytics overview      */}
@@ -326,7 +398,11 @@ export function OwnerPanel() {
               {CHAR_ROSTER.map((ch: Character) => (
                 <div key={ch.id} style={{ background: ch.bg || "rgba(26,20,16,0.4)", border: `1px solid ${ch.special ? "rgba(201,168,76,0.4)" : "rgba(139,109,46,0.15)"}`, borderRadius: 4, padding: "0.75rem", textAlign: "center" as const }}>
                   <div style={{ width: 56, height: 56, borderRadius: 4, background: ch.bg, margin: "0 auto 0.5rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    <span style={{ fontSize: "2rem" }}>{ch.icon ? "" : "🎮"}</span>
+                    {ch.icon ? (
+                      <img src={ch.icon} alt={ch.name} style={{ width: "100%", height: "100%", objectFit: "cover" as const }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <span style={{ fontSize: "2rem" }}>🎮</span>
+                    )}
                   </div>
                   <div style={{ fontSize: "0.75rem", fontWeight: 600, color: ch.special ? "var(--color-genshin-gold)" : "var(--color-genshin-gold-light)" }}>{ch.name}</div>
                   <div style={{ fontSize: "0.6rem", color: ch.rarity === "Legendary" ? "#c9a44a" : ch.rarity === "Epic" ? "#a855f7" : "var(--color-genshin-bronze)" }}>{ch.rarity}{ch.price ? ` · ${ch.price} 🍃` : " · FREE"}</div>
@@ -350,9 +426,9 @@ export function OwnerPanel() {
             <h4 style={{ color: "var(--color-genshin-bronze)", fontSize: "0.72rem", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>BANNERS ({BANNERS.length})</h4>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "0.4rem", marginBottom: "1.5rem" }}>
               {BANNERS.map((b) => (
-                <div key={b.id} style={{ background: b.css, border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "0.4rem", position: "relative" as const }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>{b.name}</div>
-                  <div style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.7)" }}>{b.price === 0 ? "FREE" : `${b.price} 🍃`}</div>
+                <div key={b.id} style={{ background: b.css, backgroundImage: b.image ? `url('${b.image}')` : undefined, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "0.4rem", position: "relative" as const }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)", background: "rgba(0,0,0,0.35)", padding: "0.1rem 0.25rem", borderRadius: 2, display: "inline-block" }}>{b.name}</div>
+                  <div style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.85)", textShadow: "0 1px 2px rgba(0,0,0,0.8)", background: "rgba(0,0,0,0.35)", padding: "0.1rem 0.25rem", borderRadius: 2, display: "inline-block" }}>{b.price === 0 ? "FREE" : `${b.price} 🍃`}</div>
                 </div>
               ))}
             </div>
@@ -362,7 +438,7 @@ export function OwnerPanel() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: "0.4rem" }}>
               {LOGOS.map((l) => (
                 <div key={l.id} style={{ background: "rgba(26,20,16,0.4)", border: "1px solid rgba(139,109,46,0.1)", borderRadius: 4, padding: "0.5rem", textAlign: "center" as const }}>
-                  <div style={{ width: 40, height: 40, margin: "0 auto 0.3rem", borderRadius: 4, background: l.css || "#333", overflow: "hidden" }} />
+                  <div style={{ width: 40, height: 40, margin: "0 auto 0.3rem", borderRadius: 999, background: l.css || "#333", overflow: "hidden", backgroundImage: l.image ? `url('${l.image}')` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
                   <div style={{ fontSize: "0.6rem", color: "var(--color-genshin-bronze)" }}>{l.name}</div>
                 </div>
               ))}
@@ -501,6 +577,8 @@ export function OwnerPanel() {
             </div>
           </div>
         )}
+          </div>
+        </main>
       </div>
     </div>
   );

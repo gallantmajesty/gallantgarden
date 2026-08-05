@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
-import { BANNERS, LOGOS, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
+import { effectiveBanners, effectiveLogos, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
 import './Shop.css'
 
 export default function Shop() {
@@ -69,7 +69,7 @@ export default function Shop() {
         {tab === 'banners' && (
           <>
             {(['default', 'gradient', 'others'] as BannerCategory[]).map((cat) => {
-              const items = BANNERS.filter((b) => b.category === cat)
+              const items = effectiveBanners().filter((b) => b.category === cat)
               if (items.length === 0) return null
               return (
                 <div key={cat} className="shop-section">
@@ -130,7 +130,7 @@ export default function Shop() {
         {tab === 'logos' && (
           <>
             {(['default', 'others'] as LogoCategory[]).map((cat) => {
-              const items = LOGOS.filter((l) => l.category === cat)
+              const items = effectiveLogos().filter((l) => l.category === cat)
               if (items.length === 0) return null
               return (
                 <div key={cat} className="shop-section">

@@ -1,16 +1,82 @@
 import { useState } from "react";
 import { ALL_CHARACTERS } from "../../avatar/characters";
 import { THEMES } from "../../lib/magnet/themes";
-import { BANNERS, LOGOS } from "../../lib/banners";
+import { BANNERS, LOGOS, logoFilter } from "../../lib/banners";
 import { setOverride, getOverride, clearSystem } from "../../lib/ownerOverrides";
 
 export default function OwnerPricingTab() {
   const [, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
 
+  const effPrice = (sys: "characters" | "themes" | "banners" | "logos", id: string, fallback: number) =>
+    getOverride(sys, id, {} as { price?: number })?.price ?? fallback;
+  const effUnlock = (id: string, fallback: number) =>
+    getOverride("themes", id, {} as { unlockLevel?: number })?.unlockLevel ?? fallback;
+  const effRarity = (id: string, fallback: string) =>
+    getOverride("characters", id, {} as { rarity?: string })?.rarity ?? fallback;
+
   return (
     <div>
       <h3 style={{ color: "var(--color-genshin-gold)", fontSize: "0.85rem", letterSpacing: "0.05em", marginBottom: "1rem" }}>PRICING & UNLOCKS</h3>
+
+      {/* LIVE PREVIEW — exactly what players see in their shop */}
+      <div style={{ marginBottom: "1.5rem", padding: "0.75rem", background: "linear-gradient(160deg,#141226,#1d1830)", border: "1px solid rgba(201,168,76,0.35)", borderRadius: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+          <span style={{ fontSize: "0.62rem", color: "#c9a44a", letterSpacing: "0.08em", fontWeight: 700 }}>LIVE PREVIEW — player shop</span>
+          <span style={{ fontSize: "0.55rem", color: "#8d815f" }}>prices update instantly for everyone</span>
+        </div>
+
+        {/* Characters */}
+        <div style={{ fontSize: "0.6rem", color: "#8d815f", marginBottom: "0.3rem" }}>CHARACTERS</div>
+        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+          {ALL_CHARACTERS.slice(0, 12).map((ch) => (
+            <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.6rem", color: "#d9cba4", background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 999, padding: "0.2rem 0.6rem 0.2rem 0.2rem" }}>
+              {ch.icon ? (
+                <img src={ch.icon} alt={ch.name} style={{ width: 18, height: 18, borderRadius: 999, objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: "0.8rem" }}>🎮</span>
+              )}
+              {ch.name} — <b style={{ color: "#f2e6c9" }}>{effPrice("characters", ch.id, ch.price ?? 0) === 0 ? "FREE" : `${effPrice("characters", ch.id, ch.price ?? 0)} ${ch.currency === "gold" ? "🌟" : "🍃"}`}</b>
+            </div>
+          ))}
+        </div>
+
+        {/* Themes */}
+        <div style={{ fontSize: "0.6rem", color: "#8d815f", marginBottom: "0.3rem" }}>THEMES</div>
+        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+          {THEMES.slice(0, 12).map((th) => (
+            <div key={th.id} style={{ fontSize: "0.6rem", color: "#d9cba4", background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 999, padding: "0.25rem 0.6rem" }}>
+              {th.name} — <b style={{ color: "#f2e6c9" }}>{effPrice("themes", th.id, th.leafPrice) === 0 ? "FREE" : `${effPrice("themes", th.id, th.leafPrice)} 🍃`}</b> <span style={{ color: "#8d815f" }}>Lv.{effUnlock(th.id, th.unlockLevel)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Banners */}
+        <div style={{ fontSize: "0.6rem", color: "#8d815f", marginBottom: "0.3rem" }}>BANNERS</div>
+        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+          {BANNERS.slice(0, 12).map((b) => (
+            <div key={b.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.6rem", color: "#d9cba4", background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 999, padding: "0.2rem 0.6rem 0.2rem 0.2rem" }}>
+              <div style={{ width: 26, height: 16, borderRadius: 2, overflow: "hidden", flexShrink: 0, background: b.css, backgroundImage: b.image ? `url('${b.image}')` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
+              {b.name} — <b style={{ color: "#f2e6c9" }}>{effPrice("banners", b.id, b.price) === 0 ? "FREE" : `${effPrice("banners", b.id, b.price)} ${b.currency === "gold" ? "🌟" : "🍃"}`}</b>
+            </div>
+          ))}
+        </div>
+
+        {/* Logos */}
+        <div style={{ fontSize: "0.6rem", color: "#8d815f", marginBottom: "0.3rem" }}>LOGOS</div>
+        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+          {LOGOS.slice(0, 12).map((l) => (
+            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.6rem", color: "#d9cba4", background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 999, padding: "0.2rem 0.6rem 0.2rem 0.2rem" }}>
+              {l.image ? (
+                <img src={l.image} alt={l.name} style={{ width: 18, height: 18, borderRadius: 999, objectFit: "cover", background: l.css }} />
+              ) : (
+                <div style={{ width: 18, height: 18, borderRadius: 999, background: l.css || "#333" }} />
+              )}
+              {l.name} — <b style={{ color: "#f2e6c9" }}>{effPrice("logos", l.id, l.price) === 0 ? "FREE" : `${effPrice("logos", l.id, l.price)} ${l.currency === "gold" ? "🌟" : "🍃"}`}</b>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Characters */}
       <Section title="CHARACTERS" system="characters" onRefresh={refresh}>
@@ -20,7 +86,11 @@ export default function OwnerPricingTab() {
             const rarity = getOverride("characters", ch.id, {} as { rarity?: string })?.rarity ?? ch.rarity ?? "Common";
             return (
               <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: "1px solid rgba(139,109,46,0.1)" }}>
-                <span style={{ fontSize: "0.85rem" }}>{ch.icon ? "" : "🎮"}</span>
+                {ch.icon ? (
+                  <img src={ch.icon} alt={ch.name} style={{ width: 24, height: 24, borderRadius: 999, objectFit: "cover", flexShrink: 0 }} />
+                ) : (
+                  <span style={{ fontSize: "0.85rem" }}>🎮</span>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.62rem", fontWeight: 600, color: "var(--color-genshin-gold-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{ch.name}</div>
                   <div style={{ fontSize: "0.5rem", color: "var(--color-genshin-bronze)" }}>{rarity}</div>
@@ -46,7 +116,10 @@ export default function OwnerPricingTab() {
             const unlockLevel = getOverride("themes", th.id, {} as { unlockLevel?: number })?.unlockLevel ?? th.unlockLevel;
             return (
               <div key={th.id} style={{ padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: "1px solid rgba(139,109,46,0.1)" }}>
-                <div style={{ fontSize: "0.62rem", fontWeight: 600, color: "var(--color-genshin-gold-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{th.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 3, flexShrink: 0, background: th.vars.accent, border: "1px solid rgba(255,255,255,0.2)" }} />
+                  <div style={{ fontSize: "0.62rem", fontWeight: 600, color: "var(--color-genshin-gold-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{th.name}</div>
+                </div>
                 <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.2rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.15rem" }}>
                     <span style={{ fontSize: "0.45rem", color: "var(--color-genshin-bronze)" }}>🍃</span>
@@ -71,10 +144,12 @@ export default function OwnerPricingTab() {
           {BANNERS.map((b) => {
             const price = getOverride("banners", b.id, {} as { price?: number })?.price ?? b.price;
             return (
-              <div key={b.id} style={{ padding: "0.4rem 0.5rem", background: b.css, borderRadius: 2, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: "0.6rem", fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>{b.name}</div>
-                <input type="number" value={price} onChange={(e) => { setOverride("banners", b.id, { price: Number(e.target.value) }); refresh(); }}
-                  style={{ width: 48, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 2, textAlign: "right" as const, marginTop: "0.2rem" }} />
+              <div key={b.id} style={{ position: "relative", overflow: "hidden", aspectRatio: "21/9", borderRadius: 3, border: "1px solid rgba(255,255,255,0.15)", background: b.css, backgroundImage: b.image ? `url('${b.image}')` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.3rem", padding: "0.25rem 0.35rem", background: "rgba(0,0,0,0.6)" }}>
+                  <div style={{ fontSize: "0.56rem", fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{b.name}</div>
+                  <input type="number" value={price} onChange={(e) => { setOverride("banners", b.id, { price: Number(e.target.value) }); refresh(); }}
+                    style={{ width: 44, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 2, textAlign: "right" as const }} />
+                </div>
               </div>
             );
           })}
@@ -88,7 +163,11 @@ export default function OwnerPricingTab() {
             const price = getOverride("logos", l.id, {} as { price?: number })?.price ?? l.price;
             return (
               <div key={l.id} style={{ padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: "1px solid rgba(139,109,46,0.1)", textAlign: "center" as const }}>
-                <div style={{ width: 32, height: 32, margin: "0 auto 0.2rem", borderRadius: 2, background: l.css || "#333" }} />
+                {l.image ? (
+                  <img src={l.image} alt={l.name} style={{ width: 36, height: 36, margin: "0 auto 0.2rem", borderRadius: 999, objectFit: "cover", display: "block", background: l.css }} />
+                ) : (
+                  <div style={{ width: 36, height: 36, margin: "0 auto 0.2rem", borderRadius: 999, background: l.css || "#333" }} />
+                )}
                 <div style={{ fontSize: "0.55rem", color: "var(--color-genshin-bronze)" }}>{l.name}</div>
                 <input type="number" value={price} onChange={(e) => { setOverride("logos", l.id, { price: Number(e.target.value) }); refresh(); }}
                   style={{ width: 44, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.12)", borderRadius: 2, textAlign: "right" as const, marginTop: "0.15rem" }} />

@@ -62,12 +62,12 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
 .lobby-bottomleft {
   position: absolute;
-  bottom: 18px;
+  bottom: 100px;
   left: 18px;
   z-index: 10;
 }
@@ -296,38 +296,54 @@
 }
 
 .lobby-round {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   position: relative;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  color: var(--wood-dark);
+  background: #3a2a1a;
+  border: 2px solid #5a4a3a;
+  box-shadow: 0 4px 12px rgba(58, 42, 26, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .lobby-round:hover {
-  filter: brightness(1.04);
+  background: #4a3a2a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(58, 42, 26, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .lobby-round:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--wood-dark);
+  transform: translateY(1px);
+  background: #2a1a0a;
+  box-shadow: 0 2px 6px rgba(58, 42, 26, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .lobby-round .glyph {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
 }
 .lobby-round .png-icon {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
+}
+.lobby-round--score {
+  width: 64px;
+  height: 64px;
+  background: #3a2a1a;
+  border-color: #5a4a3a;
+  box-shadow: 0 4px 16px rgba(58, 42, 26, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.lobby-round--score:hover {
+  background: #4a3a2a;
+  box-shadow: 0 6px 22px rgba(58, 42, 26, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.lobby-round--score:active {
+  background: #2a1a0a;
+  box-shadow: 0 2px 8px rgba(58, 42, 26, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .lobby-round--score .png-icon {
-  width: 90px;
-  height: 90px;
-  transform: translateY(-12px);
+  width: 44px;
+  height: 44px;
 }
 
 /* ---- center stage ---- */
@@ -457,18 +473,15 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--glass-fill);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  color: var(--ink);
+  background: #3a2a1a;
+  border: 2px solid #5a4a3a;
+  color: #fff;
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
 }
 .lobby-inbox-btn:hover {
-  background: var(--glass-fill-strong);
-  border-color: var(--gold);
+  background: #4a3a2a;
   transform: scale(1.05);
 }
 .lobby-inbox-btn svg {
@@ -482,8 +495,8 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 8px var(--gold);
+  background: #e0556b;
+  box-shadow: 0 0 8px #e0556b;
   animation: pulse 1.5s ease-in-out infinite;
 }
 @keyframes pulse {
@@ -495,12 +508,10 @@
   top: calc(100% + 8px);
   right: 0;
   width: 280px;
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: #1a2a14;
+  border: 1px solid rgba(93, 168, 78, 0.3);
   border-radius: 16px;
-  box-shadow: var(--glass-shadow), 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   z-index: 100;
   animation: dropdown-in 0.15s ease-out;
@@ -514,10 +525,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid rgba(93, 168, 78, 0.2);
   font-weight: 700;
   font-size: 15px;
-  color: var(--ink);
+  color: #f0e6d2;
 }
 .lobby-inbox-close {
   width: 28px;
@@ -525,14 +536,14 @@
   border-radius: 8px;
   background: transparent;
   border: none;
-  color: var(--ink-soft);
+  color: rgba(240, 230, 210, 0.5);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.1s;
 }
 .lobby-inbox-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--ink);
+  background: rgba(93, 168, 78, 0.2);
+  color: #f0e6d2;
 }
 .lobby-inbox-list {
   padding: 8px;
@@ -546,7 +557,7 @@
   border-radius: 10px;
   background: transparent;
   border: none;
-  color: var(--ink);
+  color: #f0e6d2;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -554,12 +565,12 @@
   text-align: left;
 }
 .lobby-inbox-item:hover {
-  background: var(--glass-fill);
+  background: rgba(93, 168, 78, 0.15);
 }
 .lobby-inbox-icon {
   width: 22px;
   height: 22px;
-  color: var(--gold);
+  color: #caa84a;
   flex-shrink: 0;
 }
 .lobby-inbox-count {
@@ -635,7 +646,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 38% 30%, rgba(45, 55, 65, 0.9), rgba(30, 38, 48, 0.95));
+  background: radial-gradient(circle at 38% 30%, rgba(16, 16, 16, 0.98), rgba(5, 5, 5, 1));
   border: 1px solid var(--glass-border);
   box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.2), inset 0 -6px 14px rgba(0, 0, 0, 0.25);
   color: var(--on-glass, var(--wood-dark));
@@ -877,8 +888,8 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
 
    /* --- Top bar: compact single row --- */
    .lobby-topleft { top: 10px; left: 10px; gap: 6px; z-index: 20; }
-   .lobby-topright { top: 10px; right: 10px; gap: 6px; z-index: 20; }
-   .lobby-bottomleft { bottom: 10px; left: 10px; z-index: 20; }
+   .lobby-topright { top: 10px; right: 10px; gap: 8px; z-index: 20; }
+   .lobby-bottomleft { bottom: 96px; left: 10px; z-index: 20; }
   .lobby-xp {
     padding: 4px 10px 4px 4px;
     background: rgba(16, 20, 28, 0.7);
@@ -888,14 +899,14 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   .lobby-xp__medal { width: 32px; height: 32px; }
   .lobby-xp__name { font-size: 11px; max-width: 80px; }
   .lobby-round {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    background: rgba(16, 20, 28, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #3a2a1a;
+    border: 2px solid #5a4a3a;
   }
    .lobby-round .glyph { width: 22px; height: 22px; }
-   .lobby-round .png-icon { width: 30px; height: 30px; }
+   .lobby-round .png-icon { width: 28px; height: 28px; }
 
     /* --- Exit button mobile --- */
     .lobby-exit {
@@ -1833,29 +1844,23 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   top: calc(100% + 8px);
   right: 0;
   width: min(320px, calc(100vw - 32px));
-  background: var(--glass-fill-strong);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: #3a2a1a;
+  border: 1px solid rgba(90, 74, 58, 0.3);
   border-radius: 16px;
-  box-shadow: var(--glass-shadow), 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   z-index: 100;
   animation: lm-dropdown-in 0.15s ease-out;
-}
-@keyframes lm-dropdown-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 .lm-inbox-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid rgba(93, 168, 78, 0.2);
   font-weight: 700;
   font-size: 15px;
-  color: var(--ink);
+  color: #f0e6d2;
 }
 .lm-inbox-close {
   width: 36px;
@@ -1863,14 +1868,14 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   border-radius: 10px;
   background: transparent;
   border: none;
-  color: var(--ink-soft);
+  color: rgba(240, 230, 210, 0.5);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.1s;
 }
 .lm-inbox-close:active {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--ink);
+  background: rgba(93, 168, 78, 0.2);
+  color: #f0e6d2;
 }
 .lm-inbox-list {
   padding: 8px;
@@ -1884,7 +1889,7 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   border-radius: 10px;
   background: transparent;
   border: none;
-  color: var(--ink);
+  color: #f0e6d2;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -1892,12 +1897,12 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   text-align: left;
 }
 .lm-inbox-item:active {
-  background: var(--glass-fill);
+  background: rgba(93, 168, 78, 0.15);
 }
 .lm-inbox-icon {
   width: 24px;
   height: 24px;
-  color: var(--gold);
+  color: #caa84a;
   flex-shrink: 0;
 }
 .lm-inbox-count {

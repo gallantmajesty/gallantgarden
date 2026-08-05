@@ -7,10 +7,10 @@ import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
 import { useAvatar } from '../avatar/store'
-import { CHARACTERS, characterById } from '../avatar/characters'
+import { CHARACTERS, effectiveCharacters, characterById } from '../avatar/characters'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
-import { BANNERS, LOGOS, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
+import { effectiveBanners, effectiveLogos, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
 import {
   type AvatarConfig,
   type StyleOption,
@@ -139,7 +139,7 @@ function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'ac
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
 function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  const characters = CHARACTERS
+  const characters = effectiveCharacters()
   const tabs = ['Owned', 'EPIC', 'LEGENDARY']
   const [activeTab, setActiveTab] = useState('Owned')
   const [previewing, setPreviewing] = useState<string | null>(null)
@@ -899,7 +899,7 @@ function ShopTab() {
       {shopTab === 'banners' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {(['others'] as BannerCategory[]).map((cat) => {
-            const items = BANNERS.filter((b) => b.category === cat && !useShop.getState().isOwned(b.id))
+            const items = effectiveBanners().filter((b) => b.category === cat && !useShop.getState().isOwned(b.id))
             if (items.length === 0) return null
             return (
               <div key={cat}>
@@ -944,7 +944,7 @@ function ShopTab() {
 
       {shopTab === 'logos' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {LOGOS.filter((l) => !useShop.getState().isOwned(l.id)).map((l) => {
+          {effectiveLogos().filter((l) => !useShop.getState().isOwned(l.id)).map((l) => {
             return (
               <div key={l.id} style={{
                 borderRadius: 12, overflow: 'hidden', padding: 14, textAlign: 'center',

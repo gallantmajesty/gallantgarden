@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DEFAULT_WHEEL, loadWheelConfig, saveWheelConfig, type LuckyWheelConfig, type WheelPrize } from "../../lib/luckyWheel";
+import { WheelStage, type WheelStageHandle } from "../focus/WheelStage";
 
 let idCounter = 100;
 const nextId = () => `p${idCounter++}`;
@@ -8,6 +9,17 @@ export default function OwnerLuckyWheelTab() {
   const [cfg, setCfg] = useState<LuckyWheelConfig>(() => loadWheelConfig());
   const [, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
+  const stageRef = useRef<WheelStageHandle>(null);
+  const [previewResult, setPreviewResult] = useState<WheelPrize | null>(null);
+  const [previewSpinning, setPreviewSpinning] = useState(false);
+
+  const spinPreview = () => {
+    if (previewSpinning) return;
+    setPreviewResult(null);
+    setPreviewSpinning(true);
+    stageRef.current?.spin();
+    window.setTimeout(() => setPreviewSpinning(false), 3700);
+  };
 
   const patch = (p: Partial<LuckyWheelConfig>) => {
     const next = { ...cfg, ...p };
@@ -59,6 +71,34 @@ export default function OwnerLuckyWheelTab() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <h3 style={{ color: "var(--color-genshin-gold)", fontSize: "0.85rem", letterSpacing: "0.05em" }}>LUCKY WHEEL</h3>
         <button onClick={resetAll} style={{ fontSize: "0.62rem", color: "var(--color-genshin-bronze)", background: "transparent", border: "none", cursor: "pointer" }}>Reset defaults</button>
+      </div>
+
+      {/* LIVE PREVIEW — exactly what players see */}
+      <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "linear-gradient(160deg,#141226,#1d1830)", border: "1px solid rgba(201,168,76,0.35)", borderRadius: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <span style={{ fontSize: "0.62rem", color: "#c9a44a", letterSpacing: "0.08em", fontWeight: 700 }}>LIVE PREVIEW</span>
+          <button onClick={spinPreview} disabled={previewSpinning} style={{ fontSize: "0.62rem", color: "#141226", background: "linear-gradient(135deg,#e8c97a,#c9a44a)", border: "none", borderRadius: 4, padding: "0.3rem 0.8rem", cursor: previewSpinning ? "default" : "pointer", fontWeight: 600, opacity: previewSpinning ? 0.6 : 1 }}>
+            {previewSpinning ? "Spinning…" : "🎡 Test spin"}
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+          <WheelStage ref={stageRef} cfg={cfg} size={220} onResult={(p) => setPreviewResult(p)} />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            {previewResult ? (
+              <div style={{ fontSize: "0.75rem", color: "#f2e6c9" }}>
+                Landed: <b>{previewResult.emoji} {previewResult.label}</b>
+                {previewResult.type === "leaves" && <div style={{ fontSize: "0.6rem", color: "#b8a77a" }}>+{previewResult.amount} 🍃 to the player's wallet</div>}
+                {previewResult.type === "gold" && <div style={{ fontSize: "0.6rem", color: "#b8a77a" }}>+{previewResult.amount} 🌟 to the player's gold</div>}
+                {previewResult.type === "rank_xp" && <div style={{ fontSize: "0.6rem", color: "#b8a77a" }}>+{previewResult.amount} 📈 rank XP (granted by you)</div>}
+              </div>
+            ) : (
+              <div style={{ fontSize: "0.6rem", color: "#8d815f" }}>Press "Test spin" to preview the spin animation and weighted odds. The wheel shown is exactly what players see in the Lobby.</div>
+            )}
+            <div style={{ marginTop: "0.5rem", fontSize: "0.55rem", color: "#8d815f" }}>
+              Cost {cfg.cost} 🍃 · {cfg.freeSpinsPerDay} free spin{cfg.freeSpinsPerDay === 1 ? "" : "s"}/day · {cfg.enabled ? "🟢 ENABLED" : "🔴 DISABLED (players can't spin)"}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Settings */}

@@ -1,94 +1,71 @@
 import { useMemo, useRef, useState } from "react";
-import { loadWheelConfig, rollPrize, getSpinRecord, recordSpin, type WheelPrize } from "../../lib/luckyWheel";
-
-const WHEEL_SIZE = 300;
+import { loadWheelConfig, getSpinRecord, recordSpin, type WheelPrize } from "../../lib/luckyWheel";
+import { WheelStage, type WheelStageHandle } from "./WheelStage";
 
 export function LuckyWheelModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const cfg = useMemo(() => loadWheelConfig(), [open]);
-  const [spinDeg, setSpinDeg] = useState(0);
-  const [spinning, setSpinning] = useState(false);
+  const stageRef = useRef<WheelStageHandle>(null);
   const [result, setResult] = useState<WheelPrize | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
-  const lastBalance = useRef(0);
+  const [spinning, setSpinning] = useState(false);
 
   const readBalance = () => {
     try {
       const raw = localStorage.getItem("sg.wallet.balance");
       const n = raw ? Number(raw) : 0;
-      lastBalance.current = Number.isFinite(n) && n >= 0 ? n : 0;
-    } catch { lastBalance.current = 0; }
-    return lastBalance.current;
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    } catch { return 0; }
   };
 
   const writeBalance = (n: number) => {
-    lastBalance.current = n;
     try { localStorage.setItem("sg.wallet.balance", String(n)); } catch { /* ignore */ }
   };
 
   if (!open) return null;
 
-  const totalWeight = cfg.prizes.reduce((a, p) => a + Math.max(0, p.weight), 0);
-  const segAngle = (p: WheelPrize) => (Math.max(0, p.weight) / totalWeight) * 360;
-
-  // conic gradient built from prizes (angles computed as cumulative fractions)
-  let cursor = 0;
-  const stops: string[] = [];
-  for (const p of cfg.prizes) {
-    const a = segAngle(p);
-    const from = cursor;
-    const to = cursor + a;
-    stops.push(`${p.color} ${from}deg ${to}deg`);
-    cursor = to;
-  }
+  const bal = readBalance();
+  const rec = getSpinRecord();
+  const freeLeft = Math.max(0, cfg.freeSpinsPerDay - rec.free);
 
   const spin = () => {
     if (spinning) return;
-    const bal = readBalance();
-    const rec = getSpinRecord();
-    const freeLeft = Math.max(0, cfg.freeSpinsPerDay - rec.free);
+    const balance = readBalance();
     const useFree = freeLeft > 0;
-    if (!useFree && bal < cfg.cost) {
+    if (!useFree && balance < cfg.cost) {
       setFlash(`Not enough leaves — a spin costs ${cfg.cost} 🍃`);
       return;
     }
     if (cfg.prizes.length === 0) { setFlash("No prizes configured on the wheel yet."); return; }
 
-    if (!useFree) writeBalance(bal - cfg.cost);
+    if (!useFree) writeBalance(balance - cfg.cost);
     recordSpin(useFree);
 
-    const prize = rollPrize(cfg);
     setResult(null);
     setFlash(null);
     setSpinning(true);
-
-    // Land the pointer (12 o'clock) on the prize slice: rotate so slice center is at -90°
-    const idx = cfg.prizes.indexOf(prize);
-    let centerDeg = 0;
-    for (let i = 0; i < idx; i++) centerDeg += segAngle(cfg.prizes[i]);
-    centerDeg += segAngle(prize) / 2;
-    const target = 360 * 6 + (90 - centerDeg);
-    setSpinDeg((prev) => prev + target - ((prev % 360) + 360) % 360);
-
-    window.setTimeout(() => {
+    const prize = stageRef.current?.spin();
+    if (prize) {
+      window.setTimeout(() => {
+        setSpinning(false);
+        setResult(prize);
+        payOut(prize);
+      }, 3700);
+    } else {
       setSpinning(false);
-      setResult(prize);
-      payOut(prize);
-    }, 3600);
+    }
   };
 
   const payOut = (prize: WheelPrize) => {
-    const bal = readBalance();
-    if (prize.type === "leaves") writeBalance(bal + prize.amount);
+    const balance = readBalance();
+    if (prize.type === "leaves") writeBalance(balance + prize.amount);
     else if (prize.type === "gold") {
-      const gold = localStorage.getItem("sg.wallet.gold") ? Number(localStorage.getItem("sg.wallet.gold")) : 0;
-      try { localStorage.setItem("sg.wallet.gold", String(Number.isFinite(gold) ? gold + prize.amount : prize.amount)); } catch { /* ignore */ }
+      try {
+        const gold = localStorage.getItem("sg.wallet.gold") ? Number(localStorage.getItem("sg.wallet.gold")) : 0;
+        localStorage.setItem("sg.wallet.gold", String(Number.isFinite(gold) ? gold + prize.amount : prize.amount));
+      } catch { /* ignore */ }
     }
-    // rank_xp / item rewards are granted server-side by the owner; the toast acknowledges the win.
+    // rank_xp / item rewards are granted by the owner via the HQ.
   };
-
-  const bal = readBalance();
-  const rec = getSpinRecord();
-  const freeLeft = Math.max(0, cfg.freeSpinsPerDay - rec.free);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,5,10,0.8)", backdropFilter: "blur(4px)" }} onClick={onClose}>
@@ -102,36 +79,8 @@ export function LuckyWheelModal({ open, onClose }: { open: boolean; onClose: () 
         </div>
 
         {/* Wheel */}
-        <div style={{ position: "relative", width: WHEEL_SIZE, height: WHEEL_SIZE, margin: "0 auto 0.75rem" }}>
-          <div
-            style={{
-              width: WHEEL_SIZE, height: WHEEL_SIZE, borderRadius: "50%",
-              background: `conic-gradient(${stops.join(", ")})`,
-              transform: `rotate(${spinDeg}deg)`,
-              transition: spinning ? "transform 3.6s cubic-bezier(0.15, 0.9, 0.2, 1)" : "none",
-              border: "4px solid #c9a44a",
-              boxShadow: "0 0 30px rgba(0,0,0,0.5)",
-            }}
-          />
-          <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", fontSize: "1.4rem", zIndex: 3, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.6))" }}>📍</div>
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#0e0d1a", border: "3px solid #c9a44a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>🎡</div>
-          </div>
-          {/* slice labels */}
-          {cfg.prizes.map((p, i) => {
-            let deg = 0;
-            for (let j = 0; j < i; j++) deg += segAngle(cfg.prizes[j]);
-            deg += segAngle(p) / 2;
-            const rad = (deg * Math.PI) / 180;
-            const r = WHEEL_SIZE / 2 - 34;
-            const x = WHEEL_SIZE / 2 + r * Math.cos(rad);
-            const y = WHEEL_SIZE / 2 + r * Math.sin(rad);
-            return (
-              <span key={p.id} style={{ position: "absolute", left: x - 12, top: y - 12, fontSize: "1.1rem", zIndex: 2, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.7))" }}>
-                {p.emoji}
-              </span>
-            );
-          })}
+        <div style={{ margin: "0 auto 0.75rem", width: "fit-content" }}>
+          <WheelStage ref={stageRef} cfg={cfg} onResult={() => {}} />
         </div>
 
         {/* Prize list */}

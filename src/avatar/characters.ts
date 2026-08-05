@@ -628,6 +628,30 @@ export const CHARACTERS: Character[] = [
 // Remove gender-based filtering - all characters are available together
 export const ALL_CHARACTERS = CHARACTERS
 
+// ────────────────────────────────────────────────────────────
+// Override-aware effective roster — /owner pricing changes in the
+// Pricing tab apply instantly to every player-facing screen.
+// ────────────────────────────────────────────────────────────
+import { getOverride } from '../lib/ownerOverrides'
+
+/** Characters with /owner price + rarity overrides applied. */
+export function effectiveCharacters(): Character[] {
+  return CHARACTERS.map((c) => {
+    const ov = getOverride('characters', c.id, {} as { price?: number; rarity?: string })
+    if (!ov || (ov.price === undefined && ov.rarity === undefined)) return c
+    return {
+      ...c,
+      price: ov.price ?? c.price,
+      rarity: ov.rarity ?? c.rarity,
+    }
+  })
+}
+
+export function getEffectiveCharacter(id: string): Character {
+  const effective = effectiveCharacters()
+  return effective.find((c) => c.id === id) ?? effective[0]
+}
+
 export const DEFAULT_CHARACTER_ID = 'james'
 
 export function characterById(id: string): Character {

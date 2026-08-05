@@ -70,6 +70,37 @@ export default function OwnerAnnouncementsTab() {
 
   return (
     <div>
+      <div style={{ marginBottom: "1.25rem", padding: "0.75rem", background: "linear-gradient(160deg,#141226,#1d1830)", border: "1px solid rgba(201,168,76,0.35)", borderRadius: 8 }}>
+        <span style={{ fontSize: "0.62rem", color: "#c9a44a", letterSpacing: "0.08em", fontWeight: 700 }}>LIVE PREVIEW — how players see it</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.6rem" }}>
+          {news.filter((n) => n.active).slice(0, 2).map((n) => (
+            <div key={n.id} style={{ background: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 8, padding: "0.6rem 0.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                <span style={{ fontSize: "0.55rem", color: "#c9a44a", letterSpacing: "0.08em", fontWeight: 700 }}>{n.tag}</span>
+                <span style={{ fontSize: "0.5rem", color: "#8d815f" }}>{n.date}</span>
+              </div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#f2e6c9", marginBottom: "0.2rem" }}>{n.title}</div>
+              <div style={{ fontSize: "0.65rem", color: "#d9cba4", lineHeight: 1.5 }}>{n.body}</div>
+            </div>
+          ))}
+          {updates.filter((u) => u.active).slice(0, 2).map((u) => (
+            <div key={u.id} style={{ background: "rgba(26,24,44,0.5)", border: "1px solid rgba(139,109,46,0.15)", borderRadius: 8, padding: "0.55rem 0.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.15rem" }}>
+                <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "#c9a44a" }}>{u.version}</span>
+                <span style={{ fontSize: "0.5rem", color: "#8d815f" }}>{u.date}</span>
+              </div>
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#f2e6c9", marginBottom: "0.15rem" }}>{u.title}</div>
+              <ul style={{ margin: 0, paddingLeft: "1rem", fontSize: "0.62rem", color: "#d9cba4", lineHeight: 1.5 }}>
+                {u.notes.slice(0, 3).map((note, i) => <li key={i}>{note}</li>)}
+              </ul>
+            </div>
+          ))}
+          {news.filter((n) => n.active).length === 0 && updates.filter((u) => u.active).length === 0 && (
+            <div style={{ fontSize: "0.65rem", color: "#8d815f" }}>No visible content — players would see an empty state.</div>
+          )}
+        </div>
+      </div>
+
       {/* ── UPDATES ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
         <h3 style={{ color: "var(--color-genshin-gold)", fontSize: "0.85rem", letterSpacing: "0.05em" }}>UPDATE LOG</h3>
