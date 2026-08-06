@@ -2,6 +2,6 @@
 export const useWorld = () => {
   return {
     seat: null,
-    sit: (id: number) => console.log('Sitting in seat:', id),
+    sit: (id: number) => {},
   }
 }

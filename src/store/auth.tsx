@@ -1,12 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { runGlobalInit, runUserInit, runUserTeardown } from '../lib/appInit'
 import { initSession, claimSession, startHeartbeat } from '../lib/session'
@@ -68,6 +61,7 @@ async function enrichWithProfile(u: AuthUser): Promise<AuthUser> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   const refresh = useCallback(async () => {
     const { data } = await supabase.auth.getUser()
@@ -96,9 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(enriched)
           await runUserInit(enriched)
 
-          // Claim session & start heartbeat
+          // Claim session & start heartbeat. Heartbeat runs even when the
+          // claim is held elsewhere (false) so this tab fails the heartbeat
+          // and gets kicked; only a claim error (null — e.g. offline) skips
+          // heartbeating, so offline use isn't punished.
           const claimed = await claimSession()
-          if (claimed) {
+          if (claimed !== null) {
             stopHeartbeat = startHeartbeat()
           }
         } else {
@@ -128,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('[Auth] Session claimed elsewhere')
       runUserTeardown()
       setUser(null)
-      // Optionally show a modal to reclaim
+      navigate('/login', { replace: true })
     }
     window.addEventListener('session-lost', handleSessionLost)
 
@@ -166,6 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { data: { name } },
       })
       if (error) return error.message
+      // With email confirmation enabled the account isn't usable (and there's
+      // no session) until the link is clicked — report that to the caller with
+      // a sentinel instead of entering an unconfirmed account.
+      if (!data.session) return 'confirm-email'
       const u = mapSupabaseUser(data.user)
       if (u) {
         const enriched = await enrichWithProfile(u)
@@ -181,7 +182,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem('sf.guest')
       const redirectTo = typeof window !== 'undefined' ? window.location.origin : 'https://focuslily.com'
-      console.log('[Auth] signInWithProvider', provider, 'redirectTo:', redirectTo)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo },

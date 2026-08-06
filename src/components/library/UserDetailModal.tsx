@@ -39,7 +39,6 @@ export function UserDetailModal({ networkId, name, country, rank, onClose }: Pro
     const userId = networkId.split(':')[0]
     void getPublicProfileById(userId).then((p) => {
       if (cancelled) return
-      console.log('[UserDetailModal] profile fetch:', userId, p ? 'found' : 'null')
       setProfile(p)
       setLoading(false)
     }).catch((err) => {

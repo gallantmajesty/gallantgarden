@@ -35,6 +35,9 @@ export interface Character {
   price?: number
   /** currency spent: 'green' (🍃) or 'gold' (🌟 gold leaves). Default green. */
   currency?: 'green' | 'gold'
+  /** Shop visibility. Hidden characters stay fully playable (equip/loads fine);
+   *  they are just filtered out of the shop catalog until launch. */
+  visible: boolean
 }
 
 /** Build a fixed procedural look for a character's fallback rig. */
@@ -62,6 +65,7 @@ function look(bodyType: BodyType, over: Partial<AvatarConfig>): AvatarConfig {
 export const CHARACTERS: Character[] = [
   {
     id: 'james',
+    visible: true,
     name: 'James',
     gender: 'male',
     model: 'james.glb',
@@ -81,6 +85,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'claire',
+    visible: true,
     name: 'Lily',
     gender: 'female',
     model: 'claire.glb',
@@ -100,6 +105,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'mia',
+    visible: true,
     name: 'Mia',
     gender: 'female',
     model: 'mia.glb',
@@ -119,6 +125,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'ruslan',
+    visible: false,
     name: 'Ruslana',
     gender: 'female',
     model: 'ruslan.glb',
@@ -138,6 +145,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'dino',
+    visible: true,
     name: 'Dino',
     gender: 'male',
     model: 'dino.glb',
@@ -157,6 +165,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'rabbit',
+    visible: true,
     name: 'Bunny',
     gender: 'female',
     model: 'rabbit.glb',
@@ -176,6 +185,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'robot',
+    visible: true,
     name: 'Black Robot',
     gender: 'male',
     model: 'robot.glb',
@@ -197,6 +207,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'alien',
+    visible: false,
     name: 'Alien',
     gender: 'male',
     model: 'alien.glb',
@@ -217,6 +228,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'pig',
+    visible: false,
     name: 'Piggy',
     gender: 'female',
     model: 'pig.glb',
@@ -236,6 +248,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'angel',
+    visible: false,
     name: 'Seraphine',
     gender: 'female',
     model: 'angel.glb',
@@ -257,6 +270,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'sunflower',
+    visible: false,
     name: 'Sunny',
     gender: 'female',
     model: 'sunflower.glb',
@@ -279,6 +293,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'elephant',
+    visible: false,
     name: 'Ellie',
     gender: 'female',
     model: 'elephant.glb',
@@ -299,6 +314,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'monkey',
+    visible: false,
     name: 'Monkey',
     gender: 'male',
     model: 'monkey.glb',
@@ -328,6 +344,7 @@ export const CHARACTERS: Character[] = [
   // ── Commons (free) ──────────────────────────────────────────────────────
   {
     id: 'ojas',
+    visible: false,
     name: 'Ojas',
     gender: 'male',
     model: 'ojas.glb',
@@ -347,6 +364,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'priya',
+    visible: false,
     name: 'Priya',
     gender: 'female',
     model: 'priya.glb',
@@ -366,6 +384,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'zara',
+    visible: false,
     name: 'Zara',
     gender: 'female',
     model: 'zara.glb',
@@ -384,6 +403,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'owen',
+    visible: false,
     name: 'Owen',
     gender: 'male',
     model: 'owen.glb',
@@ -402,6 +422,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'taro',
+    visible: false,
     name: 'Taro',
     gender: 'male',
     model: 'taro.glb',
@@ -422,6 +443,7 @@ export const CHARACTERS: Character[] = [
   // ── Epics (green) ──────────────────────────────────────────────────────
   {
     id: 'panda',
+    visible: false,
     name: 'Panda',
     gender: 'female',
     model: 'panda.glb',
@@ -441,6 +463,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'fox',
+    visible: false,
     name: 'Fox',
     gender: 'male',
     model: 'fox.glb',
@@ -460,6 +483,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'owl',
+    visible: false,
     name: 'Owl',
     gender: 'female',
     model: 'owl.glb',
@@ -480,6 +504,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'cat_robot',
+    visible: false,
     name: 'Cat-Robot',
     gender: 'female',
     model: 'cat_robot.glb',
@@ -499,6 +524,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'samurai',
+    visible: false,
     name: 'Samurai',
     gender: 'male',
     model: 'samurai.glb',
@@ -518,6 +544,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'dragon',
+    visible: false,
     name: 'Dragon',
     gender: 'male',
     model: 'dragon.glb',
@@ -540,6 +567,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'wizard',
+    visible: false,
     name: 'Wizard',
     gender: 'male',
     model: 'wizard.glb',
@@ -561,6 +589,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'phoenix',
+    visible: false,
     name: 'Phoenix',
     gender: 'female',
     model: 'phoenix.glb',
@@ -582,6 +611,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'nightstalker',
+    visible: false,
     name: 'Nightstalker',
     gender: 'male',
     model: 'nightstalker.glb',
@@ -604,6 +634,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'celestial',
+    visible: false,
     name: 'Celestial',
     gender: 'female',
     model: 'celestial.glb',

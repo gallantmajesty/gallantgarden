@@ -1,15 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
 import { useLocation } from 'react-router-dom'
 import './AuthScreen.css'
 
+type EmailTab = 'signin' | 'signup'
+
 export function AuthScreen() {
   const { t } = useTranslation()
-  const { signInWithProvider, signInAsGuest } = useAuth()
+  const { signIn, signUp, signInWithProvider, signInAsGuest } = useAuth()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<OAuthProvider | 'guest' | null>(null)
+
+  const [emailMode, setEmailMode] = useState(false)
+  const [emailTab, setEmailTab] = useState<EmailTab>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+  const [confirmSent, setConfirmSent] = useState(false)
 
   useEffect(() => { setPending(null) }, [])
 
@@ -43,6 +53,26 @@ export function AuthScreen() {
         setPending(current => current === provider ? null : current)
       }, 4000)
     }
+  }
+
+  async function submitEmail(e: FormEvent) {
+    e.preventDefault()
+    setAuthBusy(true)
+    setError(null)
+    setConfirmSent(false)
+    const err =
+      emailTab === 'signin'
+        ? await signIn(email, password)
+        : await signUp(email, password, name.trim() || email.split('@')[0])
+    if (err === 'confirm-email') setConfirmSent(true)
+    else if (err) setError(err)
+    setAuthBusy(false)
+  }
+
+  function toggleEmail() {
+    setEmailMode((v) => !v)
+    setError(null)
+    setConfirmSent(false)
   }
 
   return (
@@ -126,6 +156,77 @@ export function AuthScreen() {
           ))}
         </div>
 
+        <button type="button" className="auth-email-toggle" onClick={toggleEmail}>
+          {emailMode ? t('auth.hideEmail') : t('auth.orContinueEmail')}
+        </button>
+
+        {emailMode && (
+          <>
+            <div className="auth-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={emailTab === 'signin'}
+                className={`auth-tab ${emailTab === 'signin' ? 'active' : ''}`}
+                onClick={() => setEmailTab('signin')}
+              >
+                {t('auth.signIn')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={emailTab === 'signup'}
+                className={`auth-tab ${emailTab === 'signup' ? 'active' : ''}`}
+                onClick={() => setEmailTab('signup')}
+              >
+                {t('auth.createAccount')}
+              </button>
+            </div>
+
+            <form className="auth-form" onSubmit={submitEmail}>
+              {emailTab === 'signup' && (
+                <label className="auth-field">
+                  <span>{t('auth.explorerName')}</span>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t('auth.namePlaceholder')}
+                    maxLength={20}
+                    autoComplete="nickname"
+                  />
+                </label>
+              )}
+              <label className="auth-field">
+                <span>{t('auth.email')}</span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('auth.emailPlaceholder')}
+                  autoComplete={emailTab === 'signin' ? 'email' : 'email'}
+                />
+              </label>
+              <label className="auth-field">
+                <span>{t('auth.password')}</span>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t('auth.passwordPlaceholder')}
+                  autoComplete={emailTab === 'signin' ? 'current-password' : 'new-password'}
+                />
+              </label>
+              <button type="submit" className="auth-submit" disabled={authBusy || !!pending}>
+                {authBusy ? t('auth.openingGate') : emailTab === 'signin' ? t('auth.signIn') : t('auth.createAccount')}
+              </button>
+            </form>
+          </>
+        )}
+
         <div className="auth-divider">
           <span>or</span>
         </div>
@@ -146,6 +247,7 @@ export function AuthScreen() {
           {t('auth.guestHint')}
         </p>
 
+        {confirmSent && <div className="auth-confirm">{t('auth.confirmEmail')}</div>}
         {error && <div className="auth-error">{error}</div>}
       </div>
     </div>

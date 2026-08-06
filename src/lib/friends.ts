@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getProfilesByIds } from './social'
+import { allow, RATE_LIMITS } from './rateLimit'
 import type { FriendRequest, PublicProfile, ReportReason } from './types'
 
 // Friend layer: the mutual, accept-gated relationship that unlocks chat. Sits
@@ -10,9 +11,11 @@ import type { FriendRequest, PublicProfile, ReportReason } from './types'
 
 // ----------------------------------------------------------------- mutations
 
-/** Send (or re-send) a friend request. Returns true on success. */
+/** Send (or re-send) a friend request. Returns true on success. Rate-limited
+ *  client-side (5/min) and server-side via send_friend_request_limited. */
 export async function sendFriendRequest(addressee: string): Promise<boolean> {
-  const { error } = await supabase.rpc('send_friend_request', { addressee })
+  if (!allow('friend-request', RATE_LIMITS.friendRequest)) return false
+  const { error } = await supabase.rpc('send_friend_request_limited', { p_addressee: addressee })
   return !error
 }
 
@@ -42,15 +45,19 @@ export async function unblockUser(target: string): Promise<boolean> {
   return !error
 }
 
-/** File a report against a user. */
+/** File a report against a user. Rate-limited client-side (5/min) and
+ *  server-side via report_user_limited; context is capped at 1000 chars. */
 export async function reportUser(
   reportedId: string,
   reason: ReportReason,
   context = '',
 ): Promise<boolean> {
-  const { error } = await supabase
-    .from('reports')
-    .insert([{ reported_id: reportedId, reason, context }])
+  if (!allow('report', RATE_LIMITS.report)) return false
+  const { error } = await supabase.rpc('report_user_limited', {
+    p_reported_id: reportedId,
+    p_reason: reason,
+    p_context: context.slice(0, 1000),
+  })
   return !error
 }
 

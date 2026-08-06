@@ -35,7 +35,7 @@ const stats: DebugStats = {
   fps: 0, draws: 0, tris: 0, programs: 0, geo: 0, tex: 0,
   spikes: 0, recreations: 0, ctxLost: false,
 }
-if (typeof window !== 'undefined') (window as any).__debugStats = stats
+if (typeof window !== 'undefined' && import.meta.env.DEV) (window as any).__debugStats = stats
 
 /* ------------------------------------------------------------------ */
 /*  DebugProbe — INSIDE the Canvas. Collects stats via useThree/useFrame */

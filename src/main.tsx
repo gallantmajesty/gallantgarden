@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { AuthProvider } from './store/auth'
 import { supabaseConfigured } from './lib/supabase'
 import { initSentry } from './lib/sentry'
+import { initErrorReporting } from './lib/errorLogger'
 import { SentryUserTracker } from './components/SentryUserTracker'
 import { KeepAwakeProvider } from './components/KeepAwakeProvider'
 import './i18n'
@@ -24,15 +25,22 @@ let globalErrorShown = false
 function showGlobalError(msg: string) {
   if (globalErrorShown) return
   globalErrorShown = true
-  const div = document.createElement('div')
-  div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f1410;color:#e8efe6;z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;overflow:auto;'
+  // Reuse the pre-bundle #crash-error overlay from index.html (if present) so a
+  // crash never produces two stacked overlays.
+  const existing = document.getElementById('crash-error')
+  const div = existing || document.createElement('div')
+  if (!existing) {
+    div.id = 'crash-error'
+    div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f1410;color:#e8efe6;z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;overflow:auto;'
+    document.body.appendChild(div)
+  }
   div.innerHTML = `<div style="max-width:560px;text-align:center;"><div style="font-size:40px;margin-bottom:12px;">⚠️</div><h2 style="margin:0 0 10px;">Something went wrong</h2><pre style="white-space:pre-wrap;word-break:break-word;background:#1d241b;padding:12px;border-radius:8px;opacity:.9;font-size:13px;">${msg.replace(/</g, '&lt;')}</pre><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;border-radius:8px;background:#2a3a2e;color:#e8efe6;border:1px solid #4a5a4e;cursor:pointer;">Reload</button></div>`
-  document.body.appendChild(div)
 }
 
 const rootEl = document.getElementById('root')!
 
 initSentry()
+initErrorReporting()
 
 if (!supabaseConfigured) {
   rootEl.innerHTML = `

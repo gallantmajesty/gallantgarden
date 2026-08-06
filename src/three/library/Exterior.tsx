@@ -176,11 +176,11 @@ function PineForest({ trees }: { trees: Tree[] }) {
         <meshStandardMaterial color="#1a1008" roughness={1} />
       </instancedMesh>
       <group ref={sway}>
-        <instancedMesh ref={lowRef} args={[undefined, undefined, n]} castShadow frustumCulled={false}>
+        <instancedMesh ref={lowRef} args={[undefined, undefined, n]} frustumCulled={false}>
           <coneGeometry args={[1, 1, 7]} />
           <meshStandardMaterial color="#0e1e0f" roughness={1} flatShading />
         </instancedMesh>
-        <instancedMesh ref={topRef} args={[undefined, undefined, n]} castShadow frustumCulled={false}>
+        <instancedMesh ref={topRef} args={[undefined, undefined, n]} frustumCulled={false}>
           <coneGeometry args={[1, 1, 7]} />
           <meshStandardMaterial color="#132616" roughness={1} flatShading />
         </instancedMesh>

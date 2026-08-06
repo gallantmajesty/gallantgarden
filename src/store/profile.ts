@@ -87,6 +87,56 @@ interface ProfileState {
   reset: () => void
 }
 
+// ---- Guest persistence ----
+// Guests have no cloud row, so identity + progression live in localStorage,
+// keyed by the guest id so each "Continue as Guest" session starts fresh while
+// refreshes of the same guest restore their onboarding, player ID and XP.
+
+interface GuestSave {
+  playerId: number | null
+  displayName: string
+  displayNameChanges: number
+  data: OnboardingData
+  onboarded: boolean
+  avatarUrl: string | null
+  pub: ProfilePublic
+  xp: number
+  premiumXp: number
+  rankXp: number
+}
+
+function guestKey(id: string): string {
+  return `sf.guest.profile.v1.${id}`
+}
+
+function persistGuest(s: ProfileState): void {
+  try {
+    const save: GuestSave = {
+      playerId: s.playerId,
+      displayName: s.displayName,
+      displayNameChanges: s.displayNameChanges,
+      data: s.data,
+      onboarded: s.onboarded,
+      avatarUrl: s.avatarUrl,
+      pub: s.pub,
+      xp: s.xp,
+      premiumXp: s.premiumXp,
+      rankXp: s.rankXp,
+    }
+    if (!s.userId) return
+    localStorage.setItem(guestKey(s.userId), JSON.stringify(save))
+  } catch { /* storage blocked — guest state stays in memory */ }
+}
+
+function loadGuest(id: string): GuestSave | null {
+  try {
+    const raw = localStorage.getItem(guestKey(id))
+    if (!raw) return null
+    const v = JSON.parse(raw) as GuestSave
+    return v && typeof v === 'object' ? v : null
+  } catch { return null }
+}
+
 export const useProfile = create<ProfileState>((set, get) => ({
   userId: null,
   isGuest: false,
@@ -107,22 +157,24 @@ export const useProfile = create<ProfileState>((set, get) => ({
     // Guests have no real Supabase session — skip all DB reads.
     if (isGuest) {
       const guestName = fallbackName || 'Guest'
-      const guestPlayerId = Math.floor(100000000 + Math.random() * 900000000)
+      const saved = loadGuest(userId)
       set({
         userId,
         isGuest: true,
-        data: { ...EMPTY_ONBOARDING },
-        onboarded: false,
+        data: { ...EMPTY_ONBOARDING, ...(saved?.data ?? {}) },
+        onboarded: !!(saved?.data?.completed),
         ready: true,
-        playerId: guestPlayerId,
-        displayName: guestName,
-        displayNameChanges: 0,
-        avatarUrl: null,
-        pub: { ...EMPTY_PROFILE_PUBLIC },
-        xp: 0,
-        premiumXp: 0,
-        rankXp: 0,
+        playerId: saved?.playerId ?? Math.floor(100000000 + Math.random() * 900000000),
+        displayName: saved?.displayName || guestName,
+        displayNameChanges: saved?.displayNameChanges ?? 0,
+        avatarUrl: saved?.avatarUrl ?? null,
+        pub: saved?.pub ?? { ...EMPTY_PROFILE_PUBLIC },
+        xp: saved?.xp ?? 0,
+        premiumXp: saved?.premiumXp ?? 0,
+        rankXp: saved?.rankXp ?? 0,
       })
+      // Persist immediately so a fresh (random) player ID stays stable.
+      persistGuest(get())
       return
     }
 
@@ -199,6 +251,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     // Guests: just set local state
     if (get().isGuest) {
       set({ data, onboarded: true })
+      persistGuest(get())
       return true
     }
 
@@ -224,7 +277,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   setPlayerId: async (playerId) => {
     const userId = get().userId
     if (!userId) return false
-    if (get().isGuest) { set({ playerId }); return true }
+    if (get().isGuest) { set({ playerId }); persistGuest(get()); return true }
     const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
@@ -243,7 +296,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const warningActive = get().nameWarning
     // Block only if no warning AND changes used up
     if (!warningActive && changes >= DISPLAY_NAME_CHANGES_MAX) return false
-    if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false }); return true }
+    if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false }); persistGuest(get()); return true }
     const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
@@ -256,7 +309,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     const pub: ProfilePublic = { ...get().pub, ...patch }
-    if (get().isGuest) { set({ pub }); return true }
+    if (get().isGuest) { set({ pub }); persistGuest(get()); return true }
     const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, public_profile: pub }], { onConflict: 'id' })
@@ -268,7 +321,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
   setAvatarUrl: async (url) => {
     const userId = get().userId
     if (!userId) return false
-    if (get().isGuest) { set({ avatarUrl: url }); return true }
+    if (get().isGuest) { set({ avatarUrl: url }); persistGuest(get()); return true }
     const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, avatar_url: url }], { onConflict: 'id' })
@@ -309,6 +362,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const newPremiumXp = Math.max(0, premiumXp + golden)
     const newRankXp = Math.max(0, rankBase + rankDelta)
     set({ xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp })
+    if (isGuest) persistGuest(get())
     if (userId && !isGuest) syncXpToDb(userId, newXp, newPremiumXp, newRankXp)
     return { xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
   },

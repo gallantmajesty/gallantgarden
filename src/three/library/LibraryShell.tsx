@@ -472,8 +472,8 @@ function Pillars({ cols, h, stoneNormal }: { cols: [number, number, number][]; h
       <InstancedShape items={shafts} color={STONE_ANC} normalMap={stoneNormal} roughness={0.85} castShadow receiveShadow>
         <cylinderGeometry args={[0.5, 0.62, shaftH - 0.2, 24, 1]} />
       </InstancedShape>
-      {/* flared capital */}
-      <InstancedShape items={capitals} color={STONE_ANC} normalMap={stoneNormal} roughness={0.88} castShadow>
+      {/* flared capital — small ornamental cap, no shadow needed */}
+      <InstancedShape items={capitals} color={STONE_ANC} normalMap={stoneNormal} roughness={0.88}>
         <cylinderGeometry args={[0.82, 0.5, 0.9, 24]} />
       </InstancedShape>
       {/* ionic-style volutes (scrolls) at the capital corners */}

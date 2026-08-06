@@ -29,10 +29,8 @@ function getSeatMeta(seat: Seat): SeatMeta {
 
 function useAudioCues() {
   const playHover = useCallback(() => {
-    if (import.meta.env.DEV) console.debug('[audio] seat hover')
   }, [])
   const playSelect = useCallback(() => {
-    if (import.meta.env.DEV) console.debug('[audio] seat select')
   }, [])
   return { playHover, playSelect }
 }

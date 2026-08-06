@@ -2085,7 +2085,7 @@ function MonkeyHead({ P, fur, face, dark, inner, belly }: { P: Proportions; fur:
       {/* big warm eyes — gradient iris + pupil + twin catchlights; bulge proudly
           off the mask (mask front at eye height ≈ 1.046r, eye front 1.15r) */}
       {[-1, 1].map((sx) => (
-        <group key={`eye${sx}`} position={[sx * r * 0.3, r * 0.08, r * 1.02]}>
+        <group key={`eye${sx}`} position={[sx * r * 0.3, r * 0.13, r * 1.02]}>
           {/* white-ish sclera */}
           <mesh geometry={sphereGeo(1)} material={sclera} scale={[r * 0.22, r * 0.25, r * 0.13]} />
           {/* gradient amber iris */}
@@ -2098,35 +2098,51 @@ function MonkeyHead({ P, fur, face, dark, inner, belly }: { P: Proportions; fur:
         </group>
       ))}
 
-      {/* two angled brows — soft dark tufts sweeping outward for a confident,
-          masculine (but friendly) look; replaces the old flat bar */}
+      {/* two soft friendly brows — gentle outer-up tilt for a cute male
+          look (NOT angry): inner ends sit a touch high, outer ends drop */}
       {[-1, 1].map((sx) => (
         <mesh key={`brow${sx}`} geometry={sphereGeo(1)} material={dark}
           scale={[r * 0.2, r * 0.05, r * 0.09]}
           position={[sx * r * 0.3, r * 0.2, r * 1.07]}
-          rotation={[0, 0, sx * 0.3]} />
+          rotation={[0, 0, -sx * 0.22]} />
       ))}
 
-      {/* glossy dark nose pad, slightly protruding (front 1.14r) */}
-      <mesh geometry={sphereGeo(1)} material={nosePad} scale={[r * 0.12, r * 0.09, r * 0.1]} position={[0, -r * 0.24, r * 1.04]} />
+      {/* protruding tan muzzle — the classic monkey snout. An ellipsoid that
+          bulges past the face mask (mask front 1.12r, muzzle front 1.28r) so
+          the nose & mouth sit on a real snout instead of flat on the face */}
+      <mesh geometry={sphereGeo(1)} material={face} scale={[r * 0.46, r * 0.26, r * 0.22]} position={[0, -r * 0.34, r * 1.06]} />
+
+      {/* glossy dark-brown nose at the TOP of the muzzle (front 1.36r) */}
+      <mesh geometry={sphereGeo(1)} material={nosePad} scale={[r * 0.14, r * 0.09, r * 0.06]} position={[0, -r * 0.22, r * 1.32]} />
       {/* nose glint — small wet highlight */}
-      <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.025, r * 0.015, r * 0.01]} position={[-r * 0.035, -r * 0.21, r * 1.14]} />
+      <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.03, r * 0.018, r * 0.01]} position={[-r * 0.035, -r * 0.18, r * 1.38]} />
 
-      {/* nostrils — two dark slits on the nose tip, pushed OUT past the pad
-          (pad front 1.14r; nostril front 1.17r+0.012 so they never bury) */}
-      <mesh geometry={sphereGeo(1)} material={nostrilM} scale={[r * 0.03, r * 0.024, r * 0.012]} position={[-r * 0.042, -r * 0.245, r * 1.17]} />
-      <mesh geometry={sphereGeo(1)} material={nostrilM} scale={[r * 0.03, r * 0.024, r * 0.012]} position={[r * 0.042, -r * 0.245, r * 1.17]} />
+      {/* nostrils — two dark slits just under the nose (proud of muzzle front) */}
+      <mesh geometry={sphereGeo(1)} material={nostrilM} scale={[r * 0.024, r * 0.014, r * 0.008]} position={[-r * 0.045, -r * 0.28, r * 1.36]} />
+      <mesh geometry={sphereGeo(1)} material={nostrilM} scale={[r * 0.024, r * 0.014, r * 0.008]} position={[r * 0.045, -r * 0.28, r * 1.36]} />
 
-      {/* wide cheeky grin — warm curved smile line (front 1.03r vs mask 1.009r) */}
-      <mesh geometry={torusGeo(r * 0.3, r * 0.03, 8, 20)} material={mouthM}
-        position={[0, -r * 0.46, r * 1.04]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.55, 1]} />
+      {/* philtrum — the thin groove running nose → mouth, like real monkeys */}
+      <mesh geometry={boxGeo(r * 0.014, r * 0.09, r * 0.01)} material={mouthM} position={[0, -r * 0.33, r * 1.32]} />
 
-      {/* lower lip for a fuller smile (front 1.08r vs mask 0.967r) */}
-      <mesh geometry={sphereGeo(1)} material={belly} scale={[r * 0.18, r * 0.05, r * 0.08]} position={[0, -r * 0.52, r * 1.0]} />
+      {/* gentle upward smile — five small spheres tracing a soft curve with the
+          corners lifted (panda technique). Reads as a warm smile, not a ring */}
+      {[-0.09, -0.04, 0, 0.04, 0.09].map((dx, i) => (
+        <mesh key={`sm${i}`} geometry={sphereGeo(1)} material={mouthM}
+          scale={[r * (i === 2 ? 0.045 : 0.035), r * 0.028, r * 0.012]}
+          position={[dx * r, -r * 0.42 + Math.abs(dx) * r * 0.22, r * 1.34]} />
+      ))}
+      {/* mouth corners accent — little dimple puffs at each end */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`dm${sx}`} geometry={sphereGeo(1)} material={mouthM}
+          scale={[r * 0.045, r * 0.022, r * 0.012]} position={[sx * r * 0.1, -r * 0.39, r * 1.32]} />
+      ))}
+
+      {/* lower lip — fuller, sitting right under the smile */}
+      <mesh geometry={sphereGeo(1)} material={belly} scale={[r * 0.16, r * 0.05, r * 0.07]} position={[0, -r * 0.52, r * 1.28]} />
 
       {/* soft rosy cheeks — gentle blend onto the tan face (front 0.97r vs 0.913r) */}
       {[-1, 1].map((sx) => (
-        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.13, r * 0.09, r * 0.05]} position={[sx * r * 0.52, -r * 0.1, r * 0.92]} />
+        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.13, r * 0.09, r * 0.05]} position={[sx * r * 0.52, -r * 0.16, r * 0.94]} />
       ))}
 
       {/* little tuft of fur on top of the head */}
@@ -2822,7 +2838,7 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
 
   return (
     <>
-    <group ref={bind(upper)} position={[sign * P.hipW * (isElephant ? 0.95 : 0.7), -0.02, 0]}>
+    <group ref={bind(upper)} position={[sign * P.hipW * (isElephant ? 0.95 : isMonkey ? 0.8 : 0.7), -0.02, 0]}>
       {isElephant ? (
         <>
           {/* Elephant thigh — thick columnar pillar */}
@@ -2840,10 +2856,10 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
            <mesh geometry={latheGeo([
              [P.kneeR * eM, -P.upperLeg],
              [P.kneeR * 1.05 * eM, -P.upperLeg * 0.88],
-             [P.thighR * 1.0 * eM, -P.upperLeg * 0.6],
-             [P.thighR * 1.12 * eM, -P.upperLeg * 0.35],
-             [P.thighR * 1.18 * eM, -P.upperLeg * 0.15],
-             [P.thighR * 1.15 * eM, 0],
+             [P.thighR * 1.0 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.6],
+             [P.thighR * 1.12 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.35],
+             [P.thighR * 1.18 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.15],
+             [P.thighR * 1.15 * eM * (isMonkey ? 0.8 : 1), 0],
            ])} material={isRobot ? robotDark : legMat} castShadow />
 </>
         )}

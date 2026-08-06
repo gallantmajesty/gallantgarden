@@ -27,9 +27,12 @@ export function getSessionId(): string | null {
   return sessionId
 }
 
-export async function claimSession(): Promise<boolean> {
+/** Try to claim the single-account session. Returns true (I hold it), false
+ *  (someone else holds it — heartbeat will fail and kick this tab), or null
+ *  (network/error — caller should skip heartbeating so offline use survives). */
+export async function claimSession(): Promise<boolean | null> {
   const sid = getSessionId()
-  if (!sid) return false
+  if (!sid) return null
 
   const { supabase } = await import('./supabase')
   const { data, error } = await supabase.rpc('claim_session', {
@@ -39,7 +42,7 @@ export async function claimSession(): Promise<boolean> {
 
   if (error) {
     console.error('[Session] claimSession failed:', error)
-    return false
+    return null
   }
 
   return data === true

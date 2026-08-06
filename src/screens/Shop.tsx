@@ -20,6 +20,10 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: '#f5b940',
 }
 
+/** Map a full banner/logo asset to its optimized thumbnail (generated once via
+ *  sharp — ~48x smaller). Falls back to the original if a thumb is missing. */
+const thumb = (p?: string) => (p ? p.replace(/^\/banners\//, '/banners/thumbs/') : p)
+
 const MAIN_TABS: { id: ShopTab; label: string; icon: string }[] = [
   { id: 'characters', label: 'Characters', icon: '🧑‍🎓' },
   { id: 'banners', label: 'Banners', icon: '🎨' },
@@ -27,8 +31,7 @@ const MAIN_TABS: { id: ShopTab; label: string; icon: string }[] = [
   { id: 'accessories', label: 'Accessories', icon: '🎒' },
 ]
 
-const SUB_FILTERS: Record<ShopTab, { id: string; label: string }[]> = {
-  characters: [
+const SUB_FILTERS: Record<ShopTab, { id: string; label: string }[]> = {  characters: [
     { id: 'all', label: 'All' },
     { id: 'starter', label: 'Starter' },
     { id: 'epic', label: 'Epic' },
@@ -48,7 +51,6 @@ const SUB_FILTERS: Record<ShopTab, { id: string; label: string }[]> = {
   accessories: [
     { id: 'all', label: 'All' },
     { id: 'green', label: 'Leaves' },
-    { id: 'gold', label: 'Golden' },
   ],
 }
 
@@ -108,10 +110,12 @@ export function Shop() {
   const equippedChar = avatarConfig.characterId || 'james'
   const equippedAcc = avatarConfig.accessories?.[0] ?? null
 
-  const characters = useMemo(() => effectiveCharacters(), [])
-  const banners = useMemo(() => effectiveBanners(), [])
-  const logos = useMemo(() => effectiveLogos(), [])
-  const accessories = useMemo(() => ACCESSORIES.filter((a) => a.id !== 'laptop'), [])
+  // Launch catalog: only items flagged visible:true appear (hidden ones stay
+  // fully functional everywhere else and come back to the shop later).
+  const characters = useMemo(() => effectiveCharacters().filter((c) => c.visible !== false), [])
+  const banners = useMemo(() => effectiveBanners().filter((b) => b.visible !== false), [])
+  const logos = useMemo(() => effectiveLogos().filter((l) => l.visible !== false), [])
+  const accessories = useMemo(() => ACCESSORIES.filter((a) => a.id !== 'laptop' && a.visible !== false), [])
 
   const filtered = useMemo(() => {
     if (tab === 'characters') {
@@ -273,7 +277,7 @@ export function Shop() {
           <div className="shop-scroll">
             {filtered.length === 0 && <div className="shop-empty">Nothing here yet 🍃</div>}
             <div className="shop-grid">
-              {filtered.map((item) => {
+              {filtered.map((item, i) => {
                 const name = item.name
                 const price = 'price' in item ? (item as { price?: number }).price ?? 0 : 0
                 const cur = 'currency' in item ? (item as { currency?: string }).currency : undefined
@@ -286,6 +290,7 @@ export function Shop() {
                     key={item.id}
                     className={`card ${selected ? 'selected' : ''} ${owned ? 'owned' : ''}`}
                     data-rarity={rarity}
+                    style={{ animationDelay: `${Math.min(i, 14) * 38}ms` }}
                     onClick={() => setSelectedId(item.id)}
                   >
                     <div className="card-thumb">
@@ -295,12 +300,12 @@ export function Shop() {
                         <span className="card-emoji">{(item as { icon?: string }).icon}</span>
                       ) : tab === 'banners' ? (
                         (item as Banner).image ? (
-                          <div className="card-banner" style={{ backgroundImage: `url(${(item as Banner).image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                          <div className="card-banner" style={{ backgroundImage: `url(${thumb((item as Banner).image)})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                         ) : (
                           <div className="card-banner" style={{ background: (item as Banner).css || '#333' }} />
                         )
                       ) : (item as Logo).image ? (
-                        <img className="card-logo" src={(item as Logo).image} alt="" style={{ filter: logoFilter(item as Logo) }} />
+                        <img className="card-logo" src={thumb((item as Logo).image)} alt="" loading="lazy" decoding="async" style={{ filter: logoFilter(item as Logo) }} />
                       ) : (
                         <span className="card-logo card-logo--css" style={{ background: (item as Logo).css || '#333' }} />
                       )}
@@ -343,7 +348,7 @@ export function Shop() {
               <div
                 className="pv-banner"
                 style={(meta as Banner).image
-                  ? { backgroundImage: `url(${(meta as Banner).image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  ? { backgroundImage: `url(${thumb((meta as Banner).image)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   : { background: (meta as Banner).css || '#222' }
                 }
               />
@@ -351,7 +356,7 @@ export function Shop() {
             {tab === 'logos' && meta && (
               <div className="pv-logo">
                 {(meta as Logo).image ? (
-                  <img src={(meta as Logo).image} alt="" style={{ filter: logoFilter(meta as Logo) }} />
+                  <img src={thumb((meta as Logo).image)} alt="" loading="lazy" decoding="async" style={{ filter: logoFilter(meta as Logo) }} />
                 ) : (
                   <span className="pv-logo-bg" style={{ background: (meta as Logo).css || '#222' }} />
                 )}

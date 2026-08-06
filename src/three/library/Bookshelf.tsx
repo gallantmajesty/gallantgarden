@@ -85,6 +85,13 @@ export function Bookshelves() {
         let lx = -SHELF.w / 2 + 0.2
         while (lx < SHELF.w / 2 - 0.2) {
           const bw = 0.1 + rand() * 0.13
+          // PERF: skip ~1 in 3 book slots (~30% fewer books per shelf). Reads as
+          // a lightly used shelf instead of a mechanical line, and cuts the
+          // biggest instanced-draw instance count in the hall.
+          if (rand() < 0.3) {
+            lx += bw + 0.07
+            continue
+          }
           const bh = 0.36 + rand() * 0.5
           const lean = rand() < 0.12
           const baseColor = BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)]

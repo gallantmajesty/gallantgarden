@@ -60,6 +60,7 @@
         "defaultName": "Explorer",
         "continueGuest": "Continue as Guest",
         "enterGuest": "Entering...",
+        "confirmEmail": "Almost there — check your inbox and click the confirmation link, then sign in.",
         "guestHint": "Your progress saves on this device. Sign up later to save across devices."
     },
    "onboarding": {

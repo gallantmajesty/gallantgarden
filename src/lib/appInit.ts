@@ -46,6 +46,12 @@ export async function runUserInit(user: AuthUser): Promise<void> {
     // Guest devices can still act as connectors (?boost=CODE).
     const boostCode = boostCodeFromUrl()
     if (boostCode) useDeviceBoost.getState().connect(boostCode)
+    // Guests still earn XP, log focus blocks and mirror focus status locally:
+    // the sinks write to the local profile/magnet stores (setStudyStatus is a
+    // no-op without a Supabase session), so the timer is fully functional.
+    useMagnet.getState().hydrate(user.id)
+    bindFocusPresence()
+    bindFocusLogging()
     return
   }
 

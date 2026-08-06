@@ -227,8 +227,8 @@ function BigPillarLanterns({ positions }: { positions: [number, number, number][
 
   return (
     <group>
-      {/* chains */}
-      <InstancedShape items={chains} color={IRON} metalness={0.7} roughness={0.4} castShadow>
+      {/* chains — decorative, no shadow (keeps the shadow pass light) */}
+      <InstancedShape items={chains} color={IRON} metalness={0.7} roughness={0.4}>
         <cylinderGeometry args={[0.05, 0.05, 4.4, 6]} />
       </InstancedShape>
       {/* brass crowns */}
@@ -278,7 +278,7 @@ function CageRibs({ positions, r, h }: { positions: [number, number, number][]; 
     mesh.instanceMatrix.needsUpdate = true
   }, [positions, r, h])
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length * 8)]} frustumCulled={false} castShadow>
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, positions.length * 8)]} frustumCulled={false}>
       <boxGeometry args={[0.06, h, 0.06]} />
       <meshStandardMaterial color={IRON} metalness={0.6} roughness={0.5} />
     </instancedMesh>
@@ -351,10 +351,10 @@ function SideLanterns({ positions, wallH }: { positions: [number, number, number
 
   return (
     <group>
-      {/* iron bracket arms reaching out from the pillar */}
-      <InstancedBoxes items={brackets} metalness={0.6} roughness={0.5} castShadow />
+      {/* iron bracket arms reaching out from the pillar — decorative, no shadow */}
+      <InstancedBoxes items={brackets} metalness={0.6} roughness={0.5} />
       {/* chains down to each lantern */}
-      <InstancedShape items={chains} color={IRON} metalness={0.7} roughness={0.4} castShadow>
+      <InstancedShape items={chains} color={IRON} metalness={0.7} roughness={0.4}>
         <cylinderGeometry args={[0.04, 0.04, 1, 6]} />
       </InstancedShape>
       {/* brass crowns */}

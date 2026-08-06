@@ -4,8 +4,10 @@
 
 # Supabase Edge Functions Configuration
 
+# LLM proxy (OpenAI/Anthropic) — costs money, so auth is required. The client
+# sends the Supabase session JWT automatically via supabase.functions.invoke.
 [functions.ai-proxy]
-  verify_jwt = false
+  verify_jwt = true
   import_map = "./supabase/functions/import_map.json"
 
 # Golden-leaf store: creates a Stripe Checkout Session (auth required).

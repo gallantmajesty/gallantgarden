@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { allow, RATE_LIMITS } from './rateLimit'
 import type { Conversation, Message } from './types'
 
 // Conversation + message data layer. Sends/creates go through SECURITY DEFINER
@@ -17,12 +18,18 @@ export async function getOrCreateDm(other: string): Promise<string | null> {
   return (typeof data === 'string' ? data : (data as { get_or_create_dm?: string })?.get_or_create_dm) ?? null
 }
 
+export const MESSAGE_MAX = 500
+
 /** Send a message. Returns the persisted row, or null if rejected (not friends,
- *  blocked, empty). */
+ *  blocked, empty, over the rate limit). Body is capped at 500 chars here and
+ *  by a DB CHECK; server-side send_message_limited caps 30/min. */
 export async function sendMessage(conversationId: string, body: string): Promise<Message | null> {
-  const { data, error } = await supabase.rpc('send_message', {
-    conversation: conversationId,
-    body,
+  const trimmed = body.trim().slice(0, MESSAGE_MAX)
+  if (!trimmed) return null
+  if (!allow('message', RATE_LIMITS.message)) return null
+  const { data, error } = await supabase.rpc('send_message_limited', {
+    p_conversation: conversationId,
+    p_content: trimmed,
   })
   if (error || !data) return null
   // rpc returns the inserted row (object) or an array with one row

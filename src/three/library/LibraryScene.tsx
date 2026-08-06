@@ -7,7 +7,7 @@ import type { Material, Mesh, Object3D, Texture } from 'three'
 import { HalfFloatType, Vector3 } from 'three'
 
 // DPR is fixed at mount time — no live re-scaling to avoid GPU stalls / context loss.
-import { useSettings } from '../../store/settings'
+import { useSettings, type PostQuality } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
@@ -29,6 +29,7 @@ import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
 
 import { PlayerController } from './PlayerController'
+import { avatarRoots } from '../../avatar/CharacterAvatar'
 import { RemotePlayers } from './RemotePlayers'
 import { NpcPlayers } from './NpcPlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
@@ -80,7 +81,7 @@ class CanvasGuard extends Component<{ children: ReactNode }, { failed: boolean; 
   }
   componentDidCatch(error: Error) {
     console.error('[LibraryScene] CanvasGuard caught — preventing R3F sub-root crash:', error)
-    ;(window as any).__libCanvasError = error.message
+    if (import.meta.env.DEV) ;(window as any).__libCanvasError = error.message
   }
   render() {
     if (this.state.failed) return null
@@ -119,6 +120,9 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const cinematic = useWorld((s) => s.cinematic)
   const bloomOn = useSettings((s) => s.bloom)
   const nightMode = useSettings((s) => s.nightMode)
+  // The post-processing axis tiers the heavy Ultra effects: N8AO is cut below
+  // medium, GodRays only survives on high. Bloom/Vignette are unaffected.
+  const postTier = useSettings((s) => s.postProcessing)
 
   // During seat selection the 2D overlay covers the scene — skip heavy
   // subsystems (post-processing, shadows, exterior, particles) so the GPU
@@ -171,7 +175,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
 
     const check = () => {
       if (!running) return
-      const currentFrame = (window as any).__libFrame ?? -1
+      const currentFrame = libFrameTs
 
       if (currentFrame !== lastFrame) {
         lastChange = performance.now()
@@ -280,7 +284,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           The signature floating candles stay. Daytime is unchanged & full. */}
       {!selecting && (
       <ToggleGroup group="particles">
-        {!nightMode && preset.particles && <Fireflies count={Math.round(8 + preset.dust * 0.6)} />}
+        {!nightMode && preset.particles && <Fireflies count={Math.min(Math.round(8 + preset.dust * 0.6), 12)} />}
         {!nightMode && preset.particles && (
           <SoftBoundary>
             <FantasyLayer />
@@ -290,11 +294,13 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
             medium/low so the weakest GPUs skip the extra draw + fill cost. */}
         {!nightMode && preset.lodBias < 0.5 && <FloatingBooks count={8} />}
         {!nightMode && preset.dust > 0 && (
-          <Sparkles count={preset.dust} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
+          <Sparkles count={Math.min(preset.dust, 20)} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
         )}
         {/* tiny enchanted candles drifting upward — only at night, so the daytime
-            look is never touched. This is the signature night atmosphere. */}
-        {nightMode && <FlyingCandles count={preset.particles ? 70 : 40} night={nightMode} />}
+            look is never touched. This is the signature night atmosphere.
+            PERF: 70→30 (full particles) / 40→15 (reduced) — half the instanced
+            matrices re-uploaded per tick; imperceptible at night density. */}
+        {nightMode && <FlyingCandles count={preset.particles ? 30 : 15} night={nightMode} />}
       </ToggleGroup>
       )}
 
@@ -310,7 +316,9 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
          <RemotePlayers />
          <NpcPlayers />
        </ToggleGroup>
-      <PerfLogger />
+      {/* PerfLogger is a DEV-only audit tool — its scene-graph traversals and
+          console reports are dead weight in production builds. */}
+      {import.meta.env.DEV && <PerfLogger />}
       <RenderHeartbeat />
       <DisableFrustumCulling />
       <SunTracker sunRef={sunRef} onVisible={setSunVisible} />
@@ -319,7 +327,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           0 disables the composer's expensive MSAA pass. */}
       {!selecting && (
         <CanvasBoundary>
-          <PostEffects preset={preset} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} nightMode={nightMode} />
+          <PostEffects preset={preset} postTier={postTier} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} nightMode={nightMode} />
         </CanvasBoundary>
       )}
       <SceneReady onReady={handleReady} />
@@ -368,9 +376,10 @@ function usePostToggleState() {
 }
 
 function PostEffects({
-  preset, composerKey, sunReady, sunVisible, sunRef, cinematic, bloom, nightMode,
+  preset, postTier, composerKey, sunReady, sunVisible, sunRef, cinematic, bloom, nightMode,
 }: {
   preset: ReturnType<typeof useScenePreset>
+  postTier: PostQuality
   composerKey: number
   sunReady: boolean
   sunVisible: boolean
@@ -387,17 +396,20 @@ function PostEffects({
   // is unchanged — bloom only during the Cinematic Tour there.
   const nightCine = nightMode
   const showBloom = (cinematic && bloom) || nightCine
+  // The Ultra tier's heavy passes are further gated by the post-processing axis:
+  // SSAO needs at least a 'low' (medium-preset) tier, the 50-sample GodRays pass
+  // only survives on 'high' — the single most expensive full-screen shader here.
   const ultraPasses = useMemo(() => {
     return [
-      pt.n8ao ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes /> : null,
-      sunReady && sunVisible && pt.godrays ? (
+      pt.n8ao && postTier !== 'off' ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes /> : null,
+      sunReady && sunVisible && pt.godrays && postTier === 'high' ? (
         <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
       ) : null,
       pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
       showBloom ? <Bloom key="bloom" mipmapBlur intensity={nightCine ? 1.15 : 0.95} luminanceThreshold={nightCine ? 0.4 : 0.5} luminanceSmoothing={0.25} radius={0.6} /> : null,
     ].filter(Boolean) as ReactElement[]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pt.n8ao, pt.godrays, pt.vignette, sunReady, sunVisible, showBloom, nightCine])
+  }, [pt.n8ao, pt.godrays, pt.vignette, sunReady, sunVisible, showBloom, nightCine, postTier])
 
   const bloomPasses = useMemo(() => {
     const bloomEl = showBloom ? (
@@ -572,7 +584,7 @@ const _sysToggles: Record<string, boolean> = {
   particles: true, seasonal: true, shadows: true, post: true,
   remotePlayers: true, fog: true,
 }
-if (typeof window !== 'undefined') (window as any).__sysToggles = _sysToggles
+if (typeof window !== 'undefined' && import.meta.env.DEV) (window as any).__sysToggles = _sysToggles
 
 // Per-effect post-processing kill-switches — used to isolate which single
 // EffectComposer pass is causing the angle-specific blink at seated presets 3/4.
@@ -582,7 +594,7 @@ if (typeof window !== 'undefined') (window as any).__sysToggles = _sysToggles
 const _postToggles: Record<string, boolean> = {
   vignette: true, godrays: true, n8ao: true,
 }
-if (typeof window !== 'undefined') (window as any).__postToggles = _postToggles
+if (typeof window !== 'undefined' && import.meta.env.DEV) (window as any).__postToggles = _postToggles
 
 function SystemToggles() {
   useEffect(() => {
@@ -592,7 +604,6 @@ function SystemToggles() {
       if (e.ctrlKey && e.shiftKey && e.key === 'R') {
         Object.keys(_sysToggles).forEach(k => _sysToggles[k] = true)
         _postToggles.vignette = _postToggles.godrays = _postToggles.n8ao = true
-        console.log('[Toggles] All systems + post effects ON')
         return
       }
       // Debug subsystem toggles require Alt so they don't fire on the
@@ -610,10 +621,8 @@ function SystemToggles() {
       if (key) {
         if (_sysToggles[key] !== undefined) {
           _sysToggles[key] = !_sysToggles[key]
-          console.log(`[Toggles] ${key}: ${_sysToggles[key] ? 'ON' : 'OFF'}`)
         } else if (_postToggles[key] !== undefined) {
           _postToggles[key] = !_postToggles[key]
-          console.log(`[Post] ${key}: ${_postToggles[key] ? 'ON' : 'OFF'}`)
         }
       }
     }
@@ -652,17 +661,26 @@ export function useSystemToggle(key: string): boolean {
  * The watchdog outside the Canvas reads this to detect a frozen render loop.
  * If 3 seconds pass without a new heartbeat, the Canvas is force-remounted.
  */
+// Internal freeze-detector state — module-scoped so no window global leaks into
+// production. The window mirror below exists only in development for profiling.
+let libFrameTs = -1
 function RenderHeartbeat() {
   const invalidate = useThree((s) => s.invalidate)
   useFrame(() => {
-    ;(window as any).__libHeartbeat = Date.now()
-    ;(window as any).__libFrame = performance.now()
+    libFrameTs = performance.now()
+    if (import.meta.env.DEV) {
+      ;(window as any).__libHeartbeat = Date.now()
+      ;(window as any).__libFrame = libFrameTs
+    }
     const dot = document.getElementById('r3f-dot')
     if (dot) dot.style.background = '#44ff44'
   })
   useEffect(() => {
-    ;(window as any).__libHeartbeat = Date.now()
-    ;(window as any).__libFrame = 0
+    libFrameTs = 0
+    if (import.meta.env.DEV) {
+      ;(window as any).__libHeartbeat = Date.now()
+      ;(window as any).__libFrame = 0
+    }
     const dot = document.getElementById('r3f-dot')
     if (dot) dot.style.background = '#ff4444'
 
@@ -811,19 +829,6 @@ function PerfLogger() {
     if (fps < 30 && m.textures > 80) bottlenecks.push(`HIGH texture count (${m.textures}) → atlas/reduce`)
     if (fps >= 45) bottlenecks.push('✓ FPS healthy — no urgent bottleneck detected')
 
-    console.info(
-      `[FocusLily perf] ${fps.toFixed(1)} fps` +
-      ` | draws: ${r.calls}` +
-      ` | tris: ${(r.triangles / 1000).toFixed(0)}k` +
-      ` | programs: ${gl.info.programs?.length ?? 0}` +
-      ` | geo: ${m.geometries}` +
-      ` | tex: ${m.textures}` +
-      ` | meshes: ${meshCount}` +
-      ` | lights: ${totalLights} (pt:${pointLights} dir:${dirLights} spot:${spotLights})` +
-      ` | shadow casters: ${shadowCasters}` +
-      `\n  ► ${bottlenecks.join('\n  ► ')}`
-    )
-
     a.frames = 0
     a.since  = 0
     a.logged = true
@@ -833,9 +838,9 @@ function PerfLogger() {
 }
 
 /**
- * Disable frustum culling on every mesh in the scene, every frame. For a static,
- * enclosed interior the cost is negligible, but it removes a class of blink that
- * is angle-specific to the behind/side seated presets (3/4):
+ * Disable frustum culling on every skinned AVATAR mesh, on a slow interval. For
+ * a static, enclosed interior culling itself is fine — the problem is avatar-
+ * specific:
  *
  *   A skinned mesh's bounding sphere is computed at its bind pose / origin, NOT
  *   at the seat where the avatar is actually placed. When the camera looks AWAY
@@ -844,34 +849,26 @@ function PerfLogger() {
  *   background → "blink". Front presets (1/2) look toward the origin, so the
  *   avatar stays in frustum and never flickers.
  *
- * Running every frame (not just at mount) guarantees late-loaded character
- * models — whose real SkinnedMesh is created after the GLTF/avatar config loads
- * — are also covered.
+ * The scan walks ONLY the registered CharacterAvatar roots (local player, remote
+ * players, NPCs — see `avatarRoots`) instead of the entire scene graph, so every
+ * static mesh keeps its default culling and off-screen geometry is still skipped.
+ * The 500 ms re-scan covers late-loaded GLTF bodies, whose real SkinnedMesh is
+ * created after the model loads.
  */
 function DisableFrustumCulling() {
-  const scene = useThree((s) => s.scene)
   useEffect(() => {
-    // Only the skinned avatar meshes have a bind-pose bounding sphere pinned at
-    // the origin, so they must never be frustum-culled (else they vanish at the
-    // behind/side seated presets 3/4). Every other mesh keeps its default
-    // culling, so off-screen geometry is still skipped instead of drawn.
-    //
-    // We no longer walk the ENTIRE scene graph every frame just to keep these
-    // unculled — that was a full-graph traversal 60×/sec. Instead we scan once
-    // on mount and re-scan on a 500 ms interval so late-loaded character models
-    // (whose real SkinnedMesh is created after the GLTF/avatar config loads)
-    // are still covered within half a second. Steady-state cost is ~2 scans/sec
-    // instead of 60, and the rendered look is unchanged.
     const scan = () => {
-      scene.traverse((o: Object3D) => {
-        const mesh = o as unknown as { isSkinnedMesh?: boolean; frustumCulled?: boolean }
-        if (mesh.isSkinnedMesh && mesh.frustumCulled) mesh.frustumCulled = false
-      })
+      for (const root of avatarRoots) {
+        root.traverse((o: Object3D) => {
+          const mesh = o as unknown as { isSkinnedMesh?: boolean; frustumCulled?: boolean }
+          if (mesh.isSkinnedMesh && mesh.frustumCulled) mesh.frustumCulled = false
+        })
+      }
     }
     scan()
     const iv = setInterval(scan, 500)
     return () => clearInterval(iv)
-  }, [scene])
+  }, [])
   return null
 }
 

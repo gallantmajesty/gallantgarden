@@ -18,7 +18,6 @@ import GlobalClickSpark from './components/GlobalClickSpark'
 import './screens/Explore.css'
 import { AuthScreen } from './screens/AuthScreen'
 import { GuestMode } from './screens/GuestMode'
-import { ShotHarness } from './screens/ShotHarness'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
 const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ default: m.ComingSoon })))
@@ -56,11 +55,6 @@ export default function App() {
   const waitForLobby = useSettings((s) => s.waitForLobbyReady)
   const lobbyReady = useLobbyReady()
 
-  // DEBUG: log auth state on route change
-  useEffect(() => {
-    console.log('[App] route change', { pathname: location.pathname, user: !!user, loading, onboarded, profileReady })
-  }, [location.pathname, user, loading, onboarded, profileReady])
-
   // Apply visual + theme settings app-wide and keep them in sync. Both stores
   // feed the same CSS custom properties, so we re-apply in a fixed order on any
   // change: visual settings first (theme/brightness/motion), then the web theme
@@ -86,7 +80,7 @@ export default function App() {
     }
   }, [])
 
-  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo', '/__shot'])
+  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
 
   // Public marketing pages render without WebBackground/IntroVeil
@@ -98,7 +92,6 @@ export default function App() {
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
            <Routes>
-            <Route path="/__shot" element={<ShotHarness />} />
             <Route path="/guest" element={<GuestMode />} />
             <Route path="/" element={<Landing />} />
             <Route path="/about" element={<About />} />

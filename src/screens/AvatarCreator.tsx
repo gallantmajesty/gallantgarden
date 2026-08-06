@@ -132,9 +132,9 @@ function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'ac
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
-/** The three free starter characters. Every other character is sold in the
+/** The nine free starter characters. Every other character is sold in the
  *  Lobby Shop — buying one there unlocks it for equipping in this grid. */
-const AVATAR_FREE_CHARACTER_IDS = ['james', 'claire', 'mia']
+const AVATAR_FREE_CHARACTER_IDS = ['james', 'claire', 'mia', 'ruslan', 'ojas', 'priya', 'zara', 'owen', 'taro']
 
 function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
   const characters = effectiveCharacters().filter((c) => AVATAR_FREE_CHARACTER_IDS.includes(c.id))
@@ -145,7 +145,7 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
   return (
     <div className="ac-char-section">
       <p className="ac-foot-note">
-        Pick your starter — James, Mia or Lily. Want more? Grab new characters from the
+        Pick your starter — all nine are free. Want more? Grab new characters from the
         Shop in the lobby.
       </p>
       <div className="ac-char-grid">
@@ -176,10 +176,6 @@ function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn
       </div>
     </div>
   )
-}
-
-function BodyTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  return null
 }
 
 /* ------------------------------------------------------------------ colour picker */
@@ -347,7 +343,7 @@ function AccessoryTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
         the library hall.
       </p>
       <div className="ac-acc-grid">
-        {ACCESSORIES.filter((a) => a.id === 'laptop').map((a) => (
+        {ACCESSORIES.map((a) => (
           <button
             key={a.id}
             className="ac-acc-tile"

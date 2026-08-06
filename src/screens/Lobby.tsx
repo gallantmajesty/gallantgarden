@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useMagnet } from '../store/magnet'
+import { usePomodoro } from '../store/pomodoro'
 import { Modal } from '../components/Modal'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { RankBadge } from '../components/RankBadge'
@@ -13,6 +14,7 @@ import { ScorePanel } from '../components/ScorePanel'
 import { LoginPanel } from '../components/LoginPanel'
 import { RANKS, getRank, rankProgress, rankForLifetime } from '../lib/ranks'
 import { getDailyEngagement } from '../lib/xpEngine'
+import { computeStreak } from '../lib/magnet/insights'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
@@ -34,23 +36,23 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: true },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: false },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose' },
-  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', soon: true },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', soon: true },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', soon: false },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', soon: false },
 ]
 
 const MOBILE_WORLDS: LobbyObject[] = [
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose', accent: '#6bbf4f' },
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: true },
-  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa', soon: true },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', accent: '#8a6cff', soon: true },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: false },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa', soon: false },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', accent: '#8a6cff', soon: false },
 ]
 
 const DAILY_QUESTS = [
-  { id: 1, label: 'Complete 3 Focus Sessions', progress: 2, total: 3, reward: 50, icon: '🎯' },
-  { id: 2, label: 'Study for 120 minutes', progress: 75, total: 120, reward: 80, icon: '⏱' },
-  { id: 3, label: 'Complete all today\'s tasks', progress: 1, total: 4, reward: 60, icon: '✅' },
+  { id: 1, label: 'Complete 3 Focus Sessions', total: 3, reward: 50, icon: '🎯' },
+  { id: 2, label: 'Study for 120 minutes', total: 120, reward: 80, icon: '⏱' },
+  { id: 3, label: 'Complete all today\'s tasks', total: 4, reward: 60, icon: '✅' },
 ]
 
 function getGreeting(): string {
@@ -84,6 +86,34 @@ export function Lobby() {
   const isDesktop = useIsDesktop()
   const [mobileNav, setMobileNav] = useState<'home' | 'realm' | 'tasks' | 'games' | 'profile'>('home')
   const [showQuests, setShowQuests] = useState(false)
+
+  // Real stat sources: streak from magnet activity, focus from pomodoro history.
+  const magnetData = useMagnet((s) => s.data)
+  const pomoHistory = usePomodoro((s) => s.history)
+  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const streak = useMemo(() => computeStreak(magnetData, new Date()), [magnetData])
+  const todaySessions = useMemo(
+    () => pomoHistory.filter((h) => h.completed && h.date.slice(0, 10) === todayKey),
+    [pomoHistory, todayKey],
+  )
+  const todayMin = useMemo(
+    () => todaySessions.reduce((sum, h) => sum + h.totalFocusMinutes, 0),
+    [todaySessions],
+  )
+  const todayTasks = useMemo(
+    () => magnetData.tasks.filter((t) => t.due === todayKey),
+    [magnetData, todayKey],
+  )
+  const todayTasksDone = todayTasks.filter((t) => t.done).length
+  const quests = useMemo(
+    () =>
+      DAILY_QUESTS.map((q) => ({
+        ...q,
+        progress: q.id === 1 ? todaySessions.length : q.id === 2 ? todayMin : todayTasksDone,
+        total: q.id === 3 ? Math.max(1, todayTasks.length) : q.total,
+      })),
+    [todaySessions, todayMin, todayTasksDone, todayTasks.length],
+  )
 
   // Transition animation state
   const [transition, setTransition] = useState<{
@@ -523,13 +553,13 @@ useEffect(() => {
           <svg viewBox="0 0 80 80">
             <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
             <circle cx="40" cy="40" r="34" fill="none" stroke="url(#streakGrad)" strokeWidth="6"
-              strokeDasharray={`${(7 / 30) * 213.6} 213.6`}
+              strokeDasharray={`${(Math.min(streak, 30) / 30) * 213.6} 213.6`}
               strokeLinecap="round"
               transform="rotate(-90 40 40)" />
             <defs><linearGradient id="streakGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ff6a1a"/><stop offset="100%" stopColor="#ffce54"/></linearGradient></defs>
           </svg>
           <div className="lm-stat-ring-inner">
-            <span className="lm-stat-ring-num">7</span>
+            <span className="lm-stat-ring-num">{streak}</span>
             <span className="lm-stat-ring-label">Streak</span>
           </div>
         </div>
@@ -537,13 +567,13 @@ useEffect(() => {
           <svg viewBox="0 0 80 80">
             <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
             <circle cx="40" cy="40" r="34" fill="none" stroke="url(#focusGrad)" strokeWidth="6"
-              strokeDasharray={`${(75 / 180) * 213.6} 213.6`}
+              strokeDasharray={`${(Math.min(todayMin, 180) / 180) * 213.6} 213.6`}
               strokeLinecap="round"
               transform="rotate(-90 40 40)" />
             <defs><linearGradient id="focusGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#6bbf4f"/><stop offset="100%" stopColor="#4a9e36"/></linearGradient></defs>
           </svg>
           <div className="lm-stat-ring-inner">
-            <span className="lm-stat-ring-num">75</span>
+            <span className="lm-stat-ring-num">{todayMin}</span>
             <span className="lm-stat-ring-label">min</span>
           </div>
         </div>
@@ -554,12 +584,12 @@ useEffect(() => {
         <button className="lm-quests-toggle" onClick={() => setShowQuests(!showQuests)}>
           <span className="lm-quests-icon">🏆</span>
           <span className="lm-quests-title">Daily Quests</span>
-          <span className="lm-quests-badge">3 active</span>
+          <span className="lm-quests-badge">{quests.length} active</span>
           <svg className={`lm-quests-chevron ${showQuests ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         {showQuests && (
           <div className="lm-quests-list">
-            {DAILY_QUESTS.map((q) => (
+            {quests.map((q) => (
               <div key={q.id} className="lm-quest">
                 <span className="lm-quest-icon">{q.icon}</span>
                 <div className="lm-quest-body">
@@ -570,7 +600,7 @@ useEffect(() => {
                   <div className="lm-quest-bar">
                     <div className="lm-quest-fill" style={{ width: `${Math.min(100, (q.progress / q.total) * 100)}%` }} />
                   </div>
-                  <span className="lm-quest-progress">{q.progress} / {q.total}</span>
+                  <span className="lm-quest-progress">{Math.min(q.progress, q.total)} / {q.total}</span>
                 </div>
               </div>
             ))}

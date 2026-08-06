@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
-import { effectiveCharacters } from '../avatar/characters'
+import { effectiveCharacters, characterById } from '../avatar/characters'
+import { useAvatar } from '../avatar/store'
+import { useProfile } from '../store/profile'
 
 // Derived from the single roster in src/avatar/characters.ts so editing there
 // updates both this picker and the customization screen. Uses the effective
@@ -60,7 +62,12 @@ function CharacterCard({ character, isSelected, onSelect }: CharacterCardProps) 
 
 export function CharacterSelection() {
   const navigate = useNavigate()
-  const [selectedCharacter, setSelectedCharacter] = useState('james')
+  // Persist the pick through the avatar store (same choke-point the
+  // AvatarCreator uses) so the choice survives reloads.
+  const setAvatar = useAvatar((s) => s.set)
+  const [selectedCharacter, setSelectedCharacter] = useState(useAvatar.getState().config.characterId || 'james')
+  const leaves = useProfile((s) => s.xp)
+  const golden = useProfile((s) => s.premiumXp)
 
   return (
     <ErrorBoundary>
@@ -73,8 +80,8 @@ export function CharacterSelection() {
             <h1>Choose Your Character</h1>
           </div>
           <div className="user-stats">
-            <span className="xp-petal">🌿 0</span>
-            <span className="xp-gem">💎 0</span>
+            <span className="xp-petal">🌿 {leaves.toLocaleString()}</span>
+            <span className="xp-gem">💎 {golden.toLocaleString()}</span>
           </div>
         </div>
 
@@ -84,7 +91,13 @@ export function CharacterSelection() {
               key={character.id}
               character={character}
               isSelected={selectedCharacter === character.id}
-              onSelect={() => setSelectedCharacter(character.id)}
+              onSelect={() => {
+                setSelectedCharacter(character.id)
+                // Swap the whole avatar look to this character's signature and
+                // persist immediately (mirrors CharacterDisplayTab in AvatarCreator).
+                const ch = characterById(character.id)
+                setAvatar({ ...ch.fallback, characterId: character.id })
+              }}
             />
           ))}
         </div>

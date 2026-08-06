@@ -133,7 +133,7 @@ export function ChatWindow() {
         {opening && <p className="lcw-hint">{t('chat.opening')}</p>}
         {!opening && hasMore && <p className="lcw-hint">{t('chat.scrollUp')}</p>}
         {!opening && messages.length === 0 && (
-          <p className="lcw-hint">t('chat.sayHi')</p>
+          <p className="lcw-hint">{t('chat.sayHi')}</p>
         )}
         {messages.map((m, i) => {
           const mine = m.sender_id === meId
@@ -167,7 +167,7 @@ export function ChatWindow() {
           placeholder={t('chat.messagePlaceholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          maxLength={4000}
+          maxLength={500}
           data-no-hotkeys
           autoFocus
         />
