@@ -20,7 +20,6 @@
 
 import { create } from 'zustand'
 import { useProfile } from './profile'
-import { supabase } from '../lib/supabase'
 import { getOverride } from '../lib/ownerOverrides'
 
 // ---- Mode model -------------------------------------------------------------
@@ -29,28 +28,31 @@ export type FocusMode = 'easy' | 'medium' | 'hardcore'
 
 /** Base green-leaf rate for the free (Easy) tier — 1.32 leaves/min. */
 export const EASY_RATE = 1.32
-/** Medium tier = 2× Easy. */
-export const MEDIUM_RATE = 2.64
-/** Hardcore base = 10× Easy at 1-hour sessions. */
-export const HARDCORE_BASE_RATE = 13.2
+/** Medium tier = 1.7× Easy (fullscreen enforced, end-only credit). */
+export const MEDIUM_RATE = 2.2
+/** Hardcore anchor = 3× Easy at a 1-hour session (premium-feeling without
+ *  flooding the economy — a far cry from the old 10–14×). */
+export const HARDCORE_BASE_RATE = 3.96
+/** Anchor multiplier for a 1-hour session, used to normalise length scaling. */
+export const HARDCORE_ANCHOR = 3
 
 /** Seconds of grace before an enforced session fails. Universal across modes. */
 export const GRACE_SEC = 20
 
 // ---- Hardcore scaling by session length -------------------------------------
-// 1h=10× · 2h=11× · 3h=12.5× · 4h+=14×. Below 1h uses the 1h tier.
+// 1h=3× · 2h=3.5× · 3h=4× · 4h+=4.5×. Below 1h uses the 1h tier.
 
 export function hardcoreMultiplier(minutes: number): number {
-  if (minutes >= 240) return 14
-  if (minutes >= 180) return 12.5
-  if (minutes >= 120) return 11
-  return 10
+  if (minutes >= 240) return 4.5
+  if (minutes >= 180) return 4
+  if (minutes >= 120) return 3.5
+  return 3
 }
 
 /** Actual leaves/min for a hardcore session of the given length. */
 export function hardcoreRateFor(minutes: number): number {
   const baseRate = getOverride('hardcore', 'baseRate', HARDCORE_BASE_RATE)
-  return (baseRate * hardcoreMultiplier(minutes)) / 10
+  return (baseRate * hardcoreMultiplier(minutes)) / HARDCORE_ANCHOR
 }
 
 /** Minimum wager required for a hardcore session length. Progressive: the
@@ -104,7 +106,7 @@ export function rateForMode(mode: FocusMode, minutes: number): number {
   return getOverride('hardcore', 'easyRate', EASY_RATE)
 }
 
-/** Backward-compatible alias (the deep-dive's "10× crown jewel" at 1 hour). */
+/** Backward-compatible alias (3× Easy at 1 hour — see HARDCORE_ANCHOR). */
 export const HARDCORE_RATE = HARDCORE_BASE_RATE
 /** Backward-compatible alias for the shared grace period. */
 export const HARDCORE_GRACE_SEC = GRACE_SEC
@@ -157,34 +159,11 @@ interface HardcoreState {
 
 // ---- Escrow / DB helpers ----------------------------------------------------
 
-function persistXp(xp: number, rankXp?: number): void {
-  const { userId, isGuest } = useProfile.getState()
-  if (!userId || isGuest) return
-  const payload: Record<string, unknown> = { id: userId, xp }
-  if (typeof rankXp === 'number') payload.rank_xp = rankXp
-  // Offline / transient errors are fine — the profile store (localStorage) is
-  // still authoritative. Use the await-in-try pattern (the SDK builder has no
-  // .catch()).
-  void (async () => {
-    try {
-      await supabase
-        .from('profiles')
-        .upsert([payload], { onConflict: 'id' })
-    } catch {
-      /* offline — localStorage via profile store is still authoritative */
-    }
-  })()
-}
-
 function creditLeaves(amount: number): void {
-  const { xp, rankXp } = useProfile.getState()
-  const newXp = Math.round(xp + amount)
+  // Single write-through: updates profile, syncs the DB, mirrors Magnet.
   // A win credits earnings (lifetime rank XP climbs too); a loss/refund only
   // moves the spendable wallet, never the rank.
-  const delta = Math.max(0, Math.round(amount))
-  const newRankXp = (rankXp || newXp - delta) + delta
-  useProfile.setState({ xp: newXp, rankXp: newRankXp })
-  persistXp(newXp, newRankXp)
+  useProfile.getState().applyXp({ leaves: Math.round(amount), rankXp: Math.max(0, Math.round(amount)) })
 }
 
 // ---- Persistence / refresh recovery -----------------------------------------
@@ -313,7 +292,8 @@ export const useHardcore = create<HardcoreState>((set, get) => ({
     let credited = 0
     if (s.mode === 'hardcore') {
       const mult = effectiveMultiplier(s.sessionMinutes, s.wager, s.devices)
-      const rate = (HARDCORE_BASE_RATE * mult) / 10
+      const baseRate = getOverride('hardcore', 'baseRate', HARDCORE_BASE_RATE)
+      const rate = (baseRate * mult) / HARDCORE_ANCHOR
       const earnings = Math.round(s.sessionMinutes * rate)
       credited = s.wager + earnings
       creditLeaves(credited)

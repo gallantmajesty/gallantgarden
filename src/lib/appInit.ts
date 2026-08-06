@@ -136,7 +136,7 @@ function bindFocusLogging(): void {
     // + soft daily cap). Golden stays purchase/rank-up only.
     try {
       const { xp, premiumXp, rankXp } = useProfile.getState()
-      const rankBase = rankXp || xp + premiumXp
+      const rankBase = rankXp > 0 ? rankXp : xp + premiumXp
       const currentRank = rankForTotalXp(rankBase)
       const result = awardFocusLeaves({
         currentLeaves: xp,
@@ -148,15 +148,8 @@ function bindFocusLogging(): void {
         ratePerMin: opts?.ratePerMin,
       })
       if (result.leaves > 0) {
-        const newXp = xp + result.leaves
-        const newRankXp = rankBase + result.leaves
-        useProfile.setState({ xp: newXp, rankXp: newRankXp })
-        const userId = useProfile.getState().userId
-        if (userId) {
-          import('./supabase').then(({ supabase }) =>
-            supabase.from('profiles').upsert([{ id: userId, xp: newXp, rank_xp: newRankXp }], { onConflict: 'id' })
-          ).catch(() => {})
-        }
+        // Single write-through: updates profile, syncs the DB, mirrors Magnet.
+        useProfile.getState().applyXp({ leaves: result.leaves })
       }
     } catch { /* ignore — award is best-effort */ }
   })

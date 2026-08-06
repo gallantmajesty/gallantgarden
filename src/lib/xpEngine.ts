@@ -108,7 +108,6 @@ export function calcPomoLeaves(
 
 // ---- Daily earning tiers (anti-spam, no hard stop) ---------------------------
 export const DAILY_CAPS = {
-  total: 999,
   /** Soft diminishing tiers (minutes of active earning per day). Real study is
    *  never hard-capped — the rate just eases so grinding bots can't flood the
    *  economy while genuine students still earn full value. */
@@ -739,7 +738,9 @@ let pendingRankXp: number | undefined
 export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number, rankXp?: number) {
   pendingLeaves = leaves
   pendingGoldenLeaves = goldenLeaves
-  if (typeof rankXp === 'number') pendingRankXp = rankXp
+  // Never carry a stale rank_xp into a later write: if a caller doesn't supply
+  // it, drop it so the upsert leaves the stored rank_xp untouched.
+  pendingRankXp = typeof rankXp === 'number' ? rankXp : undefined
 
   if (syncTimer) return
   syncTimer = setTimeout(async () => {
@@ -763,8 +764,8 @@ export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number,
 export function getDailyCapInfo() {
   const daily = loadDaily()
   return {
-    minutesRemaining: Math.max(0, DAILY_CAPS.total - daily.journeyMinutes),
-    totalCap: DAILY_CAPS.total,
-    totalEarned: daily.journeyMinutes,
+    minutesRemaining: Math.max(0, DAILY_CAPS.activeMinCap - daily.activeMinToday),
+    totalCap: DAILY_CAPS.activeMinCap,
+    totalEarned: daily.activeMinToday,
   }
 }

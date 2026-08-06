@@ -15,7 +15,7 @@ import {
   parseProfilePublic,
   type ProfilePublic,
 } from '../lib/types'
-import { checkDailyLogin } from '../lib/xpEngine'
+import { checkDailyLogin, syncXpToDb } from '../lib/xpEngine'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { isNameValid } from '../lib/displayName'
 
@@ -75,6 +75,12 @@ interface ProfileState {
   setAvatarUrl: (url: string | null) => Promise<boolean>
   /** Refresh XP from DB (called after magnet sync). */
   refreshXp: () => Promise<void>
+  /** Apply wallet + rank deltas — the SINGLE source of truth for the spendable
+   *  wallet. Clamps at 0, syncs to the DB (debounced) and mirrors into the
+   *  Magnet snapshot via the profile→magnet subscription. `rankXp` defaults to
+   *  the earned amount (max(0, leaves) + golden); pass it explicitly for
+   *  penalties (negative) or purchases (0, so rank never demotes on spend). */
+  applyXp: (patch: { leaves?: number; golden?: number; rankXp?: number }) => { xp: number; premiumXp: number; rankXp: number }
   /** Update study goals (editable after onboarding). */
   setStudyGoals: (goals: string[]) => Promise<boolean>
   /** Reset to empty on sign-out. */
@@ -165,15 +171,22 @@ export const useProfile = create<ProfileState>((set, get) => ({
 
     // Award daily login GREEN leaves (first open of the day). Golden is
     // purchase/rank-up only, so this stays a green grind-track reward.
+    // The server-side claim_daily_login() gate (one per user+day) stops the
+    // "clear localStorage to re-earn" farm; falls back to the local gate if the
+    // function isn't deployed yet.
     try {
       const loginResult = checkDailyLogin(xp, premiumXp, data.rank || 'bronze-1')
       if (loginResult.leaves > 0) {
-        const newXp = xp + loginResult.leaves
-        const newRankXp = rankXp + loginResult.leaves
-        set({ xp: newXp, rankXp: newRankXp })
-        // Sync to DB
-        const { supabase: ins } = await import('../lib/supabase')
-        await ins.from('profiles').upsert([{ id: userId, xp: newXp, rank_xp: newRankXp }], { onConflict: 'id' })
+        let allow = true
+        try {
+          const { data: serverOk, error } = await supabase.rpc('claim_daily_login')
+          if (!error) allow = !!serverOk
+        } catch {
+          /* RPC not deployed yet — local gate is the fallback */
+        }
+        if (allow) {
+          get().applyXp({ leaves: loginResult.leaves })
+        }
       }
     } catch { /* ignore — login bonus is best-effort */ }
   },
@@ -282,6 +295,22 @@ export const useProfile = create<ProfileState>((set, get) => ({
         })
       }
     } catch { /* offline */ }
+  },
+
+  applyXp: (patch) => {
+    const { userId, isGuest, xp, premiumXp, rankXp } = get()
+    const leaves = Math.round(patch.leaves ?? 0)
+    const golden = Math.round(patch.golden ?? 0)
+    const rankDelta = patch.rankXp !== undefined ? Math.round(patch.rankXp) : Math.max(0, leaves) + golden
+    // Pre-migration accounts (rankXp 0 with a wallet) fall back to the wallet
+    // total so spending never demotes and early earnings still count.
+    const rankBase = rankXp > 0 ? rankXp : xp + premiumXp
+    const newXp = Math.max(0, xp + leaves)
+    const newPremiumXp = Math.max(0, premiumXp + golden)
+    const newRankXp = Math.max(0, rankBase + rankDelta)
+    set({ xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp })
+    if (userId && !isGuest) syncXpToDb(userId, newXp, newPremiumXp, newRankXp)
+    return { xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
   },
 
   // Update study goals after onboarding (editable in profile). Damps into the

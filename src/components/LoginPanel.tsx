@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../store/magnet'
+import { useProfile } from '../store/profile'
 import { getDailyEngagement, syncXpToDb, XP_VALUES, DAILY_CAPS } from '../lib/xpEngine'
 import { rankForLifetime, RANKS } from '../lib/ranks'
 import './LoginPanel.css'
@@ -8,7 +9,6 @@ import './LoginPanel.css'
 export function LoginPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
-  const userId = useMagnet((s) => s.userId)
   const engagement = getDailyEngagement()
 
 const [showPenalty, setShowPenalty] = useState(false)
@@ -27,7 +27,10 @@ useEffect(() => {
 
   const handleClose = () => {
     localStorage.setItem('sf.loginPanel.lastShown', String(Date.now()))
-    if (userId) syncXpToDb(userId, data.xp, data.premiumXp, data.rankXp)
+    // Flush the authoritative profile wallet to the DB (Magnet's snapshot is
+    // just a mirror of it now — never write the mirror back).
+    const p = useProfile.getState()
+    if (p.userId && !p.isGuest) syncXpToDb(p.userId, p.xp, p.premiumXp, p.rankXp)
     onClose()
   }
 

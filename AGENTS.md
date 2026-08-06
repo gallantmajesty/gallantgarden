@@ -17,6 +17,8 @@ This project uses [InsForge](https://insforge.dev): an all-in-one, open-source P
   - `find-skills`: discovering additional skills on demand.
 - **Credentials:** app code reads keys from `.env.local`; the CLI reads `.insforge/project.json`. Never hardcode or commit keys.
 
+> **Backend note:** `.env.local` currently points at **Supabase** (`VITE_SUPABASE_URL=…supabase.co`) and the app runs on `@supabase/supabase-js` directly. The InsForge sections above describe the originally-intended backend and are not yet the active path. Edge functions live under `supabase/functions/` (deployed via the Supabase CLI, see `supabase/config.toml`). If/when you migrate to InsForge, update this file and `.env.local` together.
+
 Key patterns:
 
 - Database inserts take an array: `insert([{ ... }])`.

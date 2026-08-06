@@ -26,7 +26,6 @@ import '../premium.css'
 import { awardWeeklyWarrior } from '../../../lib/xpEngine'
 import { rankForTotalXp } from '../../../lib/ranks'
 import { useProfile } from '../../../store/profile'
-import { syncXpToDb } from '../../../lib/xpEngine'
 
 // The emotional "home" of the world — redone in the calm, story-telling Korean
 // minimal style: a big hero that answers "how is my life today?", a performance
@@ -82,15 +81,11 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
   useEffect(() => {
     if (streak < 5) return
     const { xp, premiumXp, rankXp } = useProfile.getState()
-    const rankBase = rankXp || xp + premiumXp
+    const rankBase = rankXp > 0 ? rankXp : xp + premiumXp
     const currentRank = rankForTotalXp(rankBase)
     const result = awardWeeklyWarrior(xp, premiumXp, streak, currentRank.id)
     if (result.leaves > 0) {
-      const newXp = xp + result.leaves
-      const newRankXp = rankBase + result.leaves
-      useProfile.setState({ xp: newXp, rankXp: newRankXp })
-      const userId = useProfile.getState().userId
-      if (userId) syncXpToDb(userId, newXp, premiumXp, newRankXp)
+      useProfile.getState().applyXp({ leaves: result.leaves })
     }
   }, [streak])
   const insights = useMemo(() => generateInsights(data, now, 30), [data, now])

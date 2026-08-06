@@ -224,31 +224,34 @@ export interface AccessoryDef {
   color: string
   /** short blurb shown under the name */
   blurb: string
+  /** price in green leaves (0 = free starter, kept in the avatar creator) */
+  price: number
+  /** currency spent: 'green' (🍃) or 'gold' (🌟 gold leaves). Default green. */
+  currency?: 'green' | 'gold'
 }
 
-// The accessory wardrobe. Each can be toggled from the Avatar Creator's
-// Accessories step and is rendered as a small 3D prop on the character's desk
-// (visible in the library study hall). `color` is only a starting tint — the
-// 3D model is built to read as a real object, not a flat chip.
+// The accessory wardrobe. The free starter (laptop) stays in the Avatar
+// Creator; everything else lives in the Lobby Shop. `color` is only a starting
+// tint — the 3D model is built to read as a real object, not a flat chip.
 export const ACCESSORIES: AccessoryDef[] = [
-  { id: 'laptop', name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion' },
-  { id: 'gaming_laptop', name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig' },
-  { id: 'phone', name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand' },
-  { id: 'book', name: 'Single Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook' },
-  { id: 'book_stack', name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower' },
-  { id: 'do_not_disturb_poster', name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active' },
-  { id: 'trading_laptop', name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts' },
-  { id: 'trading_desktop_3side', name: 'Tri-Monitor Trading Desk', icon: '🖥️', color: '#1a1a2e', blurb: '3-screen endpoint' },
-  { id: 'mug', name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip' },
-  { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax' },
-  { id: 'flower_pot', name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life' },
-  { id: 'chair_balloon', name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy' },
-  { id: 'bento_box', name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack' },
-  { id: 'hourglass', name: 'Focus Hourglass', icon: '⏳', color: '#d4af37', blurb: 'Sands of flow state' },
-  { id: 'water_bottle', name: 'Water Bottle', icon: '🚰', color: '#7ba7c9', blurb: 'Stay hydrated' },
-  { id: 'headphones', name: 'Headphones', icon: '🎧', color: '#2a2a35', blurb: 'Focus in sound' },
-  { id: 'desk_lamp', name: 'Desk Lamp', icon: '💡', color: '#caa24a', blurb: 'Warm study glow' },
-  { id: 'plant', name: 'Potted Plant', icon: '🪴', color: '#3f7d52', blurb: 'Lush desk greenery' },
+  { id: 'laptop', name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion', price: 0 },
+  { id: 'gaming_laptop', name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig', price: 120, currency: 'gold' },
+  { id: 'phone', name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand', price: 180 },
+  { id: 'book', name: 'Single Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook', price: 150 },
+  { id: 'book_stack', name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower', price: 250 },
+  { id: 'do_not_disturb_poster', name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active', price: 220 },
+  { id: 'trading_laptop', name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts', price: 200, currency: 'gold' },
+  { id: 'trading_desktop_3side', name: 'Tri-Monitor Trading Desk', icon: '🖥️', color: '#1a1a2e', blurb: '3-screen endpoint', price: 250, currency: 'gold' },
+  { id: 'mug', name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip', price: 120 },
+  { id: 'piano', name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax', price: 450 },
+  { id: 'flower_pot', name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life', price: 200 },
+  { id: 'chair_balloon', name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy', price: 400 },
+  { id: 'bento_box', name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack', price: 300 },
+  { id: 'hourglass', name: 'Focus Hourglass', icon: '⏳', color: '#d4af37', blurb: 'Sands of flow state', price: 350 },
+  { id: 'water_bottle', name: 'Water Bottle', icon: '🚰', color: '#7ba7c9', blurb: 'Stay hydrated', price: 130 },
+  { id: 'headphones', name: 'Headphones', icon: '🎧', color: '#2a2a35', blurb: 'Focus in sound', price: 280 },
+  { id: 'desk_lamp', name: 'Desk Lamp', icon: '💡', color: '#caa24a', blurb: 'Warm study glow', price: 240 },
+  { id: 'plant', name: 'Potted Plant', icon: '🪴', color: '#3f7d52', blurb: 'Lush desk greenery', price: 220 },
 ]
 
 export function accessoryById(id: string): AccessoryDef | undefined {

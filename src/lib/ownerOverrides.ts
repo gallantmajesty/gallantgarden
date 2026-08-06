@@ -77,15 +77,15 @@ export async function syncOverridesFromDb(): Promise<void> {
 }
 
 /** Get a single override value. Returns fallback if no override exists. */
-export function getOverride<K extends keyof OwnerOverrides>(
+export function getOverride<K extends keyof OwnerOverrides, V>(
   system: K,
   key: string,
-  fallback: OwnerOverrides[K] extends Record<string, infer V> ? V : never,
-): OwnerOverrides[K] extends Record<string, infer V> ? V : never {
+  fallback: V,
+): V {
   const data = load()
   const group = data[system] as Record<string, unknown> | undefined
-  if (group && key in group) return group[key] as never
-  return fallback as never
+  if (group && key in group) return group[key] as V
+  return fallback
 }
 
 /** Get a nested override value (e.g. getNestedOverride('train', 'lines', 'express', 'minutes', 20)) */

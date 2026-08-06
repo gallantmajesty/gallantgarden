@@ -16,7 +16,6 @@ import {
   XP_VALUES,
   awardLeaves,
   awardGoldenLeaves,
-  syncXpToDb,
   awardDailyTaskCompletion,
   awardBlueprint,
   awardWeeklyWarrior,
@@ -246,40 +245,38 @@ export const useMagnet = create<MagnetState>((set, get) => {
     })
   }
 
-  // Keep the profile store in sync when magnet awards XP. This eliminates
-  // the "two sources of truth" divergence where magnet.data.xp and
-  // profile.xp drift apart (bug #3).
-  function mirrorToProfile(d: MagnetData) {
-    try {
-      const p = useProfile.getState()
-      if (p.userId && !p.isGuest) {
-        useProfile.setState({ xp: d.xp, premiumXp: d.premiumXp, rankXp: d.rankXp })
-      }
-    } catch { /* profile store optional */ }
-  }
+  // The PROFILE store is the single source of truth for the spendable wallet
+  // (xp / premium_xp) and lifetime rank XP. XP deltas are always applied through
+  // profile.applyXp, which syncs to the DB and mirrors the result back into
+  // Magnet (see the profile→magnet subscription at the bottom of this file).
+  // This eliminates the old "two sources of truth" divergence where Magnet's
+  // stale snapshot could overwrite the DB with a LOWER value and wipe earned
+  // leaves / rank progress.
 
     // Award XP via the engine (with caps/cooldown), detect rank changes, sync to DB.
+    // The engine is fed the current PROFILE balance — never Magnet's possibly
+    // stale snapshot — so the wallet can only move forward from the truth.
     // Tasks/habits/milestones give 0 leaves — only study sources earn currency.
     // Golden leaves are premium-only (purchases + rank-up trickle) — never
     // awarded here. The old 'login'→awardGoldenLeaves branch was a latent trap.
     function award(d: MagnetData, source: 'focus' | 'tree' | 'note' | 'train', amount: number): MagnetData {
-      const rankBase = d.rankXp ?? (d.xp + d.premiumXp)
+      const p = useProfile.getState()
+      const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
       const currentRank = rankForTotalXp(rankBase)
 
-      const result = awardLeaves(d.xp, d.premiumXp, source, amount, currentRank.id, rankBase)
+      const result = awardLeaves(p.xp, p.premiumXp, source, amount, currentRank.id, rankBase)
 
     if (result.onCooldown || (result.leaves === 0 && result.goldenLeaves === 0)) return d
 
-    let xp = d.xp + result.leaves
-    let premiumXp = d.premiumXp + result.goldenLeaves
-    // Lifetime rank XP: climbs with every award, never fires on purchases.
-    let rankXp = rankBase + Math.max(0, result.leaves) + result.goldenLeaves
+    let leafDelta = result.leaves
+    let goldenDelta = result.goldenLeaves
+    let rankDelta = Math.max(0, result.leaves) + result.goldenLeaves
     let achievements = d.achievements
     let toastQueued: { title: string; body: string; icon: string } | null = null
 
     // Check rank change
     if (result.rankChanged && result.newRankId) {
-      const newRank = rankForTotalXp(rankXp)
+      const newRank = rankForTotalXp(rankBase + rankDelta)
       const rankAch: Achievement = {
         id: uid('ach'),
         title: `Rank Up: ${newRank.name}!`,
@@ -295,16 +292,16 @@ export const useMagnet = create<MagnetState>((set, get) => {
       }
       // Award premium XP for rank up — credit the golden leaves so they
       // actually land in the wallet (was announced but never added before).
-      const rankUpResult = awardGoldenLeaves(xp, premiumXp, XP_VALUES.rankUp, currentRank.id, rankXp)
+      const rankUpResult = awardGoldenLeaves(p.xp + leafDelta, p.premiumXp + goldenDelta, XP_VALUES.rankUp, currentRank.id, rankBase + rankDelta)
       if (rankUpResult.goldenLeaves > 0) {
-        premiumXp += rankUpResult.goldenLeaves
-        rankXp += rankUpResult.goldenLeaves
+        goldenDelta += rankUpResult.goldenLeaves
+        rankDelta += rankUpResult.goldenLeaves
         achievements = [{ id: uid('ach'), title: 'Rank Up Bonus', detail: `+${rankUpResult.goldenLeaves} Golden Leaves`, icon: 'star', at: nowIso() }, ...achievements]
       }
     }
 
     // Level-up celebration (level mirrors rankXp for lifetime progress)
-    const level = Math.floor(Math.sqrt(rankXp / 100)) + 1
+    const level = Math.floor(Math.sqrt((rankBase + rankDelta) / 100)) + 1
     const prevLevel = Math.floor(Math.sqrt(rankBase / 100)) + 1
 
     if (level > prevLevel && !toastQueued) {
@@ -317,12 +314,11 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
     if (toastQueued) set({ toast: toastQueued })
 
-    // Sync to DB (debounced)
-    const userId = get().userId
-    if (userId) syncXpToDb(userId, xp, premiumXp, rankXp)
+    // Write through the authoritative wallet — syncs to DB + mirrors back into
+    // Magnet automatically. Never writes a stale lower value.
+    const balance = p.applyXp({ leaves: leafDelta, golden: goldenDelta, rankXp: rankDelta })
 
-    const updated = { ...d, xp, premiumXp, rankXp, achievements }
-    mirrorToProfile(updated)
+    const updated = { ...d, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp, achievements }
     return updated
   }
 
@@ -349,15 +345,13 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
        // Check inactivity penalty on daily load
        try {
-         const rankBase = data.rankXp ?? (data.xp + data.premiumXp)
+         const p = useProfile.getState()
+         const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
          const currentRank = rankForTotalXp(rankBase)
-         const penaltyResult = checkInactivityPenalty(data.xp, data.premiumXp, currentRank.id, rankBase)
+         const penaltyResult = checkInactivityPenalty(p.xp, p.premiumXp, currentRank.id, rankBase)
          if (penaltyResult.leaves < 0 || penaltyResult.goldenLeaves > 0) {
-           const newXp = data.xp + penaltyResult.leaves
-           const newPremiumXp = data.premiumXp + penaltyResult.goldenLeaves
-           // Inactivity penalties lower rankXp too — the one legit "rank down".
-           const newRankXp = rankBase + penaltyResult.leaves
-           const newRank = rankForTotalXp(newRankXp)
+           const balance = p.applyXp({ leaves: penaltyResult.leaves, golden: penaltyResult.goldenLeaves, rankXp: penaltyResult.leaves })
+           const newRank = rankForTotalXp(balance.rankXp)
            let achievements = data.achievements
            if (penaltyResult.rankChanged && newRank.id !== currentRank.id) {
              achievements = [
@@ -365,14 +359,30 @@ export const useMagnet = create<MagnetState>((set, get) => {
                ...achievements,
              ]
            }
-           const updated = { ...data, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp, achievements }
+           const updated = { ...data, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp, achievements }
            persist(updated)
            set({ data: updated })
-  if (penaltyResult.leaves < 0) {
-    set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} XP deducted for not hitting ${XP_VALUES.inactivityThresholdMin} min focus today. Rank may drop.`, icon: 'alert-circle' } })
+   if (penaltyResult.leaves < 0) {
+     set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} XP deducted for not hitting ${XP_VALUES.inactivityThresholdMin} min focus today. Rank may drop.`, icon: 'alert-circle' } })
            }
          }
        } catch { /* ignore — penalty is best-effort */ }
+
+       // The profile store is the authoritative wallet. Reconcile the local
+       // Magnet snapshot with it so stale local XP (earned outside Magnet —
+       // e.g. focus / hardcore / blueprint) never surfaces or gets written back.
+       const p = useProfile.getState()
+       if (p.ready && !p.isGuest) {
+         const cur = get().data
+         if (cur.xp !== p.xp || cur.premiumXp !== p.premiumXp || cur.rankXp !== p.rankXp) {
+           const synced = { ...cur, xp: p.xp, premiumXp: p.premiumXp, rankXp: p.rankXp }
+           set({ data: synced })
+           try {
+             localStorage.setItem(storageKey(userId), JSON.stringify(synced))
+           } catch { /* ignore */ }
+           pushMagnet(userId, synced)
+         }
+       }
 
        // Fresh device? Pull the cloud copy (if any) so the world follows the user.
        // An existing local world is never clobbered — last-writer-per-device wins.
@@ -480,17 +490,13 @@ export const useMagnet = create<MagnetState>((set, get) => {
           const dueToday = tasks.filter((t) => t.due === today || (!t.due && !t.done))
           const allDailyDone = dueToday.length > 0 && dueToday.every((t) => t.done)
           if (allDailyDone) {
-            const rankBase = d.rankXp ?? (d.xp + d.premiumXp)
+            const p = useProfile.getState()
+            const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
             const currentRank = rankForTotalXp(rankBase)
-            const result = awardDailyTaskCompletion(d.xp, d.premiumXp, currentRank.id, rankBase)
+            const result = awardDailyTaskCompletion(p.xp, p.premiumXp, currentRank.id, rankBase)
             if (result.leaves > 0) {
-              const newXp = d.xp + result.leaves
-              const newPremiumXp = d.premiumXp
-              const newRankXp = rankBase + result.leaves
-              const userId = get().userId
-              if (userId) syncXpToDb(userId, newXp, newPremiumXp, newRankXp)
-              const updated = { ...d, tasks, xp: newXp, premiumXp: newPremiumXp, rankXp: newRankXp }
-              mirrorToProfile(updated)
+              const balance = p.applyXp({ leaves: result.leaves })
+              const updated = { ...d, tasks, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
               return updated
             }
           }
@@ -790,9 +796,14 @@ export const useMagnet = create<MagnetState>((set, get) => {
         // Award regular XP for focus time (train source for diminishing returns)
         const result = award(next, 'train', Math.max(0, Math.round(xp)))
         // Journey commitment bonus — GREEN (golden is purchase/rank-up only).
-        const rankBase = result.rankXp ?? (result.xp + result.premiumXp)
-        const pResult = awardLeaves(result.xp, result.premiumXp, 'login', XP_VALUES.journeyPremium, rankForTotalXp(rankBase).id, rankBase)
-        return { ...result, xp: result.xp + pResult.leaves, rankXp: rankBase + pResult.leaves }
+        const p = useProfile.getState()
+        const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
+        const pResult = awardLeaves(p.xp, p.premiumXp, 'login', XP_VALUES.journeyPremium, rankForTotalXp(rankBase).id, rankBase)
+        if (pResult.leaves > 0) {
+          const balance = p.applyXp({ leaves: pResult.leaves })
+          return { ...result, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
+        }
+        return result
       })},
 
     addSubject: (name) =>
@@ -823,4 +834,25 @@ export const useMagnet = create<MagnetState>((set, get) => {
       }),
     setFont: (font) => commit((d) => ({ ...d, font })),
   }
+})
+
+// ---- Profile → Magnet wallet mirror ----------------------------------------
+// useProfile is the single source of truth for the spendable wallet (xp /
+// premium_xp) and lifetime rank XP. Whenever those change anywhere (focus sink,
+// hardcore wins, blueprints, achievement claims, shop spends), mirror the new
+// balance into the Magnet snapshot so every reader shows the same number and
+// a stale local value is never written back to the DB.
+let lastMirrored = { xp: -1, premiumXp: -1, rankXp: -1 }
+useProfile.subscribe((s) => {
+  if (s.xp === lastMirrored.xp && s.premiumXp === lastMirrored.premiumXp && s.rankXp === lastMirrored.rankXp) return
+  lastMirrored = { xp: s.xp, premiumXp: s.premiumXp, rankXp: s.rankXp }
+  const m = useMagnet.getState()
+  if (!m.userId || !m.ready) return
+  if (m.data.xp === s.xp && m.data.premiumXp === s.premiumXp && m.data.rankXp === s.rankXp) return
+  const updated = { ...m.data, xp: s.xp, premiumXp: s.premiumXp, rankXp: s.rankXp }
+  try {
+    localStorage.setItem(storageKey(m.userId), JSON.stringify(updated))
+  } catch { /* ignore */ }
+  useMagnet.setState({ data: updated })
+  pushMagnet(m.userId, updated)
 })

@@ -231,6 +231,9 @@ useEffect(() => {
             <PendingDot size={9} />
             <PngIcon name="profile" size={32} />
           </button>
+          <button className="lobby-round" title="Shop" onClick={() => navigate('/shop')}>
+            <PngIcon name="shop" size={32} />
+          </button>
            <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
              <PngIcon name="settings" size={32} />
            </button>

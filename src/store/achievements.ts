@@ -26,7 +26,6 @@ import { useRealmNet } from '../multiplayer/net'
 import { computeStreak } from '../lib/magnet/insights'
 import { rankForLifetime, rankIndex } from '../lib/ranks'
 import { useShop } from '../shop/store'
-import { syncXpToDb } from '../lib/xpEngine'
 import type { RealmKind } from '../lib/realm'
 
 const STORAGE_KEY = 'sf.achievements.v1'
@@ -456,28 +455,12 @@ export const useAchievements = create<AchievementState>((set, get) => ({
     if (s.claimed[key]) return true
     if (liveMetric(def.metric) < tier.threshold) return false
 
-    // 1. Green leaves — never golden (golden stays premium-only). Both the
-    //    profile wallet and the magnet snapshot get the credit so the profile
-    //    top bar + rank bar stay consistent.
+    // 1. Green leaves — never golden (golden stays premium-only). Written through
+    //    the authoritative profile wallet (applyXp syncs the DB and mirrors the
+    //    Magnet snapshot automatically).
     const leaves = effectiveLeaves(def.id, idx, tier.leaves)
     if (leaves > 0) {
-      const p = useProfile.getState()
-      const newXp = p.xp + leaves
-      const newRankXp = p.rankXp + leaves
-      useProfile.setState({ xp: newXp, rankXp: newRankXp })
-      try {
-        const md = useMagnet.getState().data
-        if (md) {
-          useMagnet.setState({
-            data: {
-              ...md,
-              xp: (md.xp ?? 0) + leaves,
-              rankXp: (md.rankXp ?? 0) + leaves,
-            },
-          })
-        }
-      } catch { /* magnet data optional */ }
-      if (p.userId && !p.isGuest) syncXpToDb(p.userId, newXp, p.premiumXp, newRankXp)
+      useProfile.getState().applyXp({ leaves })
     }
 
     // 2. Exclusive items straight into the shop inventory.

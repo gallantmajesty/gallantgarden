@@ -1,10 +1,35 @@
-# Supabase configuration — StudyForest (Focus Lily)
+# Supabase configuration ï¿½ StudyForest (Focus Lily)
 # Merged: edge functions + auth + storage + realtime + schedules.
-# (Formally insforge.toml — renamed to the standard Supabase location.)
+# (Formally insforge.toml ï¿½ renamed to the standard Supabase location.)
 
 # Supabase Edge Functions Configuration
 
 [functions.ai-proxy]
+  verify_jwt = false
+  import_map = "./supabase/functions/import_map.json"
+
+# Golden-leaf store: creates a Stripe Checkout Session (auth required).
+[functions.stripe-checkout]
+  verify_jwt = true
+  import_map = "./supabase/functions/import_map.json"
+
+# Stripe webhook: credits golden leaves. Signed by Stripe, no Supabase JWT.
+[functions.stripe-webhook]
+  verify_jwt = false
+  import_map = "./supabase/functions/import_map.json"
+
+# Razorpay (INR): creates a Razorpay Order (auth required).
+[functions.razorpay-checkout]
+  verify_jwt = true
+  import_map = "./supabase/functions/import_map.json"
+
+# Razorpay: verifies a client payment for instant credit (auth required).
+[functions.razorpay-verify]
+  verify_jwt = true
+  import_map = "./supabase/functions/import_map.json"
+
+# Razorpay webhook: authoritative credit. Signed by Razorpay, no Supabase JWT.
+[functions.razorpay-webhook]
   verify_jwt = false
   import_map = "./supabase/functions/import_map.json"
 [auth]

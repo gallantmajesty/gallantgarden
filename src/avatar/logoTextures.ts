@@ -255,6 +255,66 @@ export function pandaIrisTex(): CanvasTexture {
 
 /** Coarse golden-sand grain (grayscale bump map) — dense irregular flecks so
  *  hourglass sand reads as granular instead of smooth clay. */
+/** Short soft monkey-coat fur (grayscale bump map) — dense fine strokes so the
+ *  monkey's head/body read as soft fur instead of smooth plastic. */
+export function monkeyFurTex(): CanvasTexture {
+  return cachedTexture('monkey-fur', (ctx, w, h) => {
+    ctx.fillStyle = '#808080'
+    ctx.fillRect(0, 0, w, h)
+    // fine short undercoat strokes
+    for (let i = 0; i < 1400; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const len = 2 + Math.random() * 4
+      const angle = (Math.random() - 0.5) * 1.2
+      const tone = 92 + Math.floor(Math.random() * 88)
+      ctx.strokeStyle = `rgba(${tone},${tone},${tone},${0.3 + Math.random() * 0.5})`
+      ctx.lineWidth = 0.5 + Math.random() * 1.1
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + Math.sin(angle) * len, y + Math.cos(angle) * len)
+      ctx.stroke()
+    }
+    // dense short flecks — soft clump texture between strokes
+    for (let i = 0; i < 1800; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const tone = 70 + Math.floor(Math.random() * 110)
+      ctx.fillStyle = `rgba(${tone},${tone},${tone},${0.3 + Math.random() * 0.4})`
+      ctx.fillRect(x, y, 1 + Math.random() * 1.6, 1 + Math.random() * 1.6)
+    }
+    // a few brighter guard hairs for depth
+    for (let i = 0; i < 220; i++) {
+      const x = Math.random() * w
+      const y = Math.random() * h
+      const tone = 185 + Math.floor(Math.random() * 65)
+      ctx.strokeStyle = `rgba(${tone},${tone},${tone},0.5)`
+      ctx.lineWidth = 0.4 + Math.random() * 0.7
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + (Math.random() - 0.5) * 2.5, y + 3 + Math.random() * 4)
+      ctx.stroke()
+    }
+  }, 256, 256)
+}
+
+/** Monkey eye iris — warm amber-brown radial gradient (golden centre fading to a
+ *  deep umber rim) so the eye glows warmly instead of reading as a flat dot. */
+export function monkeyIrisTex(): CanvasTexture {
+  return cachedTexture('monkey-iris', (ctx, w, h) => {
+    const cx = w / 2, cy = h / 2
+    const grad = ctx.createRadialGradient(cx, cy, w * 0.02, cx, cy, w * 0.5)
+    grad.addColorStop(0, '#b5762e')
+    grad.addColorStop(0.4, '#8a4f1c')
+    grad.addColorStop(0.75, '#4a2409')
+    grad.addColorStop(1, '#1f0d02')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(cx, cy, w * 0.5, 0, Math.PI * 2)
+    ctx.fill()
+  }, 128, 128)
+}
+
 export function sandGrainTex(): CanvasTexture {
   return cachedTexture('sand-grain', (ctx, w, h) => {
     ctx.fillStyle = '#808080'

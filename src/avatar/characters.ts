@@ -153,7 +153,7 @@ export const CHARACTERS: Character[] = [
     color: '#6cbf4a',
     bg: '#eaf7dd',
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
   {
     id: 'rabbit',
@@ -172,7 +172,7 @@ export const CHARACTERS: Character[] = [
     color: '#f2a3c0',
     bg: '#fdeaf2',
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
   {
     id: 'robot',
@@ -213,7 +213,7 @@ export const CHARACTERS: Character[] = [
     bg: '#0f2417',
     special: true,
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
   {
     id: 'pig',
@@ -232,7 +232,7 @@ export const CHARACTERS: Character[] = [
     color: '#f29ac0',
     bg: '#fde6f1',
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
   {
     id: 'angel',
@@ -295,7 +295,7 @@ export const CHARACTERS: Character[] = [
     color: '#8a8f94',
     bg: '#eef1f4',
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
   {
     id: 'monkey',
@@ -314,7 +314,7 @@ export const CHARACTERS: Character[] = [
     color: '#8B5E3C',
     bg: '#f5e6d3',
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
 
   // ============================================================================
@@ -437,7 +437,7 @@ export const CHARACTERS: Character[] = [
     color: '#3a3a3a',
     bg: '#f0f4f8',
     isAnimal: true,
-    price: 500,
+    price: 750,
   },
   {
     id: 'fox',
@@ -456,7 +456,7 @@ export const CHARACTERS: Character[] = [
     color: '#e8722a',
     bg: '#fff0e0',
     isAnimal: true,
-    price: 550,
+    price: 700,
   },
   {
     id: 'owl',
@@ -475,7 +475,7 @@ export const CHARACTERS: Character[] = [
     color: '#8a6c5a',
     bg: '#f5ead9',
     isAnimal: true,
-    price: 550,
+    price: 700,
     special: true,
   },
   {
@@ -495,7 +495,7 @@ export const CHARACTERS: Character[] = [
     color: '#7a8aa8',
     bg: '#e8eef8',
     isAnimal: true,
-    price: 600,
+    price: 750,
   },
   {
     id: 'samurai',
@@ -514,7 +514,7 @@ export const CHARACTERS: Character[] = [
     rarity: 'Epic',
     color: '#c9302c',
     bg: '#f5e6d3',
-    price: 650,
+    price: 800,
   },
   {
     id: 'dragon',

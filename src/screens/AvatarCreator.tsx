@@ -7,10 +7,7 @@ import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
 import { useAvatar } from '../avatar/store'
-import { CHARACTERS, effectiveCharacters, characterById } from '../avatar/characters'
-import { useProfile } from '../store/profile'
-import { useShop } from '../shop/store'
-import { effectiveBanners, effectiveLogos, type BannerCategory, type LogoCategory, logoFilter } from '../lib/banners'
+import { effectiveCharacters, characterById } from '../avatar/characters'
 import {
   type AvatarConfig,
   type StyleOption,
@@ -45,8 +42,6 @@ export function AvatarCreator() {
   const set = useAvatar((s) => s.set)
   const reset = useAvatar((s) => s.reset)
   const save = useAvatar((s) => s.save)
-  const userXp = useProfile((s) => s.xp)
-  const userPremiumXp = useProfile((s) => s.premiumXp)
 
   const [saving, setSaving] = useState(false)
   const controls = useRef<OrbitControlsImpl>(null)
@@ -58,9 +53,10 @@ export function AvatarCreator() {
     navigate('/')
   }
 
-  // Mind-map style wizard: Characters → Outfit → Accessories.
-  const [step, setStep] = useState<'characters' | 'outfit' | 'accessories' | 'shop'>('characters')
-  const steps = ['characters', 'outfit', 'accessories', 'shop'] as const
+  // Mind-map style wizard: Characters → Outfit → Accessories. Paid cosmetics
+  // (characters, banners, logos, accessories) live in the Lobby Shop instead.
+  const [step, setStep] = useState<'characters' | 'outfit' | 'accessories'>('characters')
+  const steps = ['characters', 'outfit', 'accessories'] as const
   const stepIndex = steps.indexOf(step)
   const goNext = () => { if (stepIndex < steps.length - 1) setStep(steps[stepIndex + 1]) }
   const goBack = () => { if (stepIndex > 0) setStep(steps[stepIndex - 1]) }
@@ -74,7 +70,7 @@ useEffect(() => { }, [config.characterId])
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <div className="ac-stage-name">
-          {step === 'accessories' ? 'Accessory Studio' : step === 'shop' ? 'Avatar Shop' : characterById(config.characterId || 'james').name}
+          {characterById(config.characterId || 'james').name}
         </div>
           <Suspense fallback={<div className="ac-stage-veil" />}>
             <AvatarCanvas
@@ -100,7 +96,6 @@ useEffect(() => { }, [config.characterId])
             {step === 'characters' && <CharacterDisplayTab config={config} set={set} />}
             {step === 'outfit' && <OutfitTab config={config} set={set} />}
             {step === 'accessories' && <AccessoryTab config={config} set={set} />}
-            {step === 'shop' && <ShopTab />}
           </div>
         </aside>
       </div>
@@ -111,12 +106,11 @@ useEffect(() => { }, [config.characterId])
 
 /* ----------------------------------------------------------- mind-map sidebar */
 
-function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'accessories' | 'shop'; onPick: (s: 'characters' | 'outfit' | 'accessories' | 'shop') => void; config: AvatarConfig }) {
-  const nodes: { id: 'characters' | 'outfit' | 'accessories' | 'shop'; label: string; ico: 'body' | 'top' | 'bag' | 'shop' }[] = [
+function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'accessories'; onPick: (s: 'characters' | 'outfit' | 'accessories') => void; config: AvatarConfig }) {
+  const nodes: { id: 'characters' | 'outfit' | 'accessories'; label: string; ico: 'body' | 'top' | 'bag' }[] = [
     { id: 'characters', label: 'Body', ico: 'body' },
     { id: 'outfit', label: 'Outfit', ico: 'top' },
     { id: 'accessories', label: 'Accessories', ico: 'bag' },
-    { id: 'shop', label: 'Shop', ico: 'shop' },
   ]
   return (
     <aside className="ac-mindmap">
@@ -138,127 +132,41 @@ function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'ac
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
+/** The three free starter characters. Every other character is sold in the
+ *  Lobby Shop — buying one there unlocks it for equipping in this grid. */
+const AVATAR_FREE_CHARACTER_IDS = ['james', 'claire', 'mia']
+
 function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  const characters = effectiveCharacters()
-  const tabs = ['Owned', 'EPIC', 'LEGENDARY']
-  const [activeTab, setActiveTab] = useState('Owned')
-  const [previewing, setPreviewing] = useState<string | null>(null)
+  const characters = effectiveCharacters().filter((c) => AVATAR_FREE_CHARACTER_IDS.includes(c.id))
   const current = config.characterId || 'james'
-  const isOwned = useShop((s) => s.isOwned)
-  const canAfford = useShop((s) => s.canAfford)
-  const purchase = useShop((s) => s.purchase)
-  const canAffordGold = useShop((s) => s.canAffordGold)
-  const purchaseGold = useShop((s) => s.purchaseGold)
-  const userXp = useProfile((s) => s.xp)
-  const userPremiumXp = useProfile((s) => s.premiumXp)
-
-  const filtered = activeTab === 'Owned'
-    ? characters.filter(c => isOwned(c.id))
-    : characters.filter(c => (c.rarity ?? '').toLowerCase() === activeTab.toLowerCase())
-
-  // Click = preview (show 3D model), but don't equip
-  const handlePreview = (ch: typeof characters[0]) => {
-    setPreviewing(ch.id)
+  const equipped = (ch: (typeof characters)[number]) => {
     set({ ...characterById(ch.id).fallback, characterId: ch.id })
   }
-
-  // Buy = purchase + equip
-  const handleBuy = (ch: typeof characters[0], e: React.MouseEvent) => {
-    e.stopPropagation()
-    const price = ch.price ?? 0
-    const gold = ch.currency === 'gold'
-    if (price <= 0) return
-    if (gold) {
-      if (!canAffordGold(price, userPremiumXp)) return
-      const newGold = purchaseGold(ch.id, price, userPremiumXp)
-      if (newGold !== userPremiumXp) {
-        useProfile.setState({ premiumXp: newGold })
-        const userId = useProfile.getState().userId
-        if (userId) {
-          import('../lib/supabase').then(({ supabase }) =>
-            supabase.from('profiles').upsert([{ id: userId, premium_xp: newGold }], { onConflict: 'id' })
-          ).catch(() => {})
-        }
-      }
-      return
-    }
-    if (!canAfford(price, userXp)) return
-    const newXp = purchase(ch.id, price, userXp)
-    if (newXp !== userXp) {
-      useProfile.setState({ xp: newXp })
-      const userId = useProfile.getState().userId
-      if (userId) {
-        import('../lib/supabase').then(({ supabase }) =>
-          supabase.from('profiles').upsert([{ id: userId, xp: newXp }], { onConflict: 'id' })
-        ).catch(() => {})
-      }
-    }
-  }
-
-  // Equip = select an already-owned character
-  const handleEquip = (ch: typeof characters[0], e: React.MouseEvent) => {
-    e.stopPropagation()
-    set({ ...characterById(ch.id).fallback, characterId: ch.id })
-  }
-
   return (
     <div className="ac-char-section">
-      <div className="ac-char-tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            className={`ac-char-tab ${activeTab === tab ? 'active' : ''}`}
-            data-rarity={tab.toLowerCase()}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <p className="ac-foot-note">
+        Pick your starter — James, Mia or Lily. Want more? Grab new characters from the
+        Shop in the lobby.
+      </p>
       <div className="ac-char-grid">
-        {filtered.map((ch) => {
-          const owned = isOwned(ch.id)
-          const price = ch.price ?? 0
-          const gold = ch.currency === 'gold'
-          const affordable = gold
-            ? canAffordGold(price, userPremiumXp)
-            : canAfford(price, userXp)
-          const isSelected = current === ch.id && owned
+        {characters.map((ch) => {
+          const isSelected = current === ch.id
           return (
             <div
               key={ch.id}
-              className={`ac-char-tile ${isSelected ? 'selected' : ''} ${!owned ? 'locked' : ''}`}
-              onClick={() => handlePreview(ch)}
+              className={`ac-char-tile ${isSelected ? 'selected' : ''}`}
+              onClick={() => equipped(ch)}
             >
               <div className="ac-char-avatar" style={{ background: ch.bg }}>
                 <img className="ac-char-img" src={ch.icon} alt={ch.name} />
-                {!owned && price > 0 && (
-                  <div className={`ac-char-price ${affordable ? 'affordable' : ''}`}>
-                    {gold ? '🌟' : '🍃'} {price}
-                  </div>
-                )}
               </div>
               {isSelected && <div className="ac-char-selected-label">SELECTED</div>}
               <div className="ac-char-info">
                 <span className="ac-char-tile-name">{ch.name}</span>
                 <span className="ac-char-rarity" style={{ color: ch.color }}>{ch.rarity}</span>
               </div>
-              {/* Buy button for locked characters */}
-              {!owned && (
-                <button
-                  className={`ac-char-buy-btn ${affordable ? 'affordable' : ''}`}
-                  onClick={(e) => handleBuy(ch, e)}
-                  disabled={!affordable}
-                >
-                  {affordable ? `Buy ${gold ? '🌟' : '🍃'}${price}` : `Need ${gold ? '🌟' : '🍃'}${price}`}
-                </button>
-              )}
-              {/* Equip button for owned but not selected */}
-              {owned && !isSelected && (
-                <button
-                  className="ac-char-equip-btn"
-                  onClick={(e) => handleEquip(ch, e)}
-                >
+              {!isSelected && (
+                <button className="ac-char-equip-btn" onClick={() => equipped(ch)}>
                   Equip
                 </button>
               )}
@@ -439,7 +347,7 @@ function AccessoryTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
         the library hall.
       </p>
       <div className="ac-acc-grid">
-        {ACCESSORIES.map((a) => (
+        {ACCESSORIES.filter((a) => a.id === 'laptop').map((a) => (
           <button
             key={a.id}
             className="ac-acc-tile"
@@ -850,132 +758,6 @@ function CafePedestal() {
  *  to render the GLB model (the Blender schoolboy). */
 function PreviewAvatar({ config }: { config: AvatarConfig }) {
   return <CharacterAvatar config={config} static />
-}
-
-/* -------------------------------------------------------------------- shop tab */
-
-function ShopTab() {
-  const xp = useProfile((s) => s.xp)
-  const premiumXp = useProfile((s) => s.premiumXp)
-  const savePublic = useProfile((s) => s.savePublic)
-  const pub = useProfile((s) => s.pub)
-  const [shopTab, setShopTab] = useState<'banners' | 'logos'>('banners')
-  const [flash, setFlash] = useState<string | null>(null)
-
-  const gold = (c?: string) => c === 'gold'
-  const buy = (id: string, price: number, cur?: string) => {
-    if (useShop.getState().isOwned(id)) return
-    if (gold(cur)) {
-      if (!useShop.getState().canAffordGold(price, premiumXp)) return
-      const newGold = useShop.getState().purchaseGold(id, price, premiumXp)
-      useProfile.setState({ premiumXp: newGold })
-    } else {
-      if (!useShop.getState().canAfford(price, xp)) return
-      const newLeaves = useShop.getState().purchase(id, price, xp)
-      useProfile.setState({ xp: newLeaves })
-    }
-    setFlash(id)
-    setTimeout(() => setFlash(null), 800)
-  }
-  const affordable = (price: number, cur?: string) =>
-    gold(cur) ? useShop.getState().canAffordGold(price, premiumXp) : useShop.getState().canAfford(price, xp)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {(['banners', 'logos'] as const).map((t) => (
-          <button key={t} onClick={() => setShopTab(t)} style={{
-            flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid',
-            borderColor: shopTab === t ? 'rgba(212,168,67,0.4)' : 'rgba(255,255,255,0.08)',
-            background: shopTab === t ? 'rgba(212,168,67,0.1)' : 'rgba(255,255,255,0.03)',
-            color: shopTab === t ? '#d4a843' : 'rgba(255,255,255,0.5)',
-            fontWeight: 600, fontSize: 13, cursor: 'pointer',
-          }}>
-            {t === 'banners' ? 'Banners' : 'Logos'}
-          </button>
-        ))}
-      </div>
-
-      {shopTab === 'banners' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {(['others'] as BannerCategory[]).map((cat) => {
-            const items = effectiveBanners().filter((b) => b.category === cat && !useShop.getState().isOwned(b.id))
-            if (items.length === 0) return null
-            return (
-              <div key={cat}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(240,223,192,0.35)', marginBottom: 6 }}>
-                  Premium Banners
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {items.map((b) => {
-                    return (
-                      <div key={b.id} style={{
-                        borderRadius: 8, overflow: 'hidden',
-                        border: '1.5px solid rgba(255,255,255,0.06)',
-                        background: 'rgba(255,255,255,0.03)',
-                        animation: flash === b.id ? 'ac-shop-flash 0.5s ease-out' : undefined,
-                      }}>
-                        <div style={{
-                          height: 48,
-                          background: b.image ? `url(${b.image})` : b.css,
-                          backgroundSize: 'cover', backgroundPosition: 'center',
-                        }} />
-                        <div style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#f6efe2' }}>{b.name}</span>
-                          <button onClick={() => buy(b.id, b.price, b.currency)} disabled={!affordable(b.price, b.currency)} style={{
-                            background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
-                            borderRadius: 4, color: '#f0c840', fontSize: 10, fontWeight: 700,
-                            padding: '2px 6px', cursor: affordable(b.price, b.currency) ? 'pointer' : 'not-allowed',
-                            opacity: affordable(b.price, b.currency) ? 1 : 0.35,
-                            display: 'flex', alignItems: 'center', gap: 2,
-                          }}>
-                            {gold(b.currency) ? '🌟' : '🍃'} {b.price}
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {shopTab === 'logos' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {effectiveLogos().filter((l) => !useShop.getState().isOwned(l.id)).map((l) => {
-            return (
-              <div key={l.id} style={{
-                borderRadius: 12, overflow: 'hidden', padding: 14, textAlign: 'center',
-                border: '1.5px solid rgba(255,255,255,0.06)',
-                background: 'rgba(255,255,255,0.03)',
-                animation: flash === l.id ? 'ac-shop-flash 0.5s ease-out' : undefined,
-              }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 10px', border: '3px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
-                  {l.image ? (
-                    <img src={l.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: logoFilter(l) }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', background: l.css || 'rgba(255,255,255,0.1)' }} />
-                  )}
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#f6efe2', marginBottom: 6 }}>{l.name}</div>
-                <button onClick={() => buy(l.id, l.price, l.currency)} disabled={!affordable(l.price, l.currency)} style={{
-                  background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)',
-                  borderRadius: 6, color: '#f0c840', fontSize: 11, fontWeight: 700,
-                  padding: '4px 10px', cursor: affordable(l.price, l.currency) ? 'pointer' : 'not-allowed',
-                  opacity: affordable(l.price, l.currency) ? 1 : 0.35,
-                  display: 'flex', alignItems: 'center', gap: 2, margin: '0 auto',
-                }}>
-                  {gold(l.currency) ? '🌟' : '🍃'} {l.price}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
 }
 
 /* -------------------------------------------------------------------- glyphs */

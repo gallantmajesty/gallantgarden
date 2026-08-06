@@ -42,6 +42,8 @@ const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.Lav
 const OwnerPanel = lazy(() => import('./components/owner/OwnerPage').then(m => ({ default: m.OwnerPage })))
 const EventShop = lazy(() => import('./components/focus/EventShop').then(m => ({ default: m.EventShop })))
 const InventoryPanel = lazy(() => import('./components/focus/InventoryPanel').then(m => ({ default: m.InventoryPanel })))
+const Store = lazy(() => import('./screens/Store').then(m => ({ default: m.Store })))
+const Shop = lazy(() => import('./screens/Shop').then(m => ({ default: m.Shop })))
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -188,6 +190,8 @@ const appContent = (
             <Route path="/games/lava-pad" element={<LavaPad />} />
             <Route path="/event-shop" element={<EventShop />} />
             <Route path="/inventory" element={<InventoryPanel />} />
+            <Route path="/store" element={<Store />} />
+            <Route path="/shop" element={<Shop />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

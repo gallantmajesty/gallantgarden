@@ -236,16 +236,11 @@ newBoard: (title) => {
   // Blueprint creation bonus (first ever + daily master)
   try {
     const { xp, premiumXp, rankXp } = useProfile.getState()
-    const rankBase = rankXp || xp + premiumXp
+    const rankBase = rankXp > 0 ? rankXp : xp + premiumXp
     const currentRank = rankForTotalXp(rankBase)
     const result = awardBlueprint(xp, premiumXp, currentRank.id, rankBase)
     if (result.leaves > 0) {
-      const newXp = xp + result.leaves
-      const newRankXp = rankBase + result.leaves
-      useProfile.setState({ xp: newXp, rankXp: newRankXp })
-      import('../lib/supabase').then(({ supabase }) =>
-        supabase.from('profiles').upsert([{ id: uidv, xp: newXp, rank_xp: newRankXp }], { onConflict: 'id' })
-      ).catch(() => {})
+      useProfile.getState().applyXp({ leaves: result.leaves })
     }
   } catch { /* ignore — bonus is best-effort */ }
 },
