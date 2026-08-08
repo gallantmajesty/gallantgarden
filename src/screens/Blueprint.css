@@ -39,6 +39,50 @@
   overflow: hidden;
 }
 
+/* Engine toggle (Blueprint editor) */
+.bp-engine-toggle {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 40;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bp-panel, #252640);
+  border: 1px solid var(--bp-border, #3A3B4D);
+  box-shadow: var(--bp-shadow-md, 0 4px 12px rgba(0,0,0,0.4));
+}
+.bp-engine-toggle button {
+  border: 0;
+  background: transparent;
+  color: var(--bp-text-soft, #9CA3AF);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bp-engine-toggle button.active {
+  background: var(--bp-accent, #7C3AED);
+  color: #fff;
+}
+
+/* Blueprint embed container */
+.fl-bp-wrap {
+  position: absolute;
+  inset: 0;
+  background: #f7f1e3;
+}
+.fl-bp-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
 /* ============================================================
    Canvas — clean off-white + subtle gingham
    ============================================================ */

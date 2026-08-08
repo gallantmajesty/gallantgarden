@@ -50,8 +50,20 @@ export interface ImpostorEntry {
 
 /* ------------------------------------------------ session bake cache + queue */
 
-const BAKE_SIZE = 256
+const BAKE_SIZE = 128
 const CACHE_LIMIT = 400
+// Spread bakes out so a 100-join burst doesn't stall the frame loop: start at
+// most one new bake every BakeInterval ms (each bake also needs several settle
+// frames, so the real rate is the slower of the two). Keeps the room responsive
+// while the offscreen billboards populate.
+const BAKE_INTERVAL_MS = 60
+
+/** True while the impostor bake queue still has pending work. The loading veil
+ *  holds until the far-avatar sprites are ready (they're the last heavy work a
+ *  library mount does), so the room only reveals itself fully loaded. */
+export function impostorBusy(): boolean {
+  return busy || queue.size > 0
+}
 
 interface BakeJob {
   key: string
@@ -63,6 +75,37 @@ const cache = new Map<string, ImpostorEntry>()
 const queue = new Map<string, BakeJob>()
 const listeners = new Set<() => void>()
 let busy = false
+
+if (import.meta.env.DEV) {
+  ;(window as any).__impostorDebug = {
+    get cacheSize() { return cache.size },
+    get queueSize() { return queue.size },
+    get busy() { return busy },
+    list() {
+      return [...cache.entries()].map(([k, e]) => {
+        let alpha = -1
+        try {
+          const c = e.texture.image as HTMLCanvasElement
+          const ctx = c.getContext('2d')!
+          const d = ctx.getImageData(0, 0, c.width, c.height).data
+          let n = 0
+          for (let i = 3; i < d.length; i += 4) if (d[i] > 10) n++
+          alpha = Math.round((n / (d.length / 4)) * 1000) / 10
+        } catch { /* ignore */ }
+        return { k, scale: Math.round(e.scale * 1000) / 1000, centerY: Math.round(e.centerY * 1000) / 1000, opaquePct: alpha }
+      })
+    },
+  }
+  const report = () => {
+    const d = (window as any).__impostorDebug
+    console.log('[impostor] report:', JSON.stringify({ cacheSize: d.cacheSize, queueSize: d.queueSize, busy: d.busy, list: d.list() }))
+  }
+  setTimeout(() => {
+    const d = (window as any).__impostorDebug
+    console.log('[impostor] after 25s:', JSON.stringify({ cacheSize: d.cacheSize, queueSize: d.queueSize, busy: d.busy, sample: d.list().slice(0, 4) }))
+  }, 25000)
+  window.addEventListener('message', (ev) => { if (ev.data === 'impostor-report') report() })
+}
 
 /** Deterministic per-look identity: the normalized config + the pose. */
 function keyFor(config: AvatarConfig, pose: ImpostorPose): string {
@@ -118,6 +161,7 @@ export function ImpostorBakeStage() {
   const rtRef = useRef<WebGLRenderTarget | null>(null)
   const [job, setJob] = useState<BakeJob | null>(null)
   const settle = useRef(0)
+  const lastStart = useRef(0)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
 
   const scene = useMemo(() => {
@@ -143,6 +187,11 @@ export function ImpostorBakeStage() {
   useFrame(() => {
     if (!job) {
       if (!busy && queue.size > 0) {
+        // Throttle: don't kick off a new bake more often than BAKE_INTERVAL_MS,
+        // so a mass join spreads across many frames instead of stalling.
+        const now = performance.now()
+        if (now - lastStart.current < BAKE_INTERVAL_MS) return
+        lastStart.current = now
         const first = queue.keys().next().value
         if (first === undefined) return
         busy = true

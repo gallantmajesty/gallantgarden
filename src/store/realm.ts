@@ -54,6 +54,7 @@ interface RealmState {
 }
 
 const KEY = 'sf.realm.custom.v1'
+const KEY_ACTIVE = 'sf.realm.active.v1'
 
 function loadCustom(): CustomRealm[] {
   try {
@@ -73,13 +74,46 @@ function saveCustom(list: CustomRealm[]) {
   }
 }
 
+/** The active realm survives a page refresh (sessionStorage — same tab only).
+ *  The NPC seat picker and the library scene derive everything from this, so a
+ *  reload must NOT drop the player's room: refresh = keep your room, new tab =
+ *  fresh start. */
+function loadActive(): ActiveRealm | null {
+  try {
+    const raw = sessionStorage.getItem(KEY_ACTIVE)
+    if (!raw) return null
+    const a = JSON.parse(raw) as ActiveRealm | null
+    if (!a || typeof a.kind !== 'string' || typeof a.name !== 'string' || typeof a.world !== 'string') return null
+    return a
+  } catch {
+    return null
+  }
+}
+
+function saveActive(active: ActiveRealm | null) {
+  try {
+    if (active) sessionStorage.setItem(KEY_ACTIVE, JSON.stringify(active))
+    else sessionStorage.removeItem(KEY_ACTIVE)
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useRealm = create<RealmState>((set, get) => ({
-  active: null,
+  active: loadActive(),
   custom: loadCustom(),
 
-  enterGlobal: (roomId, name) => set({ active: { kind: 'global', name, roomId, world: worldForRoom(roomId) } }),
+  enterGlobal: (roomId, name) => {
+    const active = { kind: 'global' as const, name, roomId, world: worldForRoom(roomId) }
+    saveActive(active)
+    set({ active })
+  },
 
-  enterFlagship: (world, name) => set({ active: { kind: 'global', name, world } }),
+  enterFlagship: (world, name) => {
+    const active = { kind: 'global' as const, name, world }
+    saveActive(active)
+    set({ active })
+  },
 
   rememberCustom: (realm) => {
     const custom = [realm, ...get().custom.filter((r) => r.id !== realm.id)]
@@ -93,7 +127,14 @@ export const useRealm = create<RealmState>((set, get) => ({
     set({ custom })
   },
 
-  enterCustom: (realm) => set({ active: { kind: 'custom', name: realm.name, roomId: realm.id, world: 'library' } }),
+  enterCustom: (realm) => {
+    const active = { kind: 'custom' as const, name: realm.name, roomId: realm.id, world: 'library' as const }
+    saveActive(active)
+    set({ active })
+  },
 
-  leave: () => set({ active: null }),
+  leave: () => {
+    saveActive(null)
+    set({ active: null })
+  },
 }))

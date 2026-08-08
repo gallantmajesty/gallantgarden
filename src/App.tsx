@@ -24,7 +24,6 @@ const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ defaul
 const NotFound = lazy(() => import('./screens/NotFound').then(m => ({ default: m.NotFound })))
 import { useLobbyReady } from './hooks/useLobbyReady'
 const Lobby = lazy(() => import('./screens/Lobby').then(m => ({ default: m.Lobby })))
-const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
 const NotesHub = lazy(() => import('./screens/NotesHub').then(m => ({ default: m.NotesHub })))
 const NotesEditor = lazy(() => import('./screens/NotesEditor').then(m => ({ default: m.NotesEditor })))
 const Explore = lazy(() => import('./screens/Explore').then(m => ({ default: m.Explore })))
@@ -32,17 +31,16 @@ const StudyRoom = lazy(() => import('./screens/StudyRoom').then(m => ({ default:
 const About = lazy(() => import('./screens/About').then(m => ({ default: m.About })))
 const Realm = lazy(() => import('./screens/Realm').then(m => ({ default: m.Realm })))
 const RealmInvite = lazy(() => import('./screens/RealmInvite').then(m => ({ default: m.RealmInvite })))
-const TaskMagnet = lazy(() => import('./screens/TaskMagnet').then(m => ({ default: m.TaskMagnet })))
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })))
 const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ default: m.AvatarCreator })))
 const CharacterSelection = lazy(() => import('./screens/CharacterSelection').then(m => ({ default: m.CharacterSelection })))
-const Games = lazy(() => import('./screens/games').then(m => ({ default: m.Games })))
-const LavaPad = lazy(() => import('./screens/games').then(m => ({ default: m.LavaPad })))
 const OwnerPanel = lazy(() => import('./components/owner/OwnerPage').then(m => ({ default: m.OwnerPage })))
 const EventShop = lazy(() => import('./components/focus/EventShop').then(m => ({ default: m.EventShop })))
 const InventoryPanel = lazy(() => import('./components/focus/InventoryPanel').then(m => ({ default: m.InventoryPanel })))
 const Store = lazy(() => import('./screens/Store').then(m => ({ default: m.Store })))
 const Shop = lazy(() => import('./screens/Shop').then(m => ({ default: m.Shop })))
+const Legal = lazy(() => import('./screens/Legal').then(m => ({ default: m.Legal })))
+import { IndividualComingSoon } from './screens/IndividualComingSoon'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -99,6 +97,9 @@ export default function App() {
             <Route path="/login" element={<AuthScreen />} />
             <Route path="/login/github" element={<AuthScreen />} />
             <Route path="/login/perinfo" element={<Onboarding />} />
+            <Route path="/terms" element={<Legal />} />
+            <Route path="/privacy" element={<Legal />} />
+            <Route path="/refund" element={<Legal />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -140,7 +141,7 @@ const appContent = (
         <ErrorBoundary resetKeys={[location.pathname]}>
           <Suspense fallback={null}>
             <Routes>
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
@@ -160,13 +161,13 @@ const appContent = (
             <Route path="/lobby/realm/choose" element={<Realm />} />
             <Route path="/lobby/realm/private" element={<Realm />} />
             <Route path="/lobby/realm/library" element={<Realm />} />
-            <Route path="/lobby/realm/train" element={<Realm />} />
-            <Route path="/lobby/realm/uk-cafe" element={<Realm />} />
+            <Route path="/lobby/realm/train" element={<IndividualComingSoon featureId="train" />} />
+            <Route path="/lobby/realm/uk-cafe" element={<IndividualComingSoon featureId="uk-cafe" />} />
             <Route path="/lobby/realm/public" element={<Realm />} />
             <Route path="/lobby/realm/custom" element={<Realm />} />
             <Route path="/lobby/realm/custom/:code" element={<Realm />} />
             <Route path="/lobby/explore" element={<Explore />} />
-            <Route path="/blueprint" element={<Blueprint />} />
+            <Route path="/blueprint/*" element={<IndividualComingSoon featureId="blueprint" />} />
             <Route path="/notes" element={<NotesHub />} />
             <Route path="/notes/doc" element={<NotesEditor />} />
             <Route path="/realm/:code" element={<RealmInvite />} />
@@ -174,17 +175,20 @@ const appContent = (
             <Route path="/room" element={<Navigate to="/lobby" replace />} />
             <Route path="/rooms" element={<Navigate to="/lobby" replace />} />
             <Route path="/room/:id" element={<StudyRoom />} />
-            <Route path="/magnet" element={<TaskMagnet />} />
+            <Route path="/magnet" element={<IndividualComingSoon featureId="magnet" />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:playerId" element={<Profile />} />
             <Route path="/avatar" element={<AvatarCreator />} />
             <Route path="/character-select" element={<CharacterSelection />} />
-            <Route path="/games" element={<Games />} />
-            <Route path="/games/lava-pad" element={<LavaPad />} />
+            <Route path="/games" element={<IndividualComingSoon featureId="games" />} />
+            <Route path="/games/lava-pad" element={<IndividualComingSoon featureId="games" />} />
             <Route path="/event-shop" element={<EventShop />} />
             <Route path="/inventory" element={<InventoryPanel />} />
             <Route path="/store" element={<Store />} />
             <Route path="/shop" element={<Shop />} />
+            <Route path="/terms" element={<Legal />} />
+            <Route path="/privacy" element={<Legal />} />
+            <Route path="/refund" element={<Legal />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

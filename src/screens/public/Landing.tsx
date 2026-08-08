@@ -1131,8 +1131,9 @@ export function Landing() {
             </div>
             <div className="fl-footer__col">
               <h4>Legal</h4>
-              <a href="#">Privacy</a>
-              <a href="#">Terms</a>
+              <a href="/privacy">Privacy</a>
+              <a href="/terms">Terms</a>
+              <a href="/refund">Refunds</a>
             </div>
           </div>
         </div>

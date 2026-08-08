@@ -67,10 +67,16 @@
 
 .lobby-bottomleft {
   position: absolute;
-  bottom: 100px;
+  bottom: 14px;
   left: 18px;
   z-index: 10;
 }
+
+/* ── Bottom-left stack fix: Chat (top) > XP bar (middle) > Exit (bottom) ── */
+/* ResourceBar is globally bottom:18px; raise it so it sits above the exit */
+.lobby-root .resource-bar { bottom: 50px; }
+/* sh-launcher is globally bottom:84px; raise it above the resource-bar top (~112px) */
+.lobby-root .sh-launcher { bottom: 130px; }
 
 .lobby-topleft-stack {
   display: flex;
@@ -323,12 +329,12 @@
   height: 24px;
 }
 .lobby-round .png-icon {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
 }
 .lobby-round--score {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   background: #3a2a1a;
   border-color: #5a4a3a;
   box-shadow: 0 4px 16px rgba(58, 42, 26, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -342,8 +348,8 @@
   box-shadow: 0 2px 8px rgba(58, 42, 26, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .lobby-round--score .png-icon {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
 }
 
 /* ---- center stage ---- */
@@ -475,14 +481,16 @@
   border-radius: 12px;
   background: #3a2a1a;
   border: 2px solid #5a4a3a;
+  box-shadow: 0 4px 12px rgba(58, 42, 26, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   color: #fff;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   position: relative;
 }
 .lobby-inbox-btn:hover {
   background: #4a3a2a;
   transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(58, 42, 26, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .lobby-inbox-btn svg {
   width: 22px;
@@ -889,7 +897,7 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
    /* --- Top bar: compact single row --- */
    .lobby-topleft { top: 10px; left: 10px; gap: 6px; z-index: 20; }
    .lobby-topright { top: 10px; right: 10px; gap: 8px; z-index: 20; }
-   .lobby-bottomleft { bottom: 96px; left: 10px; z-index: 20; }
+   .lobby-bottomleft { bottom: 14px; left: 10px; z-index: 20; }
   .lobby-xp {
     padding: 4px 10px 4px 4px;
     background: rgba(16, 20, 28, 0.7);

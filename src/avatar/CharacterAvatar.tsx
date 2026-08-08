@@ -3,7 +3,6 @@ import type { Group } from 'three'
 import { BASE_BODY } from './baseBody'
 import { AvatarRig, type AvatarRigHandle } from './AvatarRig'
 import { AvatarAnimator, type Lod, type PreviewState } from './AvatarAnimator'
-import { SamuraiAvatar } from './SamuraiCharacter'
 import { type Locomotion } from './animation'
 import { type AvatarConfig } from './config'
 import { characterById } from './characters'
@@ -56,19 +55,8 @@ export function CharacterAvatar({ config, locomotion, lod, preview, hideAccessor
 
   return (
     <group ref={rootRef} name="avatar-root" scale={BASE_BODY.scale} position={[0, BASE_BODY.yOffset, 0]}>
-      {character.id === 'samurai' ? (
-        <SamuraiAvatar
-          config={config}
-          locomotion={resolvedLoco}
-          lod={resolvedLod}
-          preview={preview}
-        />
-      ) : (
-        <>
-          <AvatarRig ref={primaryRig} config={config} hideAccessories={hideAccessories} />
-          <AvatarAnimator rig={primaryRig} locomotion={resolvedLoco} lod={resolvedLod} preview={preview} static={isStatic} />
-        </>
-      )}
+      <AvatarRig ref={primaryRig} config={config} hideAccessories={hideAccessories} />
+      <AvatarAnimator rig={primaryRig} locomotion={resolvedLoco} lod={resolvedLod} preview={preview} static={isStatic} />
     </group>
   )
 }

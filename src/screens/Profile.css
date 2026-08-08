@@ -991,6 +991,74 @@
   filter: brightness(1.1);
   box-shadow: 0 6px 20px rgba(212, 168, 67, 0.35);
 }
+
+/* ---- danger zone: delete account ---- */
+.pf-danger-section {
+  margin-top: 26px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 107, 94, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 60, 50, 0.05);
+}
+.pf-danger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pf-danger-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ff8f84;
+  margin-bottom: 4px;
+}
+.pf-danger-sub {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pf-text-soft, #b8a88a);
+  max-width: 480px;
+}
+.pf-delete-btn {
+  padding: 9px 18px;
+  border: 1px solid rgba(255, 107, 94, 0.55);
+  border-radius: 10px;
+  background: rgba(255, 60, 50, 0.12);
+  color: #ff8f84;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.pf-delete-btn:hover {
+  background: rgba(255, 60, 50, 0.25);
+  border-color: #ff6b5e;
+}
+.pf-delete-confirm-btn {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ff6b5e, #c23a2f);
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 80, 60, 0.25);
+}
+.pf-delete-confirm-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(255, 80, 60, 0.4);
+}
+.pf-delete-confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .pf-edit-saved-indicator {
   display: inline-flex;
   align-items: center;

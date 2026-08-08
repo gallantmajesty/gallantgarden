@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState, memo, type CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSeatFlow, SEAT_LOCK_MS } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
 import { useRealm } from '../../store/realm'
 import { HALL, windowZs } from '../../three/library/layout'
 import { seatAnchors, TABLE, groundShelves, upperShelves, balconyPlatforms, columns, staircases } from '../../three/library/furniture'
 import type { Seat } from '../../three/library/furniture'
+import { roomTheme } from '../../lib/roomThemes'
 
 const ASPECT_W = HALL.halfW * 2
 const ASPECT_L = HALL.halfL * 2
@@ -36,6 +38,7 @@ function useAudioCues() {
 }
 
 export function SeatSelectionOverlay() {
+  const navigate = useNavigate()
   const flow = useSeatFlow()
   const occupied = flow.occupied
   const pickSeat = flow.pickSeat
@@ -46,6 +49,7 @@ export function SeatSelectionOverlay() {
   const wasSeated = flow.entrancePlayed
   const realm = useRealm((s) => s.active)
   const roomId = realm?.roomId ?? null
+  const theme = roomTheme(roomId)
 
   // Check if this room is locked (can't re-sit until cooldown expires)
   const lockedRoomId = useSeatFlow((s) => s.lockedRoomId)
@@ -73,8 +77,10 @@ export function SeatSelectionOverlay() {
     useSeatFlow.getState().arrive(roomId ?? undefined)
     useWorld.getState().sit(seatId)
     useSeatFlow.getState().markEntrancePlayed()
-    sessionStorage.setItem('sf.seatBooted', '1')
-    window.location.reload()
+    // No page reload here. LibraryScene watches the selecting → seated
+    // transition and remounts its Canvas fresh (canvasKey bump), which replaced
+    // the old window.location.reload() that flashed the RoomLoader again after
+    // every seat choice.
   }, [pickSeat, startWalk, roomId])
 
   const handleSelect = useCallback((id: number) => {
@@ -115,16 +121,25 @@ export function SeatSelectionOverlay() {
           </div>
         </div>
       )}
-      <div className={`sso-panel ${cinematic ? 'sso-hidden' : ''}`}>
+      <div className={`sso-panel ${cinematic ? 'sso-hidden' : ''}`} style={{ '--room-accent': theme.accent, '--room-accent-soft': theme.accentSoft } as CSSProperties}>
         <div className="sso-header">
           {wasSeated && (
             <button className="sso-cancel-btn" onClick={handleCancel} title="Cancel and go back">
               ✕
             </button>
           )}
+          {!wasSeated && (
+            <button
+              className="sso-back-realms"
+              onClick={() => navigate('/lobby/realm/choose')}
+              title="Back to realms"
+            >
+              ‹ Back to Realms
+            </button>
+          )}
           <div className="sso-header-illu" aria-hidden><IconHall /></div>
           <div className="sso-header-text">
-            <h2 className="sso-title">Choose your seat</h2>
+            <h2 className="sso-title">Choose your seat <span className="sso-room-badge"><img src={theme.icon} alt="" draggable={false} /> {realm?.name ?? 'Library'}</span></h2>
             <p className="sso-subtitle">Pick a place in the great hall — the whole library on one map.</p>
           </div>
         </div>
@@ -381,7 +396,7 @@ const SeatDot = memo(function SeatDot({ seat, isOccupied, isSelected, onClick }:
         if (!isOccupied) onClick()
       }}
       disabled={isOccupied}
-      title={isOccupied ? occupant : `Seat ${seat.id + 1}`}
+      title={isOccupied ? (occupant ?? 'Student') : `Seat ${seat.id + 1}`}
     >
       {isOccupied ? (
         <span className="sso-seat-occupant">{occupant}</span>

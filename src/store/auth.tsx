@@ -121,8 +121,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Handle session lost (another device claimed it)
-    const handleSessionLost = () => {
-      console.warn('[Auth] Session claimed elsewhere')
+    const handleSessionLost = async () => {
+      console.warn('[Auth] Session claimed elsewhere or heartbeat failed')
+      // Verify if we actually have a valid session before redirecting
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          // Session still exists, don't redirect — just re-claim
+          console.log('[Auth] Session still valid, attempting to re-claim...')
+          const claimed = await claimSession()
+          if (claimed !== null) {
+            return // Successfully re-claimed, stay logged in
+          }
+        }
+      } catch (e) {
+        console.error('[Auth] Session verification failed:', e)
+      }
       runUserTeardown()
       setUser(null)
       navigate('/login', { replace: true })

@@ -225,6 +225,20 @@ interface SettingsState {
   /** When ON, player name tags always show full info (name + rank).
    *  When OFF (default), only the country flag is shown; tap to expand. */
   showAllUserInfo: boolean
+  // ── 100-player / self-serve performance toggles ────────────────────────────
+  /** Master on/off for player name tags + timer bars in the 3D realm. */
+  showNameTags: boolean
+  /** When OFF (default), name tags + timer bars are hidden for distant players
+   *  (they've swapped to 2D sprites) and only shown for the nearest players —
+   *  a big CPU/DOM saving at 100 players. Turn ON to keep every tag visible. */
+  distantTags: boolean
+  /** Swap distant players to a baked 2D billboard and unmount their full 3D body
+   *  (1 draw call vs ~110 meshes). ON by default. Turn OFF to always render full
+   *  3D avatars (heavier, but maximal fidelity at every distance). */
+  impostorSprites: boolean
+  /** Pause the render loop entirely while the browser tab is hidden, then resume
+   *  instantly on focus — saves GPU/battery. ON by default. */
+  pauseWhenHidden: boolean
   // lobby
   waitForLobbyReady: boolean // keep intro veil until lobby icons are loaded
   // audio (0..1)
@@ -357,9 +371,9 @@ const DEFAULTS: SettingsData = {
   hideAvatarWhenMovingCamera: false,
   cinematicTour: true,
   cinematicZoom: true,
-  bloom: true,
-  nightMode: false, // default OFF = current daytime look, untouched
-  waitForLobbyReady: true,
+bloom: true,
+   nightMode: true, // default ON = Harry-Potter night mood; user can toggle in Settings
+   waitForLobbyReady: true,
   master: 0.8,
   ambientVol: 0.6,
   rainVol: 0.7,
@@ -371,6 +385,10 @@ const DEFAULTS: SettingsData = {
   timePaused: false,
   pomo: { study: 25, break: 5, longBreak: 15, autoStart: false, sound: true, chimeVolume: 0.5, showTimer: true },
   showAllUserInfo: false,
+  showNameTags: true,
+  distantTags: false,
+  impostorSprites: true,
+  pauseWhenHidden: true,
   keepAwake: false,
 }
 

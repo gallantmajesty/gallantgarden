@@ -6,10 +6,12 @@ import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
 import { SKINS, type AvatarConfig } from '../avatar/config'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
-import { COUNTRIES } from '../lib/countries'
+import { COUNTRIES, getCountry } from '../lib/countries'
+import { detectCountryCode } from '../lib/geo'
 import { REFERRAL_OPTIONS, type ReferralOption } from '../lib/onboarding'
 import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
 import { generatePlayerId } from '../lib/playerId'
+import { createNullSafeEvents } from '../three/safeEvents'
 import { checkDisplayName } from '../lib/displayName'
 import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
@@ -117,6 +119,7 @@ export function Onboarding() {
   const [fullNameOk, setFullNameOk] = useState(false)
   const [country, setCountry] = useState<string | null>(null)
   const [age, setAge] = useState<number | null>(null)
+  const [guardianConsent, setGuardianConsent] = useState(false)
   const [characterId, setCharacterId] = useState<string>('james')
   const [skinId, setSkinId] = useState<string>('light')
   const [goals, setGoals] = useState<string[]>([])
@@ -133,7 +136,7 @@ export function Onboarding() {
     step === 0 ? true
     : step === 1 ? fullNameOk
     : step === 2 ? !!country
-    : step === 3 ? !!age
+    : step === 3 ? !!age && age >= 7 && age <= 100 && (age >= 18 || guardianConsent)
     : step === 4 ? !!characterId
     : step === 5 ? goals.length > 0
     : step === 6 ? termsAccepted
@@ -173,6 +176,7 @@ export function Onboarding() {
     const ok = await complete({
       country,
       age: age,
+      guardianConsent,
       studyGoals: goals,
       referral,
       referralOther: referral === 'Other' ? referralOther.trim() : null,
@@ -227,7 +231,14 @@ export function Onboarding() {
              />
            )}
            {step === 2 && <CountryStep value={country} onChange={setCountry} />}
-           {step === 3 && <AgeStep value={age} onChange={setAge} />}
+           {step === 3 && (
+             <AgeStep
+               value={age}
+               onChange={setAge}
+               guardianConsent={guardianConsent}
+               onGuardianConsent={setGuardianConsent}
+             />
+           )}
            {step === 4 && (
              <CharacterStep
                characterId={characterId}
@@ -382,6 +393,28 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
   const { t } = useTranslation()
   const [q, setQ] = useState('')
   const [marker, setMarker] = useState<{ lat: number; lng: number } | null>(null)
+  // 'detecting' → auto-detection in flight · 'detected' → set from location
+  // · 'failed' → fell back to the manual picker.
+  const [status, setStatus] = useState<'detecting' | 'detected' | 'failed'>('detecting')
+  const [manualOpen, setManualOpen] = useState(false)
+
+  // Auto-detect the country from the player's real location (anti-spam:
+  // free manual choice is gone — the location wins, with a manual fallback).
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const code = await detectCountryCode()
+      if (cancelled) return
+      if (code) {
+        setStatus('detected')
+        onChange(code)
+      } else {
+        setStatus('failed')
+        setManualOpen(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [onChange])
 
   useEffect(() => {
     if (!value) { setMarker(null); return }
@@ -403,41 +436,88 @@ function CountryStep({ value, onChange }: { value: string | null; onChange: (c: 
     return COUNTRIES.filter((c) => c.name.toLowerCase().includes(needle) || c.code.toLowerCase() === needle)
   }, [q])
 
+  const detected = status === 'detected' ? getCountry(value) : null
+
   return (
     <div className="ob-step">
       <h2 className="ob-q">{t('onboarding.countryTitle')}</h2>
       <p className="ob-hint">{t('onboarding.countryHint')}</p>
-      <input
-        className="sf-input ob-search"
-        placeholder={t('common.searchCountries')}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        autoFocus
-      />
-      <div className="ob-country-list" role="listbox" aria-label="Countries">
-        {results.map((c) => (
+
+      {status === 'detecting' && (
+        <div className="ob-country-detect" role="status">
+          <span className="ob-detect-spinner" aria-hidden />
+          <span>Detecting your country…</span>
+        </div>
+      )}
+
+      {detected && (
+        <div className="ob-country-detected">
+          <Flag code={detected.code} />
+          <div className="ob-country-detected-meta">
+            <span className="ob-country-detected-name">{detected.name}</span>
+            <span className="ob-country-detected-note">Set automatically from your location</span>
+          </div>
           <button
-            key={c.code}
-            role="option"
-            aria-selected={value === c.code}
-            className={`ob-country ${value === c.code ? 'on' : ''}`}
-            onClick={() => onChange(c.code)}
             type="button"
+            className="ob-country-change"
+            onClick={() => setManualOpen((o) => !o)}
           >
-            <Flag code={c.code} />
-            <span className="ob-country-name">{c.name}</span>
-            {value === c.code && <span className="ob-check">✓</span>}
+            {manualOpen ? 'Keep detected' : 'Change'}
           </button>
-        ))}
-        {results.length === 0 && <p className="ob-empty">{t('common.noCountriesMatch', { query: q })}</p>}
-      </div>
+        </div>
+      )}
+
+      {status === 'failed' && (
+        <p className="ob-hint">
+          We couldn't detect your location — please pick your country manually.
+        </p>
+      )}
+
+      {manualOpen && (
+        <>
+          <input
+            className="sf-input ob-search"
+            placeholder={t('common.searchCountries')}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+          <div className="ob-country-list" role="listbox" aria-label="Countries">
+            {results.map((c) => (
+              <button
+                key={c.code}
+                role="option"
+                aria-selected={value === c.code}
+                className={`ob-country ${value === c.code ? 'on' : ''}`}
+                onClick={() => onChange(c.code)}
+                type="button"
+              >
+                <Flag code={c.code} />
+                <span className="ob-country-name">{c.name}</span>
+                {value === c.code && <span className="ob-check">✓</span>}
+              </button>
+            ))}
+            {results.length === 0 && <p className="ob-empty">{t('common.noCountriesMatch', { query: q })}</p>}
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
 /* -------------------------------------------------------------- step 3: birthdate */
 
-function AgeStep({ value, onChange }: { value: number | null; onChange: (age: number) => void }) {
+function AgeStep({
+  value,
+  onChange,
+  guardianConsent,
+  onGuardianConsent,
+}: {
+  value: number | null
+  onChange: (age: number) => void
+  guardianConsent: boolean
+  onGuardianConsent: (ok: boolean) => void
+}) {
   const { t } = useTranslation()
   const [input, setInput] = useState(value?.toString() ?? '')
 
@@ -446,19 +526,23 @@ function AgeStep({ value, onChange }: { value: number | null; onChange: (age: nu
     const digits = v.replace(/\D/g, '').slice(0, 3)
     setInput(digits)
     const num = parseInt(digits, 10)
-    if (digits && num >= 7 && num <= 100) {
+    if (digits && num >= 1 && num <= 100) {
       onChange(num)
     }
   }
 
-return (
+  const under7 = value !== null && value < 7
+  const tooOld = value !== null && value > 100
+  const isMinor = value !== null && value >= 7 && value < 18
+
+  return (
      <div className="ob-step">
        <h2 className="ob-q">{t('onboarding.ageTitle')}</h2>
        <div className="ob-age-row">
          <button
            className="ob-stepper"
            onClick={() => {
-             const next = Math.max(7, (value ?? 18) - 1)
+             const next = Math.max(1, (value ?? 18) - 1)
              setInput(next.toString())
              onChange(next)
            }}
@@ -490,8 +574,35 @@ return (
            +
          </button>
        </div>
-      {value && (value < 7 || value > 100) && (
+
+      {under7 && (
+        <p className="ob-username-status bad">
+          🍃 FocusLily is for explorers 7 and up. Come back soon!
+        </p>
+      )}
+      {tooOld && (
         <p className="ob-username-status bad">Age must be between 7 and 100</p>
+      )}
+
+      {isMinor && (
+        <div className="ob-age-consent">
+          <label className="ob-terms-check" htmlFor="ob-guardian">
+            <input
+              id="ob-guardian"
+              type="checkbox"
+              checked={guardianConsent}
+              onChange={(e) => onGuardianConsent(e.target.checked)}
+            />
+            <span className="ob-terms-checkbox" />
+            <span className="ob-terms-label">
+              My parent or guardian knows I'm using FocusLily and gave me permission
+            </span>
+          </label>
+          <p className="ob-age-consent-note">
+            If you're under 18, you need a parent or guardian's permission to use
+            FocusLily. Buying golden leaves also requires an adult.
+          </p>
+        </div>
       )}
     </div>
   )
@@ -519,6 +630,7 @@ function CharPreview3D({ config, skinId }: { config: AvatarConfig; skinId?: stri
   return (
     <div className="ob-char-3d">
       <Canvas
+        events={createNullSafeEvents}
         shadows={false}
         dpr={[1, 1.5]}
         camera={{ position: [0, 1.05, 3.2], fov: 34, near: 0.1, far: 50 }}

@@ -28,6 +28,13 @@ export class LocalMusicEngine implements MusicSource {
 
   // looping-file path (rain etc.)
   private el: HTMLAudioElement | null = null
+  // Jamendo stream path (one non-looping element; auto-advances on end)
+  private jamEl: HTMLAudioElement | null = null
+  private jamFailures = 0
+
+  /** Fired when a Jamendo track plays to its end (or fails to load) — the store
+   *  wires this to `next()` so the playlist keeps flowing. */
+  onTrackEnd: (() => void) | null = null
 
   private preset: MusicPreset | null = null
   private playing = false
@@ -124,6 +131,8 @@ export class LocalMusicEngine implements MusicSource {
       this.startNoise(preset.source.variant)
     } else if (preset.source.kind === 'loop') {
       this.startLoop(preset.source.url)
+    } else if (preset.source.kind === 'jamendo') {
+      this.startJamendo(preset.source.url)
     }
   }
 
@@ -176,6 +185,30 @@ export class LocalMusicEngine implements MusicSource {
     void this.el.play().catch(() => {})
   }
 
+  /** Play a Jamendo stream end-to-end. On finish (or load failure) the engine
+   *  calls `onTrackEnd` so the store advances the playlist — "flows". */
+  private startJamendo(url: string) {
+    if (!this.jamEl) {
+      const el = new Audio()
+      el.loop = false
+      el.preload = 'auto'
+      el.addEventListener('ended', () => this.handleJamEnd())
+      el.addEventListener('error', () => this.handleJamEnd())
+      this.jamEl = el
+    }
+    this.jamFailures = 0
+    if (this.jamEl.src.indexOf(url) === -1) this.jamEl.src = url
+    this.jamEl.volume = this.volume
+    void this.jamEl.play().catch(() => this.handleJamEnd())
+  }
+
+  private handleJamEnd() {
+    // A few consecutive failures = the feed itself is unreachable; stop skipping.
+    this.jamFailures += 1
+    if (this.jamFailures > 3) return
+    this.onTrackEnd?.()
+  }
+
   /** Stop whatever is currently sounding, without changing `playing`. */
   private stopCurrent() {
     // synth: ramp out, then stop the nodes shortly after to avoid a click
@@ -209,6 +242,8 @@ export class LocalMusicEngine implements MusicSource {
     }
     // loop file
     if (this.el && !this.el.paused) this.el.pause()
+    // jamendo stream
+    if (this.jamEl && !this.jamEl.paused) this.jamEl.pause()
   }
 
   /** Synth output level for the current volume (kept well below clipping). */
@@ -231,6 +266,7 @@ export class LocalMusicEngine implements MusicSource {
     const kind = this.preset?.source.kind
     if (kind === 'noise') this.rampOut(this.synthTarget())
     else if (kind === 'loop' && this.el) this.el.volume = this.volume
+    else if (kind === 'jamendo' && this.jamEl) this.jamEl.volume = this.volume
   }
 }
 

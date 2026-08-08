@@ -23,6 +23,9 @@ export interface OnboardingData {
   country: string | null
   /** PRIVATE — personalization only, never shown publicly */
   age: number | null
+  /** true when an under-18 user confirmed they have a parent/guardian's
+   *  permission to use FocusLily (DPDP parental-consent notice). */
+  guardianConsent: boolean
   /** study-goal ids (see studyGoals.ts) */
   studyGoals: string[]
   /** how the user discovered FocusLily */
@@ -37,6 +40,7 @@ export const EMPTY_ONBOARDING: OnboardingData = {
   completed: false,
   country: null,
   age: null,
+  guardianConsent: false,
   studyGoals: [],
   referral: null,
   referralOther: null,
@@ -51,6 +55,7 @@ export function parseOnboarding(raw: unknown): OnboardingData {
     completed: o.completed === true,
     country: typeof o.country === 'string' ? o.country : null,
     age: typeof o.age === 'number' ? o.age : null,
+    guardianConsent: o.guardianConsent === true,
     studyGoals: Array.isArray(o.studyGoals) ? o.studyGoals.filter((x): x is string => typeof x === 'string') : [],
     referral: typeof o.referral === 'string' ? (o.referral as ReferralOption) : null,
     referralOther: typeof o.referralOther === 'string' ? o.referralOther : null,

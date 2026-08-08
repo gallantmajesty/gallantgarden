@@ -31,6 +31,31 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+// Only allow return URLs on the caller's own origin (from the Origin header).
+// Otherwise a scripted caller could redirect the post-payment page to a
+// phishing site. Falls back to the app URL when untrusted or absent.
+function safeReturnUrl(raw: unknown, origin: string | null): string {
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > 2000) return SUPABASE_URL
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    return SUPABASE_URL
+  }
+  if (url.protocol !== "https:") {
+    const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1"
+    if (url.protocol !== "http:" || !isLocal) return SUPABASE_URL
+  }
+  if (!origin) return SUPABASE_URL
+  try {
+    const o = new URL(origin)
+    if (o.host !== url.host) return SUPABASE_URL
+  } catch {
+    return SUPABASE_URL
+  }
+  return url.toString()
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405)
@@ -50,8 +75,7 @@ Deno.serve(async (req) => {
     const pack = PACKS[packId as string]
     if (!pack) return json({ error: "Unknown pack" }, 400)
     const [golden, cents] = pack
-    const base =
-      typeof returnUrl === "string" && /^https?:\/\//.test(returnUrl) ? returnUrl : SUPABASE_URL
+    const base = safeReturnUrl(returnUrl, req.headers.get("origin"))
 
     const { default: Stripe } = await import("npm:stripe@14")
     const stripe = new Stripe(STRIPE_SECRET_KEY)

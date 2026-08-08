@@ -38,7 +38,7 @@ export function NotesEditor() {
       const raw = localStorage.getItem(STORAGE_KEY(uid))
       if (raw) {
         const d = JSON.parse(raw)
-        setHtml(d.html ?? '')
+        setHtml(sanitizeHtml(d.html ?? ''))
         setStickers(d.stickers ?? [])
       } else {
         setHtml('<h1>My Notes</h1><p>Start writing here…</p>')
@@ -58,7 +58,19 @@ export function NotesEditor() {
 
   function cmd(c: string, v?: string) {
     document.execCommand(c, false, v)
-    if (pageRef.current) setHtml(pageRef.current.innerHTML)
+    if (pageRef.current) setHtml(sanitizeHtml(pageRef.current.innerHTML))
+  }
+
+  // Intercept paste so only sanitized HTML ever reaches the live DOM. Without
+  // this, rich pasted content (e.g. <img onerror=...>) would execute in the
+  // contentEditable before React's sanitizer re-renders — classic paste XSS.
+  function onPaste(e: React.ClipboardEvent) {
+    e.preventDefault()
+    const html = e.clipboardData.getData('text/html')
+    const text = e.clipboardData.getData('text/plain')
+    const safe = html ? sanitizeHtml(html) : ''
+    const insert = safe && safe.trim() !== '' ? safe : text
+    if (insert) document.execCommand('insertHTML', false, insert)
   }
 
   // ---- drawing ----
@@ -200,7 +212,8 @@ export function NotesEditor() {
             className="notes-doc"
             contentEditable
             suppressContentEditableWarning
-            onInput={(e) => setHtml((e.target as HTMLDivElement).innerHTML)}
+            onPaste={onPaste}
+            onInput={(e) => setHtml(sanitizeHtml((e.target as HTMLDivElement).innerHTML))}
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
           />
           {painting && (

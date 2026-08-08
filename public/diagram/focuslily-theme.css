@@ -1,0 +1,197 @@
+/* FocusLily theme for embedded draw.io — hides all draw.io branding, applies B&W theme */
+
+/* Hide draw.io menubar (logo, app name, menus) */
+.geMenubar,
+.geMenubarContainer,
+#geMenubar,
+.menubar {
+  display: none !important;
+}
+
+/* Hide draw.io logo/branding */
+.geLogo,
+.geAppLogo,
+.logo,
+[class*="logo"]:not([class*="fl-"]),
+a[href*="draw.io"],
+a[href*="diagrams.net"],
+a[href*="github.com/jgraph"],
+a[href*="github.com/drawio"] {
+  display: none !important;
+}
+
+/* Hide footer (GitHub link, version, etc.) */
+.geFooter,
+.geFooterContainer,
+#geFooter,
+.footer {
+  display: none !important;
+}
+
+/* Hide "unsaved changes" bar / save status */
+.geSaveBar,
+.geStatusBar,
+#geStatus,
+.geStatus,
+.saveStatus,
+.unsavedChanges,
+[class*="unsaved"],
+[class*="saveStatus"] {
+  display: none !important;
+}
+
+/* Hide any "Edit on GitHub" or similar links */
+a[href*="github"],
+button[onclick*="github"],
+.geToolbarButton[title*="GitHub"],
+.geToolbarButton[title*="github"] {
+  display: none !important;
+}
+
+/* Black & white FocusLily theme */
+:root {
+  --fl-bg: #0a0a0a;
+  --fl-bg-elevated: #111;
+  --fl-border: #2a2a2a;
+  --fl-text: #e8e8e8;
+  --fl-text-muted: #888;
+  --fl-accent: #fff;
+  --fl-accent-hover: #ccc;
+  --fl-sidebar-bg: #0d0d0d;
+  --fl-panel-bg: #0f0f0f;
+}
+
+/* Main app background */
+body,
+.geDiagramContainer,
+.geEditorGraph,
+#graphContainer,
+.graphContainer,
+.editorContainer {
+  background: var(--fl-bg) !important;
+  color: var(--fl-text) !important;
+}
+
+/* Sidebar (shapes, layers, etc.) */
+.geSidebarContainer,
+.sidebar,
+#sidebar,
+.geFormatPanel,
+.formatPanel,
+.geShapePanel,
+.shapePanel {
+  background: var(--fl-sidebar-bg) !important;
+  border-right: 1px solid var(--fl-border) !important;
+}
+
+/* Panels (format, style, etc.) */
+.gePanel,
+.panel,
+.dialog,
+.geDialog,
+.ui-dialog {
+  background: var(--fl-panel-bg) !important;
+  border: 1px solid var(--fl-border) !important;
+  color: var(--fl-text) !important;
+}
+
+/* Toolbar */
+.geToolbarContainer,
+.toolbar,
+.geToolbar {
+  background: var(--fl-bg-elevated) !important;
+  border-bottom: 1px solid var(--fl-border) !important;
+}
+
+/* Buttons */
+.geBtn,
+.geButton,
+button,
+input[type="button"],
+input[type="submit"],
+.ui-button {
+  background: var(--fl-bg-elevated) !important;
+  color: var(--fl-text) !important;
+  border: 1px solid var(--fl-border) !important;
+}
+
+.geBtn:hover,
+.geButton:hover,
+button:hover,
+.ui-button:hover {
+  background: var(--fl-border) !important;
+  border-color: var(--fl-accent) !important;
+}
+
+/* Inputs, selects */
+input,
+select,
+textarea {
+  background: var(--fl-bg) !important;
+  color: var(--fl-text) !important;
+  border: 1px solid var(--fl-border) !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--fl-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fl-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fl-text-muted);
+}
+
+/* Canvas background (the grid area) */
+.geGraphView,
+.graphView,
+#graphContainer > div {
+  background: var(--fl-bg) !important;
+}
+
+/* Grid lines */
+.mxGraphView > svg,
+.mxGraphView canvas {
+  background: transparent !important;
+}
+
+/* Selection handles */
+.mxSelectionHandle,
+.selectionHandle {
+  background: var(--fl-accent) !important;
+  border-color: var(--fl-accent) !important;
+}
+
+/* Connectors/edges */
+.mxEdgeStyle,
+.mxConnector {
+  color: var(--fl-text) !important;
+  stroke: var(--fl-text) !important;
+}
+
+/* Text */
+.mxText,
+.text,
+g text {
+  fill: var(--fl-text) !important;
+  color: var(--fl-text) !important;
+}
+
+/* Hide any remaining draw.io watermarks */
+[class*="watermark"],
+[class*="branding"],
+[class*="powered-by"] {
+  display: none !important;
+}
+
+/* Ensure our top bar (parent) isn't affected */
+.fl-drawio-host,
+.fl-drawio-frame {
+  all: initial;
+}

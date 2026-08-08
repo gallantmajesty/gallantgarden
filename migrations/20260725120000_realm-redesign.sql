@@ -114,11 +114,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================
 CREATE OR REPLACE FUNCTION search_public_realms(p_query text)
 RETURNS SETOF realms AS $$
+  -- p_query is a bound parameter (no SQL injection), but escape LIKE
+  -- wildcards so user input matches literally instead of broadening the
+  -- pattern (e.g. "%_" can't be used to force a full-table match).
   SELECT * FROM realms
   WHERE visibility = 'public'
     AND closed_at IS NULL
     AND (expires_at IS NULL OR expires_at > now())
-    AND name ILIKE '%' || trim(p_query) || '%'
+    AND name ILIKE '%' || replace(replace(replace(trim(p_query), '\', '\\'), '%', '\%'), '_', '\_') || '%'
   ORDER BY created_at DESC
   LIMIT 30;
 $$ LANGUAGE sql STABLE SECURITY DEFINER;

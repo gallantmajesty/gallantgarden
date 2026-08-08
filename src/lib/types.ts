@@ -166,29 +166,111 @@ export interface Conversation {
   dm_key: string | null
   created_at: string
   updated_at: string
+  /** group only: shareable join code (e.g. "FL-7K2QX9"). Null for DMs. */
+  join_code?: string | null
+  /** group only: short blurb shown on the group card. */
+  description?: string | null
+  /** group only: max members (defaults to MAX_GROUP_MEMBERS). */
+  member_limit?: number | null
 }
 
-/** A single chat message. */
+/** What a message carries. Text is the default; the rest are rich payloads. */
+export type MessageKind = 'text' | 'image' | 'sticker' | 'link' | 'system'
+
+/** A resolved off-platform link rendered as a preview card. */
+export interface LinkPreview {
+  url: string
+  /** 'instagram' | 'youtube' | 'spotify' | 'x' | 'tiktok' | … | 'web' */
+  provider: string
+  host: string
+  title: string
+  subtitle: string
+  /** optional thumbnail we can derive client-side (e.g. YouTube). */
+  image: string | null
+}
+
+/** Extra payload attached to a message, stored as jsonb. All fields optional. */
+export interface MessageMeta {
+  /** image: natural pixel size (drives the placeholder aspect ratio). */
+  w?: number
+  h?: number
+  /** image: original file name + byte size. */
+  name?: string
+  size?: number
+  /** sticker: catalog id (see features/social/stickers.ts). */
+  sticker?: string
+  /** link: the preview card contents. */
+  link?: LinkPreview
+}
+
+/** A single chat message. Rich fields are optional so rows written before the
+ *  chat-upgrade migration still parse. */
 export interface Message {
   id: string
   conversation_id: string
   sender_id: string
   body: string
   created_at: string
+  kind?: MessageKind | null
+  attachment_url?: string | null
+  meta?: MessageMeta | null
+  reply_to?: string | null
+  edited_at?: string | null
+  deleted_at?: string | null
+  /** client-only: optimistic row still in flight. */
+  pending?: boolean
+  /** client-only: send failed, offer a retry. */
+  failed?: boolean
+  /** client-only: reactions merged in by getMessagesWithReactions. */
+  reactions?: MessageReaction[]
+}
+
+/** One emoji reaction on a message. */
+export interface MessageReaction {
+  message_id: string
+  user_id: string
+  emoji: string
+}
+
+/** Reactions collapsed for rendering: emoji → who reacted. */
+export interface ReactionGroup {
+  emoji: string
+  users: string[]
+  mine: boolean
 }
 
 /** A member row (read cursor lives here). */
 export interface ConversationMember {
   conversation_id: string
   user_id: string
-  role: 'owner' | 'member'
+  role: GroupRole
   last_read_at: string
   joined_at: string
 }
 
+/** Group permission tiers. Owners can do everything; admins can invite/kick. */
+export type GroupRole = 'owner' | 'admin' | 'member'
+
+export const GROUP_ROLE_LABEL: Record<GroupRole, string> = {
+  owner: 'Host',
+  admin: 'Moderator',
+  member: 'Member',
+}
+
+/** A group member joined with their public profile. */
+export interface GroupMember {
+  user_id: string
+  role: GroupRole
+  joined_at: string
+  profile: PublicProfile | null
+}
+
 export type ReportReason = 'spam' | 'harassment' | 'inappropriate'
 
-/** Max members in a group conversation (v1). */
-export const MAX_GROUP_MEMBERS = 20
+/** Max members in a group conversation. */
+export const MAX_GROUP_MEMBERS = 50
+/** Max characters for a group name / description. */
+export const GROUP_TITLE_MAX = 40
+export const GROUP_DESC_MAX = 140
 /** A user counts as "online" if seen within this window. */
 export const ONLINE_WINDOW_MS = 90_000

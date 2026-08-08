@@ -281,35 +281,6 @@
   box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
 }
 
-.samurai-notice {
-  margin: 20px;
-  background: linear-gradient(135deg, #dc2626, #991b1b);
-  border-radius: 16px;
-  padding: 25px;
-  border: 2px solid rgba(251, 191, 36, 0.3);
-}
-
-.samurai-notice h3 {
-  margin: 0 0 15px 0;
-  color: #fbbf24;
-  font-size: 1.4rem;
-}
-
-.samurai-notice p {
-  margin: 0 0 10px 0;
-  opacity: 0.9;
-}
-
-.samurai-notice ul {
-  margin: 15px 0;
-  padding-left: 20px;
-}
-
-.samurai-notice li {
-  margin: 5px 0;
-  opacity: 0.9;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .character-selection-header {
@@ -326,9 +297,5 @@
   .selected-character-info {
     margin: 10px;
     padding: 20px;
-  }
-
-  .samurai-notice {
-    margin: 10px;
   }
 }

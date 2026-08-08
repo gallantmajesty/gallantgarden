@@ -111,8 +111,11 @@ export async function listPublicRealms(): Promise<Realm[]> {
 /** Search public realms by name (excludes expired). */
 export async function searchPublicRealms(query: string): Promise<Realm[]> {
   try {
+    // Strip LIKE wildcards client-side too; the server escapes them as well
+    // (see search_public_realms in migrations), this just keeps the request clean.
+    const safe = query.replace(/[\\%_]/g, '')
     const { data, error } = await supabase.rpc('search_public_realms', {
-      p_query: query,
+      p_query: safe,
     })
     if (error || !Array.isArray(data)) return []
     return data as Realm[]

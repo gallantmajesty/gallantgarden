@@ -2,8 +2,6 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { DoubleSide, type InstancedMesh, type ShapeItem, Object3D } from 'three'
 import { HALL } from './layout'
 import { columns } from './furniture'
-import { useScenePreset } from '../../store/quality'
-import { useSettings } from '../../store/settings'
 import { InstancedBoxes, InstancedShape, type BoxItem } from './Instanced'
 
 const IRON = '#241a12'
@@ -13,18 +11,17 @@ const GLOW_EMISSIVE = '#ffb24a'
 
 /**
  * The hall's lantern system — the magician's-castle lighting the user asked for:
- *  • one grand hanging lantern over the centre (a real warm light),
- *  • four great lanterns high under the ceiling (real lights),
+ *  • one grand hanging lantern over the centre (emissive glow, no real light),
+ *  • four great lanterns high under the ceiling (emissive glow, no real light),
  *  • BIG ornate lanterns hanging from the ceiling at every pillar — the glowing
  *    glass bodies, iron cages, brass crowns and hearts are each ONE instanced
  *    draw for the whole hall, so dozens of large lanterns cost only a few draws.
  *
  * All glow is STATIC — a steady warm light, neither flickering nor shifting
- * brightness between day and night.
+ * brightness between day and night. Real point lights were removed; warmth now
+ * comes from emissive materials + boosted hemisphere/ambient fill.
  */
 export function Lanterns() {
-  const preset = useScenePreset()
-  const night = useSettings((s) => s.nightMode)
   const { halfW, halfL, wallH } = HALL
 
   // four grand lanterns up high, one per quadrant (the "topmost four")
@@ -49,22 +46,11 @@ export function Lanterns() {
     return out
   }, [wallH])
 
-  // real point-lights are the single biggest GPU cost in forward rendering, so
-  // the grand lanterns cast NO real light by day (they glow via emissive + bloom
-  // and read identically, keeping the bright daytime free). At NIGHT MODE we flip
-  // a couple on for warm pools — kept minimal (2) because each real light is
-  // expensive and the user is hitting low FPS at night.
-  const grandLights = night ? 2 : preset.grandLights
-
-  // pillar lanterns glow via emissive only (no real light) — adding real lights
-  // here was the main night FPS drain, so they stay cheap now.
-  const pillarLightCols: [number, number, number][] = []
-
   return (
     <group>
       <CentreLantern y={wallH} />
       {topPositions.map((p, i) => (
-        <GrandLantern key={i} pos={p} withLight={i < grandLights} />
+        <GrandLantern key={i} pos={p} />
       ))}
 
       {/* big ornate lanterns at every pillar — instanced parts for cheap draws */}
@@ -132,16 +118,13 @@ function CentreLantern({ y }: { y: number }) {
         <coneGeometry args={[0.22, 0.7, 8]} />
         <meshStandardMaterial color={BRASS} metalness={0.7} roughness={0.3} />
       </mesh>
-
-      {/* the real warm light it throws into the hall — steady intensity */}
-      <pointLight position={[0, 0, 0]} intensity={40} distance={70} decay={1.6} color="#ffcf9a" />
     </group>
   )
 }
 
 /** One of the four grand lanterns hanging high under the ceiling — enlarged and
  *  ultra-detailed. */
-function GrandLantern({ pos, withLight }: { pos: [number, number, number]; withLight: boolean }) {
+function GrandLantern({ pos }: { pos: [number, number, number] }) {
   const bodyH = 2.6
   const r = 1.0
   return (
@@ -188,7 +171,6 @@ function GrandLantern({ pos, withLight }: { pos: [number, number, number]; withL
         <coneGeometry args={[0.2, 0.6, 8]} />
         <meshStandardMaterial color={BRASS} metalness={0.7} roughness={0.3} />
       </mesh>
-      {withLight && <pointLight position={[0, -0.1, 0]} intensity={18} distance={34} decay={2} color="#ffcb8a" />}
     </group>
   )
 }

@@ -6,7 +6,11 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
+import { createNullSafeEvents } from '../three/safeEvents'
 import { useAvatar } from '../avatar/store'
+import { useShop } from '../shop/store'
+import { useProfile } from '../store/profile'
+import { StudioBackdrop } from '../avatar/StudioBackdrop'
 import { effectiveCharacters, characterById } from '../avatar/characters'
 import {
   type AvatarConfig,
@@ -64,17 +68,27 @@ const hasChar = !!config.characterId
 
 useEffect(() => { }, [config.characterId])
 
+  // Tapping a character tile PREVIEWS its real 3D model AND applies its look to
+  // the live config, so everything downstream (outfit colours, accessories,
+  // stage) edits THAT character — not the old James default. Nothing persists
+  // until the user hits Save.
+  const [previewCharId, setPreviewCharId] = useState<string | null>(null)
+  // Stage always mirrors the live config — no stale "preview-only" body that
+  // ignores your colour/accessory edits.
+  const stageConfig = config
+  const pickStep = (s: 'characters' | 'outfit' | 'accessories') => { setStep(s); setPreviewCharId(null) }
+
   return (
     <div className="ac-root">
       <div className="ac-body">
         {/* ---- left: dark 3D stage ---- */}
         <section className="ac-stage">
           <div className="ac-stage-name">
-          {characterById(config.characterId || 'james').name}
+          {characterById(stageConfig.characterId || 'james').name}
         </div>
           <Suspense fallback={<div className="ac-stage-veil" />}>
             <AvatarCanvas
-          config={config}
+          config={stageConfig}
           controlsRef={controls}
           accessoryMode={step === 'accessories'}
           accessory={config.accessories?.[0]}
@@ -83,7 +97,7 @@ useEffect(() => { }, [config.characterId])
         </section>
 
         {/* ---- mind-map sidebar ---- */}
-        <MindMap step={step} onPick={(s) => setStep(s)} config={config} />
+        <MindMap step={step} onPick={pickStep} config={config} />
 
         {/* ---- right: light dock ---- */}
         <aside className="ac-dock">
@@ -93,7 +107,14 @@ useEffect(() => { }, [config.characterId])
             </button>
           </div>
           <div className="ac-dock-scroll">
-            {step === 'characters' && <CharacterDisplayTab config={config} set={set} />}
+            {step === 'characters' && (
+              <CharacterDisplayTab
+                config={config}
+                set={set}
+                previewCharId={previewCharId}
+                onPreview={setPreviewCharId}
+              />
+            )}
             {step === 'outfit' && <OutfitTab config={config} set={set} />}
             {step === 'accessories' && <AccessoryTab config={config} set={set} />}
           </div>
@@ -132,44 +153,107 @@ function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'ac
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
-/** The nine free starter characters. Every other character is sold in the
- *  Lobby Shop — buying one there unlocks it for equipping in this grid. */
-const AVATAR_FREE_CHARACTER_IDS = ['james', 'claire', 'mia', 'ruslan', 'ojas', 'priya', 'zara', 'owen', 'taro']
+const CHARACTER_TABS = [
+  { id: 'owned', label: 'Owned' },
+  { id: 'common', label: 'Common' },
+  { id: 'epic', label: 'Epic' },
+  { id: 'legendary', label: 'Legendary' },
+] as const
+type CharTabId = (typeof CHARACTER_TABS)[number]['id']
 
-function CharacterDisplayTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
-  const characters = effectiveCharacters().filter((c) => AVATAR_FREE_CHARACTER_IDS.includes(c.id))
+function CharacterDisplayTab({
+  config,
+  set,
+  previewCharId,
+  onPreview,
+}: {
+  config: AvatarConfig
+  set: SetFn
+  previewCharId: string | null
+  onPreview: (id: string | null) => void
+}) {
+  const characters = effectiveCharacters()
   const current = config.characterId || 'james'
+  const leaves = useProfile((s) => s.xp)
+  const gold = useProfile((s) => s.premiumXp)
+  const ownedItems = useShop((s) => s.ownedItems)
+  const [tab, setTab] = useState<CharTabId>('owned')
   const equipped = (ch: (typeof characters)[number]) => {
     set({ ...characterById(ch.id).fallback, characterId: ch.id })
   }
+  const buy = (ch: (typeof characters)[number]) => {
+    const id = ch.id
+    const price = ch.price ?? 0
+    if (price <= 0 || useShop.getState().isOwned(id)) return
+    if (ch.currency === 'gold') {
+      if (!useShop.getState().canAffordGold(price, gold)) return
+      const newGold = useShop.getState().purchaseGold(id, price, gold)
+      useProfile.getState().applyXp({ golden: newGold - gold, rankXp: 0 })
+    } else {
+      if (!useShop.getState().canAfford(price, leaves)) return
+      const newLeaves = useShop.getState().purchase(id, price, leaves)
+      useProfile.getState().applyXp({ leaves: newLeaves - leaves, rankXp: 0 })
+    }
+    equipped(ch)
+    onPreview(null)
+  }
+  const inTab = (ch: (typeof characters)[number]) => {
+    const owned = ownedItems.includes(ch.id)
+    if (tab === 'owned') return owned
+    return !owned && (ch.rarity ?? 'Common').toLowerCase() === tab
+  }
+  const visible = characters.filter(inTab)
   return (
     <div className="ac-char-section">
-      <p className="ac-foot-note">
-        Pick your starter — all nine are free. Want more? Grab new characters from the
-        Shop in the lobby.
-      </p>
+      <div className="ac-char-tabs">
+        {CHARACTER_TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`ac-char-tab ${tab === t.id ? 'active' : ''}`}
+            data-rarity={t.id}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       <div className="ac-char-grid">
-        {characters.map((ch) => {
-          const isSelected = current === ch.id
+        {visible.map((ch) => {
+          const isSelected = (previewCharId ?? current) === ch.id
+          const owned = ownedItems.includes(ch.id)
+          const price = ch.price ?? 0
+          const goldItem = ch.currency === 'gold'
+          const affordable = goldItem
+            ? useShop.getState().canAffordGold(price, gold)
+            : useShop.getState().canAfford(price, leaves)
           return (
             <div
               key={ch.id}
-              className={`ac-char-tile ${isSelected ? 'selected' : ''}`}
-              onClick={() => equipped(ch)}
+              className={`ac-char-tile ${isSelected ? 'selected' : ''} ${!owned ? 'locked' : ''}`}
+              onClick={() => { equipped(ch); onPreview(ch.id) }}
             >
               <div className="ac-char-avatar" style={{ background: ch.bg }}>
                 <img className="ac-char-img" src={ch.icon} alt={ch.name} />
+                {current === ch.id && <div className="ac-char-selected-label">SELECTED</div>}
+                {!owned && (
+                  <span className={`ac-char-price ${affordable ? 'affordable' : ''}`}>
+                    {goldItem ? '🌟' : '🍃'} {price.toLocaleString()}
+                  </span>
+                )}
               </div>
-              {isSelected && <div className="ac-char-selected-label">SELECTED</div>}
               <div className="ac-char-info">
                 <span className="ac-char-tile-name">{ch.name}</span>
                 <span className="ac-char-rarity" style={{ color: ch.color }}>{ch.rarity}</span>
               </div>
-              {!isSelected && (
-                <button className="ac-char-equip-btn" onClick={() => equipped(ch)}>
+              {!owned ? (
+                <button className="ac-char-buy-btn" disabled={!affordable} onClick={(e) => { e.stopPropagation(); buy(ch) }}>
+                  {goldItem ? '🌟 Buy' : '🍃 Buy'}
+                </button>
+              ) : current !== ch.id ? (
+                <button className="ac-char-equip-btn" onClick={(e) => { e.stopPropagation(); equipped(ch); onPreview(null) }}>
                   Equip
                 </button>
-              )}
+              ) : null}
             </div>
           )
         })}
@@ -333,17 +417,23 @@ function ToggleField({
 /* -------------------------------------------------------------- accessories step */
 
 function AccessoryTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
+  const navigate = useNavigate()
   const current = config.accessories?.[0] ?? null
+  const ownedItems = useShop((s) => s.ownedItems)
   const choose = (id: string) => set({ accessories: current === id ? [] : [id] })
+  // Only owned accessories are equippable here (bought in the Lobby Shop).
+  // The currently-equipped item is always kept visible as a safety net, even
+  // if ownership hasn't been granted yet (legacy users).
+  const wardrobe = ACCESSORIES.filter((a) => ownedItems.includes(a.id) || current === a.id)
   return (
     <div className="ac-field">
       <span className="ac-field-label">Accessories <b>· pick one</b></span>
       <p className="ac-foot-note">
-        Choose a single item — it appears on your studio dining table and travels with you into
-        the library hall.
+        Your desk item sits on your studio table and travels with you into the library hall.
+        Buy more accessories in the shop — they appear here once you own them.
       </p>
       <div className="ac-acc-grid">
-        {ACCESSORIES.map((a) => (
+        {wardrobe.map((a) => (
           <button
             key={a.id}
             className="ac-acc-tile"
@@ -361,6 +451,11 @@ function AccessoryTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
           </button>
         ))}
       </div>
+      {wardrobe.length > 0 && (
+        <button className="ac-shop-link" onClick={() => navigate('/shop')}>
+          🛍️ Browse the shop for more
+        </button>
+      )}
     </div>
   )
 }
@@ -461,31 +556,29 @@ function AvatarCanvas({
   accessoryMode?: boolean
   accessory?: string
 }) {
-  // Wizard character renders as a transparent standalone shot — no pedestal, no
-  // floor shadow, no environment light: a single warm top-down spotlight + a
-  // faint rim light, orthographic front view, alpha channel on the canvas.
-  const isWizard = config.characterId === 'wizard'
-
   // Accessories step: show the studio dining table with the single chosen item.
   // No character — just the accessory on the table.
   if (accessoryMode) {
     return (
       <Canvas
+        events={createNullSafeEvents}
         shadows
         dpr={[1, 1.5]}
         camera={{ position: [0, 1.2, 3.6], fov: 42, near: 0.1, far: 50 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
-        {/* Very dark warm backdrop — never pure black, so the silhouette reads */}
-        <color attach="background" args={['#171310']} />
+        {/* Warm studio gradient backdrop + matching image-based environment so
+            the leather, gilt and paper read with real reflections. */}
+        <StudioBackdrop intensity={0.6} />
         {/* Three-point studio rig: key high-right, fill low-left, cool rim
             light from behind to pop the silhouette off the backdrop. */}
-        <hemisphereLight args={['#ffe8c0', '#2a1c10', 0.5]} />
-        <directionalLight position={[3, 4.5, 2.2]} intensity={1.3} color="#ffecd0" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
-        <directionalLight position={[-3, 1.2, 1.2]} intensity={0.65} color="#ffc890" />
-        <directionalLight position={[1.2, 2.8, -2.8]} intensity={0.75} color="#cfc4ee" />
-        <pointLight position={[0, 1.6, 0.8]} intensity={0.35} color="#ff9040" distance={6} decay={2} />
-        <ambientLight intensity={0.22} color="#ffe8d0" />
+        <hemisphereLight args={['#ffe8c0', '#2a1c10', 0.45]} />
+        <directionalLight position={[3, 4.5, 2.2]} intensity={1.55} color="#ffecd0" castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.02} />
+        <directionalLight position={[-3, 1.4, 1.6]} intensity={0.7} color="#ffc890" />
+        <directionalLight position={[1.2, 2.8, -2.8]} intensity={0.85} color="#cfc4ee" />
+        <pointLight position={[0, 1.6, 0.8]} intensity={0.3} color="#ff9040" distance={6} decay={2} />
+        <pointLight position={[1.4, 1.0, 1.6]} intensity={0.35} color="#fff0d8" distance={4} decay={2} />
+        <ambientLight intensity={0.16} color="#ffe8d0" />
 
         <DustMotes count={50} />
 
@@ -519,52 +612,35 @@ function AvatarCanvas({
 
   return (
     <Canvas
+      events={createNullSafeEvents}
       shadows={false}
       dpr={[1, 1.5]}
-      orthographic={isWizard}
-      camera={isWizard
-        ? { position: [0, 1.1, 4], zoom: 90, near: 0.1, far: 50 }
-        : { position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }
-      }
-      gl={{ antialias: true, powerPreference: 'high-performance', alpha: isWizard, preserveDrawingBuffer: isWizard }}
-      style={isWizard ? { background: 'transparent' } : undefined}
+      camera={{ position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
-      {isWizard ? (
-        <>
-          {/* Warm top-down spotlight only + faint rim — per wizard character spec */}
-          <spotLight position={[0, 6, 1]} angle={0.6} penumbra={0.5} intensity={2.4} color="#fff0d8" />
-          <directionalLight position={[-3, 1.5, -2]} intensity={0.35} color="#d8c8ff" />
-          <group position={[0, -0.9, 0]}>
-            <PreviewAvatar config={config} />
-          </group>
-        </>
-      ) : (
-        <>
-          {/* warm café lighting — golden key + soft amber fill */}
-          <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
-          <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
-          <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
-          <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
-          <ambientLight intensity={0.25} color="#ffe8d0" />
+      {/* warm café lighting — golden key + soft amber fill */}
+      <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
+      <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
+      <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
+      <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
+      <ambientLight intensity={0.25} color="#ffe8d0" />
 
-          {/* warm dust motes floating in lamplight */}
-          <DustMotes count={60} />
+      {/* warm dust motes floating in lamplight */}
+      <DustMotes count={60} />
 
-          <group position={[0, -0.9, 0]}>
-            <PreviewAvatar config={config} />
+      <group position={[0, -0.9, 0]}>
+        <PreviewAvatar config={config} />
 
-            {/* 360° cozy Korean café showcase surrounding the character */}
-            <KoreanCafeShowcase />
+        {/* 360° cozy Korean café showcase surrounding the character */}
+        <KoreanCafeShowcase />
 
-            {/* warm wooden pedestal with glowing edge */}
-            <CafePedestal />
+        {/* warm wooden pedestal with glowing edge */}
+        <CafePedestal />
 
-            {/* soft CIRCULAR contact shadow (radial gradient) — avoids the hard
-                square edge of ContactShadows */}
-            <SoftShadow />
-          </group>
-        </>
-      )}
+        {/* soft CIRCULAR contact shadow (radial gradient) — avoids the hard
+            square edge of ContactShadows */}
+        <SoftShadow />
+      </group>
 
       <OrbitControls
         ref={controlsRef}

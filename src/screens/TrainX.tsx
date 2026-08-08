@@ -8,6 +8,7 @@ import { StudyHUD } from '../components/trainx/StudyHUD'
 import { useTrainX } from '../store/trainx'
 import { TouchControls } from '../components/mobile/TouchControls'
 import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
+import { createNullSafeEvents } from '../three/safeEvents'
 import '../components/trainx/BookingUI.css'
 import '../components/trainx/StudyHUD.css'
 
@@ -110,6 +111,7 @@ onClick={() => navigate(-1)}
   return (
     <div data-no-spark style={{ position: 'fixed', inset: 0, background: '#05070f' }}>
       <Canvas
+        events={createNullSafeEvents}
         shadows
         camera={{ position: [0, 8, 26], fov: 50 }}
         onCreated={({ camera }) => camera.lookAt(0, 2, 0)}

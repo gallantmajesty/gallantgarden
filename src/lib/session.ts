@@ -70,10 +70,10 @@ export async function releaseSession(): Promise<void> {
   await supabase.rpc('release_session')
 }
 
-export function startHeartbeat(intervalMs = 15000): () => void {
+export function startHeartbeat(intervalMs = 30000): () => void {
   let stopped = false
   let failCount = 0
-  const MAX_FAILS = 3
+  const MAX_FAILS = 8
 
   const tick = async () => {
     if (stopped) return
@@ -85,6 +85,7 @@ export function startHeartbeat(intervalMs = 15000): () => void {
       console.warn(`[Session] heartbeat failed (${failCount}/${MAX_FAILS})`)
       if (failCount >= MAX_FAILS) {
         stopped = true
+        console.error('[Session] Max heartbeat failures reached — dispatching session-lost')
         window.dispatchEvent(new CustomEvent('session-lost'))
       }
     }

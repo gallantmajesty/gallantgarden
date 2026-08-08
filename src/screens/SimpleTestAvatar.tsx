@@ -14,10 +14,6 @@ export function SimpleTestAvatar() {
           <h3>Claire</h3>
           <p>Studious student</p>
         </div>
-        <div className="test-character">
-          <h3>🗡️ Samurai</h3>
-          <p>Legendary warrior</p>
-        </div>
       </div>
       <p style={{ marginTop: '40px', opacity: 0.7 }}>
         Visit <a href="/character-select" style={{ color: '#fbbf24' }}>/character-select</a> for the full character selection interface

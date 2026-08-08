@@ -1,4 +1,4 @@
-// useLobbyReady — tracks when lobby PNG icons are fully loaded and painted.
+// useLobbyReady — tracks when the lobby's icons are fully loaded and painted.
 // Used by the intro veil to stay visible until the lobby is visually ready.
 
 import { useEffect, useState } from 'react'
@@ -10,7 +10,10 @@ const LOBBY_ICONS: PngIconName[] = [
   'realm',
   'tasks',
   'focus-timer',
-  'lotus',
+  'profile',
+  'games',
+  'friends',
+  'settings',
 ]
 
 function preload(src: string): Promise<boolean> {
@@ -30,7 +33,14 @@ export function useLobbyReady(): boolean {
 
     Promise.all(LOBBY_ICONS.map((name) => preload(`/icons/${name}.png`))).then(
       () => {
-        if (!cancelled) setReady(true)
+        if (cancelled) return
+        // Wait two more animation frames so the lobby has actually drawn
+        // behind the veil before we let it lift.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!cancelled) setReady(true)
+          })
+        })
       },
     )
 

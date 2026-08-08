@@ -21,7 +21,23 @@ interface RequestBody {
   max_tokens?: number
 }
 
-async function callOpenAI(apiKey: string, body: RequestBody) {
+// Only these models may be requested — a client cannot ask for arbitrary (and
+// arbitrarily expensive) models through this proxy.
+const OPENAI_MODELS = new Set(['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'])
+const ANTHROPIC_MODELS = new Set(['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-sonnet-4-20250514', 'claude-haiku-4-20250514'])
+const MAX_TOKENS = 4000
+const MIN_TEMPERATURE = 0
+const MAX_TEMPERATURE = 2
+
+function pickModel(model: string | undefined, provider: string): string {
+  if (model) {
+    const allowed = provider === 'anthropic' ? ANTHROPIC_MODELS : OPENAI_MODELS
+    if (allowed.has(model)) return model
+  }
+  return provider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 'gpt-4o-mini'
+}
+
+async function callOpenAI(apiKey: string, body: RequestBody, model: string) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -29,10 +45,10 @@ async function callOpenAI(apiKey: string, body: RequestBody) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: body.model || 'gpt-4o-mini',
+      model,
       messages: body.messages,
       temperature: body.temperature ?? 0.7,
-      max_tokens: body.max_tokens ?? 2000,
+      max_tokens: Math.min(body.max_tokens ?? 2000, MAX_TOKENS),
     }),
   })
 
@@ -44,7 +60,7 @@ async function callOpenAI(apiKey: string, body: RequestBody) {
   return response.json()
 }
 
-async function callAnthropic(apiKey: string, body: RequestBody) {
+async function callAnthropic(apiKey: string, body: RequestBody, model: string) {
   const systemMessage = body.messages.find(m => m.role === 'system')
   const messages = body.messages.filter(m => m.role !== 'system')
 
@@ -56,11 +72,11 @@ async function callAnthropic(apiKey: string, body: RequestBody) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: body.model || 'claude-3-5-sonnet-20241022',
+      model,
       system: systemMessage?.content || '',
       messages: messages.map(m => ({ role: m.role, content: m.content })),
       temperature: body.temperature ?? 0.7,
-      max_tokens: body.max_tokens ?? 2000,
+      max_tokens: Math.min(body.max_tokens ?? 2000, MAX_TOKENS),
     }),
   })
 
@@ -101,6 +117,20 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+    if (body.messages.length > 50) {
+      return new Response(JSON.stringify({ error: 'Too many messages' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    for (const m of body.messages) {
+      if (typeof m.content !== 'string' || m.content.length > 20000) {
+        return new Response(JSON.stringify({ error: 'Invalid message content' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
 
     // Get API key from Supabase secrets
     const openaiKey = Deno.env.get('OPENAI_API_KEY')
@@ -121,11 +151,21 @@ serve(async (req) => {
       })
     }
 
+    const temp = body.temperature ?? 0.7
+    if (typeof temp !== 'number' || temp < MIN_TEMPERATURE || temp > MAX_TEMPERATURE) {
+      return new Response(JSON.stringify({ error: 'Invalid temperature' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const model = pickModel(body.model, provider)
+
     let data
     if (provider === 'anthropic') {
-      data = await callAnthropic(anthropicKey!, body)
+      data = await callAnthropic(anthropicKey!, body, model)
     } else {
-      data = await callOpenAI(openaiKey!, body)
+      data = await callOpenAI(openaiKey!, body, model)
     }
 
     const content = data.choices?.[0]?.message?.content || ''

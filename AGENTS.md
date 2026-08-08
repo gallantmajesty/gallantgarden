@@ -25,3 +25,9 @@ Key patterns:
 - Reference users with `auth.users(id)`; use `auth.uid()` in RLS policies.
 - For storage uploads, persist both the returned `url` and `key`.
 <!-- INSFORGE:END -->
+
+## 3D AVATAR RULES (never break these)
+
+1. **Characters are NEVER interconnected.** Every character id has its own body: its silhouette is defined by its entry in `CHARACTER_TORSO` in `src/avatar/rig.ts` (8-ring loft multipliers) combined with its own `CHARACTER_PROPORTIONS`. Two characters must never share a torso build. Adding a character means adding BOTH a proportions entry and a torso-shape entry — never reuse another character's.
+2. **Accessories are NEVER interconnected.** Every accessory id renders its own independent build in `AccessoryModel` (`src/avatar/Accessories.tsx`). Even where ids share a code path (the laptops), each id has its own per-id chassis parameters (`CH` constants) — editing one id's geometry must never change another id's machine. Never merge two ids into one shared build.
+3. The avatar rig is procedural — there is no `james.glb` or any external model file. All bodies are built from `src/avatar/config.ts` geometry + `src/avatar/rig.ts` proportions + `src/avatar/AvatarRig.tsx` assembly.

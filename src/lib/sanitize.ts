@@ -39,15 +39,30 @@ export function escapeHtml(str: string): string {
 
 /** Sanitize a URL to prevent javascript: and data: URI attacks */
 export function sanitizeUrl(url: string): string {
-  const trimmed = url.trim().toLowerCase()
-  if (
-    trimmed.startsWith('javascript:') ||
-    trimmed.startsWith('data:text/html') ||
-    trimmed.startsWith('vbscript:')
-  ) {
+  if (typeof url !== 'string') return ''
+  const trimmed = url.trim()
+  if (!trimmed) return ''
+  try {
+    // Strip HTML entities and whitespace so encoded schemes
+    // (e.g. java&#x73;cript:, %6a%61vascript:) can't slip past.
+    const cleaned = trimmed
+      .replace(/&#x?[0-9a-f]+;|&#[0-9]+;/gi, '')
+      .replace(/&[a-z]+;/gi, '')
+      .replace(/\s+/g, '')
+      .toLowerCase()
+    const lower = cleaned.includes('%')
+      ? (() => { try { return decodeURIComponent(cleaned) } catch { return cleaned } })()
+      : cleaned
+    if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) return ''
+    if (lower.startsWith('data:')) {
+      // Only inline images; block everything else (html, text, svg-with-handlers).
+      if (!/^data:image\/(png|gif|jpe?g|webp|svg\+xml);/i.test(lower)) return ''
+      if (lower.includes('<svg') && /<svg[\s>].*(onload|onerror|onclick|onmouseover|script)/i.test(lower)) return ''
+    }
+  } catch {
     return ''
   }
-  return url
+  return trimmed
 }
 
 /** Sanitize text for display (strip all HTML) */

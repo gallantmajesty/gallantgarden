@@ -16,12 +16,16 @@ import { RANKS, getRank, rankProgress, rankForLifetime } from '../lib/ranks'
 import { getDailyEngagement } from '../lib/xpEngine'
 import { computeStreak } from '../lib/magnet/insights'
 import { FriendsPanel } from '../components/FriendsPanel'
+import { SocialHub } from '../features/social/SocialHub'
+import { MusicWidget } from '../components/MusicWidget'
 import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { useIsDesktop } from '../components/DesktopOnly'
 import { PendingDot } from '../components/pending/PendingDot'
 import { LuckyWheelModal } from '../components/focus/LuckyWheelModal'
 import { NewsModal } from '../components/focus/NewsModal'
+import { ComingSoonModal } from '../components/ComingSoonModal'
+import { featureData, type FeatureData } from './IndividualComingSoon'
 import { RankUpCelebration } from '../components/RankUpCelebration'
 import './Lobby.css'
 
@@ -36,17 +40,17 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: false },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: true },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose' },
-  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', soon: false },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', soon: false },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', soon: true },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', soon: true },
 ]
 
 const MOBILE_WORLDS: LobbyObject[] = [
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose', accent: '#6bbf4f' },
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: false },
-  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa', soon: false },
-  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', accent: '#8a6cff', soon: false },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: true },
+  { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa', soon: true },
+  { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', accent: '#8a6cff', soon: true },
 ]
 
 const DAILY_QUESTS = [
@@ -86,6 +90,7 @@ export function Lobby() {
   const isDesktop = useIsDesktop()
   const [mobileNav, setMobileNav] = useState<'home' | 'realm' | 'tasks' | 'games' | 'profile'>('home')
   const [showQuests, setShowQuests] = useState(false)
+  const [soonFeature, setSoonFeature] = useState<FeatureData | null>(null)
 
   // Real stat sources: streak from magnet activity, focus from pomodoro history.
   const magnetData = useMagnet((s) => s.data)
@@ -189,7 +194,12 @@ useEffect(() => {
   }, [navigate, transition, rankTransition])
 
   const pick = useCallback((o: LobbyObject, idx: number, e: React.MouseEvent) => {
-    if (o.soon || !o.route) { setPanel(null); return }
+    if (o.soon) {
+      const f = featureData[o.key]
+      if (f) { setSoonFeature(f); setPanel(null); }
+      return
+    }
+    if (!o.route) { setPanel(null); return }
     if (transition?.active) return
     const rect = e.currentTarget.getBoundingClientRect()
     const cx = rect.left + rect.width / 2
@@ -202,14 +212,19 @@ useEffect(() => {
     }, 400))
     timersRef.current.push(setTimeout(() => {
       setTransition((p) => p ? { ...p, phase: 'ultra' } : null)
-    }, 800))
+    }, 700))
     timersRef.current.push(setTimeout(() => {
       navigate(o.route!)
-    }, 1250))
+    }, 1200))
   }, [navigate, transition])
 
   const pickMobile = useCallback((o: LobbyObject) => {
-    if (o.soon || !o.route) return
+    if (o.soon) {
+      const f = featureData[o.key]
+      if (f) setSoonFeature(f)
+      return
+    }
+    if (!o.route) return
     navigate(o.route)
   }, [navigate])
 
@@ -255,17 +270,17 @@ useEffect(() => {
         <div className="lobby-topright">
           <button className="lobby-round lobby-round--score" title="Score" onClick={() => setPanel('score')}>
             <PendingDot size={9} />
-            <PngIcon name="streaks" size={40} />
+            <PngIcon name="streaks" size={48} />
           </button>
           <button className="lobby-round" title="Avatar" onClick={() => navigate('/avatar')}>
             <PendingDot size={9} />
             <PngIcon name="profile" size={32} />
           </button>
           <button className="lobby-round" title="Shop" onClick={() => navigate('/shop')}>
-            <PngIcon name="shop" size={32} />
+            <PngIcon name="shop" size={40} />
           </button>
            <button className="lobby-round" title={t('common.settings')} onClick={() => setPanel('settings')}>
-             <PngIcon name="settings" size={32} />
+              <PngIcon name="settings" size={40} />
            </button>
           {/* Inbox dropdown */}
           <div className="lobby-inbox-wrap">
@@ -280,7 +295,7 @@ useEffect(() => {
                   <button className="lobby-inbox-close" onClick={() => setPanel(null)}>✕</button>
                 </div>
                 <div className="lobby-inbox-list">
-                  <button className="lobby-inbox-item" onClick={() => setPanel(null)}>
+                  <button className="lobby-inbox-item" onClick={() => { setPanel(null); navigate('/info'); }}>
                     <Glyph name="info" className="lobby-inbox-icon" />
                     <span>About</span>
                   </button>
@@ -293,7 +308,7 @@ useEffect(() => {
                     <Glyph name="life-buoy" className="lobby-inbox-icon" />
                     <span>Team Support</span>
                   </button>
-                  <button className="lobby-inbox-item" onClick={() => setPanel(null)}>
+                  <button className="lobby-inbox-item" onClick={() => { setPanel(null); setShowNews(true); }}>
                     <Glyph name="newspaper" className="lobby-inbox-icon" />
                     <span>News</span>
                   </button>
@@ -400,14 +415,24 @@ useEffect(() => {
         {panel === 'score' && <ScorePanel onClose={() => setPanel(null)} />}
         {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
         {showLoginPanel && <LoginPanel onClose={() => setShowLoginPanel(false)} />}
+        <LuckyWheelModal open={showWheel} onClose={() => setShowWheel(false)} />
+        <NewsModal open={showNews} onClose={() => setShowNews(false)} />
+        <ComingSoonModal
+          open={!!soonFeature}
+          title={soonFeature?.title ?? ''}
+          description={soonFeature?.description ?? ''}
+          image={soonFeature?.image ?? ''}
+          onClose={() => setSoonFeature(null)}
+        />
         <ResourceBar />
         <RankUpCelebration />
+        <SocialHub />
       </div>
     )
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     MOBILE + TABLET — ENHANCED DESIGN
+       MOBILE + TABLET — ENHANCED DESIGN
      ═══════════════════════════════════════════════════════════════ */
   return (
     <div className="lobby-mobile">
@@ -455,7 +480,7 @@ useEffect(() => {
               <button className="lm-inbox-close" onClick={() => setPanel(null)}>✕</button>
             </div>
             <div className="lm-inbox-list">
-              <button className="lm-inbox-item" onClick={() => setPanel(null)}>
+              <button className="lm-inbox-item" onClick={() => { setPanel(null); navigate('/info'); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 <span>About</span>
               </button>
@@ -666,7 +691,16 @@ useEffect(() => {
       {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
       <LuckyWheelModal open={showWheel} onClose={() => setShowWheel(false)} />
       <NewsModal open={showNews} onClose={() => setShowNews(false)} />
+      <ComingSoonModal
+        open={!!soonFeature}
+        title={soonFeature?.title ?? ''}
+        description={soonFeature?.description ?? ''}
+        image={soonFeature?.image ?? ''}
+        onClose={() => setSoonFeature(null)}
+      />
       <RankUpCelebration />
+      <SocialHub />
+      <MusicWidget />
     </div>
   )
 }

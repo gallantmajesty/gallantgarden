@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, type Object3D, Vector3 } from 'three'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
+import { useSettings } from '../../store/settings'
 import type { Locomotion } from '../../avatar/animation'
 import type { AvatarConfig } from '../../avatar/config'
 import type { Lod } from '../../avatar/AvatarAnimator'
@@ -35,6 +36,13 @@ const LOD_CULL = 28   // metres — cull animation beyond this radius
 // flickers between the two.
 const SWAP_OUT = 16
 const SWAP_IN  = 12
+
+// Name-tag / timer-bar distance gate (metres, hysteresis). Far players have
+// swapped to tiny 2D sprites where a DOM tag is unreadable and pure CPU/DOM
+// cost — beyond TAG_OFF the tag only un-mounts, and only re-mounts once the
+// player re-enters TAG_ON, so a hovering player never flickers its tag.
+const TAG_ON  = 18
+const TAG_OFF = 22
 
 const MAX_VISIBLE   = 10   // render only the nearest N avatars
 const RANK_INTERVAL = 0.4  // seconds between nearest-set recomputes
@@ -113,6 +121,10 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
   const group   = useRef<Group>(null)
   const bodyGroup = useRef<Group>(null)
   const camera  = useThree((s) => s.camera)
+  // Self-serve performance toggles (see Settings → Players & Performance).
+  const showNameTags   = useSettings((s) => s.showNameTags)
+  const distantTags    = useSettings((s) => s.distantTags)
+  const impostorSprites = useSettings((s) => s.impostorSprites)
   // Baked billboard for this look (shared across every player with the same
   // appearance). Null until the offscreen bake completes.
   const impostor = useImpostorTexture(config, 'idle')
@@ -131,6 +143,13 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
   // state so the <Html> overlay mounts/unmounts instead of just hiding.
   const [tagShown, setTagShown] = useState(true)
   const tagShownRef = useRef(true)
+  // Distance-gated tag hysteresis (only meaningful when distant tags are off).
+  const tagOnRef = useRef(true)
+  // Body unmount: the full 3D rig stays mounted only while it should be visible;
+  // once swapped to a sprite it is unmounted (after the sprite finishes fading in)
+  // so far players cost one billboard quad, not ~110 React meshes.
+  const [bodyMounted, setBodyMounted] = useState(true)
+  const unmountTimer = useRef<number | null>(null)
 
   useFrame((_, dtRaw) => {
     const g = group.current
@@ -138,14 +157,6 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
 
     const t = getTarget(id)
     if (!t) return
-
-    // Name tag follows the same cinematic-hide rule: show unless this player is
-    // on the tour (in which case everyone else sees their broadcast feed, not body).
-    const wantTag = !t.cinematic
-    if (wantTag !== tagShownRef.current) {
-      tagShownRef.current = wantTag
-      setTagShown(wantTag)
-    }
 
     if (!render.current) {
       render.current = { x: t.x, y: t.y, z: t.z, yaw: t.yaw }
@@ -173,7 +184,27 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     _avatarPos.set(r.x, r.y, r.z)
     const dist = _camPos.distanceTo(_avatarPos)
 
+    // Name tag / timer bar gate. Hidden during the shared cinematic tour, and —
+    // when distant tags are OFF — only mounted for the nearest players (hysteresis
+    // so a hovering player never flickers its tag). Toggled via state so the <Html>
+    // overlay mounts/unmounts instead of just hiding.
+    let wantTag = showNameTags && !t.cinematic
+    if (wantTag && !distantTags) {
+      if (tagOnRef.current) {
+        if (dist > TAG_OFF) tagOnRef.current = false
+      } else if (dist < TAG_ON) {
+        tagOnRef.current = true
+      }
+      wantTag = tagOnRef.current
+    }
+    if (wantTag !== tagShownRef.current) {
+      tagShownRef.current = wantTag
+      setTagShown(wantTag)
+    }
+
     // ---- Impostor swap (hysteresis) ----------------------------------------
+    // If sprites are disabled the body must always render, so force the swap off.
+    if (!impostorSprites) spriteOn.current = false
     // Enter sprite mode past SWAP_OUT (or when outside the visibility cap — a
     // billboard costs ~1 draw call so there's no reason to hide far players
     // anymore). Only leave it once the player re-enters SWAP_IN. The swap only
@@ -181,13 +212,29 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     // nothing ever pops.
     if (spriteOn.current) {
       if (dist < SWAP_IN) spriteOn.current = false
-    } else if (impostor && (dist > SWAP_OUT || !visible)) {
+    } else if (impostorSprites && impostor && (dist > SWAP_OUT || !visible)) {
       spriteOn.current = true
     }
 
     const bodyOn = visible && !spriteOn.current
     const body = bodyGroup.current
     if (body && body.visible !== bodyOn) body.visible = bodyOn
+
+    // Cross-fade-friendly body unmount: mount the body the instant it should
+    // show (so it appears under the still-fading sprite, no pop), and only
+    // unmount once it has been hidden for the sprite fade duration.
+    if (bodyOn) {
+      if (unmountTimer.current != null) {
+        clearTimeout(unmountTimer.current)
+        unmountTimer.current = null
+      }
+      if (!bodyMounted) setBodyMounted(true)
+    } else if (bodyMounted && unmountTimer.current == null) {
+      unmountTimer.current = window.setTimeout(() => {
+        setBodyMounted(false)
+        unmountTimer.current = null
+      }, 250)
+    }
 
     lodRef.current = bodyOn ? (dist < LOD_FAR ? 'near' : dist < LOD_CULL ? 'far' : 'cull') : 'cull'
 
@@ -211,9 +258,9 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
   return (
     <group ref={group}>
       <group ref={bodyGroup}>
-        <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
+        {bodyMounted && <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />}
       </group>
-      <ImpostorSprite entry={impostor} onRef={spriteOn} />
+      {impostorSprites && <ImpostorSprite entry={impostor} onRef={spriteOn} />}
       {tagShown && (
         <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} banner={p.banner} logo={p.logo} />
       )}

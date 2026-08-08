@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState, useMemo } from 'react'
+import { Suspense, useEffect, useRef, useState, useMemo, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
@@ -7,11 +7,14 @@ import type { Group } from 'three'
 import { PngIcon } from '../components/PngIcon'
 import { useRealm, type CustomRealm } from '../store/realm'
 import { useAvatar } from '../avatar/store'
+import { createNullSafeEvents } from '../three/safeEvents'
 import { characterById } from '../avatar/characters'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
 import { LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES } from '../lib/realm'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
+import { npcOnlineCount } from '../lib/npcSystem'
+import { roomTheme } from '../lib/roomThemes'
 import { createRealm, getRealmByCode, searchPublicRealms, inviteLink, type Realm as DbRealm } from '../lib/realms'
 
 import './Realm.css'
@@ -223,6 +226,7 @@ function CharacterOrb() {
     <button className="realm-avatar" onClick={() => navigate('/avatar')} title="Customize character">
       <div className="realm-avatar-orb">
         <Canvas
+          events={createNullSafeEvents}
           shadows={false}
           dpr={[1, 1.5]}
           camera={{ position: [0, 1.05, 3.0], fov: 36, near: 0.1, far: 50 }}
@@ -296,16 +300,23 @@ function LibraryRealm() {
         <p>Step into any hall to study together — everyone who enters the same room sees each other live.</p>
       </header>
       <div className="realm-rooms">
-        {LIBRARY_ROOMS.map((r) => {
+        {LIBRARY_ROOMS.map((r, roomIdx) => {
           const rows = occ[r.id] ?? []
-          const here = totalOccupants(rows)
+          const theme = roomTheme(r.id)
+          // Each room hosts 64 ambient scholars with personal study schedules —
+          // only the ones mid-session right now count as occupants, so every
+          // room shows its own live number.
+          const npc = npcOnlineCount(roomIdx, Date.now())
+          const here = totalOccupants(rows) + npc
           const instances = rows.length
-          const lead = rows.find((x) => x.instance === 1)?.count ?? 0
-          const full = instances > 0 && rows.every((x) => x.count >= REALM_CAPACITY)
+          const lead = (rows.find((x) => x.instance === 1)?.count ?? 0) + npc
+          const full = instances > 0 && rows.every((x) => x.count + npc >= REALM_CAPACITY)
+          // Live mood of the room, from the scholars actually there right now.
+          const mood = here < 6 ? { label: 'Quiet', cls: 'muted' } : here < 15 ? { label: 'Focused', cls: '' } : { label: 'Lively', cls: 'hot' }
           return (
-<div key={r.id} className="realm-room water-glass">
-                <div className="realm-room-icon">
-                  <PngIcon name="study-rooms" size={48} alt="" />
+<div key={r.id} className="realm-room water-glass" style={{ '--room-accent': theme.accent, '--room-accent-soft': theme.accentSoft } as CSSProperties}>
+                <div className="realm-room-icon realm-room-icon--themed">
+                  <img src={theme.icon} alt="" draggable={false} />
                 </div>
                 <div className="realm-room-body">
                   <div className="roomlet-room-top">
@@ -315,6 +326,7 @@ function LibraryRealm() {
                       {Math.min(lead, REALM_CAPACITY)}/{REALM_CAPACITY}
                       {instances > 1 && <span className="realm-room-inst"> · {instances} rooms · {here} total</span>}
                     </span>
+                    <span className={`realm-room-mood ${mood.cls}`}>{mood.label}</span>
                   </div>
                   <p>{r.blurb}</p>
                 </div>

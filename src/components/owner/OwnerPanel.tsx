@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { ACCESSORIES, type AccessoryId } from "../../avatar/config";
 import { AccessoryModel } from "../../avatar/Accessories";
+import { createNullSafeEvents } from "../../three/safeEvents";
 import { useEventShop, useInventory, useBundles } from "../../hooks/focus/useEventShop";
 import { ALL_CHARACTERS as CHAR_ROSTER } from "../../avatar/characters";
 import OwnerDataTab from "./OwnerDataTab";
@@ -15,6 +16,8 @@ import OwnerUsersTab from "./OwnerUsersTab";
 import OwnerLuckyWheelTab from "./OwnerLuckyWheelTab";
 import OwnerAnnouncementsTab from "./OwnerAnnouncementsTab";
 import OwnerReportsTab from "./OwnerReportsTab";
+// Lazy — recharts is heavy and only the HQ dashboard needs it.
+const OwnerAnalyticsTab = lazy(() => import("./OwnerAnalyticsTab"));
 import type { Character } from "../../avatar/characters";
 import { BANNERS, LOGOS } from "../../lib/banners";
 import { RANKS } from "../../lib/ranks";
@@ -37,7 +40,7 @@ export function OwnerPanel() {
   const { events, activeEvent, saveEvent, deleteEvent, toggleEventActive, balance, addLeaves } = useEventShop();
   const { items } = useInventory();
   const { bundles, saveBundle, deleteBundle } = useBundles();
-  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "wheel" | "announcements" | "reports" | "settings">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "wheel" | "announcements" | "reports" | "analytics" | "settings">("dashboard");
   const [editing, setEditing] = useState<FocusEvent | null>(null);
   const [bundleEditing, setBundleEditing] = useState<SavedBundle | null>(null);
 
@@ -102,6 +105,7 @@ export function OwnerPanel() {
       tabs: [
         { id: "dashboard", label: "Dashboard", icon: "📊" },
         { id: "reports", label: "Reports & Analytics", icon: "📈" },
+        { id: "analytics", label: "Owner Analytics", icon: "🥧" },
         { id: "data", label: "Data Manager", icon: "🗄️" },
       ],
     },
@@ -486,6 +490,12 @@ export function OwnerPanel() {
 
         {tab === "reports" && <OwnerReportsTab />}
 
+        {tab === "analytics" && (
+          <Suspense fallback={<div style={{ fontSize: "0.7rem", color: "var(--color-genshin-bronze)", padding: "2rem" }}>Loading analytics…</div>}>
+            <OwnerAnalyticsTab />
+          </Suspense>
+        )}
+
         {/* ════════════════════════════════════════════════════ */}
         {/*  ACCESSORIES — 3D preview gallery                      */}
         {/* ════════════════════════════════════════════════════ */}
@@ -762,6 +772,7 @@ function AccessoryStage() {
   return (
     <div style={{ height: "min(74vh, 600px)", background: "rgba(10,8,14,0.6)", border: "1px solid var(--color-genshin-divider)", borderRadius: 4, overflow: "hidden" }}>
       <Canvas
+        events={createNullSafeEvents}
         dpr={[1, 1.5]}
         camera={{ position: [0, 2.6, 5.6], fov: 45, near: 0.1, far: 40 }}
         gl={{ antialias: true, alpha: true, powerPreference: "default" }}

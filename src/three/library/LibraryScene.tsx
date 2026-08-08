@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Component, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { createNullSafeEvents } from '../safeEvents'
 import { Sparkles } from '@react-three/drei'
 import { EffectComposer, Vignette, N8AO, GodRays, Bloom, HueSaturation, BrightnessContrast } from '@react-three/postprocessing'
 import type { Material, Mesh, Object3D, Texture } from 'three'
@@ -11,6 +12,7 @@ import { useSettings, type PostQuality } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
+import { useSocialOverlay } from '../../features/social/store'
 
 import { HALL } from './layout'
 import { LibraryShell } from './LibraryShell'
@@ -32,6 +34,7 @@ import { PlayerController } from './PlayerController'
 import { avatarRoots } from '../../avatar/CharacterAvatar'
 import { RemotePlayers } from './RemotePlayers'
 import { NpcPlayers } from './NpcPlayers'
+import { impostorBusy } from './ImpostorSprites'
 import { SeasonalOverlay } from './SeasonalOverlay'
 import { TableAccessories } from './TableAccessories'
 
@@ -108,7 +111,7 @@ class CanvasBoundary extends Component<{ children: ReactNode }, { failed: boolea
  * tree, furniture, exterior world, day/night + weather, player controller and
  * post-processing — scaling all of it to the chosen graphics quality.
  */
-export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () => void; frameloop?: 'always' | 'demand' | 'never' }) {
+export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onReady?: () => void; frameloop?: 'always' | 'demand' | 'never'; roomId?: string }) {
   // The merged quality budget (user's six axes + transient Ctrl+F perf override).
   const preset = useScenePreset()
   // First-person only for the Ultra depth-of-field (blurring the avatar in
@@ -150,6 +153,15 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const [composerKey, setComposerKey] = useState(0)
   const [canvasKey, setCanvasKey] = useState(0)
 
+  // When the player commits to a seat (selecting → seated/walking) the scene is
+  // NOT restarted: the frameloop flips back to 'always' and the already-mounted
+  // scene simply resumes — PlayerController reads the seat from the world store
+  // each frame and places the avatar + camera on it. An old version remounted
+  // the whole Canvas here, which tore down and rebuilt the entire WebGL world on
+  // every sit — the "scene restarts whenever I sit" blink. R3F 9.6.1's render
+  // loop keeps running and roots resume on the frameloop flip, so the remount
+  // was never needed (RenderHeartbeat invalidates the instant the loop thaws).
+
   // Fixed DPR from mount — never changes at runtime. Live DPR changes reallocate
   // the WebGL drawing buffer, which stalls integrated GPUs and can freeze the
   // render loop. The preset value is determined at build/setting time and stays
@@ -157,10 +169,27 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
   const dpr = preset.dpr
 
   const renderPaused = useWorld((s) => s.renderPaused)
+  // Pause the 3D render loop while the social hub (chat / Explore) is open so the
+  // background world stops drawing behind the overlay.
+  const socialOpen = useSocialOverlay((s) => s.open)
 
-  // Freeze the render loop during seat selection to save GPU. Since the seat
-  // selection triggers a page reload, the new Canvas boots fresh with 'always'
-  // — R3F v9's frameloop-restart bug never matters here.
+  // Pause the render loop entirely while the browser tab is hidden (Settings →
+  // "Pause rendering when tab is hidden", on by default) to save GPU/battery.
+  // The RenderHeartbeat's 1 s invalidate() resumes it instantly on focus.
+  const pauseWhenHidden = useSettings((s) => s.pauseWhenHidden)
+  const [tabHidden, setTabHidden] = useState(false)
+  useEffect(() => {
+    const onVis = () => setTabHidden(document.visibilityState === 'hidden')
+    document.addEventListener('visibilitychange', onVis)
+    onVis()
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+
+  // Freeze the render loop during seat selection to save GPU. When a seat is
+  // committed, the frameloop prop flips to 'always' and RenderHeartbeat
+  // invalidates a frame immediately — R3F 9.6.1 stops its loop while every root
+  // is frameloop='never', so the flip back alone would leave the scene dead
+  // until the next 1 s heartbeat tick.
 
   const handleReady = () => {
     onReady?.()
@@ -175,12 +204,24 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
 
     const check = () => {
       if (!running) return
+      // A deliberately-paused loop (social hub open, tab hidden, or seat
+      // selection) isn't a freeze — keep the watchdog calm instead of forcing a
+      // remount that would reload the world behind the chat overlay.
+      if (useSocialOverlay.getState().open || selecting || (pauseWhenHidden && tabHidden)) {
+        lastChange = performance.now()
+        lastFrame = libFrameTs
+        requestAnimationFrame(check)
+        return
+      }
       const currentFrame = libFrameTs
 
-      if (currentFrame !== lastFrame) {
+      // Only real heartbeat timestamps (>0) count as proof of life. RenderHeartbeat
+      // zeroes the global on mount, so a slow first load would otherwise look like
+      // "no new frames" and force-remount the Canvas in an endless restart loop.
+      if (currentFrame > 0 && currentFrame !== lastFrame) {
         lastChange = performance.now()
         lastFrame = currentFrame
-      } else if (lastFrame >= 0 && performance.now() - lastChange > 4000) {
+      } else if (lastFrame > 0 && performance.now() - lastChange > 4000) {
         console.warn('[LibraryScene] Canvas not rendering new frames — remounting')
         setCanvasKey((k) => k + 1)
         lastChange = performance.now()
@@ -196,7 +237,8 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
     <>
     <Canvas
       key={canvasKey}
-      frameloop={selecting ? 'never' : frameloop}
+      events={createNullSafeEvents}
+      frameloop={(selecting || (pauseWhenHidden && tabHidden) || socialOpen) ? 'never' : frameloop}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
@@ -252,11 +294,11 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
           real form, and a generous warm ambient keeps the hall glowing golden
           instead of going murky. The lanterns + jewelled glass add the real
           pools of light against the night. Zero extra draw calls.
-          At NIGHT the interior fill is dimmed way down so the hall reads dark
-          and is lit only by lanterns + floating candles (textures stay visible,
-          just less washed-out). Daytime is untouched. */}
-      <hemisphereLight args={['#aebfe0', '#6b4a2a', nightMode ? 0.12 : 0.4]} />
-      <ambientLight intensity={nightMode ? 0.16 : 0.46} color="#ffd9a8" />
+At NIGHT the interior fill is dimmed way down so the hall reads dark
+           and is lit only by lanterns + floating candles (textures stay visible,
+           just less washed-out). Daytime is untouched. */}
+       <hemisphereLight args={['#aebfe0', '#6b4a2a', nightMode ? 0.18 : 0.4]} />
+       <ambientLight intensity={nightMode ? 0.22 : 0.46} color="#ffd9a8" />
 
       <ToggleGroup group="interior">
         <LibraryShell />
@@ -314,7 +356,7 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
       <PlayerController />
        <ToggleGroup group="remotePlayers">
          <RemotePlayers />
-         <NpcPlayers />
+         <NpcPlayers roomId={roomId} />
        </ToggleGroup>
       {/* PerfLogger is a DEV-only audit tool — its scene-graph traversals and
           console reports are dead weight in production builds. */}
@@ -333,11 +375,6 @@ export function LibraryScene({ onReady, frameloop = 'always' }: { onReady?: () =
       <SceneReady onReady={handleReady} />
       </CanvasGuard>
     </Canvas>
-    <div id="r3f-dot" style={{
-      position: 'fixed', bottom: 8, right: 8, width: 10, height: 10,
-      borderRadius: '50%', background: '#ff4444', zIndex: 99999,
-      transition: 'background 0.1s',
-    }} />
     </>
   )
 }
@@ -397,13 +434,13 @@ function PostEffects({
   const nightCine = nightMode
   const showBloom = (cinematic && bloom) || nightCine
   // The Ultra tier's heavy passes are further gated by the post-processing axis:
-  // SSAO needs at least a 'low' (medium-preset) tier, the 50-sample GodRays pass
+  // SSAO needs at least a 'low' (medium-preset) tier, the 30-sample GodRays pass
   // only survives on 'high' — the single most expensive full-screen shader here.
   const ultraPasses = useMemo(() => {
     return [
-      pt.n8ao && postTier !== 'off' ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="medium" halfRes /> : null,
+      pt.n8ao && postTier !== 'off' ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="low" halfRes /> : null,
       sunReady && sunVisible && pt.godrays && postTier === 'high' ? (
-        <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={50} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
+        <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={30} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
       ) : null,
       pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
       showBloom ? <Bloom key="bloom" mipmapBlur intensity={nightCine ? 1.15 : 0.95} luminanceThreshold={nightCine ? 0.4 : 0.5} luminanceSmoothing={0.25} radius={0.6} /> : null,
@@ -666,14 +703,13 @@ export function useSystemToggle(key: string): boolean {
 let libFrameTs = -1
 function RenderHeartbeat() {
   const invalidate = useThree((s) => s.invalidate)
+  const frameloop = useThree((s) => s.frameloop)
   useFrame(() => {
     libFrameTs = performance.now()
     if (import.meta.env.DEV) {
       ;(window as any).__libHeartbeat = Date.now()
       ;(window as any).__libFrame = libFrameTs
     }
-    const dot = document.getElementById('r3f-dot')
-    if (dot) dot.style.background = '#44ff44'
   })
   useEffect(() => {
     libFrameTs = 0
@@ -681,32 +717,42 @@ function RenderHeartbeat() {
       ;(window as any).__libHeartbeat = Date.now()
       ;(window as any).__libFrame = 0
     }
-    const dot = document.getElementById('r3f-dot')
-    if (dot) dot.style.background = '#ff4444'
-
+    // Keep the render loop ticking while the tab is backgrounded/paused so it
+    // resumes instantly on focus. The old code also repainted a debug dot here
+    // every second — that green/yellow flash was the "blinking" in the corner.
     const iv = setInterval(() => {
       invalidate()
-      const dot2 = document.getElementById('r3f-dot')
-      if (dot2) dot2.style.background = '#ffff44'
     }, 1000)
     return () => clearInterval(iv)
   }, [invalidate])
+  // R3F 9.6.1's loop cancels its own RAF while every root is frameloop='never'
+  // (invalidate() is also a no-op under 'never'), so after a freeze (seat
+  // selection, social hub, hidden tab) the flip back to 'always' alone would
+  // leave the scene stalled for up to the 1 s heartbeat tick. Invalidate the
+  // instant the loop unfreezes so sitting / reopening the hub resumes the scene
+  // immediately — no dead frame behind the closing overlay.
+  useEffect(() => {
+    if (frameloop === 'always') invalidate()
+  }, [frameloop, invalidate])
   return null
 }
 
 /**
- * SceneReady — fires onReady after the scene has actually rendered a few frames
- * AND the camera has settled into its final position.
- * This ensures the loading veil stays until the 3D world is actually visible.
+ * SceneReady — fires onReady after the scene has actually rendered a few frames,
+ * the camera has settled into its final position, AND the impostor sprite bakes
+ * (the last heavy async work a mount does) have drained. The loading veil stays
+ * until the room is genuinely ready to look at — not a fraction of a second in.
  *
- * We wait for 3 actual rendered frames after the camera has settled,
- * with a 10s safety timeout as a fallback.
+ * We wait for 3 actual rendered frames after the camera has settled, with a 7 s
+ * cap on the bake wait (a slow GPU shouldn't hang the loader forever) and a 10 s
+ * safety timeout as the final fallback.
  */
 function SceneReady({ onReady }: { onReady?: () => void }) {
   const frameCount = useRef(0)
   const readyCalled = useRef(false)
   const lastPos = useRef(new Vector3())
   const hasStarted = useRef(false)
+  const start = useRef(performance.now())
 
   // Get access to the camera position from the R3F store
   const camera = useThree((s) => s.camera)
@@ -727,13 +773,16 @@ function SceneReady({ onReady }: { onReady?: () => void }) {
     // Camera has settled if movement is negligible
     if (delta < 0.001) {
       frameCount.current += 1
-      if (frameCount.current >= 3 && !readyCalled.current) {
-        readyCalled.current = true
-        onReady?.()
-      }
     } else {
       // Camera still moving, reset frame counter
       frameCount.current = 0
+    }
+
+    const bakesDone = !impostorBusy()
+    const elapsed = performance.now() - start.current
+    if (!readyCalled.current && frameCount.current >= 3 && (bakesDone || elapsed > 7000)) {
+      readyCalled.current = true
+      onReady?.()
     }
   })
 

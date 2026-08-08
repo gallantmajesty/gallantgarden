@@ -524,6 +524,26 @@
   color: #5a3a18;
 }
 .ac-acc-tick svg { width: 16px; height: 16px; }
+.ac-shop-link {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(202, 168, 74, 0.16), rgba(138, 90, 32, 0.1));
+  border: 1.5px dashed rgba(138, 90, 32, 0.45);
+  color: #7a4a12;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
+}
+.ac-shop-link:hover {
+  background: linear-gradient(135deg, rgba(202, 168, 74, 0.28), rgba(138, 90, 32, 0.18));
+  border-color: rgba(138, 90, 32, 0.7);
+  transform: translateY(-1px);
+}
+.ac-shop-link:active { transform: translateY(1px); }
 .ac-acc-tile--locked {
   opacity: 0.65;
   filter: saturate(0.5);
@@ -744,19 +764,22 @@
 }
 .ac-char-tabs {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 .ac-char-tab {
-  padding: 7px 16px;
+  flex: 1;
+  padding: 7px 4px;
   border-radius: 20px;
   border: 1.5px solid rgba(255, 255, 255, 0.1);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   cursor: pointer;
   transition: all 0.15s;
   background: rgba(255, 255, 255, 0.06);
   color: #9a8a6a;
+  text-align: center;
+  white-space: nowrap;
 }
 .ac-char-tab:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -769,23 +792,25 @@
 }
 .ac-char-tab[data-rarity='owned'] { color: #d49040; border-color: rgba(212, 144, 64, 0.3); }
 .ac-char-tab[data-rarity='owned'].active { background: #d49040; color: #fff; border-color: #d49040; }
+.ac-char-tab[data-rarity='common'] { color: #9a9aa8; border-color: rgba(154, 154, 168, 0.3); }
+.ac-char-tab[data-rarity='common'].active { background: #8a8a96; color: #fff; border-color: #8a8a96; }
 .ac-char-tab[data-rarity='epic'] { color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
 .ac-char-tab[data-rarity='epic'].active { background: #a855f7; color: #fff; border-color: #a855f7; }
 .ac-char-tab[data-rarity='legendary'] { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
 .ac-char-tab[data-rarity='legendary'].active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
 .ac-char-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 .ac-char-tile {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 6px 6px;
-  border-radius: 10px;
+  gap: 2px;
+  padding: 6px 4px 4px;
+  border-radius: 8px;
   border: 2px solid rgba(180, 130, 60, 0.12);
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
@@ -802,8 +827,8 @@
 }
 .ac-char-avatar {
   width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: 8px;
+  aspect-ratio: 4 / 5;
+  border-radius: 6px;
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -811,14 +836,14 @@
   background: #1a1a1a;
 }
 .ac-char-emoji {
-  font-size: 36px;
+  font-size: 28px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 .ac-char-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 .ac-char-selected-label {
   position: absolute;
@@ -827,7 +852,7 @@
   right: 0;
   background: #d49040;
   color: #fff;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-align: center;
@@ -840,12 +865,12 @@
   gap: 1px;
 }
 .ac-char-tile-name {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #ece7ff;
 }
 .ac-char-rarity {
-  font-size: 9px;
+  font-size: 8px;
   color: #9a8a6a;
   font-weight: 600;
 }
@@ -853,13 +878,13 @@
 /* Character price tag (bottom-right of avatar) */
 .ac-char-price {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
+  bottom: 3px;
+  right: 3px;
   background: rgba(0, 0, 0, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  padding: 2px 6px;
-  font-size: 10px;
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 9px;
   font-weight: 700;
   color: #a3a3a3;
   backdrop-filter: blur(4px);
@@ -873,13 +898,13 @@
 /* Buy button for locked characters */
 .ac-char-buy-btn {
   width: 100%;
-  margin-top: 4px;
-  padding: 5px 8px;
-  border-radius: 6px;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border-radius: 5px;
   border: 1px solid rgba(74, 222, 128, 0.3);
   background: rgba(74, 222, 128, 0.15);
   color: #4ade80;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
@@ -898,13 +923,13 @@
 /* Equip button for owned characters */
 .ac-char-equip-btn {
   width: 100%;
-  margin-top: 4px;
-  padding: 5px 8px;
-  border-radius: 6px;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border-radius: 5px;
   border: 1px solid rgba(180, 130, 60, 0.3);
   background: rgba(180, 130, 60, 0.15);
   color: #c9a87c;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;

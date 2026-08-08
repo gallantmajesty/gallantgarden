@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useWebTheme } from '../../store/webTheme'
+import { useProfile } from '../../store/profile'
 import {
   FONT_COLOR_PRESETS,
   WEB_THEMES,
@@ -18,6 +19,10 @@ export function WebCustomizationContent({ showAppearance = false }: { showAppear
   const bgBrightness = useWebTheme((s) => s.bgBrightness ?? 1)
   const bgContrast = useWebTheme((s) => s.bgContrast ?? 1)
   const bgSaturation = useWebTheme((s) => s.bgSaturation ?? 1)
+  const focusDays = useWebTheme((s) => s.focusDays)
+  const isThemeUnlocked = useWebTheme((s) => s.isThemeUnlocked)
+  const isBgOwned = useWebTheme((s) => s.isBgOwned)
+  const buyBackground = useWebTheme((s) => s.buyBackground)
   const setTheme = useWebTheme((s) => s.setTheme)
   const setBackground = useWebTheme((s) => s.setBackground)
   const setAccent = useWebTheme((s) => s.setAccent)
@@ -25,30 +30,43 @@ export function WebCustomizationContent({ showAppearance = false }: { showAppear
   const setBgBrightness = useWebTheme((s) => s.setBgBrightness)
   const setBgContrast = useWebTheme((s) => s.setBgContrast)
   const setBgSaturation = useWebTheme((s) => s.setBgSaturation)
+  const xp = useProfile((s) => s.xp)
 
   const theme = getWebTheme(themeId)
+  const days = focusDays()
 
   return (
     <div className="wc">
       <section className="wc-section">
         <h3 className="wc-h3">{t('webCustomization.theme')}</h3>
         <div className="wc-theme-grid">
-          {WEB_THEMES.map((wt) => (
-            <button
-              key={wt.id}
-              className={`wc-theme-card ${wt.id === themeId ? 'on' : ''}`}
-              style={{ backgroundImage: `url(${wt.backgrounds[0].src})` }}
-              onClick={() => setTheme(wt.id)}
-              aria-pressed={wt.id === themeId}
-            >
-              <span className="wc-theme-veil" />
-              <span className="wc-theme-meta">
-                <span className="wc-theme-emoji">{wt.emoji}</span>
-                <span className="wc-theme-name">{wt.name}</span>
-              </span>
-              {wt.id === themeId && <span className="wc-tick">✓</span>}
-            </button>
-          ))}
+          {WEB_THEMES.map((wt) => {
+            const unlocked = isThemeUnlocked(wt.id) || wt.id === themeId
+            return (
+              <button
+                key={wt.id}
+                className={`wc-theme-card ${wt.id === themeId ? 'on' : ''} ${unlocked ? '' : 'locked'}`}
+                style={{ backgroundImage: `url(${wt.backgrounds[0].src})` }}
+                onClick={() => {
+                  if (unlocked) setTheme(wt.id)
+                }}
+                aria-pressed={wt.id === themeId}
+                disabled={!unlocked}
+              >
+                <span className="wc-theme-veil" />
+                <span className="wc-theme-meta">
+                  <span className="wc-theme-emoji">{wt.emoji}</span>
+                  <span className="wc-theme-name">{wt.name}</span>
+                </span>
+                {!unlocked && (
+                  <span className="wc-lock-tag">
+                    🔒 {Math.min(days, wt.unlockFocusDays)}/{wt.unlockFocusDays}
+                  </span>
+                )}
+                {wt.id === themeId && <span className="wc-tick">✓</span>}
+              </button>
+            )
+          })}
           {WEB_THEMES_SOON.map((wt) => (
             <div key={wt.id} className="wc-theme-card soon" aria-disabled>
               <span className="wc-theme-veil" />
@@ -67,21 +85,38 @@ export function WebCustomizationContent({ showAppearance = false }: { showAppear
 
       <section className="wc-section">
         <h3 className="wc-h3">{t('webCustomization.background')}</h3>
+        <p className="wc-note" style={{ margin: '0 0 10px' }}>
+          🍃 {xp.toLocaleString()} {t('webCustomization.balance')}
+        </p>
         <div className="wc-bg-grid">
           {theme.backgrounds.map((b) => {
             const noFilterBgs = ['cozy-study-desk', 'anime-study-night', 'moonlit-oak', 'love-pink-cloud', 'silent-ruins', 'fantasy-kingdom', 'dark-fantasy-castle']
+            const owned = isBgOwned(b.id)
+            const price = b.leafPrice ?? 0
+            const clickable = owned || price === 0 || xp >= price
             return (
-            <button
-              key={b.id}
-              className={`wc-bg-thumb ${b.id === bgId ? 'on' : ''} ${noFilterBgs.includes(b.id) ? 'no-filter' : ''}`}
-              style={{ backgroundImage: `url(${b.src})` }}
-              onClick={() => setBackground(b.id)}
-              aria-pressed={b.id === bgId}
-              title={b.label}
-            >
-              <span className="wc-bg-label">{b.label}</span>
-              {b.id === bgId && <span className="wc-tick small">✓</span>}
-            </button>
+              <button
+                key={b.id}
+                className={`wc-bg-thumb ${b.id === bgId ? 'on' : ''} ${noFilterBgs.includes(b.id) ? 'no-filter' : ''} ${owned ? '' : 'buyable'}`}
+                style={{ backgroundImage: `url(${b.src})` }}
+                onClick={() => {
+                  if (owned || price === 0) {
+                    setBackground(b.id)
+                    return
+                  }
+                  if (buyBackground(b.id)) setBackground(b.id)
+                }}
+                aria-pressed={b.id === bgId}
+                title={b.label}
+              >
+                <span className="wc-bg-label">{b.label}</span>
+                {!owned && (
+                  <span className={`wc-price-chip ${clickable ? '' : 'poor'}`}>
+                    🍃 {price}
+                  </span>
+                )}
+                {b.id === bgId && <span className="wc-tick small">✓</span>}
+              </button>
             )
           })}
         </div>

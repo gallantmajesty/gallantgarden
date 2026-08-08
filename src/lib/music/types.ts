@@ -14,13 +14,15 @@ export interface Track {
 }
 
 /** Where a preset's sound comes from.
- *  - `noise` — synthesized in-browser (no asset): brown noise / deep-focus pad.
- *  - `loop`  — a single looping audio file or stream (e.g. /audio/rain.mp3).
- *  - `soon`  — declared in the UI but not yet playable (greyed "soon" badge).
- *  Reserved for later: `{ kind: 'tracks' }` / `{ kind: 'spotify' }`. */
+ *  - `noise`   — synthesized in-browser (no asset): brown noise / deep-focus pad.
+ *  - `loop`    — a single looping audio file or stream (e.g. /audio/rain.mp3).
+ *  - `jamendo` — a free CC stream (Jamendo mirror MP3); plays end-to-end, and
+ *                the engine auto-advances to the next preset when it ends.
+ *  - `soon`    — declared in the UI but not yet playable (greyed "soon" badge). */
 export type SourceSpec =
   | { kind: 'noise'; variant: 'brown' | 'deep' }
   | { kind: 'loop'; url: string }
+  | { kind: 'jamendo'; url: string }
   | { kind: 'soon' }
 
 /** A selectable focus-music option shown in the playlist selector. Artwork is a

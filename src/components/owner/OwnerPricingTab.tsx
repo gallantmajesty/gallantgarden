@@ -29,16 +29,19 @@ export default function OwnerPricingTab() {
         {/* Characters */}
         <div style={{ fontSize: "0.6rem", color: "#8d815f", marginBottom: "0.3rem" }}>CHARACTERS</div>
         <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
-          {ALL_CHARACTERS.slice(0, 12).map((ch) => (
-            <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.6rem", color: "#d9cba4", background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 999, padding: "0.2rem 0.6rem 0.2rem 0.2rem" }}>
-              {ch.icon ? (
-                <img src={ch.icon} alt={ch.name} style={{ width: 18, height: 18, borderRadius: 999, objectFit: "cover" }} />
-              ) : (
-                <span style={{ fontSize: "0.8rem" }}>🎮</span>
-              )}
-              {ch.name} — <b style={{ color: "#f2e6c9" }}>{effPrice("characters", ch.id, ch.price ?? 0) === 0 ? "FREE" : `${effPrice("characters", ch.id, ch.price ?? 0)} ${ch.currency === "gold" ? "🌟" : "🍃"}`}</b>
-            </div>
-          ))}
+          {ALL_CHARACTERS.map((ch) => {
+            const vis = getOverride("characters", ch.id, {} as { visible?: boolean })?.visible ?? ch.visible ?? true;
+            return (
+              <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.6rem", color: "#d9cba4", background: "rgba(201,168,76,0.08)", border: `1px solid ${vis ? "rgba(201,168,76,0.2)" : "rgba(200,60,60,0.35)"}`, borderRadius: 999, padding: "0.2rem 0.6rem 0.2rem 0.2rem", opacity: vis ? 1 : 0.55 }}>
+                {ch.icon ? (
+                  <img src={ch.icon} alt={ch.name} style={{ width: 18, height: 18, borderRadius: 999, objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: "0.8rem" }}>🎮</span>
+                )}
+                {ch.name}{vis ? "" : " 🚫"} — <b style={{ color: "#f2e6c9" }}>{effPrice("characters", ch.id, ch.price ?? 0) === 0 ? "FREE" : `${effPrice("characters", ch.id, ch.price ?? 0)} ${(getOverride("characters", ch.id, {} as { currency?: "green" | "gold" })?.currency ?? ch.currency ?? "green") === "gold" ? "🌟" : "🍃"}`}</b>
+              </div>
+            );
+          })}
         </div>
 
         {/* Themes */}
@@ -80,12 +83,20 @@ export default function OwnerPricingTab() {
 
       {/* Characters */}
       <Section title="CHARACTERS" system="characters" onRefresh={refresh}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.4rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "0.4rem" }}>
           {ALL_CHARACTERS.map((ch) => {
-            const price = getOverride("characters", ch.id, {} as { price?: number })?.price ?? ch.price ?? 0;
-            const rarity = getOverride("characters", ch.id, {} as { rarity?: string })?.rarity ?? ch.rarity ?? "Common";
+            const ov = getOverride("characters", ch.id, {} as { price?: number; rarity?: string; currency?: "green" | "gold"; visible?: boolean });
+            const price = ov?.price ?? ch.price ?? 0;
+            const rarity = ov?.rarity ?? ch.rarity ?? "Common";
+            const currency = ov?.currency ?? ch.currency ?? "green";
+            const visible = ov?.visible ?? ch.visible ?? true;
             return (
-              <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: "1px solid rgba(139,109,46,0.1)" }}>
+              <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: `1px solid ${visible ? "rgba(139,109,46,0.1)" : "rgba(200,60,60,0.25)"}`, opacity: visible ? 1 : 0.72 }}>
+                <button
+                  onClick={() => { setOverride("characters", ch.id, { visible: !visible }); refresh(); }}
+                  title={visible ? "Visible in shop — click to hide" : "Hidden from shop — click to show"}
+                  style={{ width: 26, height: 26, flexShrink: 0, fontSize: "0.8rem", background: visible ? "rgba(120,200,120,0.15)" : "rgba(200,60,60,0.15)", color: visible ? "#7ae08a" : "#e06a6a", border: `1px solid ${visible ? "rgba(120,200,120,0.35)" : "rgba(200,60,60,0.35)"}`, borderRadius: 3, cursor: "pointer", lineHeight: 1 }}
+                >{visible ? "👁" : "🚫"}</button>
                 {ch.icon ? (
                   <img src={ch.icon} alt={ch.name} style={{ width: 24, height: 24, borderRadius: 999, objectFit: "cover", flexShrink: 0 }} />
                 ) : (
@@ -93,15 +104,26 @@ export default function OwnerPricingTab() {
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "0.62rem", fontWeight: 600, color: "var(--color-genshin-gold-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{ch.name}</div>
-                  <div style={{ fontSize: "0.5rem", color: "var(--color-genshin-bronze)" }}>{rarity}</div>
+                  <select value={rarity} onChange={(e) => { setOverride("characters", ch.id, { rarity: e.target.value }); refresh(); }}
+                    style={{ width: "100%", fontSize: "0.52rem", padding: "0.05rem 0.15rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.15)", borderRadius: 2, marginTop: "0.15rem" }}>
+                    {["Common", "Rare", "Epic", "Legendary"].map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
                 </div>
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => { setOverride("characters", ch.id, { price: Number(e.target.value) }); refresh(); }}
-                  style={{ width: 48, fontSize: "0.58rem", padding: "0.15rem 0.25rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.15)", borderRadius: 2, textAlign: "right" as const }}
-                />
-                <span style={{ fontSize: "0.45rem", color: "var(--color-genshin-bronze)" }}>{ch.currency === "gold" ? "🌟" : "🍃"}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "flex-end" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.15rem" }}>
+                    <select value={currency} onChange={(e) => { setOverride("characters", ch.id, { currency: e.target.value as "green" | "gold" }); refresh(); }}
+                      style={{ fontSize: "0.5rem", padding: "0.05rem 0.1rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.15)", borderRadius: 2 }}>
+                      <option value="green">🍃</option>
+                      <option value="gold">🌟</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={price}
+                      onChange={(e) => { setOverride("characters", ch.id, { price: Number(e.target.value) }); refresh(); }}
+                      style={{ width: 48, fontSize: "0.58rem", padding: "0.15rem 0.25rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.15)", borderRadius: 2, textAlign: "right" as const }}
+                    />
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -142,13 +164,28 @@ export default function OwnerPricingTab() {
       <Section title="BANNERS" system="banners" onRefresh={refresh}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.4rem" }}>
           {BANNERS.map((b) => {
-            const price = getOverride("banners", b.id, {} as { price?: number })?.price ?? b.price;
+            const ov = getOverride("banners", b.id, {} as { price?: number; currency?: "green" | "gold"; visible?: boolean });
+            const price = ov?.price ?? b.price;
+            const currency = ov?.currency ?? b.currency ?? "green";
+            const visible = ov?.visible ?? b.visible ?? true;
             return (
-              <div key={b.id} style={{ position: "relative", overflow: "hidden", aspectRatio: "21/9", borderRadius: 3, border: "1px solid rgba(255,255,255,0.15)", background: b.css, backgroundImage: b.image ? `url('${b.image}')` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+              <div key={b.id} style={{ position: "relative", overflow: "hidden", aspectRatio: "21/9", borderRadius: 3, border: `1px solid ${visible ? "rgba(255,255,255,0.15)" : "rgba(200,60,60,0.4)"}`, background: b.css, backgroundImage: b.image ? `url('${b.image}')` : undefined, backgroundSize: "cover", backgroundPosition: "center", opacity: visible ? 1 : 0.65 }}>
+                <button
+                  onClick={() => { setOverride("banners", b.id, { visible: !visible }); refresh(); }}
+                  title={visible ? "Visible in shop — click to hide" : "Hidden from shop — click to show"}
+                  style={{ position: "absolute", top: 4, left: 4, zIndex: 2, width: 22, height: 22, fontSize: "0.7rem", background: "rgba(0,0,0,0.6)", color: visible ? "#7ae08a" : "#e06a6a", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 3, cursor: "pointer", lineHeight: 1 }}
+                >{visible ? "👁" : "🚫"}</button>
                 <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.3rem", padding: "0.25rem 0.35rem", background: "rgba(0,0,0,0.6)" }}>
                   <div style={{ fontSize: "0.56rem", fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{b.name}</div>
-                  <input type="number" value={price} onChange={(e) => { setOverride("banners", b.id, { price: Number(e.target.value) }); refresh(); }}
-                    style={{ width: 44, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 2, textAlign: "right" as const }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                    <select value={currency} onChange={(e) => { setOverride("banners", b.id, { currency: e.target.value as "green" | "gold" }); refresh(); }}
+                      style={{ fontSize: "0.5rem", padding: "0.05rem", background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 2 }}>
+                      <option value="green">🍃</option>
+                      <option value="gold">🌟</option>
+                    </select>
+                    <input type="number" value={price} onChange={(e) => { setOverride("banners", b.id, { price: Number(e.target.value) }); refresh(); }}
+                      style={{ width: 44, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 2, textAlign: "right" as const }} />
+                  </div>
                 </div>
               </div>
             );
@@ -160,17 +197,32 @@ export default function OwnerPricingTab() {
       <Section title="LOGOS" system="logos" onRefresh={refresh}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: "0.4rem" }}>
           {LOGOS.map((l) => {
-            const price = getOverride("logos", l.id, {} as { price?: number })?.price ?? l.price;
+            const ov = getOverride("logos", l.id, {} as { price?: number; currency?: "green" | "gold"; visible?: boolean });
+            const price = ov?.price ?? l.price;
+            const currency = ov?.currency ?? l.currency ?? "green";
+            const visible = ov?.visible ?? l.visible ?? true;
             return (
-              <div key={l.id} style={{ padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: "1px solid rgba(139,109,46,0.1)", textAlign: "center" as const }}>
+              <div key={l.id} style={{ padding: "0.4rem 0.5rem", background: "rgba(26,20,16,0.4)", borderRadius: 2, border: `1px solid ${visible ? "rgba(139,109,46,0.1)" : "rgba(200,60,60,0.25)"}`, textAlign: "center" as const, opacity: visible ? 1 : 0.72 }}>
+                <button
+                  onClick={() => { setOverride("logos", l.id, { visible: !visible }); refresh(); }}
+                  title={visible ? "Visible in shop — click to hide" : "Hidden from shop — click to show"}
+                  style={{ width: 22, height: 22, fontSize: "0.7rem", background: visible ? "rgba(120,200,120,0.15)" : "rgba(200,60,60,0.15)", color: visible ? "#7ae08a" : "#e06a6a", border: `1px solid ${visible ? "rgba(120,200,120,0.35)" : "rgba(200,60,60,0.35)"}`, borderRadius: 3, cursor: "pointer", lineHeight: 1, margin: "0 auto 0.2rem", display: "block" }}
+                >{visible ? "👁" : "🚫"}</button>
                 {l.image ? (
                   <img src={l.image} alt={l.name} style={{ width: 36, height: 36, margin: "0 auto 0.2rem", borderRadius: 999, objectFit: "cover", display: "block", background: l.css }} />
                 ) : (
                   <div style={{ width: 36, height: 36, margin: "0 auto 0.2rem", borderRadius: 999, background: l.css || "#333" }} />
                 )}
                 <div style={{ fontSize: "0.55rem", color: "var(--color-genshin-bronze)" }}>{l.name}</div>
-                <input type="number" value={price} onChange={(e) => { setOverride("logos", l.id, { price: Number(e.target.value) }); refresh(); }}
-                  style={{ width: 44, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.12)", borderRadius: 2, textAlign: "right" as const, marginTop: "0.15rem" }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.2rem", marginTop: "0.15rem" }}>
+                  <select value={currency} onChange={(e) => { setOverride("logos", l.id, { currency: e.target.value as "green" | "gold" }); refresh(); }}
+                    style={{ fontSize: "0.5rem", padding: "0.05rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.12)", borderRadius: 2 }}>
+                    <option value="green">🍃</option>
+                    <option value="gold">🌟</option>
+                  </select>
+                  <input type="number" value={price} onChange={(e) => { setOverride("logos", l.id, { price: Number(e.target.value) }); refresh(); }}
+                    style={{ width: 44, fontSize: "0.55rem", padding: "0.1rem 0.2rem", background: "#0a0a14", color: "var(--color-genshin-gold)", border: "1px solid rgba(139,109,46,0.12)", borderRadius: 2, textAlign: "right" as const }} />
+                </div>
               </div>
             );
           })}

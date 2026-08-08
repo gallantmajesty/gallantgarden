@@ -24,6 +24,7 @@
 import { supabase } from './supabase'
 import { rankForTotalXp } from './ranks'
 import { getOverride } from './ownerOverrides'
+import { recordDailyActivity } from './analytics'
 
 // ---- XP values per action ---------------------------------------------------
 // Tasks/habits/milestones award 0 — leaves are study-only currency
@@ -756,6 +757,13 @@ export function syncXpToDb(userId: string, leaves: number, goldenLeaves: number,
         .upsert([payload], { onConflict: 'id' })
     } catch {
       /* offline / column missing — localStorage is still authoritative */
+    }
+    // Feed the owner-analytics daily ledger from the same debounce. Never
+    // blocks gameplay — recordDailyActivity swallows its own errors.
+    try {
+      void recordDailyActivity(loadDaily().totalFocusMin)
+    } catch {
+      /* best-effort */
     }
   }, 3000)
 }

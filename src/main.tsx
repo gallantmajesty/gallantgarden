@@ -34,7 +34,25 @@ function showGlobalError(msg: string) {
     div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f1410;color:#e8efe6;z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;overflow:auto;'
     document.body.appendChild(div)
   }
-  div.innerHTML = `<div style="max-width:560px;text-align:center;"><div style="font-size:40px;margin-bottom:12px;">⚠️</div><h2 style="margin:0 0 10px;">Something went wrong</h2><pre style="white-space:pre-wrap;word-break:break-word;background:#1d241b;padding:12px;border-radius:8px;opacity:.9;font-size:13px;">${msg.replace(/</g, '&lt;')}</pre><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;border-radius:8px;background:#2a3a2e;color:#e8efe6;border:1px solid #4a5a4e;cursor:pointer;">Reload</button></div>`
+  // Build the overlay with DOM APIs — error text may contain attacker-influenced
+  // content, so it must never be written via innerHTML.
+  const inner = document.createElement('div')
+  inner.style.cssText = 'max-width:560px;text-align:center;'
+  const icon = document.createElement('div')
+  icon.textContent = '⚠️'
+  icon.style.cssText = 'font-size:40px;margin-bottom:12px;'
+  const title = document.createElement('h2')
+  title.textContent = 'Something went wrong'
+  title.style.cssText = 'margin:0 0 10px;'
+  const pre = document.createElement('pre')
+  pre.textContent = msg
+  pre.style.cssText = 'white-space:pre-wrap;word-break:break-word;background:#1d241b;padding:12px;border-radius:8px;opacity:.9;font-size:13px;'
+  const button = document.createElement('button')
+  button.textContent = 'Reload'
+  button.style.cssText = 'margin-top:14px;padding:10px 22px;border-radius:8px;background:#2a3a2e;color:#e8efe6;border:1px solid #4a5a4e;cursor:pointer;'
+  button.onclick = () => location.reload()
+  inner.append(icon, title, pre, button)
+  div.replaceChildren(inner)
 }
 
 const rootEl = document.getElementById('root')!

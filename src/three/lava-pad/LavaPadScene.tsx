@@ -6,6 +6,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { PerformanceMonitor, Sky, Cloud, Stars } from '@react-three/drei'
 import { useScenePreset } from '../../store/quality'
 import { usePomodoro } from '../../store/pomodoro'
+import { createNullSafeEvents } from '../safeEvents'
 import { ARENA_CONFIG } from './arena'
 import { PlatformRenderer } from './PlatformRenderer'
 import { LavaController } from './LavaController'
@@ -111,6 +112,7 @@ export function LavaPadScene({ onReady }: { onReady?: () => void }) {
 
   return (
     <Canvas
+      events={createNullSafeEvents}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}

@@ -168,7 +168,7 @@ export const BANNERS: Banner[] = [
     image: '/banners/neon_glitch_banner_1.webp',
     category: 'others',
     // launch tier: cheap green
-    price: 600,
+    price: 1200,
   },
   {
     id: 'heavenly_gold',
@@ -190,7 +190,7 @@ export const BANNERS: Banner[] = [
     css: 'linear-gradient(120deg, #1a0505 0%, #6b1010 35%, #d4380d 70%, #ff6b35 100%)',
     glow: '#ff4500',
     category: 'others',
-    price: 1400,
+    price: 2000,
   },
   {
     id: 'cyberpunk_neon',
@@ -201,7 +201,7 @@ export const BANNERS: Banner[] = [
     image: '/banners/cyberpunk_neon_banner.webp',
     category: 'others',
     // launch tier: medium green
-    price: 1000,
+    price: 1500,
   },
   {
     id: 'ethereal_angel',
@@ -211,7 +211,7 @@ export const BANNERS: Banner[] = [
     glow: '#d4a8f0',
     image: '/banners/ethereal_angel_wing_banner.webp',
     category: 'others',
-    price: 1400,
+    price: 2000,
     textDark: true,
   },
   {
@@ -222,7 +222,7 @@ export const BANNERS: Banner[] = [
     glow: '#7aaae0',
     image: '/banners/moonlit_celestial_panorama.webp',
     category: 'others',
-    price: 1400,
+    price: 2000,
   },
   {
     id: 'neon_glitch_explosion',
@@ -232,7 +232,7 @@ export const BANNERS: Banner[] = [
     glow: '#ff0088',
     image: '/banners/neon_glitch_explosion.webp',
     category: 'others',
-    price: 1400,
+    price: 2000,
   },
   {
     id: 'neon_rainy',
@@ -242,7 +242,7 @@ export const BANNERS: Banner[] = [
     glow: '#ff66aa',
     image: '/banners/neon_rainy_cityscape.webp',
     category: 'others',
-    price: 1400,
+    price: 2000,
   },
 {
     id: 'vaporwave_glitch',
@@ -252,7 +252,7 @@ export const BANNERS: Banner[] = [
     glow: '#ff66ff',
     image: '/banners/vaporwave_glitch_banner.webp',
     category: 'others',
-    price: 1400,
+    price: 2000,
   },
 
 ]
@@ -314,40 +314,40 @@ export function logoFilter(l: Logo): string | undefined {
 
 export const LOGOS: Logo[] = [
   { id: 'default_logo', visible: true, name: 'Default', image: '/banners/default logo.webp', category: 'default', price: 0 },
-  { id: 'neon_avatar', visible: true, name: 'Neon', image: '/banners/neon_anime_avatar.webp', category: 'others', price: 1000,
+  { id: 'neon_avatar', visible: true, name: 'Neon', image: '/banners/neon_anime_avatar.webp', category: 'others', price: 1200,
     filter: { brightness: 0.68, contrast: 1.15, saturate: 1.2 } },
-  { id: 'angel_logo', visible: true, name: 'Angel', image: '/banners/chibi_angel_logo_1.webp', category: 'others', price: 1000,
+  { id: 'angel_logo', visible: true, name: 'Angel', image: '/banners/chibi_angel_logo_1.webp', category: 'others', price: 1200,
     filter: { brightness: 0.78, contrast: 1.1, saturate: 0.9 } },
-  { id: 'mystic_star', visible: true, name: 'Mystic Star', css: 'linear-gradient(135deg, #2a1a4a 0%, #8a45d6 50%, #ff9ec4 100%)', category: 'others', price: 1200 },
-  { id: 'chibi_angel_2', visible: false, name: 'Angel II', image: '/banners/chibi_angel_logo_2.webp', category: 'others', price: 1000,
+  { id: 'mystic_star', visible: true, name: 'Mystic Star', css: 'linear-gradient(135deg, #2a1a4a 0%, #8a45d6 50%, #ff9ec4 100%)', category: 'others', price: 1500 },
+  { id: 'chibi_angel_2', visible: false, name: 'Angel II', image: '/banners/chibi_angel_logo_2.webp', category: 'others', price: 1200,
     filter: { brightness: 0.78, contrast: 1.1, saturate: 0.9 } },
-  { id: 'chibi_angel_3', visible: false, name: 'Angel III', image: '/banners/chibi_angel_logo_3.webp', category: 'others', price: 1000,
+  { id: 'chibi_angel_3', visible: false, name: 'Angel III', image: '/banners/chibi_angel_logo_3.webp', category: 'others', price: 1200,
     filter: { brightness: 0.8, contrast: 1.1, saturate: 0.92 } },
-  { id: 'chibi_cat_girl', visible: false, name: 'Cat Girl', image: '/banners/chibi_cat_girl_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_cat_girl', visible: false, name: 'Cat Girl', image: '/banners/chibi_cat_girl_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.78, contrast: 1.12, saturate: 1.05 } },
-  { id: 'chibi_cyberpunk', visible: false, name: 'Cyber Chibi', image: '/banners/chibi_cyberpunk_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_cyberpunk', visible: false, name: 'Cyber Chibi', image: '/banners/chibi_cyberpunk_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.72, contrast: 1.2, saturate: 1.3, hueRotate: -5 } },
-  { id: 'cyberpunk_warrior', visible: false, name: 'Cyber Warrior', image: '/banners/chibi_cyberpunk_warrior_logo.webp', category: 'others', price: 1000,
+  { id: 'cyberpunk_warrior', visible: false, name: 'Cyber Warrior', image: '/banners/chibi_cyberpunk_warrior_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.82, contrast: 1.15, saturate: 1.1 } },
-  { id: 'chibi_mage', visible: false, name: 'Mage', image: '/banners/chibi_mage_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_mage', visible: false, name: 'Mage', image: '/banners/chibi_mage_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.6, contrast: 1.2, saturate: 1.15, hueRotate: 10 } },
-  { id: 'chibi_moon_spirit', visible: false, name: 'Moon Spirit', image: '/banners/chibi_moon_spirit_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_moon_spirit', visible: false, name: 'Moon Spirit', image: '/banners/chibi_moon_spirit_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.55, contrast: 1.25, saturate: 1.1, hueRotate: -10 } },
-  { id: 'chibi_dragon', visible: false, name: 'Rainbow Dragon', image: '/banners/chibi_rainbow_dragon_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_dragon', visible: false, name: 'Rainbow Dragon', image: '/banners/chibi_rainbow_dragon_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.85, contrast: 1.1, saturate: 1.25 } },
-  { id: 'chibi_robot', visible: false, name: 'Robot', image: '/banners/chibi_robot_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_robot', visible: false, name: 'Robot', image: '/banners/chibi_robot_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 1.0, contrast: 1.15, saturate: 0.9 } },
-  { id: 'chibi_samurai', visible: false, name: 'Samurai', image: '/banners/chibi_samurai_logo.webp', category: 'others', price: 1000,
+  { id: 'chibi_samurai', visible: false, name: 'Samurai', image: '/banners/chibi_samurai_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.85, contrast: 1.12, saturate: 1.05 } },
-  { id: 'cloud_angel', visible: false, name: 'Cloud Angel', image: '/banners/cloud_angel_logo.webp', category: 'others', price: 1000,
+  { id: 'cloud_angel', visible: false, name: 'Cloud Angel', image: '/banners/cloud_angel_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.6, contrast: 1.2, saturate: 0.85 } },
-  { id: 'glitch_chibi', visible: false, name: 'Glitch Chibi', image: '/banners/glitch_chibi_avatar_logo.webp', category: 'others', price: 1000,
+  { id: 'glitch_chibi', visible: false, name: 'Glitch Chibi', image: '/banners/glitch_chibi_avatar_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.8, contrast: 1.18, saturate: 1.1, hueRotate: 5 } },
-  { id: 'kawaii_angel', visible: false, name: 'Kawaii Angel', image: '/banners/kawaii_angel_logo.webp', category: 'others', price: 1000,
+  { id: 'kawaii_angel', visible: false, name: 'Kawaii Angel', image: '/banners/kawaii_angel_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.6, contrast: 1.15, saturate: 0.9 } },
-  { id: 'neon_chibi_warrior', visible: false, name: 'Neon Warrior', image: '/banners/neon_chibi_warrior_logo.webp', category: 'others', price: 1000,
+  { id: 'neon_chibi_warrior', visible: false, name: 'Neon Warrior', image: '/banners/neon_chibi_warrior_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.7, contrast: 1.2, saturate: 1.35, hueRotate: -8 } },
-  { id: 'star_child', visible: false, name: 'Star Child', image: '/banners/star_child_logo.webp', category: 'others', price: 1000,
+  { id: 'star_child', visible: false, name: 'Star Child', image: '/banners/star_child_logo.webp', category: 'others', price: 1200,
     filter: { brightness: 0.82, contrast: 1.12, saturate: 1.1 } },
 ]
 
@@ -365,28 +365,30 @@ export function getBanner(id: string | null | undefined): Banner {
 // ────────────────────────────────────────────────────────────
 import { getOverride } from './ownerOverrides'
 
-/** Banners with /owner price + currency overrides applied. */
+/** Banners with /owner price + currency + visibility overrides applied. */
 export function effectiveBanners(): Banner[] {
   return BANNERS.map((b) => {
-    const ov = getOverride('banners', b.id, {} as { price?: number; currency?: 'green' | 'gold' })
-    if (!ov || (ov.price === undefined && ov.currency === undefined)) return b
+    const ov = getOverride('banners', b.id, {} as { price?: number; currency?: 'green' | 'gold'; visible?: boolean })
+    if (!ov || (ov.price === undefined && ov.currency === undefined && ov.visible === undefined)) return b
     return {
       ...b,
       price: ov.price ?? b.price,
       currency: ov.currency ?? b.currency,
+      visible: ov.visible ?? b.visible,
     }
   })
 }
 
-/** Logos with /owner price + currency overrides applied. */
+/** Logos with /owner price + currency + visibility overrides applied. */
 export function effectiveLogos(): Logo[] {
   return LOGOS.map((l) => {
-    const ov = getOverride('logos', l.id, {} as { price?: number; currency?: 'green' | 'gold' })
-    if (!ov || (ov.price === undefined && ov.currency === undefined)) return l
+    const ov = getOverride('logos', l.id, {} as { price?: number; currency?: 'green' | 'gold'; visible?: boolean })
+    if (!ov || (ov.price === undefined && ov.currency === undefined && ov.visible === undefined)) return l
     return {
       ...l,
       price: ov.price ?? l.price,
       currency: ov.currency ?? l.currency,
+      visible: ov.visible ?? l.visible,
     }
   })
 }

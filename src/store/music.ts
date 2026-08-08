@@ -102,6 +102,9 @@ export const useMusic = create<MusicStore>((set, get) => {
   getMusic().load(initPreset)
   getMusic().setVolume(init.volume)
 
+  // Jamendo streams play end-to-end and auto-advance ("flows").
+  getMusic().onTrackEnd = () => get().next()
+
   const persist = () => {
     const { presetId, volume, playing, expanded, pos } = get()
     save({ presetId, volume, playing, expanded, pos })

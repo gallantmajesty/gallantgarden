@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import * as THREE from 'three'
+import { createNullSafeEvents } from '../three/safeEvents'
 
 interface CountryGlobeProps {
   countryCode: string | null
@@ -169,7 +170,7 @@ function Marker() {
 export function CountryGlobe({ countryCode }: CountryGlobeProps) {
   return (
     <div className="globe-container" style={{ width: '100%', height: '300px', background: 'transparent' }}>
-      <Canvas camera={{ position: [0, 0, 3], fov: 45 }}>
+      <Canvas events={createNullSafeEvents} camera={{ position: [0, 0, 3], fov: 45 }}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 3, 5]} intensity={1.2} />
         <GlobeMesh countryCode={countryCode} />

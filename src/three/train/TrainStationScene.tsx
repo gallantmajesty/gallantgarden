@@ -3,12 +3,14 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { KernelSize } from 'postprocessing'
 import type { Material, Mesh, Texture } from 'three'
+import { createNullSafeEvents } from '../safeEvents'
 
 import { useScenePreset } from '../../store/quality'
 import { useTrain } from '../../store/train'
 import { useAuth } from '../../store/auth'
 import { StationWorld } from './StationWorld'
 import { TrainRide } from './TrainRide'
+import { useSocialOverlay } from '../../features/social/store'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -23,6 +25,7 @@ class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean 
 
 export function TrainStationScene({ onReady }: { onReady?: () => void }) {
   const preset = useScenePreset()
+  const socialOpen = useSocialOverlay((s) => s.open)
 
   const handleReady = () => {
     onReady?.()
@@ -35,6 +38,8 @@ export function TrainStationScene({ onReady }: { onReady?: () => void }) {
     <>
       <TrainJourneyRuntime />
       <Canvas
+        events={createNullSafeEvents}
+        frameloop={socialOpen ? 'never' : 'always'}
         shadows={preset.shadows ? 'soft' : false}
         dpr={preset.dpr}
         gl={{ antialias: false, powerPreference: 'high-performance' }}

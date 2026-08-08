@@ -5,7 +5,7 @@ import { TrainStationScene } from '../three/train/TrainStationScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
 import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
-import { PreRoomLoader } from '../components/PreRoomLoader'
+import { RoomLoader } from '../components/RoomLoader'
 import {
   useSettings,
   MIN_BRIGHTNESS,
@@ -33,15 +33,17 @@ import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
 import { trainStationEnabled, ukCafeEnabled } from '../lib/realm'
+import { roomTheme } from '../lib/roomThemes'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
+import { npcOnlineInRoom, assignNpcSeats, libraryRoomIndex, npcSeatOccupied } from '../lib/npcSystem'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
-import { getRank } from '../lib/ranks'
+import { getRank, rankForLifetime } from '../lib/ranks'
 import { AddFriendButton } from '../components/AddFriendButton'
 import { Icon } from '../components/magnet/Icon'
-import { LibraryFriendsPanel } from '../components/library/LibraryFriendsPanel'
+import { SocialHub } from '../features/social/SocialHub'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
 import { MusicPlayer } from '../components/library/MusicPlayer'
 import { TrainHUD } from '../components/train/TrainHUD'
@@ -99,27 +101,23 @@ export function Explore({ defaultWorld }: ExploreProps) {
     wasSeated.current = seat != null
   }, [seat])
 
-  // Restore saved seat on tab return (30s expiry). If no saved seat, auto-sit
-  // into seat 0, then reload so the 3D rendering boots fresh (workaround for
-  // R3F context init race when conditional scene content mounts mid-init).
+  // Restore saved seat on tab return (30s expiry). Fresh entries stay in
+  // 'selecting' so the seat picker (with occupied seats) always shows before
+  // the player commits to a seat.
   useEffect(() => {
     if (isTrain) return
     const flowSeat = useSeatFlow.getState().selectedSeatId
     const worldSeat = useWorld.getState().seat
     if (flowSeat != null && worldSeat == null) {
+      // Never auto-resume into a seat an online NPC permanently owns — the
+      // picker shows it occupied, and the NPC must not be moved for a player.
+      const roomIdx = libraryRoomIndex(useRealm.getState().active?.roomId)
+      if (roomIdx >= 0 && npcSeatOccupied(roomIdx, flowSeat, Date.now(), useSeatFlow.getState().seats.length)) {
+        useSeatFlow.getState().unlock()
+        return
+      }
       useWorld.getState().sit(flowSeat)
       useSeatFlow.getState().arrive()
-      // Refresh once per tab session so the 3D scene boots fresh
-      if (!sessionStorage.getItem('sf.seatBooted')) {
-        sessionStorage.setItem('sf.seatBooted', '1')
-        window.location.reload()
-      }
-    } else if (worldSeat == null && useSeatFlow.getState().stage === 'selecting') {
-      useSeatFlow.getState().pickSeat(0)
-      useWorld.getState().sit(0)
-      useSeatFlow.getState().arrive()
-      sessionStorage.setItem('sf.seatBooted', '1')
-      window.location.reload()
     }
   }, [isTrain])
 
@@ -189,7 +187,28 @@ export function Explore({ defaultWorld }: ExploreProps) {
   }, [isTrain, seat])
   useEffect(() => {
     const sync = () => {
-      const occupied = getRemoteOccupied()
+      const remote = getRemoteOccupied()
+      const occupied = { ...remote }
+      // NPC scholars sitting at their permanent desks show up as occupants too,
+      // so the seat picker never offers a seat an online NPC owns — and the
+      // NPCs never move because of a player.
+      const roomIdx = libraryRoomIndex(useRealm.getState().active?.roomId)
+      if (roomIdx >= 0) {
+        const seats = useSeatFlow.getState().seats
+        const mySeat = useWorld.getState().seat
+        const npcs = npcOnlineInRoom(roomIdx, Date.now())
+        const takenByUser = new Set<number>(Object.keys(remote).map(Number))
+        if (mySeat != null) takenByUser.add(mySeat)
+        const assignments = assignNpcSeats(
+          npcs.map((n) => n.idx),
+          seats,
+          takenByUser,
+        )
+        for (const npc of npcs) {
+          const seat = assignments.get(npc.idx)
+          if (seat && !occupied[seat.id]) occupied[seat.id] = npc.name
+        }
+      }
       useSeatFlow.getState().setOccupied(occupied)
     }
     sync()
@@ -240,17 +259,29 @@ export function Explore({ defaultWorld }: ExploreProps) {
     <div className="explore-root">
       {/* Realm fullscreen enforcement — mobile/tablet only. Desktop is untouched. */}
       <RealmFullscreenGate />
-      <PreRoomLoader isLoading={!ready} minDuration={2000} message="Preparing your study world…">
+      {/* Room loader — doors stay closed until the scene signals ready.
+          Shows the room name + logo riding the loading bar underneath. */}
+      <RoomLoader
+        ready={ready}
+        roomName={realm?.name ?? (isTrain ? 'Train Station' : isUkCafe ? 'UK Café' : 'The Great Library')}
+        accent={isUkCafe || isTrain ? undefined : roomTheme(realm?.roomId).accent}
+        minDuration={2000}
+        show={seatFlowStage !== 'selecting'}
+      >
         {isTrain ? (
           <TrainStationScene onReady={() => setReady(true)} />
         ) : isUkCafe ? (
-          <LibraryScene onReady={() => setReady(true)} />
+          <LibraryScene
+            onReady={() => setReady(true)}
+            roomId={undefined}
+          />
         ) : (
           <LibraryScene
             onReady={() => setReady(true)}
+            roomId={realm?.roomId}
           />
         )}
-</PreRoomLoader>
+</RoomLoader>
       <PomodoroTicker />
       {!cinematic && <RealmConnection />}
 
@@ -332,9 +363,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
               the store + scene runtime, so this is purely its view. */}
           {isTrain && <TrainHUD />}
 
-          {/* collapsible friends chat — hidden behind an edge tab, never covers work */}
-          <LibraryFriendsPanel />
-
           {/* Library Realm music widget moved outside HUD gate (line 289) so its
               singleton engine keeps playing when HUD is hidden. */}
 
@@ -372,11 +400,16 @@ export function Explore({ defaultWorld }: ExploreProps) {
         </button>
       )}
 
+      {/* Unified social hub — lobby chat bar / mini dock / full-screen Explore.
+          Rendered OUTSIDE the HUD-hidden gate so it stays reachable while widgets
+          are toggled off. Pauses 3D rendering while open (LibraryScene / TrainStationScene). */}
+      <SocialHub />
+
       {/* Bottom-right manual controls: keys 1-8 = seated camera presets,
           9 = Cinematic Tour. Hidden while the tour runs (it's a hands-off
           full-screen "video" — exit with key 9); during the tour only the
           timer stays visible. */}
-      {location.pathname === '/realm/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
+      {location.pathname === '/lobby/explore' && !isTrain && !cinematic && seatFlowStage !== 'selecting' && <MusicPlayer />}
       <FocusDomain isOpen={fpOpen} onClose={() => { setFpOpen(false); useHud.getState().setPerfMode(false) }} />
       <NpcProfileOverlay />
     </div>
@@ -488,7 +521,7 @@ function RealmConnection() {
   const playerId = useProfile((s) => s.playerId)
   const displayName = useProfile((s) => s.displayName)
   const country = useProfile((s) => s.data.country)
-  const rank = useProfile((s) => s.data.rank)
+  const rank = useProfile((s) => rankForLifetime(s.rankXp, s.xp, s.premiumXp).id)
   const avatar = useAvatar((s) => s.config)
   const banner = useProfile((s) => s.pub.banner)
   const logo = useProfile((s) => s.pub.logo)
@@ -560,7 +593,7 @@ function RealmConnection() {
 function RoomRoster() {
   const { user } = useAuth()
   const country = useProfile((s) => s.data.country)
-  const rank = useProfile((s) => s.data.rank)
+  const rank = useProfile((s) => rankForLifetime(s.rankXp, s.xp, s.premiumXp).id)
   const playerId = useProfile((s) => s.playerId)
   const displayName = useProfile((s) => s.displayName)
   const realm = useRealm((s) => s.active)
@@ -774,6 +807,8 @@ function SeatedPanel({ onToggleCalc, calcOpen }: { onToggleCalc: () => void; cal
   const note = useDesk((s) => s.note)
   const view = useDesk((s) => s.view)
   const desk = useDesk.getState
+  const phase = usePomodoro((s) => s.phase)
+  const [warn, setWarn] = useState(false)
 
   const [goalsOpen, setGoalsOpen] = useState(true)
   const [notesOpen, setNotesOpen] = useState(true)
@@ -782,6 +817,19 @@ function SeatedPanel({ onToggleCalc, calcOpen }: { onToggleCalc: () => void; cal
   if (seat == null) return null
 
   const progress = desk().goalProgress()
+
+  // Changing seats is locked while a study session is active — standing up
+  // would let the player dodge the timer, so we block it and surface a warning.
+  const sessionActive = phase === 'running' || phase === 'break' || phase === 'paused'
+  const tryStandUp = () => {
+    if (sessionActive) {
+      setWarn(true)
+      window.setTimeout(() => setWarn(false), 3200)
+      return
+    }
+    useSeatFlow.getState().standUp()
+    useWorld.getState().stand()
+  }
 
   if (view === 'min') {
     return (
@@ -795,9 +843,10 @@ function SeatedPanel({ onToggleCalc, calcOpen }: { onToggleCalc: () => void; cal
           )}
           {note && <span className="desk-mini-dot" />}
         </button>
-        <button className="desk-mini-stand" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }} title="Stand up">
+        <button className="desk-mini-stand" onClick={tryStandUp} title={sessionActive ? 'Finish or cancel your session first' : 'Stand up'}>
           ⤴
         </button>
+        {warn && <div className="desk-mini-warn">Finish your session before changing seats</div>}
       </div>
     )
   }
@@ -881,13 +930,18 @@ function SeatedPanel({ onToggleCalc, calcOpen }: { onToggleCalc: () => void; cal
 
       {/* Footer */}
       <div className="desk-footer">
-        <button className="desk-footer-btn" onClick={() => { useSeatFlow.getState().standUp(); useWorld.getState().stand(); }}>
+        <button className="desk-footer-btn" onClick={tryStandUp} title={sessionActive ? 'Finish or cancel your session first' : 'Stand up'}>
           Stand up
         </button>
         <button className="desk-footer-btn" onClick={onToggleCalc} title={calcOpen ? 'Close calculator' : 'Calculator'}>
           <CalcGlyph />
         </button>
       </div>
+      {warn && (
+        <div className="desk-warn" role="status">
+          Finish or cancel your study session before changing seats
+        </div>
+      )}
     </div>
   )
 }
@@ -1322,6 +1376,29 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             />
             <Toggle label="Ultra effects (SSAO · god rays · DoF) — high-end GPU" value={s.ultra} onChange={(v) => s.set('ultra', v)} />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
+          </Section>
+
+          <Section title="Players & Performance">
+            <Toggle
+              label="Show name tags"
+              value={s.showNameTags}
+              onChange={(v) => s.set('showNameTags', v)}
+            />
+            <Toggle
+              label="Show name tags for distant players"
+              value={s.distantTags}
+              onChange={(v) => s.set('distantTags', v)}
+            />
+            <Toggle
+              label="Swap distant players to 2D sprites"
+              value={s.impostorSprites}
+              onChange={(v) => s.set('impostorSprites', v)}
+            />
+            <Toggle
+              label="Pause rendering when tab is hidden"
+              value={s.pauseWhenHidden}
+              onChange={(v) => s.set('pauseWhenHidden', v)}
+            />
           </Section>
 
           <Section title="Cinematic Tour (key 9)">

@@ -233,28 +233,29 @@ export interface AccessoryDef {
   visible: boolean
 }
 
-// The accessory wardrobe. The free starter (laptop) stays in the Avatar
-// Creator; everything else lives in the Lobby Shop. `color` is only a starting
+// The accessory wardrobe. The free starter (laptop) is always owned and stays
+// in the Avatar Creator; every other accessory is bought in the Lobby Shop and
+// only shows up in the Avatar Creator once owned. `color` is only a starting
 // tint — the 3D model is built to read as a real object, not a flat chip.
 export const ACCESSORIES: AccessoryDef[] = [
   { id: 'laptop', visible: true, name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion', price: 0 },
-  { id: 'gaming_laptop', visible: false, name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig', price: 120, currency: 'gold' },
-  { id: 'phone', visible: true, name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand', price: 180 },
-  { id: 'book', visible: true, name: 'Single Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook', price: 150 },
-  { id: 'book_stack', visible: false, name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower', price: 250 },
-  { id: 'do_not_disturb_poster', visible: false, name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active', price: 220 },
-  { id: 'trading_laptop', visible: false, name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts', price: 200, currency: 'gold' },
-  { id: 'trading_desktop_3side', visible: false, name: 'Tri-Monitor Trading Desk', icon: '🖥️', color: '#1a1a2e', blurb: '3-screen endpoint', price: 250, currency: 'gold' },
-  { id: 'mug', visible: false, name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip', price: 120 },
-  { id: 'piano', visible: false, name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax', price: 450 },
-  { id: 'flower_pot', visible: false, name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life', price: 200 },
-  { id: 'chair_balloon', visible: false, name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy', price: 400 },
-  { id: 'bento_box', visible: false, name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack', price: 300 },
-  { id: 'hourglass', visible: false, name: 'Focus Hourglass', icon: '⏳', color: '#d4af37', blurb: 'Sands of flow state', price: 350 },
-  { id: 'water_bottle', visible: false, name: 'Water Bottle', icon: '🚰', color: '#7ba7c9', blurb: 'Stay hydrated', price: 130 },
-  { id: 'headphones', visible: true, name: 'Headphones', icon: '🎧', color: '#2a2a35', blurb: 'Focus in sound', price: 280 },
-  { id: 'desk_lamp', visible: false, name: 'Desk Lamp', icon: '💡', color: '#caa24a', blurb: 'Warm study glow', price: 240 },
-  { id: 'plant', visible: false, name: 'Potted Plant', icon: '🪴', color: '#3f7d52', blurb: 'Lush desk greenery', price: 220 },
+  { id: 'gaming_laptop', visible: true, name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig', price: 120, currency: 'gold' },
+  { id: 'phone', visible: true, name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand', price: 300 },
+  { id: 'book', visible: true, name: 'Single Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook', price: 250 },
+  { id: 'book_stack', visible: true, name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower', price: 450 },
+  { id: 'do_not_disturb_poster', visible: true, name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active', price: 400 },
+  { id: 'trading_laptop', visible: true, name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts', price: 200, currency: 'gold' },
+  { id: 'trading_desktop_3side', visible: true, name: 'Tri-Monitor Trading Desk', icon: '🖥️', color: '#1a1a2e', blurb: '3-screen endpoint', price: 250, currency: 'gold' },
+  { id: 'mug', visible: true, name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip', price: 200 },
+  { id: 'piano', visible: true, name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax', price: 800 },
+  { id: 'flower_pot', visible: true, name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life', price: 350 },
+  { id: 'chair_balloon', visible: true, name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy', price: 700 },
+  { id: 'bento_box', visible: true, name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack', price: 500 },
+  { id: 'hourglass', visible: true, name: 'Focus Hourglass', icon: '⏳', color: '#d4af37', blurb: 'Sands of flow state', price: 600 },
+  { id: 'water_bottle', visible: true, name: 'Water Bottle', icon: '🚰', color: '#7ba7c9', blurb: 'Stay hydrated', price: 250 },
+  { id: 'headphones', visible: true, name: 'Headphones', icon: '🎧', color: '#2a2a35', blurb: 'Focus in sound', price: 500 },
+  { id: 'desk_lamp', visible: true, name: 'Desk Lamp', icon: '💡', color: '#caa24a', blurb: 'Warm study glow', price: 450 },
+  { id: 'plant', visible: true, name: 'Potted Plant', icon: '🪴', color: '#3f7d52', blurb: 'Lush desk greenery', price: 400 },
 ]
 
 export function accessoryById(id: string): AccessoryDef | undefined {
@@ -652,6 +653,12 @@ export function sphereGeo(radius: number): BufferGeometry {
   return cachedGeo(key, () => new SphereGeometry(radius, 48, 36))
 }
 
+/** Plain cylinder (constant radius) — used for the book's headbands / pins. */
+export function cylinderGeo(rTop: number, rBot: number, h: number, seg = 24): BufferGeometry {
+  const key = `cyl:${rTop}:${rBot}:${h}:${seg}`
+  return cachedGeo(key, () => new CylinderGeometry(rTop, rBot, h, seg))
+}
+
 /** A flat 2D disc in the XY plane (faces +Z) — used for painted-on cat eyes
  *  that sit flush on the face with no 3D bulge. */
 export function circleGeo(radius: number, seg = 48): BufferGeometry {
@@ -813,10 +820,13 @@ function buildTorso(rings: TorsoRing[]): BufferGeometry {
 
   // bottom cap (normal -Y) closes the hips; the TOP is left open so the
   // torso doesn't show a flat plate disc under the chin (the neck covers it).
+  // Winding is deliberately inward-facing so the cap stays hidden (culled)
+  // below the jacket hem — a visible disc here reads as "hips poking out of
+  // the pants" (regression seen after 2026-07-22 flip).
   const first = rings[0]
   const botC = pos.length / 3
   pos.push(0, first.y, first.cz ?? 0)
-  for (let i = 0; i < seg; i++) idx.push(botC, (i + 1) % seg, i)
+  for (let i = 0; i < seg; i++) idx.push(botC, i, (i + 1) % seg)
 
   const g = new BufferGeometry()
   g.setAttribute('position', new Float32BufferAttribute(pos, 3))

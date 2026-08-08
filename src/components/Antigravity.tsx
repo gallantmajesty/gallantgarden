@@ -3,6 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { createNullSafeEvents } from '../three/safeEvents';
 
 const AntigravityInner = ({
   count = 300,
@@ -171,7 +172,7 @@ const AntigravityInner = ({
 
 const Antigravity = (props) => {
   return (
-    <Canvas camera={{ position: [0, 0, 50], fov: 35 }}>
+    <Canvas events={createNullSafeEvents} camera={{ position: [0, 0, 50], fov: 35 }}>
       <AntigravityInner {...props} />
     </Canvas>
   );

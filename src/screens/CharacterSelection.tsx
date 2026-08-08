@@ -7,8 +7,11 @@ import { useProfile } from '../store/profile'
 
 // Derived from the single roster in src/avatar/characters.ts so editing there
 // updates both this picker and the customization screen. Uses the effective
-// roster so /owner rarity changes apply here automatically.
-const ALL_CHARACTERS = effectiveCharacters().map((c) => ({
+// roster so /owner rarity changes apply here automatically. Hidden characters
+// (visible:false / /owner override) are filtered out of this picker too.
+const ALL_CHARACTERS = effectiveCharacters()
+  .filter((c) => c.visible !== false)
+  .map((c) => ({
   id: c.id,
   name: c.name,
   description: c.description ?? '',

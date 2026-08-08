@@ -19,13 +19,14 @@ let cache: ProfileSettings | null = null
 let cacheUser: string | null = null
 
 /** Load (and cache) the current user's settings document. Returns `{}` when the
- *  user has no profile row yet or the fetch fails (offline-tolerant). */
+ *  user has no profile row yet or the fetch fails (offline-tolerant).
+ *
+ *  Reads go through the `get_my_settings()` RPC: the `settings` column is
+ *  column-revoked from `authenticated` (see
+ *  migrations/20260809000000_security-invoker-public-profiles.sql) so no one
+ *  but the owner can read it. */
 export async function loadProfileSettings(userId: string): Promise<ProfileSettings> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('settings')
-    .eq('id', userId)
-    .maybeSingle()
+  const { data, error } = await supabase.rpc('get_my_settings')
 
   const settings =
     !error && data?.settings && typeof data.settings === 'object'

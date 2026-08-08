@@ -25,10 +25,10 @@ export interface OwnerOverrides {
     lines?: Record<string, { minutes?: number; cadenceSec?: number; boardSec?: number }>
     rewards?: Record<string, number>
   }
-  characters?: Record<string, { price?: number; rarity?: string }>
-  themes?: Record<string, { price?: number; unlockLevel?: number }>
-  banners?: Record<string, { price?: number }>
-  logos?: Record<string, { price?: number }>
+  characters?: Record<string, { price?: number; rarity?: string; currency?: 'green' | 'gold'; visible?: boolean }>
+  themes?: Record<string, { price?: number; unlockLevel?: number; visible?: boolean }>
+  banners?: Record<string, { price?: number; currency?: 'green' | 'gold'; visible?: boolean }>
+  logos?: Record<string, { price?: number; currency?: 'green' | 'gold'; visible?: boolean }>
 }
 
 let cache: OwnerOverrides = {}

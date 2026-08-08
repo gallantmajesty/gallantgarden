@@ -52,7 +52,7 @@ export function hardcoreMultiplier(minutes: number): number {
 /** Actual leaves/min for a hardcore session of the given length. */
 export function hardcoreRateFor(minutes: number): number {
   const baseRate = getOverride('hardcore', 'baseRate', HARDCORE_BASE_RATE)
-  return (baseRate * hardcoreMultiplier(minutes)) / HARDCORE_ANCHOR
+  return Math.round((baseRate * hardcoreMultiplier(minutes)) / HARDCORE_ANCHOR * 100) / 100
 }
 
 /** Minimum wager required for a hardcore session length. Progressive: the

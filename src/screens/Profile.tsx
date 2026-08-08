@@ -207,6 +207,7 @@ function ProfileBody({
   const [remoteCounts, setRemoteCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 })
   const [studyCounts, setStudyCounts] = useState<StudyCounts>({ blueprints: 0 })
   const [listModal, setListModal] = useState<null | 'followers' | 'following' | 'mutual'>(null)
+  const [deleteModal, setDeleteModal] = useState(false)
 
   const counts = isOwn ? myCounts : remoteCounts
 
@@ -446,6 +447,25 @@ function ProfileBody({
         <div className="pf-achievements-section">
           <AchievementsPanel isOwn={isOwn} earned={view.earned} />
         </div>
+
+        {/* ========== DANGER ZONE (own profile only) ========== */}
+        {isOwn && (
+          <div className="pf-danger-section">
+            <div className="pf-section-title">Account</div>
+            <div className="pf-danger-row">
+              <div>
+                <div className="pf-danger-title">Delete my account</div>
+                <div className="pf-danger-sub">
+                  Permanently removes your profile, avatar, chat history, friends and
+                  progress. Payment records are kept anonymous as required by law.
+                </div>
+              </div>
+              <button className="pf-delete-btn" onClick={() => setDeleteModal(true)}>
+                Delete Account
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========== MODALS ========== */}
@@ -479,6 +499,96 @@ function ProfileBody({
       {rankModal && (
         <RankRoadmap totalXp={lifetimeXp} onClose={() => setRankModal(false)} />
       )}
+
+      {isOwn && deleteModal && (
+        <DeleteAccountModal
+          onClose={() => setDeleteModal(false)}
+          onDeleted={() => {
+            setDeleteModal(false)
+            onBack()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------ delete account modal */
+
+function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDeleted: () => void }) {
+  const { signOut, user } = useAuth()
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function doDelete() {
+    if (typed !== 'DELETE') return
+    setBusy(true)
+    setError(null)
+    try {
+      if (user) {
+        const { error: rpcError } = await supabase.rpc('delete_my_account')
+        if (rpcError) {
+          setError('Deletion failed — please try again or email support.')
+          setBusy(false)
+          return
+        }
+      }
+      // Guests have nothing server-side — signOut clears the local guest data.
+      await signOut()
+      onDeleted()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="pf-edit-overlay" onClick={onClose}>
+      <div className="pf-edit-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+        <div className="pf-edit-header">
+          <div className="pf-edit-title" style={{ color: '#ff6b5e' }}>Delete my account</div>
+          <button className="pf-edit-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="pf-edit-body">
+          <p style={{ fontSize: 14, color: '#e8d9b0', lineHeight: 1.6, margin: '0 0 8px' }}>
+            This will <strong style={{ color: '#ff6b5e' }}>permanently</strong> delete:
+          </p>
+          <ul style={{ fontSize: 13, color: '#b8a88a', lineHeight: 1.8, margin: '0 0 14px', paddingLeft: 18 }}>
+            <li>Your profile, name, avatar and banner</li>
+            <li>All leaves, golden leaves, ranks and achievements</li>
+            <li>Chat messages, friends, follows and group memberships</li>
+            <li>Realms, blueprints and study progress</li>
+          </ul>
+          <p style={{ fontSize: 12, color: 'rgba(240,223,192,0.5)', lineHeight: 1.5, margin: '0 0 14px' }}>
+            Payment records are kept (anonymized) as required by law. This cannot be undone.
+          </p>
+
+          <div className="pf-edit-label">Type <strong style={{ color: '#ff6b5e' }}>DELETE</strong> to confirm</div>
+          <input
+            className="sf-input"
+            value={typed}
+            placeholder="DELETE"
+            onChange={(e) => setTyped(e.target.value)}
+            style={{ width: '100%', fontSize: 15, padding: '10px 12px', marginBottom: 14 }}
+          />
+
+          {error && <p style={{ fontSize: 13, color: '#ff6b5e', margin: '0 0 10px' }}>{error}</p>}
+
+          <div className="pf-edit-save-bar">
+            <button className="pf-edit-cancel-btn" onClick={onClose} disabled={busy}>Cancel</button>
+            <button
+              className="pf-delete-confirm-btn"
+              onClick={doDelete}
+              disabled={typed !== 'DELETE' || busy}
+            >
+              {busy ? 'Deleting…' : 'Delete forever'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

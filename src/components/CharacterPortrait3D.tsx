@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
+import { createNullSafeEvents } from '../three/safeEvents'
 import type { AvatarConfig } from '../avatar/config'
 
 // A self-contained 3D character portrait for the profile's left panel. Renders
@@ -27,6 +28,7 @@ export function CharacterPortrait3D({
       }}
     >
       <Canvas
+        events={createNullSafeEvents}
         shadows={false}
         dpr={[1, 1.75]}
         camera={{ position: [0, 1.05, 3.4], fov: 36, near: 0.1, far: 50 }}

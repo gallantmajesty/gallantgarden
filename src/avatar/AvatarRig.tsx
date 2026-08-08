@@ -23,7 +23,7 @@ torusGeo,
   hairMaterial,
   type AvatarConfig,
 } from './config'
-import { heightScale, proportionsFor, type BoneName, type Proportions } from './rig'
+import { heightScale, proportionsForCharacter, torsoShapeFor, type BoneName, type Proportions } from './rig'
 import { focusLilyChestTex, hairFrizzTex, skinReliefTex, pandaFurTex, pandaIrisTex, monkeyFurTex, monkeyIrisTex } from './logoTextures'
 import { useFrame } from '@react-three/fiber'
 
@@ -68,7 +68,8 @@ export function AvatarRig({
 
   useImperativeHandle(ref, () => ({ bones, lids: lidsRef.current, root: rootRef.current, skirt: skirtRef.current }), [bones])
 
-  const P = proportionsFor(config.bodyType)
+  const P = proportionsForCharacter(config.characterId, config.bodyType)
+  const torsoShape = torsoShapeFor(config.characterId)
   const s = heightScale(config.height)
 
   // Robe skirt group ref — kept so future walk-cycle cloth animation can hook
@@ -395,15 +396,19 @@ export function AvatarRig({
               { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.4, hd: P.torsoD * 0.62 },
             ])} material={topM} castShadow />
           ) : (
+            /* Generic torso — built from THIS character's own silhouette
+               (CHARACTER_TORSO) so no two characters share a body. The shape
+               array multiplies the classic rings; per-character proportions
+               (P) differentiate widths on top of that. */
             <mesh geometry={torsoGeo([
-              { y: -0.07, hw: P.hipBoneW * 1.1, hd: P.torsoD * 0.88 },
-              { y: -0.02, hw: P.hipBoneW * 1.02, hd: P.torsoD * 0.85 },
-              { y: P.spineLen * 0.5, hw: P.waistW * 0.98, hd: P.torsoD * 0.88 },
-              { y: P.spineLen, hw: P.chestW * 0.95, hd: P.torsoD * 0.95 },
-              { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW, hd: P.torsoD * 1.15 },
-              { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.08, hd: P.torsoD * 1.05 },
-              { y: P.spineLen + P.chestLen, hw: P.shoulderW, hd: P.torsoD * 0.92 },
-              { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.2, hd: P.torsoD * 0.55 },
+              { y: -0.07, hw: P.hipBoneW * 1.18 * torsoShape[0], hd: P.torsoD * 0.9 },
+              { y: -0.02, hw: P.hipBoneW * 1.1 * torsoShape[1], hd: P.torsoD * 0.87 },
+              { y: P.spineLen * 0.5, hw: P.waistW * 0.98 * torsoShape[2], hd: P.torsoD * 0.88 },
+              { y: P.spineLen, hw: P.chestW * 0.95 * torsoShape[3], hd: P.torsoD * 0.95 },
+              { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW * torsoShape[4], hd: P.torsoD * 1.15 },
+              { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.08 * torsoShape[5], hd: P.torsoD * 1.05 },
+              { y: P.spineLen + P.chestLen, hw: P.shoulderW * torsoShape[6], hd: P.torsoD * 0.92 },
+              { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.2 * torsoShape[7], hd: P.torsoD * 0.55 },
             ])} material={topM} castShadow />
           )}
 
@@ -554,9 +559,7 @@ export function AvatarRig({
                   <>
                     <Head P={P} skin={skin} hairM={hairM} bodyType={config.bodyType} lidsRef={lidsRef} characterId={config.characterId ?? 'james'} eyeHexVal={eyeCol} glassesM={config.glasses ? glassesM : null} hairBandM={config.hairBand ? hairBandM : null} />
                     <Hair config={config} P={P} hairM={hairM} />
-                    {config.characterId === 'wizard' ? <WizardHat P={P} />
-                      : config.characterId === 'ruslan' ? <Kokoshnik P={P} />
-                      : <BlueCap P={P} />}
+                    {config.characterId === 'ruslan' ? <Kokoshnik P={P} /> : <BlueCap P={P} />}
                   </>
                 )}
 </group>
@@ -1045,28 +1048,6 @@ export function AvatarRig({
 
         {/* Equipped accessories are now rendered on the library table surface
             by TableAccessories — no longer attached to the avatar. */}
-
-        {/* Wizard gold sparkle particles — 6 emitters: hands, robe hem, pouch */}
-        {config.characterId === 'wizard' && (() => {
-          const sparkleGold = new MeshStandardMaterial({ color: '#D4AF37', roughness: 0.6, metalness: 0, side: 2 })
-          const sf = (2 * P.headR) / 28
-          // Spec positions (in spec units): [-14,33,0], [14,33,0], [-8,22,10], [8,22,10], [0,22,-10], [10,28,8]
-          const sparkles = [
-            [-14 * sf, -P.chestLen * 0.3, 0],          // Left hand
-            [14 * sf, -P.chestLen * 0.3, 0],           // Right hand
-            [-8 * sf, -P.hipsY * 0.7, 10 * sf],        // Robe hem front left
-            [8 * sf, -P.hipsY * 0.7, 10 * sf],         // Robe hem front right
-            [0, -P.hipsY * 0.7, -10 * sf],             // Robe hem back
-            [10 * sf, -P.chestLen * 0.2, 8 * sf],      // Pouch
-          ]
-          return (
-            <group>
-              {sparkles.map((pos, i) => (
-                <mesh key={`sp${i}`} geometry={sphereGeo(1)} material={sparkleGold} scale={[2 * sf, 2 * sf, 0.5 * sf]} position={pos as [number, number, number]} />
-              ))}
-            </group>
-          )
-        })()}
       </group>
     </group>
     </group>
@@ -1088,7 +1069,7 @@ function RobotHead({ P, metal, glow }: { P: Proportions; metal: Mat; glow: Mat }
       <mesh geometry={sphereGeo(1)} material={metal} scale={[r * 1.0, r * 1.02, r * 0.95]} castShadow />
       {/* translucent blue visor band — glass-like, you can faintly see the helmet behind it */}
       <mesh geometry={sphereGeo(1)} scale={[r * 0.86, r * 0.26, r * 0.72]} position={[0, r * 0.02, fz * 0.82]}>
-         <MeshStandardMaterial color="#3388ff" roughness={0.1} metalness={0.6} transparent opacity={0.45} />
+         <meshStandardMaterial color="#3388ff" roughness={0.1} metalness={0.6} transparent opacity={0.45} />
       </mesh>
       {/* bright eye dots inside the visor — glow through the glass */}
       <mesh geometry={sphereGeo(1)} material={glow} scale={[r * 0.13, r * 0.13, r * 0.05]} position={[-r * 0.3, r * 0.02, fz * 1.05]} />
@@ -2525,79 +2506,6 @@ function Kokoshnik({ P }: { P: Proportions }) {
   )
 }
 
-/* ================================================ WIZARD HAT ================================================ */
-
-function WizardHat({ P }: { P: Proportions }) {
-  const r = P.headR
-  const hatNavy = new MeshStandardMaterial({ color: '#1B2B5A', roughness: 0.55, metalness: 0, side: 2 })
-  const hatGold = new MeshStandardMaterial({ color: '#D4AF37', roughness: 0.35, metalness: 0.1, side: 2 })
-
-  // Spec: brim radius = head width + 10, head width = 28 units → rig head width = 2 * r
-  // Scale factor from spec units: head_width_rig / 28 = (2 * r) / 28 ≈ r / 14
-  const sf = (2 * r) / 28
-  const brimR = 24 * sf
-  const coneBaseR = 14 * sf
-  const coneH = 33 * sf
-
-  // Position hat on top of head — head center is at r*0.92, head extends to r*1.92
-  // BlueCap sits at r*1.6, wizard hat goes slightly higher for the tall cone
-  const hatY = r * 1.65
-
-  return (
-    <group position={[0, hatY, 0]}>
-      {/* Brim — flat cylinder */}
-      <mesh geometry={latheGeo([
-        [coneBaseR * 0.6, 0],
-        [brimR, 0],
-        [brimR, -2 * sf],
-        [coneBaseR * 0.6, -2 * sf],
-      ])} material={hatNavy} castShadow />
-
-      {/* Cone — tall pointed */}
-      <mesh geometry={latheGeo([
-        [0, coneH],
-        [coneBaseR * 0.1, coneH * 0.85],
-        [coneBaseR * 0.25, coneH * 0.65],
-        [coneBaseR * 0.5, coneH * 0.45],
-        [coneBaseR * 0.75, coneH * 0.2],
-        [coneBaseR, 0],
-      ])} material={hatNavy} castShadow />
-
-      {/* Gold torus trim at base of cone */}
-      <mesh geometry={torusGeo(coneBaseR, 0.5 * sf)} material={hatGold} position={[0, 0.5 * sf, 0]} rotation={[Math.PI / 2, 0, 0]} />
-
-      {/* 3x crescent moons at 0°, 120°, 240° */}
-      {[0, 120, 240].map((angle, i) => {
-        const rad = (angle * Math.PI) / 180
-        const moonH = coneH * 0.4
-        const moonDist = coneBaseR * 0.65
-        return (
-          <group key={`moon${i}`} position={[Math.sin(rad) * moonDist, moonH, Math.cos(rad) * moonDist]}>
-            <mesh geometry={sphereGeo(1)} material={hatGold} scale={[2 * sf, 2 * sf, 0.3 * sf]} />
-            <mesh geometry={sphereGeo(1)} material={hatNavy} scale={[1.5 * sf, 1.5 * sf, 0.4 * sf]} position={[0.8 * sf, 0.5 * sf, 0]} />
-          </group>
-        )
-      })}
-
-      {/* 12x 4-point gold stars scattered */}
-      {Array.from({ length: 12 }, (_, i) => {
-        const angle = (i / 12) * Math.PI * 2 + 0.2
-        const height = coneH * 0.15 + ((i % 4) / 4) * coneH * 0.6
-        const starDist = coneBaseR * 0.8 * (1 - height / coneH)
-        return (
-          <mesh
-            key={`star${i}`}
-            geometry={sphereGeo(1)}
-            material={hatGold}
-            scale={[0.75 * sf, 0.75 * sf, 0.2 * sf]}
-            position={[Math.sin(angle) * starDist, height, Math.cos(angle) * starDist]}
-          />
-        )
-      })}
-    </group>
-  )
-}
-
 /* ================================================ ARMS ================================================ */
 
 function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isRobot, glowM, isHacker, isMonkey, monkeyDark, isElephant, isSunflower, isPanda, pandaBlack, pandaInner, nailM, config }: {
@@ -2852,14 +2760,16 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
         </>
       ) : (
         <>
-{/* Thigh — lathe profile bottom→top (ascending Y) */}
+{/* Thigh — lathe profile bottom→top (ascending Y). The top radius is kept
+   just BELOW the torso's bottom ring so the pants waist tucks under the
+   shirt hem instead of bulging out past it (hip intersection). */}
            <mesh geometry={latheGeo([
              [P.kneeR * eM, -P.upperLeg],
              [P.kneeR * 1.05 * eM, -P.upperLeg * 0.88],
              [P.thighR * 1.0 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.6],
              [P.thighR * 1.12 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.35],
              [P.thighR * 1.18 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.15],
-             [P.thighR * 1.15 * eM * (isMonkey ? 0.8 : 1), 0],
+             [P.thighR * 1.05 * eM * (isMonkey ? 0.8 : 1), 0],
            ])} material={isRobot ? robotDark : legMat} castShadow />
 </>
         )}
