@@ -16,6 +16,7 @@ import {
   DoubleSide,
   ExtrudeGeometry,
   Float32BufferAttribute,
+  FrontSide,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
   MeshStandardMaterial,

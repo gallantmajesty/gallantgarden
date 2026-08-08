@@ -123,23 +123,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Handle session lost (another device claimed it)
     const handleSessionLost = async () => {
       console.warn('[Auth] Session claimed elsewhere or heartbeat failed')
-      // Verify if we actually have a valid session before redirecting
+      // Verify we actually have a valid session before redirecting.
+      // getUser() also refreshes an expired access token, so it only fails when
+      // the Supabase session is genuinely invalid/revoked.
+      let valid = false
       try {
-        const { data } = await supabase.auth.getSession()
-        if (data.session) {
-          // Session still exists, don't redirect — just re-claim
-          console.log('[Auth] Session still valid, attempting to re-claim...')
-          const claimed = await claimSession()
-          if (claimed !== null) {
-            return // Successfully re-claimed, stay logged in
-          }
-        }
+        const { data } = await supabase.auth.getUser()
+        valid = !!data.user
       } catch (e) {
         console.error('[Auth] Session verification failed:', e)
       }
-      runUserTeardown()
-      setUser(null)
-      navigate('/login', { replace: true })
+      if (!valid) {
+        runUserTeardown()
+        setUser(null)
+        navigate('/login', { replace: true })
+        return
+      }
+      // Session is valid — steal the lock back. claim_session always overwrites,
+      // so it can always be re-claimed; even a transient network error must NOT
+      // log the user out, otherwise the app kicks to /login repeatedly.
+      try {
+        await claimSession()
+      } catch (e) {
+        console.error('[Auth] Re-claim failed, staying logged in:', e)
+      }
     }
     window.addEventListener('session-lost', handleSessionLost)
 

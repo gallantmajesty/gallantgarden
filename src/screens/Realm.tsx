@@ -303,9 +303,9 @@ function LibraryRealm() {
         {LIBRARY_ROOMS.map((r, roomIdx) => {
           const rows = occ[r.id] ?? []
           const theme = roomTheme(r.id)
-          // Each room hosts 64 ambient scholars with personal study schedules —
-          // only the ones mid-session right now count as occupants, so every
-          // room shows its own live number.
+          // Each room hosts its own small cast of ambient scholars (max 30,
+          // different headcount per hall) — always present, so every room shows
+          // its own live number.
           const npc = npcOnlineCount(roomIdx, Date.now())
           const here = totalOccupants(rows) + npc
           const instances = rows.length

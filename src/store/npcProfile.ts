@@ -4,14 +4,16 @@ export interface NpcProfileData {
   name: string
   rank: string
   country: string | null
-  characterId: string
-  studyTopic: string
-  totalXp: number
-  sessionsCompleted: number
-  streak: number
-  bio: string
-  joinDate: string
+  characterId?: string
+  studyTopic?: string
+  totalXp?: number
+  sessionsCompleted?: number
+  streak?: number
+  bio?: string
+  joinDate?: string
   status: 'studying' | 'on-break' | 'offline'
+  /** True when this is a live player (their More Info card), not an NPC. */
+  isUser?: boolean
 }
 
 interface NpcProfileState {

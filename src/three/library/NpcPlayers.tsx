@@ -108,8 +108,8 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
 
   const config: AvatarConfig = useMemo(() => {
     const ch = characterById(npc.characterId)
-    return { ...ch.fallback, accessories: npc.accessories }
-  }, [npc.characterId, npc.accessories])
+    return { ...ch.fallback, ...npc.look, accessories: npc.accessories }
+  }, [npc.characterId, npc.accessories, npc.look])
 
   // Distance-gated tag hysteresis (only meaningful when distant tags are off).
   const [tagShown, setTagShown] = useState(showNameTags)
@@ -120,7 +120,9 @@ function NpcAvatar({ npc, seat }: { npc: NpcProfile; seat: Seat }) {
     const g = group.current
     if (!g) return
     g.position.set(seat.pos[0], seat.pos[1], seat.pos[2])
-    g.rotation.y = seat.yaw + Math.PI
+    // Face the desk, with a slow personal sway (deterministic per NPC) so the
+    // hall never reads as frozen statues staring at the player.
+    g.rotation.y = seat.yaw + Math.PI + Math.sin(clock.elapsedTime * 0.22 + npc.idx) * 0.05
     loco.current.seated = true
     loco.current.speed = 0
     g.scale.y = 1 + Math.sin(clock.elapsedTime * 0.8 + npc.totalXp) * 0.003

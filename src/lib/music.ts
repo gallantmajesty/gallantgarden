@@ -124,3 +124,7 @@ function getMusicEngine(): MusicEngine {
   if (!_engine) _engine = new MusicEngine()
   return _engine
 }
+
+// Construct eagerly so `ready` is true and the widget is visible immediately —
+// there is no async setup anymore (the old YouTube gate hid the player forever).
+void getMusicEngine()

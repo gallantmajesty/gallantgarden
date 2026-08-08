@@ -8,14 +8,16 @@ export interface NpcProfileData {
   name: string
   rank: string
   country: string | null
-  characterId: string
-  studyTopic: string
-  totalXp: number
-  sessionsCompleted: number
-  streak: number
-  bio: string
-  joinDate: string
+  characterId?: string
+  studyTopic?: string
+  totalXp?: number
+  sessionsCompleted?: number
+  streak?: number
+  bio?: string
+  joinDate?: string
   status: 'studying' | 'on-break' | 'offline'
+  /** True when this is a live player (their More Info card), not an NPC. */
+  isUser?: boolean
 }
 
 interface Props {
@@ -78,57 +80,65 @@ export function NpcProfileCard({ profile, onClose }: Props) {
 
         <div className="npc-profile-status">
           <span className={`npc-profile-dot npc-profile-dot--${profile.status}`} />
-          <span>{profile.status === 'studying' ? 'Studying now' : profile.status === 'on-break' ? 'On a break' : 'Offline'}</span>
+          <span>{profile.isUser ? 'In the library now' : profile.status === 'studying' ? 'Studying now' : profile.status === 'on-break' ? 'On a break' : 'Offline'}</span>
         </div>
 
-        <p className="npc-profile-bio">{profile.bio}</p>
+        {profile.bio && <p className="npc-profile-bio">{profile.bio}</p>}
 
-        <div className="npc-profile-stats">
-          <div className="npc-profile-stat">
-            <span className="npc-profile-stat-value">{profile.totalXp.toLocaleString()}</span>
-            <span className="npc-profile-stat-label">Total XP</span>
-          </div>
-          <div className="npc-profile-stat">
-            <span className="npc-profile-stat-value">{profile.sessionsCompleted}</span>
-            <span className="npc-profile-stat-label">Sessions</span>
-          </div>
-          <div className="npc-profile-stat">
-            <span className="npc-profile-stat-value">{profile.streak}</span>
-            <span className="npc-profile-stat-label">Day Streak</span>
-          </div>
-        </div>
-
-        <div className="npc-profile-topic">
-          <span className="npc-profile-topic-label">Studying</span>
-          <span className="npc-profile-topic-value">{profile.studyTopic}</span>
-        </div>
-
-        <div className="npc-profile-joined">
-          Joined {profile.joinDate}
-        </div>
-
-        <div className="npc-profile-actions">
-          {!friendSent ? (
-            <button
-              className="npc-profile-btn npc-profile-btn--primary"
-              onClick={() => setFriendSent(true)}
-            >
-              Send Friend Request
-            </button>
-          ) : !declineMsg ? (
-            <button className="npc-profile-btn npc-profile-btn--pending" disabled>
-              Request Sent...
-            </button>
-          ) : (
-            <div className="npc-profile-decline">
-              <span className="npc-profile-decline-icon">💬</span>
-              <span className="npc-profile-decline-msg">{declineMsg}</span>
+        {profile.totalXp != null && (
+          <div className="npc-profile-stats">
+            <div className="npc-profile-stat">
+              <span className="npc-profile-stat-value">{profile.totalXp.toLocaleString()}</span>
+              <span className="npc-profile-stat-label">Total XP</span>
             </div>
-          )}
-          <button className="npc-profile-btn npc-profile-btn--secondary" onClick={onClose}>
-            Close
-          </button>
-        </div>
+            <div className="npc-profile-stat">
+              <span className="npc-profile-stat-value">{profile.sessionsCompleted ?? '—'}</span>
+              <span className="npc-profile-stat-label">Sessions</span>
+            </div>
+            <div className="npc-profile-stat">
+              <span className="npc-profile-stat-value">{profile.streak ?? '—'}</span>
+              <span className="npc-profile-stat-label">Day Streak</span>
+            </div>
+          </div>
+        )}
+
+        {profile.studyTopic && (
+          <div className="npc-profile-topic">
+            <span className="npc-profile-topic-label">Studying</span>
+            <span className="npc-profile-topic-value">{profile.studyTopic}</span>
+          </div>
+        )}
+
+        {profile.joinDate && (
+          <div className="npc-profile-joined">
+            Joined {profile.joinDate}
+          </div>
+        )}
+
+        {!profile.isUser && (
+          <div className="npc-profile-actions">
+            {!friendSent ? (
+              <button
+                className="npc-profile-btn npc-profile-btn--primary"
+                onClick={() => setFriendSent(true)}
+              >
+                Send Friend Request
+              </button>
+            ) : !declineMsg ? (
+              <button className="npc-profile-btn npc-profile-btn--pending" disabled>
+                Request Sent...
+              </button>
+            ) : (
+              <div className="npc-profile-decline">
+                <span className="npc-profile-decline-icon">💬</span>
+                <span className="npc-profile-decline-msg">{declineMsg}</span>
+              </div>
+            )}
+            <button className="npc-profile-btn npc-profile-btn--secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

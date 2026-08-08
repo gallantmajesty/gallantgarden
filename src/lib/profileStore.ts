@@ -21,20 +21,32 @@ let cacheUser: string | null = null
 /** Load (and cache) the current user's settings document. Returns `{}` when the
  *  user has no profile row yet or the fetch fails (offline-tolerant).
  *
- *  Reads go through the `get_my_settings()` RPC: the `settings` column is
+ *  Reads prefer the `get_my_settings()` RPC: the `settings` column is
  *  column-revoked from `authenticated` (see
  *  migrations/20260809000000_security-invoker-public-profiles.sql) so no one
- *  but the owner can read it. */
+ *  but the owner can read it. If that function isn't deployed yet (migration
+ *  not applied), fall back to the direct column read. */
 export async function loadProfileSettings(userId: string): Promise<ProfileSettings> {
-  const { data, error } = await supabase.rpc('get_my_settings')
+  let settings: ProfileSettings | null = null
 
-  const settings =
-    !error && data?.settings && typeof data.settings === 'object'
-      ? (data.settings as ProfileSettings)
-      : {}
-  cache = settings
+  const { data, error } = await supabase.rpc('get_my_settings')
+  if (!error && data && typeof data === 'object') {
+    settings = data as ProfileSettings
+  } else {
+    const { data: direct } = await supabase
+      .from('profiles')
+      .select('settings')
+      .eq('id', userId)
+      .maybeSingle()
+    if (direct?.settings && typeof direct.settings === 'object') {
+      settings = direct.settings as ProfileSettings
+    }
+  }
+
+  const result = settings ?? {}
+  cache = result
   cacheUser = userId
-  return settings
+  return result
 }
 
 /** The last-loaded settings document for the active user, or `{}`. Synchronous. */

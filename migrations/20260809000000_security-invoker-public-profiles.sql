@@ -42,7 +42,16 @@ CREATE POLICY profiles_select_public
 
 -- ---- 3. Close the column leak ----
 -- The table now admits all rows to authenticated; settings must stay private.
-REVOKE SELECT (settings) ON profiles FROM authenticated;
+-- Supabase's default grants give authenticated a table-level SELECT on every
+-- public table, and a table-level privilege overrides any column-level revoke
+-- (REVOKE SELECT (settings) would be a silent no-op). So instead replace the
+-- table-wide SELECT with column-level SELECT on every public column — all of
+-- them except settings. PostgREST expands `*` to only the granted columns.
+REVOKE SELECT ON profiles FROM authenticated;
+GRANT SELECT (id, display_name, avatar, created_at, updated_at, country, username,
+              rank, avatar_url, public_profile, last_seen_at, study_status, xp,
+              premium_xp, inventory, player_id, display_name_changes, rank_xp,
+              achievements, ads_viewed) ON profiles TO authenticated;
 
 -- ---- 4. Own-settings read path (replaces the revoked direct read) ----
 CREATE OR REPLACE FUNCTION get_my_settings()
@@ -62,7 +71,11 @@ BEGIN
 END;
 $$;
 
+-- Supabase default privileges grant EXECUTE to anon/authenticated directly on
+-- every public function, so REVOKE FROM PUBLIC alone is a no-op for them; the
+-- explicit anon revoke below is what actually closes the unauthenticated path.
 REVOKE ALL ON FUNCTION get_my_settings() FROM PUBLIC;
+REVOKE ALL ON FUNCTION get_my_settings() FROM anon;
 GRANT EXECUTE ON FUNCTION get_my_settings() TO authenticated;
 
 -- Rollback:

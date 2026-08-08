@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, type Object3D, Vector3 } from 'three'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
@@ -10,6 +10,7 @@ import { getTarget, useRealmNet } from '../../multiplayer/net'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
 import { PlayerTimerBar } from './PlayerTimerBar'
 import { ImpostorBakeStage, ImpostorSprite, useImpostorTexture } from './ImpostorSprites'
+import { useNpcProfile } from '../../store/npcProfile'
 
 // Every OTHER player in the realm, rendered from the live roster. The set of
 // avatars only changes on join/leave (cheap React work); each avatar then drives
@@ -150,6 +151,18 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
   // so far players cost one billboard quad, not ~110 React meshes.
   const [bodyMounted, setBodyMounted] = useState(true)
   const unmountTimer = useRef<number | null>(null)
+  const showProfile = useNpcProfile((s) => s.show)
+
+  const handleInfoClick = useCallback(() => {
+    showProfile({
+      name: p.name,
+      rank: p.rank,
+      country: p.country,
+      characterId: config.characterId,
+      status: 'studying',
+      isUser: true,
+    })
+  }, [p, config, showProfile])
 
   useFrame((_, dtRaw) => {
     const g = group.current
@@ -262,7 +275,7 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
       </group>
       {impostorSprites && <ImpostorSprite entry={impostor} onRef={spriteOn} />}
       {tagShown && (
-        <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} banner={p.banner} logo={p.logo} />
+        <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} banner={p.banner} logo={p.logo} onInfoClick={handleInfoClick} />
       )}
       {tagShown && (
         <PlayerTimerBar playerId={id} headY={2.9} />

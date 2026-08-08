@@ -1,32 +1,57 @@
 // Deterministic NPC scholar system.
 //
-// Every library room hosts NPC_PER_ROOM ambient scholars (64 × 10 rooms = 640
-// total). Each NPC has a seeded, stable identity (real-looking name + number,
-// Common/Epic character only, Bronze/Silver rank only) AND a personal study
-// schedule (2.5–3.5 h study, 13–15 h rest, staggered per NPC so they never come
-// and go in a wave). NPCs are PERMANENT: NPC_ALWAYS_ONLINE keeps every scholar
-// present in their room around the clock — the schedule remains only as
-// deterministic flavor (tags/profile), it no longer drives presence.
+// Every library room hosts a SMALL, room-specific cast of ambient scholars —
+// never more than 30 per room, and each hall has its own headcount so rooms
+// don't all look identical (e.g. the busiest hall holds 30, the quietest 12).
+// Each NPC has a seeded, stable identity (real-looking name + number, Common
+// character body with a distinct rolled look — hair style/colour, skin, eyes,
+// clothing colour, glasses — so no two scholars read as clones) AND a personal
+// study schedule (2.5–3.5 h study, 13–15 h rest, staggered per NPC so they
+// never come and go in a wave). NPCs are PERMANENT: NPC_ALWAYS_ONLINE keeps
+// every scholar present in their room around the clock — the schedule remains
+// only as deterministic flavor (tags/profile), it no longer drives presence.
 //
 // Everything is derived from the NPC's index alone (mulberry32 PRNG), so any
 // browser, any reload, renders the exact same NPCs and schedules. Seats are
 // assigned per room via a seeded shuffle, so scholars scatter across the hall
 // instead of filing into consecutive desk rows.
 
-import { CHARACTERS } from '../avatar/characters'
-import { ACCESSORIES } from '../avatar/config'
+import { CHARACTERS, characterById } from '../avatar/characters'
+import {
+  ACCESSORIES,
+  EYE_COLORS,
+  HAIR_COLORS,
+  SKINS,
+  hairsFor,
+  type BodyType,
+} from '../avatar/config'
 import { RANKS } from './ranks'
 import { LIBRARY_ROOMS } from './realm'
 import type { Seat } from '../three/library/furniture'
 
 export const NPC_ROOMS = 10
-export const NPC_PER_ROOM = 64
-export const NPC_TOTAL = NPC_ROOMS * NPC_PER_ROOM
+
+// Headcount per room (max 30): every hall has its own cast size so the
+// libraries don't all feel equally crowded. Order follows LIBRARY_ROOMS.
+export const NPC_ROOM_CAPS = [30, 18, 26, 14, 30, 22, 16, 24, 20, 12]
+
+const NPC_ROOM_STARTS = (() => {
+  const out: number[] = []
+  let acc = 0
+  for (const cap of NPC_ROOM_CAPS) {
+    out.push(acc)
+    acc += cap
+  }
+  return out
+})()
+
+export const NPC_TOTAL = NPC_ROOM_CAPS.reduce((s, c) => s + c, 0)
+export const NPC_MAX_PER_ROOM = Math.max(...NPC_ROOM_CAPS)
 
 // NPCs are PERMANENT: every scholar is present in their room around the clock.
 // Presence no longer depends on "which session they're in right now" — the
-// session schedule survives only as deterministic flavor. With 64 NPCs and 128
-// seats per room, half the hall always stays free for real players.
+// session schedule survives only as deterministic flavor. With at most 30 NPCs
+// and 128 seats per room, most of the hall always stays free for real players.
 export const NPC_ALWAYS_ONLINE = true
 
 // Study session: 2.5–3.5 h. Rest between sessions: 13–15 h.
@@ -173,22 +198,31 @@ const NPC_LOGO_IDS = [
   'glitch_chibi', 'kawaii_angel', 'neon_chibi_warrior', 'star_child',
 ]
 
-// NPCs come ONLY from Common + Epic characters that can wear human hair.
-//   • Legendary characters (e.g. Ruslana) are excluded — they are special and
-//     must not spawn as generic NPCs in the library.
-//   • Epic ANIMAL costumes (dino, rabbit, robot, alien, pig, angel, elephant,
-//     monkey, panda, sunflower…) have their own heads and no hair, so they are
-//     also excluded. The remaining pool is entirely hair-bearing humans.
+// NPCs come ONLY from Common characters that can wear human hair. The roster's
+// rare characters are all Legendary exclusives (Ruslana) or ANIMAL costumes
+// (dino, rabbit, robot, alien, pig, angel, sunflower, elephant, monkey, panda)
+// with their own heads and no hair — so the pool is the three hair-bearing
+// humans. Every NPC additionally rolls a distinct LOOK (hair style + colour,
+// skin, eyes, clothing colour, glasses, hair band) so the cast reads as
+// different people, never clones.
 const CHAR_POOL: { id: string; w: number }[] = (() => {
   const out: { id: string; w: number }[] = []
   for (const c of CHARACTERS) {
     if (c.rarity === 'Legendary' || c.isAnimal) continue
-    if (c.rarity === 'Common') out.push({ id: c.id, w: 8 })
-    else if (c.rarity === 'Epic') out.push({ id: c.id, w: 4 })
+    out.push({ id: c.id, w: 8 })
   }
   return out
 })()
 const CHAR_WEIGHT_TOTAL = CHAR_POOL.reduce((s, c) => s + c.w, 0)
+
+// Free-recolour hexes for clothing — small bounded set keeps shared-material
+// count low (the rig shares materials by colour string).
+const CLOTH_HEXES = [
+  '#3b5f8a', '#6a4a8c', '#8a4a3a', '#3f7d52', '#7d6b3a', '#a04a5f',
+  '#4a6f9c', '#5c6e8c', '#8c6a4a', '#44506e', '#7a3a66', '#2e6e6e',
+]
+
+const GLASS_COLORS = ['#22252e', '#6e4bb0', '#2f8f86', '#8a4a3a', '#d7a94b']
 
 // Bronze + Silver only — every NPC stays under gold rank.
 const RANK_POOL = RANKS.filter(
@@ -199,12 +233,29 @@ const ALL_ACCESSORY_IDS = ACCESSORIES.map((a) => a.id)
 
 /* ------------------------------------------------ profile */
 
+export interface NpcLook {
+  /** Guaranteed non-'none' hair style valid for the character's body type. */
+  hair: string
+  hairColor: string
+  skin: string
+  eyes: string
+  glasses: boolean
+  glassesColor?: string
+  hairBand: boolean
+  hairBandColor?: string
+  topColor?: string
+  bottomColor?: string
+  shoeColor?: string
+}
+
 export interface NpcProfile {
   /** Global index — identity and schedule derive from this alone. */
   idx: number
   id: string
   name: string
   characterId: string
+  /** Rolled, distinct look applied on top of the character's fallback. */
+  look: NpcLook
   accessories: string[]
   rank: string
   country: string
@@ -248,6 +299,27 @@ export function npcProfile(idx: number): NpcProfile {
     if (cr <= 0) { characterId = c.id; break }
   }
 
+  // Roll a distinct look: a real hair style (never 'none'), varied colouring,
+  // occasional glasses / hair band, and clothing recolours so no two scholars
+  // read as the same person even when they share the base character body.
+  const charBodyType: BodyType = characterById(characterId).gender ?? 'male'
+  const hairPool = hairsFor(charBodyType).filter((h) => h.id !== 'none')
+  const glassesColor = pick(r, GLASS_COLORS)
+  const bandColor = pick(r, HAIR_COLORS).hex
+  const look: NpcLook = {
+    hair: pick(r, hairPool).id,
+    hairColor: pick(r, HAIR_COLORS).id,
+    skin: pick(r, SKINS).id,
+    eyes: pick(r, EYE_COLORS).id,
+    glasses: r() < 0.22,
+    glassesColor,
+    hairBand: r() < 0.12,
+    hairBandColor: bandColor,
+    topColor: pick(r, CLOTH_HEXES),
+    bottomColor: pick(r, CLOTH_HEXES),
+    shoeColor: pick(r, CLOTH_HEXES),
+  }
+
   const rankW = (id: string) => (id.startsWith('bronze') ? 5 : 2.5)
   const rankTotal = RANK_POOL.reduce((s, rk) => s + rankW(rk.id), 0)
   let rr = r() * rankTotal
@@ -274,6 +346,7 @@ export function npcProfile(idx: number): NpcProfile {
     id: `npc_${idx}`,
     name,
     characterId,
+    look,
     accessories,
     rank: rankId,
     country: pick(r, COUNTRY_POOL).code,
@@ -309,14 +382,17 @@ export interface NpcSession {
 
 /** Where a global NPC lives: which library room index they belong to. */
 export function npcRoom(idx: number): number {
-  return Math.floor(idx / NPC_PER_ROOM)
+  for (let r = 0; r < NPC_ROOMS; r++) {
+    if (idx < NPC_ROOM_STARTS[r] + NPC_ROOM_CAPS[r]) return r
+  }
+  return 0
 }
 
 /** The global indices assigned to a library room. */
 export function roomNpcIndices(roomIdx: number): number[] {
   const out: number[] = []
-  const from = roomIdx * NPC_PER_ROOM
-  for (let i = from; i < from + NPC_PER_ROOM; i++) out.push(i)
+  const from = NPC_ROOM_STARTS[roomIdx]
+  for (let i = from; i < from + NPC_ROOM_CAPS[roomIdx]; i++) out.push(i)
   return out
 }
 
