@@ -6,7 +6,7 @@ import './Landing.css'
 
 const Antigravity = lazy(() => import('./Antigravity'))
 const ScrollVelocity = lazy(() => import('./ScrollVelocity'))
-const Snowfall = lazy(() => import('../../components/Snowfall'))
+const HeroLibrary = lazy(() => import('./HeroLibrary').then((m) => ({ default: m.HeroLibrary })))
 
 /* ═══ Scroll reveal hook ═══ */
 function useScrollReveal() {
@@ -44,31 +44,6 @@ function useScrollSpy() {
     return () => observer.disconnect()
   }, [])
   return activeSection
-}
-
-/* ═══ Scroll fade hook — returns 0..1 opacity based on scroll past hero ═══ */
-function useScrollFade() {
-  const [opacity, setOpacity] = useState(1)
-  useEffect(() => {
-    function onScroll() {
-      const hero = document.getElementById('hero')
-      if (!hero) return
-      const rect = hero.getBoundingClientRect()
-      const fadeStart = 0
-      const fadeEnd = -rect.height * 0.6
-      if (rect.bottom <= fadeStart) {
-        setOpacity(0)
-      } else if (rect.bottom <= -fadeEnd) {
-        setOpacity(Math.max(0, rect.bottom / (-fadeEnd)))
-      } else {
-        setOpacity(1)
-      }
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-  return opacity
 }
 
 /* ═══ Performance utilities ═══ */
@@ -285,7 +260,6 @@ export function Landing() {
   const [activePin, setActivePin] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const activeSection = useScrollSpy()
-  const snowfallOpacity = useScrollFade()
 
   const toggleFaq = useCallback((index: number) => {
     setFaqOpen(prev => prev === index ? null : index)
@@ -409,67 +383,8 @@ export function Landing() {
       {/* ═══ SCENE 1 — HERO ═══ */}
       <section className="fl-scene fl-scene--hero" id="hero">
         <Suspense fallback={null}>
-          <Snowfall
-            count={120}
-            speedMin={0.4}
-            speedMax={1.8}
-            sizeMin={1}
-            sizeMax={3.5}
-            opacityMin={20}
-            opacityMax={70}
-            wind={-0.3}
-            windVariation={0.6}
-            color="#ffffff"
-            style={{ opacity: snowfallOpacity, transition: 'opacity 0.1s linear', zIndex: 2 }}
-          />
+          <HeroLibrary />
         </Suspense>
-        <div className="fl-world-fog" />
-        <div className="fl-fg-branch fl-fg-branch--left" />
-        <div className="fl-fg-branch fl-fg-branch--right" />
-
-        {/* Deep background castle — far right */}
-        <div className="fl-castle" aria-hidden="true">
-          <div className="fl-castle__mist" />
-          <div className="fl-castle__base" />
-          {/* Main keep */}
-          <div className="fl-castle__keep">
-            <div className="fl-castle__battlement" />
-            <div className="fl-castle__window fl-castle__window--1" />
-            <div className="fl-castle__window fl-castle__window--2" />
-            <div className="fl-castle__window fl-castle__window--3" />
-          </div>
-          {/* Tall tower left */}
-          <div className="fl-castle__tower fl-castle__tower--l">
-            <div className="fl-castle__cone" />
-            <div className="fl-castle__flag">
-              <div className="fl-castle__flag-cloth" />
-            </div>
-            <div className="fl-castle__window fl-castle__window--sm" />
-          </div>
-          {/* Tall tower right */}
-          <div className="fl-castle__tower fl-castle__tower--r">
-            <div className="fl-castle__cone" />
-            <div className="fl-castle__flag">
-              <div className="fl-castle__flag-cloth fl-castle__flag-cloth--2" />
-            </div>
-            <div className="fl-castle__window fl-castle__window--sm" />
-          </div>
-          {/* Small outpost tower */}
-          <div className="fl-castle__tower fl-castle__tower--sm">
-            <div className="fl-castle__cone" />
-          </div>
-          {/* Far distant tower */}
-          <div className="fl-castle__tower fl-castle__tower--far">
-            <div className="fl-castle__cone" />
-          </div>
-          {/* Wall connectors */}
-          <div className="fl-castle__wall fl-castle__wall--1" />
-          <div className="fl-castle__wall fl-castle__wall--2" />
-          {/* Torch glows */}
-          <div className="fl-castle__torch fl-castle__torch--1" />
-          <div className="fl-castle__torch fl-castle__torch--2" />
-          <div className="fl-castle__torch fl-castle__torch--3" />
-        </div>
         <div className="fl-hero__inner">
           <h1 className="fl-hero__headline">
             Plant your focus.<br />Grow your forest.
