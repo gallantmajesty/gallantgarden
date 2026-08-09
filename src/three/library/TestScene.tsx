@@ -1,6 +1,5 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { ambientLight, pointLight } from 'three'
 
 export function TestScene() {
   return (

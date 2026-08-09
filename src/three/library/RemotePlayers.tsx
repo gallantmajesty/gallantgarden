@@ -10,6 +10,7 @@ import { getTarget, useRealmNet } from '../../multiplayer/net'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
 import { PlayerTimerBar } from './PlayerTimerBar'
 import { ImpostorBakeStage, ImpostorSprite, useImpostorTexture } from './ImpostorSprites'
+import { activityOfAccessories } from '../../avatar/animation'
 import { useNpcProfile } from '../../store/npcProfile'
 
 // Every OTHER player in the realm, rendered from the live roster. The set of
@@ -28,24 +29,24 @@ import { useNpcProfile } from '../../store/npcProfile'
 // throttle (RANK_INTERVAL) to keep React churn negligible in a busy room.
 // These thresholds are conservative; the animator already handles the math.
 
-const LOD_FAR  = 12   // metres — full detail inside this radius
-const LOD_CULL = 28   // metres — cull animation beyond this radius
+const LOD_FAR  = 10   // metres — full detail inside this radius
+const LOD_CULL = 18   // metres — cull animation beyond this radius
 
 // Impostor sprite swap thresholds (metres). Past SWAP_OUT the body hides and a
 // baked billboard takes over (1 draw call vs ~110); the body only comes back
 // once the player re-enters SWAP_IN, so a player hovering on the boundary never
 // flickers between the two.
-const SWAP_OUT = 16
-const SWAP_IN  = 12
+const SWAP_OUT = 13
+const SWAP_IN  = 9
 
 // Name-tag / timer-bar distance gate (metres, hysteresis). Far players have
 // swapped to tiny 2D sprites where a DOM tag is unreadable and pure CPU/DOM
 // cost — beyond TAG_OFF the tag only un-mounts, and only re-mounts once the
 // player re-enters TAG_ON, so a hovering player never flickers its tag.
-const TAG_ON  = 18
-const TAG_OFF = 22
+const TAG_ON  = 13
+const TAG_OFF = 16
 
-const MAX_VISIBLE   = 10   // render only the nearest N avatars
+const MAX_VISIBLE   = 8    // render only the nearest N avatars
 const RANK_INTERVAL = 0.4  // seconds between nearest-set recomputes
 
 const _camPos  = new Vector3()
@@ -118,7 +119,7 @@ export function RemotePlayers() {
 // feeling laggy. Higher = snappier but jerkier; lower = floatier.
 const CHASE = 12
 
-function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: string; name: string; country: string | null; rank: string; avatar: AvatarConfig }; config: AvatarConfig; visible: boolean }) {
+function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: string; name: string; country: string | null; rank: string; avatar: AvatarConfig; banner?: string; logo?: string }; config: AvatarConfig; visible: boolean }) {
   const group   = useRef<Group>(null)
   const bodyGroup = useRef<Group>(null)
   const camera  = useThree((s) => s.camera)
@@ -161,6 +162,8 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
       characterId: config.characterId,
       status: 'studying',
       isUser: true,
+      banner: p.banner,
+      logo: p.logo,
     })
   }, [p, config, showProfile])
 
@@ -191,6 +194,7 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     l.speed    = t.speed
     l.grounded = t.grounded
     l.seated   = t.seated
+    l.activity = t.seated ? activityOfAccessories(p.avatar.accessories) : undefined
 
     // ---- Distance-based LOD -------------------------------------------------
     _camPos.copy(camera.position)

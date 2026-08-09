@@ -78,11 +78,11 @@ function TemperatureConverter() {
       </Field>
       <div className="conv-row">
         <Field label="From">
-          <Select value={from} onChange={setFrom} options={opts} />
+          <Select value={from} onChange={(v) => setFrom(v as 'C' | 'F' | 'K')} options={opts} />
         </Field>
         <button className="conv-swap" onClick={() => { setFrom(to); setTo(from) }}>⇄</button>
         <Field label="To">
-          <Select value={to} onChange={setTo} options={opts} />
+          <Select value={to} onChange={(v) => setTo(v as 'C' | 'F' | 'K')} options={opts} />
         </Field>
       </div>
       <Result label="Result" value={out ? `${out}°` : '—'} big />

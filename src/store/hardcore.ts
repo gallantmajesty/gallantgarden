@@ -1,13 +1,13 @@
 // Focus Mode enforcement store — Easy / Medium / Hardcore.
 //
 // Three tiers of focus commitment, each with its own XP rate and enforcement:
-//   🟢 Easy     — tab tracking only, no fullscreen, no wager. Split rewards when
-//                 breaks are chosen (each completed segment banks its leaves).
-//   🟡 Medium   — fullscreen required, no wager. Rewards are granted ONLY at the
-//                 end of the session (no per-segment splits).
-//   🔴 Hardcore — fullscreen required + a green-leaf wager (escrow). Rewards +
-//                 wager are granted only on a win. The multiplier scales with
-//                 session length (10× → 14×) and the minimum wager scales too.
+//   Easy     — tab tracking only, no fullscreen, no wager. Split rewards when
+//              breaks are chosen (each completed segment banks its leaves).
+//   Medium   — fullscreen required, no wager. Rewards are granted ONLY at the
+//              end of the session (no per-segment splits).
+//   Hardcore — fullscreen required + a green-leaf wager (escrow). Rewards +
+//              wager are granted only on a win. The multiplier scales with
+//              session length and the minimum wager scales too.
 //
 // Every mode shares a 20-second warning: if you leave the enforced surface
 // (tab for Easy, fullscreen for Medium/Hardcore) and don't return in time, the
@@ -26,12 +26,12 @@ import { getOverride } from '../lib/ownerOverrides'
 
 export type FocusMode = 'easy' | 'medium' | 'hardcore'
 
-/** Base green-leaf rate for the free (Easy) tier — 1.32 leaves/min. */
-export const EASY_RATE = 1.32
-/** Medium tier = 1.7× Easy (fullscreen enforced, end-only credit). */
+/** Base green-leaf rate for the free (Easy) tier — 0.51 leaves/min. */
+export const EASY_RATE = 0.51
+/** Medium tier = fullscreen-enforced, end-only credit. */
 export const MEDIUM_RATE = 2.2
-/** Hardcore anchor = 3× Easy at a 1-hour session (premium-feeling without
- *  flooding the economy — a far cry from the old 10–14×). */
+/** Hardcore anchor at a 1-hour session (premium-feeling without flooding the
+ *  economy). */
 export const HARDCORE_BASE_RATE = 3.96
 /** Anchor multiplier for a 1-hour session, used to normalise length scaling. */
 export const HARDCORE_ANCHOR = 3

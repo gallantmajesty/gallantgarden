@@ -2,20 +2,22 @@
 // split-vs-end rewards, tab + fullscreen enforcement, history & presets.
 //
 // Tier model (see store/hardcore.ts for the enforcement store):
-//   🟢 Easy     — tab tracking only. With breaks the reward is SPLIT (each
-//                 completed segment banks its leaves immediately); no-break
-//                 sessions grant everything at the end. 1.32 leaves/min.
-//   🟡 Medium   — fullscreen enforced. Rewards granted ONLY at the end of the
-//                 session (per-segment segments log analytics but award nothing
-//                 until the finish). 2.64 leaves/min.
-//   🔴 Hardcore — fullscreen + wager enforced by the hardcore store. Per-segment
-//                 segments log analytics only; wager + scaled earnings (10–14×)
-//                 are credited by the hardcore store on a win.
+//   Easy     — tab tracking only, no pressure: leaving the tab simply PAUSES
+//              the timer; coming back resumes it. Nothing is lost. With breaks
+//              the reward is SPLIT (each completed segment banks its leaves
+//              immediately); no-break sessions grant everything at the end.
+//              0.51 leaves/min.
+//   Medium   — fullscreen enforced. Rewards granted ONLY at the end of the
+//              session (per-segment segments log analytics but award nothing
+//              until the finish). 2.2 leaves/min.
+//   Hardcore — fullscreen + wager enforced by the hardcore store. Per-segment
+//              segments log analytics only; wager + scaled earnings are
+//              credited by the hardcore store on a win.
 //
-// A universal 20-second warning applies: leaving the enforced surface (tab for
-// Easy, fullscreen for Medium/Hardcore) starts a 20s countdown — come back in
-// time and the session resumes, miss it and the session fails (Easy keeps
-// already-banked split leaves; Medium/Hardcore lose the unearned reward).
+// A universal 20-second warning applies to Medium/Hardcore: leaving fullscreen
+// starts a 20s countdown — come back in time and the session resumes, miss it
+// and the session fails (the unearned reward is lost). Easy has no such
+// warning: the timer just pauses and resumes freely.
 
 import { create } from 'zustand'
 import { useSettings } from './settings'
@@ -80,16 +82,16 @@ export interface SessionSummary {
   recentSessions: SessionHistoryEntry[]
 }
 
-// Break activity suggestions
+// Break activity suggestions (icon = key rendered as SVG in FocusDomain)
 export const BREAK_ACTIVITIES = [
-  { id: 'stretch', label: 'Stretch', icon: '🧘', duration: 60 },
-  { id: 'walk', label: 'Walk', icon: '🚶', duration: 120 },
-  { id: 'hydrate', label: 'Hydrate', icon: '💧', duration: 30 },
-  { id: 'eyes', label: 'Eye Rest', icon: '👁️', duration: 30 },
-  { id: 'breathe', label: 'Breathe', icon: '🫁', duration: 60 },
-  { id: 'snack', label: 'Snack', icon: '🍎', duration: 60 },
-  { id: 'social', label: 'Chat', icon: '💬', duration: 120 },
-  { id: 'music', label: 'Music', icon: '🎵', duration: 60 },
+  { id: 'stretch', label: 'Stretch', icon: 'stretch', duration: 60 },
+  { id: 'walk', label: 'Walk', icon: 'walk', duration: 120 },
+  { id: 'hydrate', label: 'Hydrate', icon: 'hydrate', duration: 30 },
+  { id: 'eyes', label: 'Eye Rest', icon: 'eyes', duration: 30 },
+  { id: 'breathe', label: 'Breathe', icon: 'breathe', duration: 60 },
+  { id: 'snack', label: 'Snack', icon: 'snack', duration: 60 },
+  { id: 'social', label: 'Chat', icon: 'chat', duration: 120 },
+  { id: 'music', label: 'Music', icon: 'music', duration: 60 },
 ] as const
 
 interface PomodoroState {
@@ -102,6 +104,11 @@ interface PomodoroState {
 
   // Presets
   presets: TimerPreset[]
+
+  // Tabata config
+  tabataRounds: number
+  tabataWorkSec: number
+  tabataRestSec: number
 
   // Runtime
   phase: PomoPhase
@@ -167,8 +174,8 @@ interface PomodoroState {
 // ---- Constants ----
 
 const MINIMUM_SESSION_SEC = 5 * 60    // 5 minutes minimum before any XP
-const TAB_GRACE_SEC = 20              // universal 20-second warning before failure
-const XP_PER_MIN = 1.32               // base leaves per minute (Easy)
+const TAB_GRACE_SEC = 20              // universal 20-second warning before failure (Medium/Hardcore fullscreen)
+const XP_PER_MIN = 0.51               // base leaves per minute (Easy)
 
 // Fixed preset durations — no free custom input keeps the reward tables honest.
 const SESSION_OPTIONS = [20, 40, 60, 90, 120, 180, 240, 300, 360, 420, 480] as const
@@ -183,7 +190,7 @@ export interface FocusSinkOpts {
   /** log focus to analytics. Default true — set false for end-credit calls that
    *  follow per-segment logging so the session isn't double counted. */
   log?: boolean
-  /** per-minute rate override (Medium 2.64 / Easy 1.32). Default = Easy. */
+  /** per-minute rate override (Medium 2.2 / Easy 0.51). Default = Easy. */
   ratePerMin?: number
 }
 
@@ -670,18 +677,19 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
       const now = Date.now()
 
-      // Breaks earn no XP — pause them instantly, no grace needed.
+      // Breaks earn no XP — pause them instantly.
       if (s.phase === 'break') {
         set({ running: false, tabLeftAt: now, tabReturnDeadline: null, tabAlwaysVisible: false })
         return
       }
 
-      // Easy: start the universal 20-second warning. Come back in time and the
-      // session resumes; miss it and the session forfeits (lose unearned leaves).
+      // Easy: leaving the tab just PAUSES the timer. No penalty, no deadline —
+      // the user comes back and the session resumes exactly where it paused,
+      // entirely as they wish. Banked split leaves are never lost.
       set({
         running: false,
         tabLeftAt: now,
-        tabReturnDeadline: now + TAB_GRACE_SEC * 1000,
+        tabReturnDeadline: null,
         tabAlwaysVisible: false,
       })
     },
@@ -697,13 +705,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         return
       }
 
-      // Easy: if the 20s grace already expired, the session is forfeited.
-      if (s.tabReturnDeadline && now > s.tabReturnDeadline) {
-        get().forfeit()
-        return
-      }
-
-      // Still inside the grace window — resume seamlessly.
+      // Easy: resume right where the timer paused (no forfeit, ever).
       if (s.tabLeftAt) {
         set({ running: true, tabLeftAt: null, tabReturnDeadline: null, lastTickAt: Date.now() })
       }
@@ -883,11 +885,4 @@ export {
   computeSegments,
   getBreakDuration,
   getAllBreakDurations,
-  type TimerPreset,
-  type SessionSummary,
-  type SessionHistoryEntry,
-  type TimerType,
-  type PomoPhase,
-  type SegmentReward,
-  type BreakDurations,
 }

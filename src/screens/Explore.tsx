@@ -36,7 +36,7 @@ import { trainStationEnabled, ukCafeEnabled } from '../lib/realm'
 import { roomTheme } from '../lib/roomThemes'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
-import { npcOnlineInRoom, assignNpcSeats, libraryRoomIndex, npcSeatOccupied } from '../lib/npcSystem'
+import { npcOnlineInRoom, assignNpcSeats, libraryRoomIndex } from '../lib/npcSystem'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
@@ -101,25 +101,40 @@ export function Explore({ defaultWorld }: ExploreProps) {
     wasSeated.current = seat != null
   }, [seat])
 
+  // Reset readiness whenever the player returns to the seat picker (stand-up
+  // or unlock). The scene is unmounted during 'selecting' (it would compile
+  // every shader at page entry and freeze the picker), so on re-join it mounts
+  // fresh and MUST wait for the loader again — never reuse the stale flag.
+  useEffect(() => {
+    if (seatFlowStage === 'selecting') setReady(false)
+  }, [seatFlowStage])
+
+  // Delay the scene's first mount by a beat after seat commit so the loader's
+  // first frame ALWAYS paints before the WebGL world mounts. The very first
+  // Canvas render compiles shaders synchronously — if that happens on the same
+  // tick as the commit, the main thread blocks before the loader is ever on
+  // screen, which looks like a hard freeze (and a fresh browser keeps the old
+  // chunks anyway). A 450 ms gap guarantees the loading veil is visible first;
+  // the primer then slices the compile cost across its frames.
+  const [sceneMounted, setSceneMounted] = useState(false)
+  useEffect(() => {
+    if (seatFlowStage === 'selecting') {
+      setSceneMounted(false)
+      return
+    }
+    const t = window.setTimeout(() => setSceneMounted(true), 450)
+    return () => window.clearTimeout(t)
+  }, [seatFlowStage])
+
   // Restore saved seat on tab return (30s expiry). Fresh entries stay in
   // 'selecting' so the seat picker (with occupied seats) always shows before
-  // the player commits to a seat.
-  useEffect(() => {
-    if (isTrain) return
-    const flowSeat = useSeatFlow.getState().selectedSeatId
-    const worldSeat = useWorld.getState().seat
-    if (flowSeat != null && worldSeat == null) {
-      // Never auto-resume into a seat an online NPC permanently owns — the
-      // picker shows it occupied, and the NPC must not be moved for a player.
-      const roomIdx = libraryRoomIndex(useRealm.getState().active?.roomId)
-      if (roomIdx >= 0 && npcSeatOccupied(roomIdx, flowSeat, Date.now(), useSeatFlow.getState().seats.length)) {
-        useSeatFlow.getState().unlock()
-        return
-      }
-      useWorld.getState().sit(flowSeat)
-      useSeatFlow.getState().arrive()
-    }
-  }, [isTrain])
+  // the player commits to a seat. NOTE: the seat is NOT auto-resumed — a saved
+  // seat used to jump straight into 'seated', mounting the heavy WebGL scene at
+  // page load and freezing returning users (the shader-compile storm fired
+  // before the picker/loader ever showed). The picker always comes first; it
+  // shows the saved seat as available/occupied so nothing is lost.
+  // (The reserve-on-hidden logic in useSeatFlow still writes the 30 s expiry —
+  // it's just not honoured for an automatic mount anymore.)
 
   // Keep the display awake while the Cinematic Tour runs, so it plays like a
   // video and the monitor/screen doesn't sleep ("pc get off"). Released on exit
@@ -141,16 +156,19 @@ export function Explore({ defaultWorld }: ExploreProps) {
   }, [cinematic])
 
   // Fallback: if the scene never signals ready (WebGL init failure, asset load
-  // error, etc.), force the veil away after 8 seconds so the user isn't stuck on
-  // a permanent dark screen. The HUD and seat overlay will still work.
+  // error, etc.), force the veil away so the user isn't stuck on a permanent
+  // dark screen. MUST NOT start counting until the loader is actually visible
+  // (seat committed): the seat picker can sit open for minutes, and a fallback
+  // that fires during it would mark the room "ready" before it ever rendered a
+  // frame — the loader would blink out onto a half-compiled scene.
   useEffect(() => {
-    if (ready) return
+    if (ready || seatFlowStage === 'selecting') return
     const t = window.setTimeout(() => {
-      console.warn('[Explore] scene did not signal ready within 8 s — removing veil')
+      console.warn('[Explore] scene did not signal ready — removing veil')
       setReady(true)
-    }, 8000)
+    }, 15_000)
     return () => window.clearTimeout(t)
-  }, [ready])
+  }, [ready, seatFlowStage])
 
   useEffect(() => {
     const t = window.setTimeout(() => setHint(false), 8000)
@@ -260,28 +278,41 @@ export function Explore({ defaultWorld }: ExploreProps) {
       {/* Realm fullscreen enforcement — mobile/tablet only. Desktop is untouched. */}
       <RealmFullscreenGate />
       {/* Room loader — doors stay closed until the scene signals ready.
-          Shows the room name + logo riding the loading bar underneath. */}
+          Shows the room name + logo riding the loading bar underneath.
+          The loader holds for a generous minimum on EVERY entry (first sit or
+          re-seat): the hall is big and needs real time to render stably, and
+          SceneReady only fires once the world has actually rendered for a
+          while — the doors never open onto a janky scene.
+
+          The scene itself only MOUNTS after the seat is committed (not while
+          the picker is open): mounting the WebGL world at page entry would
+          compile every shader synchronously on the first frame and freeze the
+          seat picker for seconds. Deferred to the Join click, that cost lands
+          under the loader, where SceneReady's progressive primer slices the
+          compile stalls across frames instead. */}
       <RoomLoader
         ready={ready}
         roomName={realm?.name ?? (isTrain ? 'Train Station' : isUkCafe ? 'UK Café' : 'The Great Library')}
         accent={isUkCafe || isTrain ? undefined : roomTheme(realm?.roomId).accent}
-        minDuration={2000}
+        minDuration={6000}
         show={seatFlowStage !== 'selecting'}
       >
-        {isTrain ? (
-          <TrainStationScene onReady={() => setReady(true)} />
-        ) : isUkCafe ? (
-          <LibraryScene
-            onReady={() => setReady(true)}
-            roomId={undefined}
-          />
-        ) : (
-          <LibraryScene
-            onReady={() => setReady(true)}
-            roomId={realm?.roomId}
-          />
-        )}
-</RoomLoader>
+        {isTrain || (sceneMounted && seatFlowStage !== 'selecting') ? (
+          isTrain ? (
+            <TrainStationScene onReady={() => setReady(true)} />
+          ) : isUkCafe ? (
+            <LibraryScene
+              onReady={() => setReady(true)}
+              roomId={undefined}
+            />
+          ) : (
+            <LibraryScene
+              onReady={() => setReady(true)}
+              roomId={realm?.roomId}
+            />
+          )
+        ) : null}
+      </RoomLoader>
       <PomodoroTicker />
       {!cinematic && <RealmConnection />}
 
@@ -575,9 +606,9 @@ function RealmConnection() {
   // push identity/cosmetic changes live while in-realm
   useEffect(() => {
     if (!roomKey) return
-    updateIdentity({ id, name, country: country ?? null, rank: rank || '', avatar })
+    updateIdentity({ id, name, country: country ?? null, rank: rank || '', avatar, banner, logo })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avatar, name, country, rank])
+  }, [avatar, name, country, rank, banner, logo])
 
   return null
 }
@@ -600,6 +631,7 @@ function RoomRoster() {
   const roster = useRealmNet((s) => s.roster)
   const [open, setOpen] = useState(true)
   const [profileTarget, setProfileTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string } | null>(null)
+  const [cardTarget, setCardTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string; banner?: string; logo?: string } | null>(null)
 
   if (!realm) return null
 
@@ -638,7 +670,7 @@ function RoomRoster() {
             <div
               key={id}
               className="room-roster-card clickable"
-              onClick={() => setProfileTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank })}
+              onClick={() => setCardTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank, banner: entry.banner, logo: entry.logo })}
             >
               <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
               <div className="roster-card-content">
@@ -669,6 +701,24 @@ function RoomRoster() {
             </div>
           </div>
         </div>
+      )}
+      {cardTarget && (
+        <NpcProfileCard
+          profile={{
+            name: cardTarget.name,
+            rank: cardTarget.rank,
+            country: cardTarget.country,
+            status: 'studying',
+            isUser: true,
+            banner: cardTarget.banner,
+            logo: cardTarget.logo,
+          }}
+          onClose={() => setCardTarget(null)}
+          onMoreInfo={() => {
+            setCardTarget(null)
+            setProfileTarget({ name: cardTarget.name, playerId: cardTarget.playerId, country: cardTarget.country, rank: cardTarget.rank })
+          }}
+        />
       )}
     </div>
   )
@@ -1085,8 +1135,17 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
           <div className="pomo-center">
             {phase === 'idle' ? (
               <Icon name="play" size={18} />
+            ) : phase === 'break' ? (
+              <svg className="pomo-phase-glyph" viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="#7fb3d5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 2v3" />
+                <path d="M12 5a5.5 5.5 0 0 1 5.5 5.5c0 3-2.5 4.5-2.5 7h-6c0-2.5-2.5-4-2.5-7A5.5 5.5 0 0 1 12 5z" />
+                <path d="M9.5 21h5" />
+              </svg>
             ) : (
-              <span className="pomo-time">{hh}:{mm}:{ss}</span>
+              <svg className="pomo-phase-glyph" viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="#34d399" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 20C4 11 9 4 20 4c0 11-7 16-16 16z" />
+                <path d="M4 20c4-6 8-10 13-13" />
+              </svg>
             )}
           </div>
         </div>

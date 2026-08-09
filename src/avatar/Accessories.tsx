@@ -384,6 +384,20 @@ function scratchRoughnessTex(): CanvasTexture {
 
 const laptopMatCache = new Map<string, any>()
 
+// Process-wide cache for the other constant accessory materials (books, flower
+// pot, hourglass, dining table). Same contract as laptopMatCache — the textures
+// they reference come from module-cached factories, so one instance per key
+// serves every render instead of leaking a fresh material per accessory.
+const accMatCache = new Map<string, MeshStandardMaterial>()
+function accMat(key: string, make: () => MeshStandardMaterial): MeshStandardMaterial {
+  let m = accMatCache.get(key)
+  if (!m) {
+    m = make()
+    accMatCache.set(key, m)
+  }
+  return m
+}
+
 // Screen-curvature vignette - radial darkening toward the panel corners so
 // the glass reads as slightly curved instead of a flat decal.
 function screenVignetteTex(): CanvasTexture {
@@ -1170,25 +1184,26 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
     const aluminumDeck = pm('#c8d0d8', 0.3, 0.85, 1) // lighter palm rest area
     const keyCapMat = m('#1a1a1c', 0.75, 0.08) // matte black keycaps
     // Brushed-anodized body — procedural grain + smudges so the chassis reads
-    // as machined metal, not flat dark grey.
-    const shell = isGaming ? brushedMetalMaterial('#16161c', 0.32, 0.72, 6, 3) : aluminumBody
-    const palmRest = isGaming ? brushedMetalMaterial('#17171d', 0.36, 0.66, 6, 2) : aluminumDeck
+    // as machined metal, not flat dark grey. Matte, low-shine: the gaming
+    // machine must not glare like a mirror (metalness ~0.25, rough ~0.8).
+    const shell = isGaming ? brushedMetalMaterial('#16161c', 0.82, 0.28, 6, 3) : aluminumBody
+    const palmRest = isGaming ? brushedMetalMaterial('#17171d', 0.82, 0.25, 6, 2) : aluminumDeck
     const keyMat = !isGaming ? keyCapMat : null
 
     // Real gaming palette: near-black body (#0a0a0f), gunmetal edges (#2a2a2a),
     // matte black keys (#1c1c1c) with cyan/magenta per-key RGB backlight.
-    const DARK_BODY = m('#0a0a0f', 0.35, 0.6)
-    const GUNMETAL = m('#2a2a2a', 0.4, 0.7)
+    const DARK_BODY = m('#0a0a0f', 0.8, 0.25)
+    const GUNMETAL = m('#2a2a2a', 0.85, 0.3)
     const KEY_MATTE = m('#1c1c1c', 0.85, 0.05)
-    const RGB_CYAN = glowMaterial('#00ffff', 1.4)
-    const RGB_MAGENTA = glowMaterial('#ff00ff', 1.4)
-    const RGB_BLUE = glowMaterial('#4466ff', 1.1)
+    const RGB_CYAN = glowMaterial('#00ffff', 0.7)
+    const RGB_MAGENTA = glowMaterial('#ff00ff', 0.7)
+    const RGB_BLUE = glowMaterial('#4466ff', 0.6)
     const RGB_WAVE = [RGB_CYAN, RGB_MAGENTA, RGB_BLUE]
 
     const screenBg = glowMaterial('#0a0c12', 0.35) // self-lit OLED panel glow
-    const screenGloss = m('#0a0d14', 0.32, 0.12) // glossy-but-not-mirror screen surface
+    const screenGloss = m('#0a0d14', 0.5, 0.1) // matte-ish screen surface — low glare
     const bezelMat = m('#1a1a1c', 0.8, 0.15) // thin black bezel
-    const logo = isGaming ? glowMaterial('#00e5ff', 1.6) : m('#a8b0b8', 0.25, 0.85)
+    const logo = isGaming ? glowMaterial('#00e5ff', 0.85) : m('#a8b0b8', 0.25, 0.85)
 
     // Glass layer: clearcoat + micro-scratch roughness so the screen catches
     // Fresnel-style reflections instead of reading as a flat decal.
@@ -1299,14 +1314,14 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
           const hot = 1.05 + ((c * 31 + r * 17) % 7) * 0.13
           const keyUnderGlow = isWASD
             ? RGB_MAGENTA
-            : glowMaterial(['#00ffff', '#ff00ff', '#4466ff'][(c + r * 2) % 3], 1.1 + hot)
+            : glowMaterial(['#00ffff', '#ff00ff', '#4466ff'][(c + r * 2) % 3], 0.55 + hot * 0.12)
           if (isSpace) {
             keys.push(
               <group key={`gsp${r}`} position={[kx, keyY, kz]}>
                 <mesh geometry={boxGeo(kw, capH, capD)} material={KEY_MATTE} castShadow />
                 <mesh geometry={boxGeo(kw * 0.94, capH * 0.4, capD * 0.92)} material={m('#2a2a2e', 0.7, 0.05)} position={[0, capH / 2 + 0.0005, 0]} />
                 <mesh geometry={boxGeo(kw * 0.86, capH * 0.22, capD * 0.82)} material={keyDishMat} position={[0, capH / 2 + 0.0009, 0]} />
-                <mesh geometry={boxGeo(kw - 0.001, 0.0025, capD - 0.001)} material={glowMaterial('#00ffff', 1.1 + hot)} position={[0, -capH / 2 - 0.0008, 0]} />
+                <mesh geometry={boxGeo(kw - 0.001, 0.0025, capD - 0.001)} material={glowMaterial('#00ffff', 0.55 + hot * 0.12)} position={[0, -capH / 2 - 0.0008, 0]} />
               </group>,
             )
             return
@@ -1446,13 +1461,13 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
     const wallAnimMat = laptopMaterial('gaming-wall-anim', () => {
       const mat = new MeshStandardMaterial({ color: '#05060c', roughness: 0.9 })
       mat.emissive.set('#0d1020')
-      mat.emissiveIntensity = 1.4
+      mat.emissiveIntensity = 1.0
       return mat
     })
     const wallAccentMat = laptopMaterial('gaming-wall-accent', () => {
       const mat = new MeshStandardMaterial({ color: '#07080f', roughness: 0.9 })
       mat.emissive.set('#151a30')
-      mat.emissiveIntensity = 1.2
+      mat.emissiveIntensity = 0.85
       return mat
     })
     const scanMat = laptopMaterial('gaming-scan', () =>
@@ -2014,31 +2029,28 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
       // V, with a real page block rising from the gutter, a printed/illustrated
       // spread, a tooled leather spine, gilt metal furniture (corner bosses, a
       // working clasp, spine bands), marbled endpapers and a hanging ribbon.
-      const leather = leatherBoard()
-      const fore = foreEdge()
-      const goldT = brushedGold()
       const fibre = paperFibre()
-      const marble = marbledPaper()
-      const band = headBand()
 
-      const leatherMat = new MeshStandardMaterial({
+      const leatherMat = accMat('book-leather', () => new MeshStandardMaterial({
         color: '#7a3b22',
-        map: leather.map,
-        normalMap: leather.normal,
-        roughnessMap: leather.rough,
+        map: leatherBoard().map,
+        normalMap: leatherBoard().normal,
+        roughnessMap: leatherBoard().rough,
         roughness: 0.78,
         metalness: 0,
-      })
-      const goldMat = new MeshStandardMaterial({
+      }))
+      const goldMat = accMat('book-gold', () => new MeshStandardMaterial({
         color: '#caa24a',
-        map: goldT.map,
-        normalMap: goldT.normal,
-        roughnessMap: goldT.rough,
+        map: brushedGold().map,
+        normalMap: brushedGold().normal,
+        roughnessMap: brushedGold().rough,
         roughness: 0.32,
         metalness: 1,
-      })
-      const ribbonMat = new MeshStandardMaterial({ color: '#9c2b22', roughness: 0.55, metalness: 0.05, side: DoubleSide })
-      const endpaperMat = new MeshStandardMaterial({ map: marble, roughness: 0.7, metalness: 0 })
+      }))
+      const ribbonMat = accMat('book-ribbon', () => new MeshStandardMaterial({ color: '#9c2b22', roughness: 0.55, metalness: 0.05, side: DoubleSide }))
+      const endpaperMat = accMat('book-endpaper', () => new MeshStandardMaterial({ map: marbledPaper(), roughness: 0.7, metalness: 0 }))
+      const pageBlockMat = accMat('book-page-block', () => new MeshStandardMaterial({ color: '#efe6cf', map: foreEdge().map, normalMap: foreEdge().normal, roughness: 0.9, metalness: 0 }))
+      const headbandMat = accMat('book-headband', () => new MeshStandardMaterial({ map: headBand(), roughness: 0.6, metalness: 0.1 }))
 
       // book metrics (metres)
       const coverW = 0.24 // half-book = one board
@@ -2137,7 +2149,7 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
           <mesh geometry={boxGeo(coverW - 0.012, 0.003, 0.006)} material={goldMat} position={[coverW / 2, baseY + boardThick + 0.004, coverD / 2 - 0.02]} />
           <mesh geometry={boxGeo(coverW - 0.012, 0.003, 0.006)} material={goldMat} position={[coverW / 2, baseY + boardThick + 0.004, -coverD / 2 + 0.02]} />
           {/* page block */}
-          <mesh geometry={pageGeo} material={new MeshStandardMaterial({ color: '#efe6cf', map: fore.map, normalMap: fore.normal, roughness: 0.9, metalness: 0 })} castShadow receiveShadow />
+          <mesh geometry={pageGeo} material={pageBlockMat} castShadow receiveShadow />
           {/* printed spread */}
           <mesh geometry={printGeo}>
             <meshStandardMaterial map={pageTex('right')} normalMap={fibre} normalScale={[0.4, 0.4] as any} roughness={0.92} metalness={0} />
@@ -2152,7 +2164,7 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
           <mesh geometry={boxGeo(coverW - 0.03, 0.002, coverD - 0.03)} material={endpaperMat} position={[coverW / 2, baseY + boardThick + 0.003, 0]} />
           <mesh geometry={boxGeo(coverW - 0.012, 0.003, 0.006)} material={goldMat} position={[coverW / 2, baseY + boardThick + 0.004, coverD / 2 - 0.02]} />
           <mesh geometry={boxGeo(coverW - 0.012, 0.003, 0.006)} material={goldMat} position={[coverW / 2, baseY + boardThick + 0.004, -coverD / 2 + 0.02]} />
-          <mesh geometry={pageGeo} material={new MeshStandardMaterial({ color: '#efe6cf', map: fore.map, normalMap: fore.normal, roughness: 0.9, metalness: 0 })} castShadow receiveShadow />
+          <mesh geometry={pageGeo} material={pageBlockMat} castShadow receiveShadow />
           <mesh geometry={printGeo}>
             <meshStandardMaterial map={pageTex('left')} normalMap={fibre} normalScale={[0.4, 0.4] as any} roughness={0.92} metalness={0} />
           </mesh>
@@ -2187,7 +2199,7 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
 
       // headbands at the spine ends (striped, sitting in the gutter)
       const headbands = [-1, 1].map((s) => (
-        <mesh key={`hb${s}`} geometry={cylinderGeo(0.008, 0.008, gutW * 2 + 0.01)} material={new MeshStandardMaterial({ map: band, roughness: 0.6, metalness: 0.1 })} rotation={[0, 0, Math.PI / 2]} position={[0, 0.013, s * (coverD / 2 - 0.006)]} />
+        <mesh key={`hb${s}`} geometry={cylinderGeo(0.008, 0.008, gutW * 2 + 0.01)} material={headbandMat} rotation={[0, 0, Math.PI / 2]} position={[0, 0.013, s * (coverD / 2 - 0.006)]} />
       ))
 
       // ribbon bookmark — rises from the gutter, drapes over the right page and
@@ -2652,7 +2664,7 @@ case 'trading_laptop': {
       const potDark = tm('#a85530', 0.4, 0, 'ceramic')
       const rimMat = tm('#d4794f', 0.3, 0, 'ceramic')
       const saucerMat = tm('#bd653c', 0.38, 0, 'ceramic')
-      const soilMat = new MeshStandardMaterial({ color: '#2a1a10', roughness: 0.95, metalness: 0, bumpMap: sandGrainTex(), bumpScale: 0.02 })
+      const soilMat = accMat('pot-soil', () => new MeshStandardMaterial({ color: '#2a1a10', roughness: 0.95, metalness: 0, bumpMap: sandGrainTex(), bumpScale: 0.02 }))
       const stemMat = m('#3e7d34', 0.5)
       const leafMat = m('#4caf50', 0.5)
       const veinMat = m('#2e6e2f', 0.5)
@@ -2762,9 +2774,8 @@ case 'trading_laptop': {
       const walnutDark = tm('#4a3319', 0.65, 0, 'wood')
       const brass = m('#b87333', 0.38, 0.65)
       const brassCap = m('#caa24a', 0.32, 0.65)
-      const grain = sandGrainTex()
-      const sandMat = new MeshStandardMaterial({ color: '#e6c687', roughness: 0.95, metalness: 0, bumpMap: grain, bumpScale: 0.016 })
-      const moundMat = new MeshStandardMaterial({ color: '#e0b878', roughness: 0.95, metalness: 0, bumpMap: grain, bumpScale: 0.014 })
+      const sandMat = accMat('glass-sand', () => new MeshStandardMaterial({ color: '#e6c687', roughness: 0.95, metalness: 0, bumpMap: sandGrainTex(), bumpScale: 0.016 }))
+      const moundMat = accMat('glass-mound', () => new MeshStandardMaterial({ color: '#e0b878', roughness: 0.95, metalness: 0, bumpMap: sandGrainTex(), bumpScale: 0.014 }))
       // real glass: PBR transmission (refraction + thickness + ior) instead of
       // a flat tinted shell — one transmissive shell per bulb, faint blue tint
       const glass = new MeshPhysicalMaterial({
@@ -3345,18 +3356,21 @@ case 'book_stack': {
 export function BigDiningTable({ accessory }: { accessory?: string }) {
   const R = 1.18
   const H = 0.92
-  const oak = oakWood()
-  const oakTop = new MeshStandardMaterial({
-    color: '#caa069',
-    map: oak.map,
-    normalMap: oak.normal,
-    roughnessMap: oak.rough,
-    roughness: 0.7,
-    metalness: 0,
+  const oakTop = accMat('table-oak-top', () => {
+    const oak = oakWood()
+    const m = new MeshStandardMaterial({
+      color: '#caa069',
+      map: oak.map,
+      normalMap: oak.normal,
+      roughnessMap: oak.rough,
+      roughness: 0.7,
+      metalness: 0,
+    })
+    m.map!.repeat.set(7, 7)
+    m.normalMap!.repeat.set(7, 7)
+    m.roughnessMap!.repeat.set(7, 7)
+    return m
   })
-  oakTop.map!.repeat.set(7, 7)
-  oakTop.normalMap!.repeat.set(7, 7)
-  oakTop.roughnessMap!.repeat.set(7, 7)
   const woodDark = tm('#4f3621', 0.65, 0, 'wood', 3, 1)
   const dust = dustDecals()
   const top = accessory ? <group position={[0, H + 0.03, 0]} scale={1.5}><AccessoryModel id={accessory as AccessoryId} /></group> : null

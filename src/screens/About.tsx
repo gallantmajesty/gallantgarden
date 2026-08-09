@@ -13,7 +13,7 @@ function Reveal({
   delay = 0,
   as: Tag = 'div',
 }: {
-  children: ReactNode
+  children?: ReactNode
   className?: string
   delay?: number
   as?: any
@@ -64,7 +64,7 @@ function BloomLily() {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
         const r = el.getBoundingClientRect()
-        const vh = scroller === window ? window.innerHeight : scroller.clientHeight
+        const vh = scroller === window ? window.innerHeight : (scroller as HTMLElement).clientHeight
         const travel = r.height + vh * 0.7
         const p = Math.min(1, Math.max(0, (vh * 0.85 - r.top) / travel))
         setBloom(p)

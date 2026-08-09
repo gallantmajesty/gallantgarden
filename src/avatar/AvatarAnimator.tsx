@@ -11,7 +11,9 @@ import {
   landPose,
   locomotionPose,
   sitPose,
-  deskSitPose,
+  laptopPose,
+  phonePose,
+  bookPose,
   wavePose,
   type Locomotion,
   type Pose,
@@ -147,7 +149,17 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
     else if (preview === 'sit') pose = sitPose(t)
     else if (preview === 'jump') pose = airPose(Math.sin(t * 2) * 3)
     else if (preview === 'idle') pose = allowIdleMicro ? idlePose(t) : {}
-    else if (loco.seated) pose = deskSitPose(t) // auto, seated in-world — hands forward on the desk
+    else if (loco.seated) {
+      // Seated in-world: pose follows WHAT the scholar is doing at the desk —
+      // laptop (hands on the machine), phone (bent over it), book (held up),
+      // anything else = relaxed lap sit, doing nothing.
+      const act = loco.activity ?? 'idle'
+      pose =
+        act === 'laptop' ? laptopPose(t)
+        : act === 'phone' ? phonePose(t)
+        : act === 'book' ? bookPose(t)
+        : sitPose(t)
+    }
     else if (!loco.grounded) pose = airPose(loco.vy) // auto, airborne
     else if (land.current > 0.02) pose = landPose(land.current)
     else if (g > 0.06) pose = locomotionPose(phase, Math.max(1, g)) // walking/running
@@ -207,6 +219,15 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
     if (skirt) {
       const targetSkirt = loco.seated ? -1.0 : 0
       skirt.rotation.x += (targetSkirt - skirt.rotation.x) * k
+    }
+
+    // ---- elephant robe skirt: same drape rule, tipped a touch further since
+    //      the full-length robe reaches the ankles and must lie over the lap
+    //      (on the chair seat) instead of hanging through the seat. ----
+    const robe = handle.robeSkirt
+    if (robe) {
+      const targetRobe = loco.seated ? -1.15 : 0
+      robe.rotation.x += (targetRobe - robe.rotation.x) * k
     }
 
     // ---- blink (skip when far/culled) ----

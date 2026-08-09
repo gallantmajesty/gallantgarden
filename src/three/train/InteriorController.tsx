@@ -218,7 +218,7 @@ export function InteriorController() {
     }
 
     // Broadcast standing presence.
-    setLocalState({ x: st.x, y: 0, z: st.z, yaw: v.yaw, speed: moving ? AISLE_WALK_SPEED : 0, grounded: true, seated: false })
+    setLocalState({ x: st.x, y: 0, z: st.z, yaw: v.yaw, speed: moving ? AISLE_WALK_SPEED : 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' })
   }
 
   // ── seated mode camera update ─────────────────────────────────────────
@@ -311,7 +311,7 @@ export function InteriorController() {
     nearestSeatRef.current = null
 
     // Broadcast seated presence.
-    setLocalState({ x: sx, y: sy, z: sz, yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true })
+    setLocalState({ x: sx, y: sy, z: sz, yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' })
   }
 
   // ── per-frame: standing OR seated ──────────────────────────────────────

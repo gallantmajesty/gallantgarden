@@ -25,6 +25,27 @@ export interface Locomotion {
   /** Optional active emote (hotkey 1=wave, 2=happy, 3=celebrate, 4=sit).
    *  When set, the animator forces the matching pose and ignores normal locomotion. */
   emote?: 'wave' | 'happy' | 'celebrate' | 'sit'
+  /** Seated activity — picks WHICH seated pose to play (what the scholar is
+   *  doing at the desk): laptop (hands on the machine), phone (bent over it),
+   *  book (holding it up), or idle (relaxed, doing nothing). Set by the drivers
+   *  (PlayerController / NpcPlayers / RemotePlayers) from the equipped accessory. */
+  activity?: 'laptop' | 'phone' | 'book' | 'idle'
+}
+
+/**
+ * Map an equipped accessory to the seated activity pose.
+ *   laptop kinds      → 'laptop'  (hands on the machine, typing)
+ *   phone             → 'phone'   (body bent toward the phone)
+ *   book              → 'book'    (holding the open book up)
+ *   everything else   → 'idle'    (book stacks, mugs, plants… sitting idly)
+ */
+export function activityOfAccessories(accessories?: string[] | null): 'laptop' | 'phone' | 'book' | 'idle' {
+  const a = accessories?.[0]
+  if (!a) return 'idle'
+  if (a === 'phone') return 'phone'
+  if (a === 'book') return 'book'
+  if (a === 'laptop' || a === 'gaming_laptop' || a === 'trading_laptop' || a === 'trading_desktop_3side') return 'laptop'
+  return 'idle'
 }
 
 // Reference walk speed matching PlayerController (WALK 4.6). gaitSpeed is a
@@ -287,5 +308,74 @@ export function deskSitPose(t: number): Pose {
     armUpperR: { x: -0.2, z: 0.05 },
     armLowerL: { x: -1.4, z: 0.08 },
     armLowerR: { x: -1.4, z: -0.08 },
+  }
+}
+
+/** Seated AT A LAPTOP: torso leans forward over the machine, both forearms
+ *  reach forward so the hands rest ON the laptop / desktop (typing posture). */
+export function laptopPose(t: number): Pose {
+  const breath = Math.sin(t * 1.2)
+  return {
+    hips: { x: 0.02 },
+    spine: { x: 0.03 },
+    chest: { x: 0.06 + breath * 0.012 },
+    neck: { x: 0.05 },
+    head: { x: 0.07, y: breath * 0.025 },
+    legUpperL: { x: -1.48, z: 0.05 },
+    legUpperR: { x: -1.48, z: -0.05 },
+    legLowerL: { x: 1.55 },
+    legLowerR: { x: 1.55 },
+    footL: { x: 0.18 },
+    footR: { x: 0.18 },
+    armUpperL: { x: -0.32, z: -0.05 },
+    armUpperR: { x: -0.32, z: 0.05 },
+    armLowerL: { x: -1.3, z: 0.08 },
+    armLowerR: { x: -1.3, z: -0.08 },
+  }
+}
+
+/** Seated ON THE PHONE: body bends DOWN toward the phone held between the
+ *  hands near the lap — elbows slightly out, head tipped forward. */
+export function phonePose(t: number): Pose {
+  const breath = Math.sin(t * 1.2)
+  return {
+    hips: { x: 0.1 },
+    spine: { x: 0.12 },
+    chest: { x: 0.14 + breath * 0.01 },
+    neck: { x: 0.2 },
+    head: { x: 0.24, y: breath * 0.02 },
+    legUpperL: { x: -1.48, z: 0.05 },
+    legUpperR: { x: -1.48, z: -0.05 },
+    legLowerL: { x: 1.55 },
+    legLowerR: { x: 1.55 },
+    footL: { x: 0.18 },
+    footR: { x: 0.18 },
+    armUpperL: { x: -0.28, z: -0.16 },
+    armUpperR: { x: -0.28, z: 0.16 },
+    armLowerL: { x: -0.85, z: 0.18 },
+    armLowerR: { x: -0.85, z: -0.18 },
+  }
+}
+
+/** Seated READING A BOOK: upper arms swing up and forearms bend in so both
+ *  hands hold the open book at chest height, head tipped slightly down. */
+export function bookPose(t: number): Pose {
+  const breath = Math.sin(t * 1.1)
+  return {
+    hips: { x: 0.02 },
+    spine: { x: 0.02 },
+    chest: { x: 0.04 + breath * 0.01 },
+    neck: { x: 0.06 },
+    head: { x: 0.05, y: breath * 0.02 },
+    legUpperL: { x: -1.48, z: 0.05 },
+    legUpperR: { x: -1.48, z: -0.05 },
+    legLowerL: { x: 1.55 },
+    legLowerR: { x: 1.55 },
+    footL: { x: 0.18 },
+    footR: { x: 0.18 },
+    armUpperL: { x: -0.85, z: -0.18 },
+    armUpperR: { x: -0.85, z: 0.18 },
+    armLowerL: { x: -0.75, z: 0.18 },
+    armLowerR: { x: -0.75, z: -0.18 },
   }
 }

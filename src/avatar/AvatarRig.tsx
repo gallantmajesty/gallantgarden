@@ -8,6 +8,7 @@ circleGeo,
 coneGeo,
 taperGeo,
 torusGeo,
+torusArcGeo,
   latheGeo,
   torsoGeo,
   skirtGeo,
@@ -34,9 +35,24 @@ export interface AvatarRigHandle {
   lids: Group | null
   root: Group | null
   skirt: Group | null
+  robeSkirt: Group | null
 }
 
 type Mat = MeshStandardMaterial
+
+// Process-wide cache for the few rig materials that need special flags
+// (side/transparent/etc.) beyond sharedMaterial's colour+roughness+metalness
+// key. Constant colors, so one instance serves every avatar — same contract as
+// sharedMaterial, and it keeps re-renders from allocating fresh materials.
+const rigMatCache = new Map<string, Mat>()
+function rigMat(key: string, make: () => Mat): Mat {
+  let m = rigMatCache.get(key)
+  if (!m) {
+    m = make()
+    rigMatCache.set(key, m)
+  }
+  return m
+}
 type V3 = [number, number, number]
 
 /** Elephant chibi squash — shorter stubby limbs so the big head dominates the
@@ -64,17 +80,17 @@ export function AvatarRig({
   const rootRef = useRef<Group>(null)
   const lidsRef = useRef<Group>(null)
   const skirtRef = useRef<Group>(null)
+  // Robe skirt group ref — the elephant's full-length robe skirt. Kept so the
+  // animator can drape it forward over the thighs while seated (see
+  // AvatarAnimator), instead of hanging straight through the chair seat.
+  const robeSkirtRef = useRef<Group>(null)
   const bones = useMemo<BoneMap>(() => ({}), [])
 
-  useImperativeHandle(ref, () => ({ bones, lids: lidsRef.current, root: rootRef.current, skirt: skirtRef.current }), [bones])
+  useImperativeHandle(ref, () => ({ bones, lids: lidsRef.current, root: rootRef.current, skirt: skirtRef.current, robeSkirt: robeSkirtRef.current }), [bones])
 
   const P = proportionsForCharacter(config.characterId, config.bodyType)
   const torsoShape = torsoShapeFor(config.characterId)
   const s = heightScale(config.height)
-
-  // Robe skirt group ref — kept so future walk-cycle cloth animation can hook
-  // into it; the robe hangs naturally (no artificial idle sway).
-  const robeSkirtRef = useRef<Group>(null)
 
   // Dino costume: a cute blue mascot on the exact same skeleton/height — the whole
   // body is recoloured blue and dino features (snout head, back plates, tail) are
@@ -98,10 +114,10 @@ export function AvatarRig({
   const robotMetal = sharedMaterial('#3a3d44', 0.3, 0.95)
   const robotJoint = sharedMaterial('#23262b', 0.25, 1.0)
   const glowBlue = glowMaterial('#2fa8ff', 3.0)
-  const robotGlowMat = useMemo(() => new MeshStandardMaterial({
+  const robotGlowMat = rigMat('robot-glow', () => new MeshStandardMaterial({
     color: '#2fa8ff', emissive: '#2fa8ff', emissiveIntensity: 2.5,
     roughness: 0.15, metalness: 0.6,
-  }), [])
+  }))
 
   // Alien: a friendly green extraterrestrial — green skin, big black eyes,
   // antennae and a dark jumpsuit. No human face/hair/shoes.
@@ -122,8 +138,8 @@ export function AvatarRig({
   // gold trim, feathered wings, a glowing golden halo and soft blue eyes.
   // No human hair/hat (costume path), but keeps a serene human-style face.
   const isAngel = config.characterId === 'angel'
-  const angelRobe = useMemo(() => new MeshStandardMaterial({ color: '#f6f1e6', roughness: 0.85, side: 2 }), [])
-  const angelRobeShade = useMemo(() => new MeshStandardMaterial({ color: '#e6dcc6', roughness: 0.85, side: 2 }), [])
+  const angelRobe = rigMat('angel-robe', () => new MeshStandardMaterial({ color: '#f6f1e6', roughness: 0.85, side: 2 }))
+  const angelRobeShade = rigMat('angel-robe-shade', () => new MeshStandardMaterial({ color: '#e6dcc6', roughness: 0.85, side: 2 }))
   const angelSkin = skinMaterial('#f3e6d8')
   const angelGold = sharedMaterial('#e8c878', 0.4, 0.45)
   const glowGold = glowMaterial('#ffe9a8', 2.6)
@@ -132,7 +148,7 @@ export function AvatarRig({
   const angelWingEdge = sharedMaterial('#d8cdb2', 0.7)
   const angelHair = sharedMaterial('#f4e3a8', 0.5)
   const angelHairShade = sharedMaterial('#e6cf86', 0.55)
-  const angelChest = useMemo(() => new MeshStandardMaterial({ color: '#efe6cf', roughness: 0.82, side: 2 }), [])
+  const angelChest = rigMat('angel-chest', () => new MeshStandardMaterial({ color: '#efe6cf', roughness: 0.82, side: 2 }))
   const angelSash = sharedMaterial('#e8c878', 0.4, 0.45)
 
   // Hacker: a fully-clothed, masked cyber operator on the same skeleton. The
@@ -148,7 +164,7 @@ export function AvatarRig({
   const sfYellowDark = sharedMaterial('#e8b800', 0.55)
   const sfBrown = sharedMaterial('#8c6c30', 0.72)
   const sfGreen = sharedMaterial('#5caa3a', 0.65)
-  const sfSkirt = new MeshStandardMaterial({ color: '#f0b53c', roughness: 0.7, metalness: 0, flatShading: false, side: DoubleSide })
+  const sfSkirt = rigMat('sf-skirt', () => new MeshStandardMaterial({ color: '#f0b53c', roughness: 0.7, metalness: 0, flatShading: false, side: DoubleSide }))
   const sfSeed = sharedMaterial('#603813', 0.6)
   const sfPetalEdge = sharedMaterial('#ffe680', 0.5)
 
@@ -188,8 +204,8 @@ export function AvatarRig({
   const elNavy = sharedMaterial('#1B2B5A', 0.82)
   const elTrim = sharedMaterial('#F2C14E', 0.2, 0.9)
   const elGlasses = sharedMaterial('#2a2f3a', 0.16, 0.92)
-  const elGlassLens = new MeshStandardMaterial({ color: '#e8eef8', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.25, depthWrite: false })
-  const elCrease = new MeshStandardMaterial({ color: '#5f6a76', roughness: 0.9, transparent: true, opacity: 0.35, depthWrite: false })
+  const elGlassLens = rigMat('el-glass-lens', () => new MeshStandardMaterial({ color: '#e8eef8', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.25, depthWrite: false }))
+  const elCrease = rigMat('el-crease', () => new MeshStandardMaterial({ color: '#5f6a76', roughness: 0.9, transparent: true, opacity: 0.35, depthWrite: false }))
   const elGlowGold = glowMaterial('#ffd766', 1.0)
 
   // Monkey: a playful brown monkey — warm brown fur, lighter tan face/belly,
@@ -200,7 +216,7 @@ export function AvatarRig({
   monkeyFur.bumpScale = 0.45
   monkeyFur.needsUpdate = true
   const monkeyFace = sharedMaterial('#F5D6B4', 0.68)
-  const monkeyFaceMask = new MeshStandardMaterial({ color: '#F5D6B4', roughness: 0.68, depthWrite: false, depthTest: true })
+  const monkeyFaceMask = rigMat('monkey-face-mask', () => new MeshStandardMaterial({ color: '#F5D6B4', roughness: 0.68, depthWrite: false, depthTest: true }))
   const monkeyDark = sharedMaterial('#5C3A21', 0.6)
   const monkeyBelly = sharedMaterial('#F0D5B8', 0.7)
   const monkeyEarInner = sharedMaterial('#E8C4A0', 0.65)
@@ -2725,6 +2741,7 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
    const lower: BoneName = side === 'L' ? 'legLowerL' : 'legLowerR'
    const foot: BoneName = side === 'L' ? 'footL' : 'footR'
    const isDino = config.characterId === 'dino'
+   const isRabbit = config.characterId === 'rabbit'
    const calfMat = config.bottom === 'shorts' ? skin : botM
    const legMat = config.top === 'frock' ? skin : botM
 
@@ -2838,8 +2855,8 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
           </group>
         )}
         <group ref={bind(foot)} position={[0, -P.lowerLeg * (isPanda ? pLegY : eLegY) - P.ankleR * 0.4, 0]}>
-          {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien + robot (robot has its own boot) */}
-          {!isAlien && !isRobot && (
+          {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien + robot (robot has its own boot); dino + rabbit build their own custom feet below */}
+          {!isAlien && !isRobot && !isDino && !isRabbit && (
             <mesh geometry={sphereGeo(1)} material={showShoes && !isHacker ? shoeM : skin}
               scale={Array(3).fill(P.ankleR * 1.1) as [number, number, number]} />
           )}
@@ -3078,11 +3095,72 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
               </group>
             )
           })()}
-          {/* dino toe claws — three cream claws pointing forward */}
-          {isDino && [-1, 0, 1].map((tx, i) => (
-            <mesh key={i} geometry={taperGeo(P.ankleR * 0.02, P.ankleR * 0.17, P.footLen * 0.38)} material={shoeAccent}
-              position={[tx * P.ankleR * 0.52, -P.ankleR * 0.3, P.footLen * 0.92]} rotation={[1.4, 0, 0]} castShadow />
-          ))}
+          {/* Dino: chunky three-toed foot — rounded green pad with a dark sole
+              cushion, three stubby forward toes and cream claws on the tips */}
+          {isDino && (
+            <group>
+              {/* main foot pad — one smooth rounded block, wider than the bare foot */}
+              <mesh geometry={sphereGeo(1)} material={skin}
+                scale={[P.ankleR * 1.5, P.ankleR * 0.85, P.ankleR * 1.6]}
+                position={[0, -P.ankleR * 0.25, P.ankleR * 0.3]} castShadow />
+              {/* heel — plump rounded back */}
+              <mesh geometry={sphereGeo(1)} material={skin}
+                scale={[P.ankleR * 1.1, P.ankleR * 0.65, P.ankleR * 0.8]}
+                position={[0, -P.ankleR * 0.35, -P.ankleR * 1.3]} castShadow />
+              {/* dark sole cushion — flat bottom pad */}
+              <mesh geometry={sphereGeo(1)} material={shoeM}
+                scale={[P.ankleR * 1.45, P.ankleR * 0.25, P.ankleR * 1.5]}
+                position={[0, -P.ankleR * 1.0, P.ankleR * 0.25]} castShadow />
+              {/* three stubby toes pointing forward, each capped with a cream claw */}
+              {[-1, 0, 1].map((t, i) => (
+                <group key={'dtoe' + i} position={[t * P.ankleR * 0.55, -P.ankleR * 0.4, P.ankleR * 1.55]}>
+                  {/* toe knuckle */}
+                  <mesh geometry={sphereGeo(1)} material={skin}
+                    scale={[P.ankleR * 0.45, P.ankleR * 0.4, P.ankleR * 0.55]} castShadow />
+                  {/* upper toe bump */}
+                  <mesh geometry={sphereGeo(1)} material={skin}
+                    scale={[P.ankleR * 0.33, P.ankleR * 0.28, P.ankleR * 0.33]}
+                    position={[0, 0, P.ankleR * 0.4]} castShadow />
+                  {/* cream claw curving forward and down */}
+                  <mesh geometry={taperGeo(P.ankleR * 0.02, P.ankleR * 0.14, P.ankleR * 0.55)} material={shoeAccent}
+                    position={[0, -P.ankleR * 0.02, P.ankleR * 0.65]} rotation={[1.35, 0, 0]} castShadow />
+                </group>
+              ))}
+            </group>
+          )}
+          {/* Rabbit: fluffy rounded paw foot — soft white ball with a plump
+              heel, four tiny toe bumps with small claws and pink sole pads */}
+          {isRabbit && (
+            <group>
+              {/* main paw — soft round ball */}
+              <mesh geometry={sphereGeo(1)} material={skin}
+                scale={[P.ankleR * 1.5, P.ankleR * 0.9, P.ankleR * 1.7]}
+                position={[0, -P.ankleR * 0.25, P.ankleR * 0.25]} castShadow />
+              {/* plump heel */}
+              <mesh geometry={sphereGeo(1)} material={skin}
+                scale={[P.ankleR * 1.05, P.ankleR * 0.7, P.ankleR * 0.85]}
+                position={[0, -P.ankleR * 0.35, -P.ankleR * 1.35]} castShadow />
+              {/* four tiny toe bumps on the front */}
+              {[-1, -0.33, 0.33, 1].map((t, i) => (
+                <group key={'btoe' + i} position={[t * P.ankleR * 0.42, -P.ankleR * 0.45, P.ankleR * 1.5]}>
+                  <mesh geometry={sphereGeo(1)} material={skin}
+                    scale={[P.ankleR * 0.42, P.ankleR * 0.4, P.ankleR * 0.45]} castShadow />
+                  {/* tiny claw */}
+                  <mesh geometry={taperGeo(P.ankleR * 0.015, P.ankleR * 0.09, P.ankleR * 0.35)} material={shoeAccent}
+                    position={[0, -P.ankleR * 0.05, P.ankleR * 0.45]} rotation={[1.35, 0, 0]} castShadow />
+                </group>
+              ))}
+              {/* pink sole pads — big heel bean + three smaller toe beans */}
+              <mesh geometry={sphereGeo(1)} material={botM}
+                scale={[P.ankleR * 1.25, P.ankleR * 0.24, P.ankleR * 1.3]}
+                position={[0, -P.ankleR * 1.05, P.ankleR * 0.15]} castShadow />
+              {[-0.5, 0, 0.5].map((t, i) => (
+                <mesh key={'bpad' + i} geometry={sphereGeo(1)} material={botM}
+                  scale={[P.ankleR * 0.28, P.ankleR * 0.18, P.ankleR * 0.3]}
+                  position={[t * P.ankleR * 0.6, -P.ankleR * 1.0, P.ankleR * 0.55]} castShadow />
+              ))}
+            </group>
+          )}
 {/* Hacker: clean high-top sneaker — dark body, neon-green sole +
               side accent. No floating panels, everything flush on the foot. */}
           {isHacker && hackerGlow && (() => {

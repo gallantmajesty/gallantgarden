@@ -61,7 +61,7 @@ export function saveWheelConfig(config: LuckyWheelConfig): void {
 /** Fetch owner config from DB (called on app init alongside overrides). */
 export async function syncWheelFromDb(): Promise<void> {
   const db = await getOwnerContent('wheel')
-  if (db && Array.isArray((db as LuckyWheelConfig).prizes)) {
+  if (db && Array.isArray((db as Record<string, unknown>).prizes)) {
     localStorage.setItem(LS_KEY, JSON.stringify(db))
   }
 }

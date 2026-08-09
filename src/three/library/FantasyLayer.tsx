@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import type { JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
 import {
   AdditiveBlending, CanvasTexture, DoubleSide, MeshBasicMaterial,

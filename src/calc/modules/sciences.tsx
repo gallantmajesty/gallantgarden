@@ -83,7 +83,7 @@ function SpeedCalc() {
   return (
     <CalcLayout>
       <Field label="Solve for">
-        <Select value={solve} onChange={setSolve} options={[
+        <Select value={solve} onChange={(v) => setSolve(v as 'time' | 'speed' | 'dist')} options={[
           { value: 'speed', label: 'Speed' }, { value: 'dist', label: 'Distance' }, { value: 'time', label: 'Time' },
         ]} />
       </Field>

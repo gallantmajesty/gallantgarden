@@ -55,14 +55,24 @@ const CACHE_LIMIT = 400
 // Spread bakes out so a 100-join burst doesn't stall the frame loop: start at
 // most one new bake every BakeInterval ms (each bake also needs several settle
 // frames, so the real rate is the slower of the two). Keeps the room responsive
-// while the offscreen billboards populate.
-const BAKE_INTERVAL_MS = 60
+// while the offscreen billboards populate. A slower rate also keeps the
+// synchronous readback stall (GPU pipeline flush) from stacking back-to-back.
+const BAKE_INTERVAL_MS = 200
 
-/** True while the impostor bake queue still has pending work. The loading veil
- *  holds until the far-avatar sprites are ready (they're the last heavy work a
- *  library mount does), so the room only reveals itself fully loaded. */
+/** True while the impostor bake queue still has pending work. Kept for
+ *  diagnostics — the loading veil no longer waits on it (the gate defers all
+ *  bakes until after reveal instead, so sprites just stream in behind). */
 export function impostorBusy(): boolean {
   return busy || queue.size > 0
+}
+
+// Bake gate: while false the queue sits untouched. LibraryScene opens the gate
+// only AFTER the loading veil has lifted, so the entry window (scene mount +
+// first frames) never has to also absorb ~30 full-rig bake renders + readbacks
+// — that synchronous load is what made the page go "not responding" on entry.
+let gate = false
+export function setBakeGate(v: boolean) {
+  gate = v
 }
 
 interface BakeJob {
@@ -160,6 +170,9 @@ export function ImpostorBakeStage() {
   const gl = useThree((s) => s.gl)
   const rtRef = useRef<WebGLRenderTarget | null>(null)
   const [job, setJob] = useState<BakeJob | null>(null)
+  // Time-based settle (not frame count): at 10 fps, 18 frames is 1.8 s per
+  // bake; at 60 fps it's 0.3 s. On slow GPUs frame-based settling made the
+  // whole bake queue (and therefore the loading veil) crawl.
   const settle = useRef(0)
   const lastStart = useRef(0)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
@@ -184,9 +197,9 @@ export function ImpostorBakeStage() {
     settle.current = 0
   }, [])
 
-  useFrame(() => {
+  useFrame((_, dt) => {
     if (!job) {
-      if (!busy && queue.size > 0) {
+      if (!busy && gate && queue.size > 0) {
         // Throttle: don't kick off a new bake more often than BAKE_INTERVAL_MS,
         // so a mass join spreads across many frames instead of stalling.
         const now = performance.now()
@@ -204,9 +217,10 @@ export function ImpostorBakeStage() {
     }
 
     // idle: the static pose lands on the first animator frame; sit needs the
-    // eased sit pose to finish (~0.3 s), so it settles longer.
-    settle.current++
-    const need = job.pose === 'sit' ? 18 : 4
+    // eased sit pose to finish (~0.3 s), so it settles longer. Accumulated
+    // real time (bounded), so the settle duration is fps-independent.
+    settle.current += Math.min(dt, 0.1)
+    const need = job.pose === 'sit' ? 0.3 : 0.07
     if (settle.current < need) return
 
     const rt = rtRef.current ?? (rtRef.current = new WebGLRenderTarget(BAKE_SIZE, BAKE_SIZE, { depthBuffer: true }))

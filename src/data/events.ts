@@ -104,7 +104,6 @@ export const DEFAULT_BUNDLES: SavedBundle[] = [
     createdAt: "2025-07-01T00:00:00Z",
     items: [
       { id: "rank-ban-1", name: "Neon Glitch Banner", description: "Premium neon banner", type: "accessory", rarity: "epic", price: 1000, icon: "💜" },
-      { id: "rank-ban-2", name: "Heavenly Gold Banner", description: "Premium gold halo banner", type: "accessory", rarity: "epic", price: 1000, icon: "✨" },
       { id: "rank-ban-3", name: "Cyberpunk Neon Banner", description: "Cyberpunk neon banner", type: "accessory", rarity: "epic", price: 1000, icon: "🌃" },
     ],
   },

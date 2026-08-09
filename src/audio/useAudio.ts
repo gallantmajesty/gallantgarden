@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { getAmbient } from './ambient'
 import { useSettings } from '../store/settings'
+import { useMusic } from '../store/music'
 
 /**
  * Keeps the {@link AmbientEngine} in sync with the audio settings, starts it on
@@ -26,6 +27,9 @@ export function useAudio() {
       eng.ensure()
       const s = useSettings.getState()
       eng.apply({ master: s.master, ambientVol: s.ambientVol, rainVol: s.rainVol, ambientOn: s.ambientOn, rainOn: s.rainOn })
+      // First gesture also grants the music engine its autoplay licence — if the
+      // player had music running when they left, it resumes now.
+      useMusic.getState().resumeFromGesture()
       detach()
     }
     const detach = () => {

@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useSettings } from '../store/settings'
+import { useMusic } from '../store/music'
 
 const MUSIC_SRC = '/audio/Where_Sunlight_Meets_Stone.mp3'
 
@@ -201,8 +202,8 @@ export function getBackgroundMusic(): BackgroundMusicEngine {
  */
 export function useBackgroundMusic() {
   const master = useSettings((s) => s.master)
-  const vol = useSettings((s) => s.lobbyMusicVol)
-  const on = useSettings((s) => s.lobbyMusicOn)
+  const vol = useMusic((s) => s.volume)
+  const on = useMusic((s) => s.playing)
   const [status, setStatusState] = useState('idle')
 
   useEffect(() => onBgmStatus(setStatusState), [])
@@ -224,7 +225,8 @@ export function useBackgroundMusic() {
     const start = () => {
       eng.ensure()
       const s = useSettings.getState()
-      eng.apply({ master: s.master, vol: s.lobbyMusicVol, on: s.lobbyMusicOn })
+      const m = useMusic.getState()
+      eng.apply({ master: s.master, vol: m.volume, on: m.playing })
     }
     const events = ['pointerdown', 'click', 'keydown', 'touchstart'] as const
     const handler = () => start()

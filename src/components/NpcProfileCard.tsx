@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getRank } from '../lib/ranks'
 import { Flag } from './Flag'
 import { RankBadge } from './RankBadge'
+import { BANNERS, LOGOS, type Banner } from '../lib/banners'
 import './NpcProfileCard.css'
 
 export interface NpcProfileData {
@@ -16,6 +17,10 @@ export interface NpcProfileData {
   bio?: string
   joinDate?: string
   status: 'studying' | 'on-break' | 'offline'
+  /** banner id (lib/banners) shown on the compact card strip */
+  banner?: string
+  /** logo id (lib/banners) shown on the compact card */
+  logo?: string
   /** True when this is a live player (their More Info card), not an NPC. */
   isUser?: boolean
 }
@@ -23,6 +28,9 @@ export interface NpcProfileData {
 interface Props {
   profile: NpcProfileData
   onClose: () => void
+  /** Optional — when set, "More Info" hands off to this instead of expanding
+   *  the NPC full profile (used for real players, e.g. the room roster). */
+  onMoreInfo?: () => void
 }
 
 const DECLINE_MESSAGES = [
@@ -33,10 +41,21 @@ const DECLINE_MESSAGES = [
   "Appreciate it! I study solo mostly. Keep up the good work!",
 ]
 
-export function NpcProfileCard({ profile, onClose }: Props) {
+/** The banner strip background for the compact card. */
+function bannerStyle(id: string | undefined, rankAccent: string): React.CSSProperties {
+  const b: Banner | undefined = BANNERS.find((x) => x.id === id)
+  if (b?.image) return { backgroundImage: `url(${b.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  if (b?.css) return { background: b.css }
+  return { background: `linear-gradient(135deg, ${rankAccent}55, #141414 70%)` }
+}
+
+export function NpcProfileCard({ profile, onClose, onMoreInfo }: Props) {
   const [friendSent, setFriendSent] = useState(false)
   const [declineMsg, setDeclineMsg] = useState('')
+  const [expanded, setExpanded] = useState(false)
   const rank = getRank(profile.rank)
+  const logo = LOGOS.find((l) => l.id === profile.logo)
+  const showFull = onMoreInfo ? false : expanded
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -57,11 +76,15 @@ export function NpcProfileCard({ profile, onClose }: Props) {
       <div className="npc-profile-card" onClick={(e) => e.stopPropagation()}>
         <button className="npc-profile-close" onClick={onClose}>×</button>
 
+        {/* Compact view: banner strip + logo + name + rank + flag */}
+        <div className="npc-profile-banner" style={bannerStyle(profile.banner, rank.accent)} />
         <div className="npc-profile-header">
-          <div className="npc-profile-avatar">
-            <div className="npc-profile-avatar-icon" style={{ background: rank.accent + '33' }}>
+          <div className="npc-profile-logo">
+            {logo?.image ? (
+              <img src={logo.image} alt="" draggable={false} />
+            ) : (
               <span className="npc-profile-initial">{profile.name[0]}</span>
-            </div>
+            )}
           </div>
           <div className="npc-profile-identity">
             <h2 className="npc-profile-name">{profile.name}</h2>
@@ -83,60 +106,73 @@ export function NpcProfileCard({ profile, onClose }: Props) {
           <span>{profile.isUser ? 'In the library now' : profile.status === 'studying' ? 'Studying now' : profile.status === 'on-break' ? 'On a break' : 'Offline'}</span>
         </div>
 
-        {profile.bio && <p className="npc-profile-bio">{profile.bio}</p>}
+        <div className="npc-profile-actions npc-profile-actions--top">
+          {(onMoreInfo || !profile.isUser) && (
+            <button
+              className="npc-profile-btn npc-profile-btn--primary"
+              onClick={() => (onMoreInfo ? onMoreInfo() : setExpanded(true))}
+            >
+              More Info
+            </button>
+          )}
+        </div>
 
-        {profile.totalXp != null && (
-          <div className="npc-profile-stats">
-            <div className="npc-profile-stat">
-              <span className="npc-profile-stat-value">{profile.totalXp.toLocaleString()}</span>
-              <span className="npc-profile-stat-label">Total XP</span>
-            </div>
-            <div className="npc-profile-stat">
-              <span className="npc-profile-stat-value">{profile.sessionsCompleted ?? '—'}</span>
-              <span className="npc-profile-stat-label">Sessions</span>
-            </div>
-            <div className="npc-profile-stat">
-              <span className="npc-profile-stat-value">{profile.streak ?? '—'}</span>
-              <span className="npc-profile-stat-label">Day Streak</span>
-            </div>
-          </div>
-        )}
+        {/* Full profile — only revealed behind "More Info" (NPCs). */}
+        {showFull && (
+          <div className="npc-profile-full">
+            {profile.bio && <p className="npc-profile-bio">{profile.bio}</p>}
 
-        {profile.studyTopic && (
-          <div className="npc-profile-topic">
-            <span className="npc-profile-topic-label">Studying</span>
-            <span className="npc-profile-topic-value">{profile.studyTopic}</span>
-          </div>
-        )}
-
-        {profile.joinDate && (
-          <div className="npc-profile-joined">
-            Joined {profile.joinDate}
-          </div>
-        )}
-
-        {!profile.isUser && (
-          <div className="npc-profile-actions">
-            {!friendSent ? (
-              <button
-                className="npc-profile-btn npc-profile-btn--primary"
-                onClick={() => setFriendSent(true)}
-              >
-                Send Friend Request
-              </button>
-            ) : !declineMsg ? (
-              <button className="npc-profile-btn npc-profile-btn--pending" disabled>
-                Request Sent...
-              </button>
-            ) : (
-              <div className="npc-profile-decline">
-                <span className="npc-profile-decline-icon">💬</span>
-                <span className="npc-profile-decline-msg">{declineMsg}</span>
+            {profile.totalXp != null && (
+              <div className="npc-profile-stats">
+                <div className="npc-profile-stat">
+                  <span className="npc-profile-stat-value">{profile.totalXp.toLocaleString()}</span>
+                  <span className="npc-profile-stat-label">Total XP</span>
+                </div>
+                <div className="npc-profile-stat">
+                  <span className="npc-profile-stat-value">{profile.sessionsCompleted ?? '—'}</span>
+                  <span className="npc-profile-stat-label">Sessions</span>
+                </div>
+                <div className="npc-profile-stat">
+                  <span className="npc-profile-stat-value">{profile.streak ?? '—'}</span>
+                  <span className="npc-profile-stat-label">Day Streak</span>
+                </div>
               </div>
             )}
-            <button className="npc-profile-btn npc-profile-btn--secondary" onClick={onClose}>
-              Close
-            </button>
+
+            {profile.studyTopic && (
+              <div className="npc-profile-topic">
+                <span className="npc-profile-topic-label">Studying</span>
+                <span className="npc-profile-topic-value">{profile.studyTopic}</span>
+              </div>
+            )}
+
+            {profile.joinDate && (
+              <div className="npc-profile-joined">
+                Joined {profile.joinDate}
+              </div>
+            )}
+
+            {!profile.isUser && (
+              <div className="npc-profile-actions">
+                {!friendSent ? (
+                  <button
+                    className="npc-profile-btn npc-profile-btn--primary"
+                    onClick={() => setFriendSent(true)}
+                  >
+                    Send Friend Request
+                  </button>
+                ) : !declineMsg ? (
+                  <button className="npc-profile-btn npc-profile-btn--pending" disabled>
+                    Request Sent...
+                  </button>
+                ) : (
+                  <div className="npc-profile-decline">
+                    <span className="npc-profile-decline-icon">💬</span>
+                    <span className="npc-profile-decline-msg">{declineMsg}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

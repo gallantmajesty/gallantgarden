@@ -12,6 +12,10 @@ export interface NpcProfileData {
   bio?: string
   joinDate?: string
   status: 'studying' | 'on-break' | 'offline'
+  /** banner id (lib/banners) shown on the compact card strip */
+  banner?: string
+  /** logo id (lib/banners) shown on the compact card */
+  logo?: string
   /** True when this is a live player (their More Info card), not an NPC. */
   isUser?: boolean
 }

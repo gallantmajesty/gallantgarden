@@ -41,6 +41,16 @@ export class LocalMusicEngine implements MusicSource {
   private volume = 0.7
   private subs = new Set<(s: MusicState) => void>()
 
+  /** Current stream position (for the progress bar). Radio streams report 0. */
+  getProgress(): { position: number; duration: number; src: string | null } {
+    const el = this.jamEl ?? this.el
+    const src = this.preset?.source.kind === 'jamendo' || this.preset?.source.kind === 'loop'
+      ? this.preset.source.url
+      : null
+    if (!el || Number.isNaN(el.duration)) return { position: 0, duration: 0, src }
+    return { position: el.currentTime, duration: el.duration, src }
+  }
+
   // ---- MusicSource -------------------------------------------------------
 
   load(preset: MusicPreset) {
@@ -178,6 +188,7 @@ export class LocalMusicEngine implements MusicSource {
       const el = new Audio()
       el.loop = true
       el.preload = 'auto'
+      el.addEventListener('playing', () => { this.jamFailures = 0 })
       this.el = el
     }
     if (this.el.src.indexOf(url) === -1) this.el.src = url
@@ -194,6 +205,9 @@ export class LocalMusicEngine implements MusicSource {
       el.preload = 'auto'
       el.addEventListener('ended', () => this.handleJamEnd())
       el.addEventListener('error', () => this.handleJamEnd())
+      // A successful start means any earlier failure streak is over — reset the
+      // counter so a recovered network can stream again (it's not skipped).
+      el.addEventListener('playing', () => { this.jamFailures = 0 })
       this.jamEl = el
     }
     this.jamFailures = 0
@@ -206,6 +220,14 @@ export class LocalMusicEngine implements MusicSource {
     // A few consecutive failures = the feed itself is unreachable; stop skipping.
     this.jamFailures += 1
     if (this.jamFailures > 3) return
+    // CRITICAL: mark the engine as stopped BEFORE advancing. The store's next()
+    // calls engine.play(), which early-returns while this.playing is true — with
+    // the flag left set, a single stream failure froze the player into a
+    // permanent silent state (UI showed "playing", no audio, no advance).
+    if (this.playing) {
+      this.playing = false
+      this.emit()
+    }
     this.onTrackEnd?.()
   }
 

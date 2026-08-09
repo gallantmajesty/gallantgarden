@@ -1,20 +1,19 @@
 import { create } from 'zustand'
 import { getMusic } from '../lib/music/engine'
 import {
-  MUSIC_PRESETS,
-  adjacentAvailable,
-  firstAvailablePreset,
-  getPreset,
-} from '../lib/music/presets'
+  searchLiveTracks,
+  genreLiveTracks,
+  RADIO_STATIONS,
+  trackToPreset,
+  type LiveTrack,
+  type MusicGenre,
+} from '../lib/music/catalog'
 
-// Persistent state for the Library Realm music widget. Saves the user's choice
-// and view state to localStorage (manual load/save, mirroring src/store/webTheme.ts)
-// so the player comes back exactly as they left it. Actions drive the app-wide
-// engine via getMusic(); the engine owns actual playback (see lib/music/engine.ts).
-//
-// "Playback state" is persisted as INTENT only — browsers block autoplay, so we
-// never start sound on load. `resumeFromGesture()` restarts it on the first user
-// interaction if they had it playing (same approach as src/audio/useAudio.ts).
+// Live music store for the Library Realm widget. There is no fixed playlist —
+// every track is streamed from the web (Jamendo catalog / internet radio) and
+// the user picks whatever they want, in real time, from search results and
+// genre browsing. Playback itself is owned by the engine (`getMusic()`), the
+// store only drives it and remembers the user's choices.
 
 export interface WidgetPos {
   x: number
@@ -22,14 +21,24 @@ export interface WidgetPos {
 }
 
 interface MusicStore {
-  presetId: string
-  volume: number // 0..1
+  // Runtime
+  current: LiveTrack | null
+  queue: LiveTrack[]
+  qIndex: number
   playing: boolean
+  // Browse state
+  query: string
+  results: LiveTrack[]
+  browsing: boolean
+  // Widget state
+  volume: number // 0..1
   expanded: boolean
   pos: WidgetPos | null // null = default bottom-right corner
-  /** Select a preset and start it (one-click play). No-op for "soon" presets. */
-  select: (id: string) => void
-  /** Play/pause the current preset. */
+
+  // Actions
+  search: (q: string) => void
+  browseGenre: (g: MusicGenre | null) => void
+  playTrack: (t: LiveTrack) => void
   toggle: () => void
   next: () => void
   prev: () => void
@@ -40,33 +49,35 @@ interface MusicStore {
   resumeFromGesture: () => void
 }
 
-const KEY = 'sg.music.v1'
+const KEY = 'sg.music.v2'
 
 interface Persisted {
-  presetId: string
   volume: number
   playing: boolean
   expanded: boolean
   pos: WidgetPos | null
+  current: LiveTrack | null
+  queue: LiveTrack[]
+  qIndex: number
 }
 
 function load(): Persisted {
   const fallback: Persisted = {
-    presetId: firstAvailablePreset().id,
     volume: 0.7,
     playing: false,
     expanded: false,
-    pos: null, // null = default bottom-left corner via CSS
+    pos: null,
+    current: null,
+    queue: [],
+    qIndex: 0,
   }
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return fallback
     const p = JSON.parse(raw) as Partial<Persisted>
-    const preset = getPreset(p.presetId)
     let pos: WidgetPos | null = null
     if (p.pos && typeof p.pos.x === 'number' && typeof p.pos.y === 'number') {
-      // Clamp to screen bounds so the widget is never off-screen
-      const w = 220, h = 60, m = 10
+      const w = 340, h = 480, m = 10
       const maxX = (typeof window !== 'undefined' ? window.innerWidth : 1200) - w - m
       const maxY = (typeof window !== 'undefined' ? window.innerHeight : 800) - h - m
       pos = {
@@ -75,11 +86,13 @@ function load(): Persisted {
       }
     }
     return {
-      presetId: preset ? preset.id : fallback.presetId,
       volume: typeof p.volume === 'number' ? Math.max(0, Math.min(1, p.volume)) : fallback.volume,
       playing: !!p.playing,
       expanded: !!p.expanded,
       pos,
+      current: p.current && typeof p.current.url === 'string' ? p.current : null,
+      queue: Array.isArray(p.queue) ? p.queue.filter((t) => t && typeof t.url === 'string') : [],
+      qIndex: Number.isFinite(p.qIndex) ? Math.max(0, p.qIndex) : 0,
     }
   } catch {
     return fallback
@@ -97,34 +110,65 @@ function save(s: Persisted) {
 export const useMusic = create<MusicStore>((set, get) => {
   const init = load()
 
-  // Prime the engine with the saved preset + volume (does NOT start sound).
-  const initPreset = getPreset(init.presetId) ?? firstAvailablePreset()
-  getMusic().load(initPreset)
   getMusic().setVolume(init.volume)
+  if (init.current) getMusic().load(trackToPreset(init.current))
 
-  // Jamendo streams play end-to-end and auto-advance ("flows").
+  // Streams play end-to-end and auto-advance ("flows").
   getMusic().onTrackEnd = () => get().next()
 
   const persist = () => {
-    const { presetId, volume, playing, expanded, pos } = get()
-    save({ presetId, volume, playing, expanded, pos })
+    const { volume, playing, expanded, pos, current, queue, qIndex } = get()
+    save({ volume, playing, expanded, pos, current, queue, qIndex })
+  }
+
+  const playIndex = (index: number) => {
+    const { queue } = get()
+    if (queue.length === 0) return
+    const i = ((index % queue.length) + queue.length) % queue.length
+    const track = queue[i]
+    const eng = getMusic()
+    eng.load(trackToPreset(track))
+    eng.play()
+    set({ current: track, qIndex: i, playing: true })
+    persist()
   }
 
   return {
-    presetId: init.presetId,
-    volume: init.volume,
+    current: init.current,
+    queue: init.queue,
+    qIndex: init.qIndex,
     playing: init.playing,
+    query: '',
+    results: [],
+    browsing: false,
+    volume: init.volume,
     expanded: init.expanded,
     pos: init.pos,
 
-    select: (id) => {
-      const preset = getPreset(id)
-      if (!preset || !preset.available) return
-      const eng = getMusic()
-      eng.load(preset)
-      eng.play()
-      set({ presetId: id, playing: true })
-      persist()
+    search: async (q) => {
+      const query = q.trim()
+      set({ query: q, browsing: true })
+      const tracks = await searchLiveTracks(query, 0)
+      if (get().query !== q) return // stale response
+      set({ results: tracks, browsing: false })
+    },
+
+    browseGenre: async (g) => {
+      if (!g) {
+        set({ query: '', results: [], browsing: false })
+        return
+      }
+      set({ query: '', browsing: true })
+      const tracks = await genreLiveTracks(g, 0)
+      set({ results: tracks, browsing: false })
+    },
+
+    playTrack: (t) => {
+      const { queue } = get()
+      const nextQueue = queue.filter((x) => x.id !== t.id)
+      nextQueue.push(t)
+      set({ queue: nextQueue })
+      playIndex(nextQueue.length - 1)
     },
 
     toggle: () => {
@@ -133,20 +177,41 @@ export const useMusic = create<MusicStore>((set, get) => {
         eng.pause()
         set({ playing: false })
       } else {
-        // Make sure a playable preset is selected before starting.
-        let id = get().presetId
-        if (!getPreset(id)?.available) id = firstAvailablePreset().id
-        const preset = getPreset(id)
-        if (!preset?.available) return
-        eng.load(preset)
+        const cur = get().current
+        if (!cur) {
+          // Nothing chosen yet — start the first radio station.
+          const station = RADIO_STATIONS[0]
+          get().playTrack(station)
+          return
+        }
+        eng.load(trackToPreset(cur))
         eng.play()
-        set({ presetId: id, playing: true })
+        set({ playing: true })
       }
       persist()
     },
 
-    next: () => get().select(adjacentAvailable(get().presetId, 1)),
-    prev: () => get().select(adjacentAvailable(get().presetId, -1)),
+    next: () => {
+      const { queue, qIndex } = get()
+      if (queue.length === 0) {
+        get().playTrack(RADIO_STATIONS[0])
+        return
+      }
+      // A lone radio station that fails to stream would otherwise loop back onto
+      // itself forever — rotate through the station list instead.
+      if (queue.length === 1 && queue[0].kind === 'radio') {
+        const idx = RADIO_STATIONS.findIndex((r) => r.id === queue[0].id)
+        get().playTrack(RADIO_STATIONS[(idx + 1) % RADIO_STATIONS.length])
+        return
+      }
+      playIndex(qIndex + 1)
+    },
+
+    prev: () => {
+      const { queue, qIndex } = get()
+      if (queue.length === 0) return
+      playIndex(qIndex - 1)
+    },
 
     setVolume: (v) => {
       const vol = Math.max(0, Math.min(1, v))
@@ -166,15 +231,13 @@ export const useMusic = create<MusicStore>((set, get) => {
     },
 
     resumeFromGesture: () => {
-      const { playing, presetId } = get()
-      if (!playing) return
-      const preset = getPreset(presetId)
-      if (!preset?.available) return
+      const { playing, current } = get()
+      if (!playing || !current) return
       const eng = getMusic()
-      eng.load(preset)
+      eng.load(trackToPreset(current))
       eng.play()
     },
   }
 })
 
-export { MUSIC_PRESETS }
+export { RADIO_STATIONS }

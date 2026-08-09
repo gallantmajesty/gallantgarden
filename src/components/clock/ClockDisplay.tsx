@@ -79,7 +79,7 @@ export function ClockDisplay({
   const dateStr = currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
-    <div className={`clock-display ${sizeClass} ${theme.category} ${className}`}>
+    <div className={`clock-display ${sizeClass} ${className}`}>
       <div className="clock-face" role="img" aria-label={`${theme.name} showing ${hours}:${minutes.toString().padStart(2, '0')}`}>
         {renderClock()}
         {size === 'fullscreen' && <div className="clock-glow" />}
@@ -194,7 +194,7 @@ function DigitalClock({ hours, minutes, seconds, settings }: {
   const ampm = format24 ? '' : hours >= 12 ? ' PM' : ' AM'
 
   return (
-    <div className="digital-clock" style={{ '--clock-color': color }}>
+    <div className="digital-clock" style={{ '--clock-color': color } as React.CSSProperties}>
       <div className="digital-time">
         <span className="digital-hours">{displayHours.toString().padStart(2, '0')}</span>
         <span className="digital-colon">:</span>
@@ -219,7 +219,7 @@ function SandClock({ hours, minutes, seconds, smoothSeconds, settings }: {
   const progress = (minutes + seconds / 60) / 60 // 0-1 per hour
 
   return (
-    <div className="sand-clock" style={{ '--sand-color': color }}>
+    <div className="sand-clock" style={{ '--sand-color': color } as React.CSSProperties}>
       <div className="hourglass">
         <div className="bulb top">
           <div className="sand-top" style={{ height: `${100 - progress * 100}%` }} />
@@ -256,7 +256,7 @@ function MagicalRuneClock({ smoothHours, smoothMinutes, smoothSeconds, settings 
   const element = ELEMENTS[activeElement]
 
   return (
-    <div className="magical-rune-clock" style={{ '--rune-color': element.color }}>
+    <div className="magical-rune-clock" style={{ '--rune-color': element.color } as React.CSSProperties}>
       <div className="rune-circle">
         <svg viewBox="0 0 200 200" className="rune-svg">
           <defs>
@@ -284,8 +284,8 @@ function MagicalRuneClock({ smoothHours, smoothMinutes, smoothSeconds, settings 
           {ELEMENTS.map((el, idx) => (
             <text
               key={el.name}
-              x="100" y={idx === 0 ? 25 : idx === 1 ? 175 : 100}
-              x={idx === 2 ? 175 : idx === 3 ? 25 : 100}
+              x={idx === 0 ? 100 : idx === 1 ? 100 : idx === 2 ? 175 : 25}
+              y={idx === 0 ? 25 : idx === 1 ? 175 : 100}
               textAnchor="middle"
               dominantBaseline={idx === 1 ? 'middle' : 'central'}
               fill={el.color}
@@ -452,7 +452,7 @@ function MoonPhaseClock({ hours, minutes, seconds, settings }: {
   const moonPhase = (totalMinutes % (24 * 60)) / (24 * 60) // 0-1 over day
 
   return (
-    <div className="moon-phase-clock" style={{ '--moon-color': color }}>
+    <div className="moon-phase-clock" style={{ '--moon-color': color } as React.CSSProperties}>
       <div className="moon-container">
         <div className="moon-bg">
           <div 
@@ -460,7 +460,7 @@ function MoonPhaseClock({ hours, minutes, seconds, settings }: {
             style={{ 
               '--phase': moonPhase,
               background: `radial-gradient(circle at ${moonPhase < 0.5 ? '20%' : '80%'} 50%, var(--moon-color) 0%, #1a1a2e 70%)`
-            }}
+            } as React.CSSProperties}
           />
           <div className="moon-glow" />
         </div>
@@ -499,7 +499,7 @@ function SteampunkClock({ smoothHours, smoothMinutes, smoothSeconds, settings }:
   const color = settings.color || '#b8860b'
 
   return (
-    <div className="steampunk-clock" style={{ '--gear-color': color }}>
+    <div className="steampunk-clock" style={{ '--gear-color': color } as React.CSSProperties}>
       <svg viewBox="0 0 200 200" className="gear-system">
         <defs>
           <radialGradient id="brassGlow" cx="50%" cy="50%" r="50%">
@@ -510,14 +510,14 @@ function SteampunkClock({ smoothHours, smoothMinutes, smoothSeconds, settings }:
         <rect width="200" height="200" fill="url(#brassGlow)" rx="10" />
         
         {/* Large hour gear */}
-        <Gear cx="100" cy="100" r="70" teeth={12} rotation={smoothHours * 30} color={color} />
+        <Gear cx={100} cy={100} r={70} teeth={12} rotation={smoothHours * 30} color={color} />
         
         {/* Medium minute gear */}
-        <Gear cx="100" cy="100" r="45" teeth={24} rotation={smoothMinutes * 6} color={color} />
+        <Gear cx={100} cy={100} r={45} teeth={24} rotation={smoothMinutes * 6} color={color} />
         
         {/* Small second gear */}
         {settings.showSeconds && (
-          <Gear cx="100" cy="100" r="25" teeth={60} rotation={smoothSeconds * 6} color="#ff6b35" />
+          <Gear cx={100} cy={100} r={25} teeth={60} rotation={smoothSeconds * 6} color="#ff6b35" />
         )}
         
         {/* Center axle */}
@@ -565,7 +565,7 @@ function EtherealClock({ smoothHours, smoothMinutes, smoothSeconds, settings }: 
   const color = settings.color || '#ffd700'
 
   return (
-    <div className="ethereal-clock" style={{ '--ethereal-color': color }}>
+    <div className="ethereal-clock" style={{ '--ethereal-color': color } as React.CSSProperties}>
       <div className="ethereal-rings">
         {/* Hours ring */}
         <div 

@@ -16,15 +16,7 @@
 // assigned per room via a seeded shuffle, so scholars scatter across the hall
 // instead of filing into consecutive desk rows.
 
-import { CHARACTERS, characterById } from '../avatar/characters'
-import {
-  ACCESSORIES,
-  EYE_COLORS,
-  HAIR_COLORS,
-  SKINS,
-  hairsFor,
-  type BodyType,
-} from '../avatar/config'
+import { characterById } from '../avatar/characters'
 import { RANKS } from './ranks'
 import { LIBRARY_ROOMS } from './realm'
 import type { Seat } from '../three/library/furniture'
@@ -115,11 +107,15 @@ const FIRST_NAMES = [
   'Hugo', 'Aria', 'Finn', 'Ivy', 'Owen', 'Ruby', 'Ezra', 'Stella',
   'Atlas', 'Clara', 'Jude', 'Lyra', 'Miles', 'Nora', 'Theo', 'Willow',
   'Arlo', 'Hazel', 'Jasper', 'Aurora', 'Silas', 'Isla', 'Beau', 'Wren',
-  'Seth', 'Lena', 'Mark', 'Troy', 'Ella', 'Dean', 'Lily', 'Jake',
+  'Seth', 'Lena', 'Mark', 'Troy', 'Ella', 'Dean', 'Jake',
   'Tina', 'Derek', 'Nina', 'Omar', 'Fiona', 'Hector', 'Leah', 'Victor',
   'Mara', 'Neil', 'Sofia', 'Adam', 'Zoe', 'Liam', 'Maya', 'Ethan',
-  'Priya', 'Amir', 'Yuki', 'Soo-Jin', 'Diego', 'Anika', 'Ravi', 'Lena',
+  'Priya', 'Amir', 'Yuki', 'Soo-Jin', 'Diego', 'Anika', 'Ravi',
 ]
+// Reserved: these are the player character NAMES (James, Lily, Mia, Ruslana,
+// Dino, Bunny, Black Robot, Alien, Piggy) — scholars must never be named after
+// them, so players can't mistake an NPC for a real character.
+const RESERVED_NAMES = new Set(['James', 'Lily', 'Mia', 'Ruslana', 'Dino', 'Bunny', 'Black Robot', 'Robot', 'Alien', 'Piggy', 'Seraphine', 'Sunny', 'Ellie', 'Monkey', 'Panda'])
 
 const HANDLES = [
   'Bookworm', 'NightOwl', 'StudyBud', 'FocusMode', 'DeepWork',
@@ -129,21 +125,23 @@ const HANDLES = [
   'Cogito', 'Praxis', 'Lucerna', 'Codex', 'Stylus',
 ]
 
+// Country distribution — natural, India-leaning hall (IN + JP are the two big
+// ones, then China, then USA, then Türkiye, everything else tails off gently).
 const COUNTRY_POOL: { code: string; weight: number }[] = [
-  { code: 'US', weight: 20 }, { code: 'IN', weight: 18 },
-  { code: 'KR', weight: 10 }, { code: 'JP', weight: 8 },
-  { code: 'ZA', weight: 6 },  { code: 'MX', weight: 6 },
-  { code: 'FR', weight: 6 },  { code: 'GB', weight: 4 },
-  { code: 'DE', weight: 4 },  { code: 'BR', weight: 4 },
-  { code: 'CA', weight: 3 },  { code: 'AU', weight: 3 },
-  { code: 'NG', weight: 3 },  { code: 'PH', weight: 3 },
-  { code: 'IT', weight: 2 },  { code: 'ES', weight: 2 },
-  { code: 'SE', weight: 1.5 },{ code: 'PL', weight: 1.5 },
-  { code: 'TR', weight: 1.5 },{ code: 'AR', weight: 1 },
-  { code: 'TH', weight: 1 },  { code: 'ID', weight: 1 },
-  { code: 'KE', weight: 1 },  { code: 'CL', weight: 0.8 },
-  { code: 'NZ', weight: 0.8 },{ code: 'NO', weight: 0.5 },
-  { code: 'DK', weight: 0.5 },{ code: 'FI', weight: 0.5 },
+  { code: 'IN', weight: 22 }, { code: 'JP', weight: 16 },
+  { code: 'CN', weight: 10 }, { code: 'US', weight: 9 },
+  { code: 'TR', weight: 6 },  { code: 'KR', weight: 4 },
+  { code: 'GB', weight: 4 },  { code: 'FR', weight: 3 },
+  { code: 'DE', weight: 3 },  { code: 'ID', weight: 3 },
+  { code: 'BR', weight: 2 },  { code: 'CA', weight: 2 },
+  { code: 'AU', weight: 2 },  { code: 'MX', weight: 2 },
+  { code: 'TH', weight: 2 },  { code: 'PH', weight: 1.5 },
+  { code: 'IT', weight: 1.5 },{ code: 'ES', weight: 1.5 },
+  { code: 'NG', weight: 1.5 },{ code: 'AR', weight: 1 },
+  { code: 'SE', weight: 1 },  { code: 'PL', weight: 1 },
+  { code: 'CL', weight: 0.8 },{ code: 'NZ', weight: 0.8 },
+  { code: 'NO', weight: 0.5 },{ code: 'DK', weight: 0.5 },
+  { code: 'FI', weight: 0.5 },{ code: 'KE', weight: 0.5 },
 ]
 const COUNTRY_WEIGHT_TOTAL = COUNTRY_POOL.reduce((s, c) => s + c.weight, 0)
 
@@ -178,58 +176,48 @@ const BIOS = [
   'Academic weapon or academic victim? Depends on the day.',
 ]
 
+// The app launched in 2026 — no scholar may be joined before then.
 const JOIN_DATES = [
-  'Jan 2024', 'Feb 2024', 'Mar 2024', 'Apr 2024', 'May 2024',
-  'Jun 2024', 'Jul 2024', 'Aug 2024', 'Sep 2024', 'Oct 2024',
-  'Nov 2024', 'Dec 2024', 'Jan 2025', 'Feb 2025', 'Mar 2025',
+  'Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'May 2026',
+  'Jun 2026', 'Jul 2026', 'Aug 2026',
 ]
 
 const NPC_BANNER_IDS = [
   'default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn',
-  'tide', 'mystic', 'neon_glitch', 'heavenly_gold', 'crimson_flame',
+  'tide', 'mystic', 'neon_glitch', 'crimson_flame',
   'cyberpunk_neon', 'ethereal_angel', 'moonlit_celestial',
   'neon_glitch_explosion', 'neon_rainy', 'vaporwave_glitch',
 ]
 
 const NPC_LOGO_IDS = [
-  '', 'neon_avatar', 'angel_logo', 'mystic_star', 'chibi_angel_2',
+  '', 'neon_avatar', 'angel_logo', 'chibi_angel_2',
   'chibi_cat_girl', 'chibi_cyberpunk', 'chibi_mage', 'chibi_moon_spirit',
   'chibi_dragon', 'chibi_robot', 'chibi_samurai', 'cloud_angel',
   'glitch_chibi', 'kawaii_angel', 'neon_chibi_warrior', 'star_child',
 ]
 
-// NPCs come ONLY from Common characters that can wear human hair. The roster's
-// rare characters are all Legendary exclusives (Ruslana) or ANIMAL costumes
-// (dino, rabbit, robot, alien, pig, angel, sunflower, elephant, monkey, panda)
-// with their own heads and no hair — so the pool is the three hair-bearing
-// humans. Every NPC additionally rolls a distinct LOOK (hair style + colour,
-// skin, eyes, clothing colour, glasses, hair band) so the cast reads as
-// different people, never clones.
-const CHAR_POOL: { id: string; w: number }[] = (() => {
-  const out: { id: string; w: number }[] = []
-  for (const c of CHARACTERS) {
-    if (c.rarity === 'Legendary' || c.isAnimal) continue
-    out.push({ id: c.id, w: 8 })
-  }
-  return out
-})()
-const CHAR_WEIGHT_TOTAL = CHAR_POOL.reduce((s, c) => s + c.w, 0)
-
-// Free-recolour hexes for clothing — small bounded set keeps shared-material
-// count low (the rig shares materials by colour string).
-const CLOTH_HEXES = [
-  '#3b5f8a', '#6a4a8c', '#8a4a3a', '#3f7d52', '#7d6b3a', '#a04a5f',
-  '#4a6f9c', '#5c6e8c', '#8c6a4a', '#44506e', '#7a3a66', '#2e6e6e',
+// THE cast — exactly these nine characters, nothing else: James, Lily, Mia,
+// Ruslana, Dino, Bunny, Black Robot, Alien, Piggy. Every scholar uses the
+// character's REAL look (its default fallback) — same hair, same pony, same
+// colours as the actual character — so what you see is what a real player
+// with that character looks like. No rolled clone looks, no look mixing.
+const NPC_CHAR_IDS = [
+  'james', 'claire', 'mia', 'ruslan',
+  'dino', 'rabbit', 'robot', 'alien', 'pig',
+  'angel', 'sunflower', 'elephant', 'monkey', 'panda',
 ]
-
-const GLASS_COLORS = ['#22252e', '#6e4bb0', '#2f8f86', '#8a4a3a', '#d7a94b']
+const CHAR_POOL: { id: string; w: number }[] = NPC_CHAR_IDS.map((id) => ({ id, w: 1 }))
+const CHAR_WEIGHT_TOTAL = CHAR_POOL.reduce((s, c) => s + c.w, 0)
 
 // Bronze + Silver only — every NPC stays under gold rank.
 const RANK_POOL = RANKS.filter(
   (r) => r.id.startsWith('bronze') || r.id.startsWith('silver'),
 )
 
-const ALL_ACCESSORY_IDS = ACCESSORIES.map((a) => a.id)
+// Scholars carry only BASIC desk items — normal laptop, phone, single book,
+// book stack. No gaming laptops, no trading rigs, no premium gold items:
+// those are player-earned.
+const NPC_ACCESSORY_POOL = ['laptop', 'phone', 'book', 'book_stack']
 
 /* ------------------------------------------------ profile */
 
@@ -288,7 +276,8 @@ export function npcProfile(idx: number): NpcProfile {
 
   const r = mulberry32(hash(idx, 0x5eed))
 
-  const base = r() < 0.7 ? pick(r, FIRST_NAMES) : pick(r, HANDLES)
+  const freeNames = FIRST_NAMES.filter((n) => !RESERVED_NAMES.has(n))
+  const base = r() < 0.7 ? pick(r, freeNames) : pick(r, HANDLES)
   const num = 10 + Math.floor(r() * 90)
   const name = `${base}${num}`
 
@@ -299,25 +288,17 @@ export function npcProfile(idx: number): NpcProfile {
     if (cr <= 0) { characterId = c.id; break }
   }
 
-  // Roll a distinct look: a real hair style (never 'none'), varied colouring,
-  // occasional glasses / hair band, and clothing recolours so no two scholars
-  // read as the same person even when they share the base character body.
-  const charBodyType: BodyType = characterById(characterId).gender ?? 'male'
-  const hairPool = hairsFor(charBodyType).filter((h) => h.id !== 'none')
-  const glassesColor = pick(r, GLASS_COLORS)
-  const bandColor = pick(r, HAIR_COLORS).hex
+  const ch = characterById(characterId)
+  // The REAL character look — no rolling. NPCs wearing a character look exactly
+  // like that character (hair, pony, skin, clothes all come from the fallback),
+  // so a scholar with Lily's body is Lily, not "a stranger with a ponytail".
   const look: NpcLook = {
-    hair: pick(r, hairPool).id,
-    hairColor: pick(r, HAIR_COLORS).id,
-    skin: pick(r, SKINS).id,
-    eyes: pick(r, EYE_COLORS).id,
-    glasses: r() < 0.22,
-    glassesColor,
-    hairBand: r() < 0.12,
-    hairBandColor: bandColor,
-    topColor: pick(r, CLOTH_HEXES),
-    bottomColor: pick(r, CLOTH_HEXES),
-    shoeColor: pick(r, CLOTH_HEXES),
+    hair: ch.fallback.hair,
+    hairColor: ch.fallback.hairColor,
+    skin: ch.fallback.skin,
+    eyes: ch.fallback.eyes,
+    glasses: false,
+    hairBand: false,
   }
 
   const rankW = (id: string) => (id.startsWith('bronze') ? 5 : 2.5)
@@ -330,10 +311,10 @@ export function npcProfile(idx: number): NpcProfile {
   }
   const xp = RANKS.find((rk) => rk.id === rankId)?.threshold ?? 0
 
-  const n = Math.floor(r() * 3) + 1
+  const n = Math.floor(r() * 2) + 1
   const accessories: string[] = []
   for (let i = 0; i < n; i++) {
-    const id = pick(r, ALL_ACCESSORY_IDS)
+    const id = pick(r, NPC_ACCESSORY_POOL)
     if (!accessories.includes(id)) accessories.push(id)
   }
 

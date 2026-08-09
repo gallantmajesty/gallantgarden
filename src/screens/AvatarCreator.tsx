@@ -25,6 +25,7 @@ import {
   bottomHex,
   shoeHex,
 } from '../avatar/config'
+import { AccessoryLogo } from '../avatar/AccessoryLogo'
 import { BigDiningTable, AccessoryModel } from '../avatar/Accessories'
 import { ResourceBar } from '../components/ResourceBar'
 import './AvatarCreator.css'
@@ -440,7 +441,9 @@ function AccessoryTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
             data-on={current === a.id}
             onClick={() => choose(a.id)}
           >
-            <span className="ac-acc-emoji">{a.icon}</span>
+            <span className="ac-acc-emoji">
+              <AccessoryLogo id={a.id} size={34} />
+            </span>
             <span className="ac-acc-name">
               {a.name}
               <small>{a.blurb}</small>
@@ -660,7 +663,7 @@ function AvatarCanvas({
 }
 
 /** Warm dust motes drifting in lamplight */
-function DustMotes({ count = 60 }: { count?: number }) {
+export function DustMotes({ count = 60 }: { count?: number }) {
   const ref = useRef<THREE.Points>(null!)
   const positions = useRef(new Float32Array(count * 3))
 
@@ -707,7 +710,7 @@ function DustMotes({ count = 60 }: { count?: number }) {
 
 /** Soft circular ground shadow — a radial-gradient disc under the character so the
  *  shadow reads as a natural round pool instead of a hard square. */
-function SoftShadow() {
+export function SoftShadow() {
   const tex = useMemo(() => {
     const c = document.createElement('canvas')
     c.width = c.height = 128
@@ -731,7 +734,7 @@ function SoftShadow() {
 /** Concert hall stage for the grand piano — maple plank platform on runners,
  *  brass edge trim, a warm spotlight pool, and a dark curtain backdrop so the
  *  instrument sits in a room instead of a void. */
-function ConcertStage() {
+export function ConcertStage() {
   const stageTex = useMemo(() => {
     const c = document.createElement('canvas')
     c.width = c.height = 256
@@ -817,7 +820,7 @@ function ConcertStage() {
 }
 
 /** Simple wooden café pedestal — just a floor disc so the character has ground. */
-function CafePedestal() {
+export function CafePedestal() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <circleGeometry args={[0.9, 48]} />

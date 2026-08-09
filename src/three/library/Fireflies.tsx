@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { type InstancedMesh, Object3D } from 'three'
 import { groundShelves, SHELF, upperShelves } from './furniture'
+import { throttle } from '../../lib/frameThrottle'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -63,6 +64,9 @@ export function Fireflies({ count = 40 }: { count?: number }) {
   useFrame((state) => {
     const mesh = ref.current
     if (!mesh) return
+    // 30 Hz like every sibling decorative loop — the bobbing is slow enough
+    // that a 60 Hz rewrite of the instance buffer is pure wasted GPU upload.
+    if (!throttle(30, performance.now())) return
     const t = state.clock.elapsedTime
     for (let i = 0; i < motes.length; i++) {
       const m = motes[i]

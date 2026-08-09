@@ -171,19 +171,6 @@ export const BANNERS: Banner[] = [
     price: 1200,
   },
   {
-    id: 'heavenly_gold',
-    name: 'Heavenly Gold',
-    visible: true,
-    css: 'linear-gradient(120deg, #1a1408 0%, #4a3a10 40%, #c9a44a 80%, #ffe6b0 100%)',
-    glow: '#c9a44a',
-    image: '/banners/heavenly_banner_golden_halo.webp',
-    category: 'others',
-    // launch tier: premium (gold)
-    price: 200,
-    currency: 'gold',
-    textDark: true,
-  },
-  {
     id: 'crimson_flame',
     name: 'Crimson Flame',
     visible: false,
@@ -318,7 +305,6 @@ export const LOGOS: Logo[] = [
     filter: { brightness: 0.68, contrast: 1.15, saturate: 1.2 } },
   { id: 'angel_logo', visible: true, name: 'Angel', image: '/banners/chibi_angel_logo_1.webp', category: 'others', price: 1200,
     filter: { brightness: 0.78, contrast: 1.1, saturate: 0.9 } },
-  { id: 'mystic_star', visible: true, name: 'Mystic Star', css: 'linear-gradient(135deg, #2a1a4a 0%, #8a45d6 50%, #ff9ec4 100%)', category: 'others', price: 1500 },
   { id: 'chibi_angel_2', visible: false, name: 'Angel II', image: '/banners/chibi_angel_logo_2.webp', category: 'others', price: 1200,
     filter: { brightness: 0.78, contrast: 1.1, saturate: 0.9 } },
   { id: 'chibi_angel_3', visible: false, name: 'Angel III', image: '/banners/chibi_angel_logo_3.webp', category: 'others', price: 1200,

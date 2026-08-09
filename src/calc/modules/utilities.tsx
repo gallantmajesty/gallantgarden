@@ -116,7 +116,7 @@ function SplitCalc() {
       <Field label="Total bill"><NumberInput value={total} onChange={setTotal} /></Field>
       <Field label="Number of people"><NumberInput value={people} onChange={setPeople} /></Field>
       <Field label="Rounding">
-        <Segmented value={mode} onChange={setMode} options={[
+        <Segmented value={mode} onChange={(v) => setMode(v as 'equal' | 'round')} options={[
           { value: 'equal', label: 'Exact' }, { value: 'round', label: 'Round up' },
         ]} />
       </Field>

@@ -43,7 +43,7 @@ export function PreRoomLoader({
     const timer = setTimeout(() => {
       setShowLoader(false);
     }, minDuration);
-    return () => clearTimeout;
+    return () => clearTimeout(timer);
   }, [showLoader, minDuration]);
 
   if (!hasMounted && !isLoading) {

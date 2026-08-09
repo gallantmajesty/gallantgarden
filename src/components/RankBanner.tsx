@@ -118,7 +118,7 @@ export function RankBanner({ rank }: { rank: Rank }) {
   const tier = tierFromRank(rank)
   const cfg = tierConfig[tier]
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | undefined>(undefined)
   const [particles, setParticles] = useState<Particle[]>([])
   const [mounted, setMounted] = useState(false)
 

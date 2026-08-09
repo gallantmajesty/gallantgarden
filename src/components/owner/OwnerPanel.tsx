@@ -76,7 +76,7 @@ export function OwnerPanel() {
   const scoreHistory = LS.score();
   const shopInventory = LS.shopInv();
   const charConfig = LS.char();
-  const userXp = (dailyRecord.totalFocusMin || 0) * 1.32;
+  const userXp = (dailyRecord.totalFocusMin || 0) * 0.51;
   const todayFocusMin = dailyRecord.totalFocusMin || 0;
   const focusSessionsToday = dailyRecord.focusSessionCount || 0;
   const journeysToday = dailyRecord.journeyMinutes || 0;

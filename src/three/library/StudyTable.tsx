@@ -1,8 +1,8 @@
 import { useMemo, useRef } from 'react'
-import { Euler, Quaternion, CanvasTexture, DoubleSide, SRGBColorSpace } from 'three'
+import { Euler, Quaternion, CanvasTexture, DoubleSide, SRGBColorSpace, type MeshStandardMaterial } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { groundTables, TABLE, upperTables } from './furniture'
-import { useScenePreset, type ScenePreset } from '../../store/quality'
+import { useScenePreset } from '../../store/quality'
 import { useSettings } from '../../store/settings'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { throttle } from '../../lib/frameThrottle'
@@ -269,6 +269,12 @@ function TableSigil({ tables }: { tables: TableInfo[] }) {
   const { w: W, l: L, h: H } = TABLE
   const tex = useMemo(() => makeTableSigilTexture(), [])
   const matRef = useRef<MeshStandardMaterial>(null)
+  // One instanced draw for ALL sigils (was 16 individual transparent circle
+  // meshes — 16 transparent sort entries + 16 draw calls every frame).
+  const items = useMemo<ShapeItem[]>(
+    () => tables.map((t) => ({ pos: [t.pos[0], t.pos[1] + H + 0.12, t.pos[2]], rot: [-Math.PI / 2, 0, 0] })),
+    [tables, H],
+  )
   useFrame((s) => {
     if (!throttle(20, performance.now())) return
     if (matRef.current) {
@@ -278,29 +284,19 @@ function TableSigil({ tables }: { tables: TableInfo[] }) {
     }
   })
   return (
-    <group>
-      {tables.map((t, i) => (
-        <mesh
-          key={t.idx}
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[t.pos[0], t.pos[1] + H + 0.12, t.pos[2]]}
-        >
-          <circleGeometry args={[Math.min(W, L) * 0.42, 48]} />
-          <meshStandardMaterial
-            ref={i === 0 ? matRef : undefined}
-            map={tex}
-            emissive="#ffb454"
-            emissiveMap={tex}
-            emissiveIntensity={0.5}
-            transparent
-            opacity={0.9}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            side={DoubleSide}
-          />
-        </mesh>
-      ))}
-    </group>
+    <InstancedShape
+      items={items}
+      materialRef={matRef}
+      map={tex}
+      emissive="#ffb454"
+      emissiveMap={tex}
+      emissiveIntensity={0.5}
+      transparent
+      opacity={0.9}
+      depthWrite={false}
+      side={DoubleSide}
+    >
+      <circleGeometry args={[Math.min(W, L) * 0.42, 48]} />
+    </InstancedShape>
   )
 }

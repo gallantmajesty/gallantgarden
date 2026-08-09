@@ -20,6 +20,7 @@ import { useSocial } from '../../store/social'
 import { useProfile } from '../../store/profile'
 import { Icon2d } from './Icon2d'
 import { LeafBurst } from './LeafBurst'
+import { GREEN_LEAF_ICON } from '../../lib/leafIcons'
 import './AchievementsPanel.css'
 
 interface AchievementsPanelProps {
@@ -111,7 +112,7 @@ export function AchievementsPanel({ isOwn, earned }: AchievementsPanelProps) {
           <span className="ach-title">Achievements</span>
           {isOwn && (
             <span className="ach-leaves" ref={leavesRef}>
-              <img className="ach-leaf-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
+              <img className="ach-leaf-icon" src={GREEN_LEAF_ICON} alt="" draggable={false} />
               {leavesEarned.toLocaleString()}
               <span className="ach-leaves-total"> / {TOTAL_LEAVES.toLocaleString()} leaves</span>
             </span>
@@ -252,7 +253,7 @@ function AchievementRow({
           {nextTier ? (
             <>
               <span className="ach-row-reward">
-                <img className="ach-leaf-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
+                <img className="ach-leaf-icon" src={GREEN_LEAF_ICON} alt="" draggable={false} />
                 +{nextTier.leaves}
               </span>
               <button

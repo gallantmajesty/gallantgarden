@@ -94,7 +94,7 @@ function CompoundCalc() {
       <Field label="Annual rate"><NumberInput value={rate} onChange={setRate} suffix="%" /></Field>
       <Field label="Years"><NumberInput value={years} onChange={setYears} /></Field>
       <Field label="Compounding frequency">
-        <Segmented value={freq} onChange={setFreq} options={[
+        <Segmented value={freq} onChange={(v) => setFreq(v as '1' | '4' | '12' | '365')} options={[
           { value: '1', label: 'Yearly' }, { value: '4', label: 'Quarterly' },
           { value: '12', label: 'Monthly' }, { value: '365', label: 'Daily' },
         ]} />

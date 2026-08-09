@@ -24,7 +24,7 @@ function BmiCalc() {
   return (
     <CalcLayout>
       <Field label="Units">
-        <Segmented value={unit} onChange={setUnit} options={[
+        <Segmented value={unit} onChange={(v) => setUnit(v as 'metric' | 'imperial')} options={[
           { value: 'metric', label: 'Metric (cm/kg)' },
           { value: 'imperial', label: 'Imperial (in/lb)' },
         ]} />
@@ -53,7 +53,7 @@ function CalorieCalc() {
   return (
     <CalcLayout>
       <Field label="Sex">
-        <Segmented value={sex} onChange={setSex} options={[
+        <Segmented value={sex} onChange={(v) => setSex(v as 'male' | 'female')} options={[
           { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' },
         ]} />
       </Field>

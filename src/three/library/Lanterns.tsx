@@ -1,8 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { DoubleSide, type InstancedMesh, type ShapeItem, Object3D } from 'three'
+import { DoubleSide, type InstancedMesh, Object3D } from 'three'
 import { HALL } from './layout'
 import { columns } from './furniture'
-import { InstancedBoxes, InstancedShape, type BoxItem } from './Instanced'
+import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 
 const IRON = '#241a12'
 const BRASS = '#caa84a'

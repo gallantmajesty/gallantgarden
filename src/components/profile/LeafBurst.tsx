@@ -4,6 +4,7 @@
 
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { GREEN_LEAF_ICON } from '../../lib/leafIcons'
 import './LeafBurst.css'
 
 interface LeafBurstProps {
@@ -28,7 +29,7 @@ export function LeafBurst({ from, to, count = 9, onDone }: LeafBurstProps) {
       const leaf = document.createElement('span')
       leaf.className = 'leaf-fly'
       const img = document.createElement('img')
-      img.src = '/icons/golden-leaf.png'
+      img.src = GREEN_LEAF_ICON
       img.alt = ''
       img.draggable = false
       leaf.appendChild(img)

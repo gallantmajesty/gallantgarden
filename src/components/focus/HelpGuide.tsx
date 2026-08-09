@@ -16,14 +16,13 @@ interface HelpGuideProps {
 const TIERS = [
   {
     key: "easy",
-    emoji: "🟢",
     name: "Easy",
     color: "#34d399",
     soft: "rgba(52,211,153,0.12)",
     oneLine: "Free & flexible — start anywhere, no risk.",
     bullets: [
       `${EASY_RATE} leaves/min · no fullscreen · no wager`,
-      "Keep the study tab open — switching tabs starts the 20s warning.",
+      "Leave the tab and the timer just pauses — come back and it resumes. Nothing is lost.",
       "With breaks: each completed segment banks its leaves immediately.",
       "Without breaks: everything is granted at the end.",
       "Quit early → keep already-banked splits, lose the rest.",
@@ -32,22 +31,20 @@ const TIERS = [
   },
   {
     key: "medium",
-    emoji: "🟡",
     name: "Medium",
     color: "#fbbf24",
     soft: "rgba(251,191,36,0.12)",
-    oneLine: "Fullscreen discipline — double the rate, one payout.",
+    oneLine: "Fullscreen discipline — higher rate, one payout.",
     bullets: [
-      `${MEDIUM_RATE} leaves/min (2× Easy) · fullscreen required · no wager`,
+      `${MEDIUM_RATE} leaves/min · fullscreen required · no wager`,
       "Breaks are allowed, but rewards are granted only at session end.",
-      "Exiting fullscreen starts the 20s warning — return or it fails.",
+      "Exiting fullscreen starts the 20s warning — return (press F) or it fails.",
       "Tab switching is fine — fullscreen is what's enforced.",
     ],
     best: "Serious blocks without risking leaves.",
   },
   {
     key: "hardcore",
-    emoji: "🔴",
     name: "Hardcore",
     color: "#f87171",
     soft: "rgba(248,113,113,0.12)",
@@ -62,6 +59,55 @@ const TIERS = [
     best: "Focused grinders chasing the biggest payouts.",
   },
 ] as const;
+
+/* ---- small inline SVGs ---- */
+function Dot({ color }: { color: string }) {
+  return (
+    <span
+      style={{
+        width: 10,
+        height: 10,
+        borderRadius: "50%",
+        background: color,
+        boxShadow: `0 0 8px ${color}`,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+function IconWarn({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+function IconLeaf({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 20C4 11 9 4 20 4c0 11-7 16-16 16z" />
+      <path d="M4 20c4-6 8-10 13-13" />
+    </svg>
+  );
+}
+function IconDevice({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="7" y="3" width="10" height="18" rx="2" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+function IconTarget({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
 
 function TabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
@@ -80,6 +126,9 @@ function TabButton({ active, children, onClick }: { active: boolean; children: R
         fontFamily: "inherit",
         transition: "all 0.2s",
         whiteSpace: "nowrap",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.4rem",
       }}
     >
       {children}
@@ -95,7 +144,7 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: "0.9rem" }}>
         <div style={{ fontSize: "0.95rem", letterSpacing: "0.16em", color: "#e8c86a", fontWeight: 700 }}>
-          📖 FOCUS MODE GUIDE
+          FOCUS MODE GUIDE
         </div>
         <div style={{ fontSize: "0.72rem", color: "#9aa3b2", marginTop: "0.25rem" }}>
           Every session runs in one of three tiers — pick your commitment level.
@@ -105,9 +154,11 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
       {/* Tab bar */}
       <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", justifyContent: "center", marginBottom: "0.9rem" }}>
         <TabButton active={view === "overview"} onClick={() => setView("overview")}>Overview</TabButton>
-        <TabButton active={view === "easy"} onClick={() => setView("easy")}>🟢 Easy</TabButton>
-        <TabButton active={view === "medium"} onClick={() => setView("medium")}>🟡 Medium</TabButton>
-        <TabButton active={view === "hardcore"} onClick={() => setView("hardcore")}>🔴 Hardcore</TabButton>
+        {TIERS.map((t) => (
+          <TabButton key={t.key} active={view === t.key} onClick={() => setView(t.key as "easy" | "medium" | "hardcore")}>
+            <Dot color={t.color} /> {t.name}
+          </TabButton>
+        ))}
       </div>
 
       {/* Overview: comparison table */}
@@ -124,9 +175,12 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
               color: "#c3cad6",
             }}
           >
-            <b style={{ color: "#fbbf24" }}>⏱ The 20-second warning</b> applies to every tier: leave the enforced
-            surface (the tab for Easy, fullscreen for Medium/Hardcore) and a <b style={{ color: "#fff" }}>{GRACE_SEC}s</b>{" "}
-            countdown starts. Return in time and the session continues — miss it and it fails.
+            <b style={{ color: "#fbbf24", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+              <IconWarn /> The {GRACE_SEC}-second warning
+            </b>{" "}
+            applies to Medium and Hardcore: leave fullscreen and a <b style={{ color: "#fff" }}>{GRACE_SEC}s</b>{" "}
+            countdown starts — press <b style={{ color: "#fff" }}>F</b> (or the button) to re-enter, or the session
+            fails. Easy has no warning: leaving the tab simply pauses the timer.
           </div>
 
           <div
@@ -167,14 +221,20 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
                     border: `1px solid ${t.color}44`,
                     display: "grid",
                     placeItems: "center",
-                    fontSize: "1rem",
                     flexShrink: 0,
                   }}
                 >
-                  {t.emoji}
+                  <Dot color={t.color} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#e6e9f0" }}>{t.name}</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#e6e9f0" }}>
+                    {t.name}
+                    {t.key === "hardcore" && (
+                      <span style={{ marginLeft: "0.5rem", fontSize: "0.58rem", fontWeight: 800, letterSpacing: "0.12em", color: "#fda4af", border: "1px solid rgba(248,113,113,0.4)", borderRadius: 999, padding: "0.15rem 0.45rem" }}>
+                        COMING SOON
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: "0.68rem", color: "#9aa3b2", marginTop: "0.1rem" }}>{t.oneLine}</div>
                 </div>
                 <div style={{ fontSize: "0.8rem", fontWeight: 700, color: t.color, flexShrink: 0 }}>
@@ -193,11 +253,14 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
               fontSize: "0.72rem",
               color: "#9fb8a8",
               lineHeight: 1.55,
+              display: "flex",
+              gap: "0.5rem",
+              alignItems: "flex-start",
             }}
           >
-            🍃 <b style={{ color: "#34d399" }}>Leaves</b> are your spendable currency — earn them from focused study,
+            <IconLeaf /> <span><b style={{ color: "#34d399" }}>Leaves</b> are your spendable currency — earn them from focused study,
             spend them in the Shop. Focus time also grows your lifetime <b style={{ color: "#e6e9f0" }}>Rank XP</b>,
-            which never drops when you spend.
+            which never drops when you spend.</span>
           </div>
         </div>
       )}
@@ -216,8 +279,8 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
                   marginBottom: "0.6rem",
                 }}
               >
-                <div style={{ fontSize: "0.9rem", fontWeight: 700, color: t.color }}>
-                  {t.emoji} {t.name} MODE
+                <div style={{ fontSize: "0.9rem", fontWeight: 700, color: t.color, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <Dot color={t.color} /> {t.name.toUpperCase()} MODE
                 </div>
                 <div style={{ fontSize: "0.72rem", color: "#c3cad6", marginTop: "0.2rem" }}>{t.oneLine}</div>
               </div>
@@ -257,13 +320,16 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
                       <span style={{ color: "#9aa3b2" }}>{m >= 60 ? `${m / 60} h` : `${m} min`}</span>
                       <span>
                         <b style={{ color: "#fbbf24" }}>{hardcoreMultiplier(m)}×</b>{" "}
-                        <span style={{ color: "#9aa3b2" }}>· min {minWagerFor(m)} 🍃</span>
+                        <span style={{ color: "#9aa3b2" }}>· min {minWagerFor(m)} leaves</span>
                       </span>
                     </div>
                   ))}
                   <div style={{ fontSize: "0.62rem", color: "#6b7280", marginTop: "0.45rem" }}>
                     Example rate: 1 h = {hardcoreRateFor(60).toFixed(1)} leaves/min · 4 h = {hardcoreRateFor(240).toFixed(1)} leaves/min.
                     Wagering above the minimum adds a risk bonus (1.5×→+0.5×, 3×→+1×, 5×→+2×).
+                  </div>
+                  <div style={{ marginTop: "0.55rem", textAlign: "center", fontSize: "0.7rem", fontWeight: 800, letterSpacing: "0.14em", color: "#fda4af", border: "1px dashed rgba(248,113,113,0.45)", borderRadius: 10, padding: "0.5rem" }}>
+                    COMING SOON — WAGERED SESSIONS ARRIVE IN AN UPCOMING UPDATE
                   </div>
                 </div>
               )}
@@ -277,9 +343,12 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
                   fontSize: "0.72rem",
                   color: "#c3cad6",
                   lineHeight: 1.5,
+                  display: "flex",
+                  gap: "0.5rem",
+                  alignItems: "flex-start",
                 }}
               >
-                🎯 <b style={{ color: "#e6e9f0" }}>Best for:</b> {t.best}
+                <IconTarget /> <span><b style={{ color: "#e6e9f0" }}>Best for:</b> {t.best}</span>
               </div>
             </div>
           ))}
@@ -293,11 +362,14 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
               fontSize: "0.72rem",
               color: "#9fb8a8",
               lineHeight: 1.55,
+              display: "flex",
+              gap: "0.5rem",
+              alignItems: "flex-start",
             }}
           >
-            📱 <b style={{ color: "#34d399" }}>Multi-device boost:</b> in Hardcore, connect up to{" "}
-            <b style={{ color: "#fff" }}>{DEVICE_BOOST_MAX_DEVICES} devices</b> (via 🔗 Hardcore Connect) — each adds
-            +{DEVICE_BOOST_MAX_DEVICES * 5}% max ({5}% each) to the multiplier.
+            <IconDevice /> <span><b style={{ color: "#34d399" }}>Multi-device boost:</b> in Hardcore, connect up to{" "}
+            <b style={{ color: "#fff" }}>{DEVICE_BOOST_MAX_DEVICES} devices</b> (via Hardcore Connect) — each adds
+            +{DEVICE_BOOST_MAX_DEVICES * 5}% max ({5}% each) to the multiplier.</span>
           </div>
         </div>
       )}

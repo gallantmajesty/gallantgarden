@@ -7,6 +7,7 @@ import { TimerControls } from "./focus/TimerControls";
 import { MultiplayerBar } from "./focus/MultiplayerBar";
 import { usePomodoro, computeSegments, SESSION_OPTIONS, BREAK_ACTIVITIES, suggestBreakActivity } from "../store/pomodoro";
 import type { TimerPreset, SessionSummary, SessionHistoryEntry } from "../store/pomodoro";
+import type { ClockMode } from "../hooks/focus/types";
 import { useWorld } from "../store/world";
 import { useSettings } from "../store/settings";
 import { useHardcore, EASY_RATE, MEDIUM_RATE, hardcoreRateFor, hardcoreMultiplier, minWagerFor, wagerBonusMultiplier } from "../store/hardcore";
@@ -27,13 +28,98 @@ interface FocusDomainProps {
 }
 
 /* ============================================================
+ *  INLINE SVG ICONS — no emojis, no image assets
+ * ============================================================ */
+function IconLeaf({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 20C4 11 9 4 20 4c0 11-7 16-16 16z" />
+      <path d="M4 20c4-6 8-10 13-13" />
+    </svg>
+  );
+}
+function IconDevice({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="7" y="3" width="10" height="18" rx="2" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+function IconWarn({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+function IconBook({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+function IconLink({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    </svg>
+  );
+}
+function IconPlay({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M4 1.7v12.6a.7.7 0 0 0 1.06.6l10-6.3a.7.7 0 0 0 0-1.2l-10-6.3A.7.7 0 0 0 4 1.7z" />
+    </svg>
+  );
+}
+function IconPause({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <rect x="3" y="2" width="4" height="12" rx="1.2" />
+      <rect x="9" y="2" width="4" height="12" rx="1.2" />
+    </svg>
+  );
+}
+function IconBreak({ id }: { id: string }) {
+  const common = {
+    width: 13, height: 13, viewBox: "0 0 24 24",
+    fill: "none", stroke: "currentColor", strokeWidth: 1.8,
+    strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (id) {
+    case 'walk':
+      return <svg {...common}><path d="M13 4a2 2 0 1 0-4 0 2 2 0 0 0 4 0z" /><path d="M6 21l2-5 3 1 2 4M10 12l1-3 3 1 1 4M12 9l2-2 3 1" /></svg>;
+    case 'hydrate':
+      return <svg {...common}><path d="M12 2v4M12 6a5 5 0 0 1 5 5v6a5 5 0 0 1-10 0v-6a5 5 0 0 1 5-5z" /><path d="M12 6v2" /></svg>;
+    case 'eyes':
+      return <svg {...common}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.6" /></svg>;
+    case 'breathe':
+      return <svg {...common}><path d="M12 3v5M12 16v5M12 8a4 4 0 0 1 0 8" /><path d="M3 8h2a4 4 0 0 1 0 8H3M21 8h-2a4 4 0 0 0 0 8h2" /></svg>;
+    case 'snack':
+      return <svg {...common}><path d="M8 20V10a4 4 0 0 1 8 0v10" /><path d="M4 20h16M5 14h14M8 7h8M10 3h4" /></svg>;
+    case 'chat':
+      return <svg {...common}><path d="M21 12a8 8 0 0 1-8 8H4l1.5-3.5A8 8 0 1 1 21 12z" /><path d="M8 11h.01M12 11h.01M16 11h.01" /></svg>;
+    case 'music':
+      return <svg {...common}><path d="M9 18.5V6.8a1 1 0 0 1 .76-.97l8-2A1 1 0 0 1 19 4.8v11.2a2.8 2.8 0 1 1-1.6-2.53V7.4l-6.4 1.6v9.5a2.8 2.8 0 1 1-2-2.5z" /></svg>;
+    default: // stretch
+      return <svg {...common}><path d="M9 3H3v6" /><path d="M21 3h-6M15 21h6v-6" /><path d="M3 21v-6M21 3l-5 5M8 12h.01M12 12h.01M16 12h.01" /></svg>;
+  }
+}
+
+/* ============================================================
  *  TIER META — Easy / Medium / Hardcore
  * ============================================================ */
 type TierKey = "easy" | "medium" | "hardcore";
 interface TierMeta {
   key: TierKey;
   name: string;
-  emoji: string;
   rate: number;
   desc: string;
   color: string;
@@ -45,21 +131,21 @@ interface TierMeta {
 function tierMeta(key: TierKey, minutes: number): TierMeta {
   const base: Record<TierKey, Omit<TierMeta, "rate">> = {
     easy: {
-      key: "easy", name: "Easy", emoji: "🟢",
-      desc: "Free-roam focus. No fullscreen, no wager.",
+      key: "easy", name: "Easy",
+      desc: "Free-roam focus. No fullscreen, no wager. The timer pauses when you step away — nothing is lost.",
       color: "#34d399", softColor: "rgba(52,211,153,0.14)",
       reward: "Split rewards on breaks · banked per segment",
-      risk: "20s warning on tab leave",
+      risk: "None — step away freely",
     },
     medium: {
-      key: "medium", name: "Medium", emoji: "🟡",
+      key: "medium", name: "Medium",
       desc: "Fullscreen discipline. Higher leaves, end-only payout.",
       color: "#fbbf24", softColor: "rgba(251,191,36,0.14)",
       reward: "Rewards granted only at the end",
       risk: "20s warning on fullscreen exit",
     },
     hardcore: {
-      key: "hardcore", name: "Hardcore", emoji: "🔴",
+      key: "hardcore", name: "Hardcore",
       desc: "Wager escrow + fullscreen. Scaling multiplier + device boost.",
       color: "#f87171", softColor: "rgba(248,113,113,0.14)",
       reward: "Wager back + scaled earnings on win",
@@ -195,7 +281,7 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
             <div key={session.id} className="fd-card" style={{ padding: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <span style={{ fontWeight: 600 }}>
-                  {session.timerType === 'focus' ? '🎯 Focus' : '🍅 Pomodoro'}
+                  {session.timerType === 'focus' ? 'Focus' : 'Pomodoro'}
                   <span className="fd-mode-dot" style={{ marginLeft: 8, display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: tierMeta(session.focusMode, session.sessionMinutes).color }} />
                   {session.focusMode}
                 </span>
@@ -304,7 +390,7 @@ function ExportModal({ onClose }: { onClose: () => void }) {
  *  FOCUS DOMAIN
  * ============================================================ */
 export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
-  const [clockMode, setClockMode] = useState("sand");
+  const [clockMode, setClockMode] = useState<ClockMode>("sand");
   const [wallClock, setWallClock] = useState(new Date());
   const [pickTier, setPickTier] = useState<TierKey>("easy");
   const [pickType, setPickType] = useState<TimerType>("focus");
@@ -331,6 +417,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     breakCount,
     breakDurations,
     segmentIndex,
+    segmentsCompleted,
     running,
     timerType,
     toggle,
@@ -339,7 +426,6 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     setFocusMode,
     totalSessionLeaves,
     subject,
-    tabReturnDeadline,
     lastReward,
     clearReward,
   } = usePomodoro();
@@ -352,10 +438,11 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
 
   const isIdle = phase === "idle";
 
-  // Keep the picker in sync when a session resets.
+  // Keep the picker in sync when a session resets. Hardcore is "Coming Soon" —
+  // never auto-select it, fall back to Easy.
   useEffect(() => {
     if (isIdle) {
-      setPickTier(focusMode === 'medium' ? 'medium' : focusMode === 'hardcore' ? 'hardcore' : 'easy');
+      setPickTier(focusMode === 'medium' ? 'medium' : 'easy');
       setPickType(timerType);
       setPickDur(sessionMinutes);
       setPickBreaks(breakCount);
@@ -467,23 +554,20 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      // Re-enter fullscreen with F when a Medium/Hardcore session demands it.
+      if ((e.key === 'f' || e.key === 'F') && useHardcore.getState().active && !document.fullscreenElement) {
+        e.preventDefault();
+        useHardcore.getState().enterFullscreen();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  // Easy tab-leave grace countdown (universal 20s warning).
-  const [easyGraceLeft, setEasyGraceLeft] = useState(0);
-  useEffect(() => {
-    if (isOpen) {
-      const id = setInterval(() => {
-        const d = usePomodoro.getState().tabReturnDeadline;
-        if (d && Date.now() < d) setEasyGraceLeft(Math.ceil((d - Date.now()) / 1000));
-        else setEasyGraceLeft(0);
-      }, 500);
-      return () => clearInterval(id);
-    }
-  }, [isOpen, tabReturnDeadline]);
+  // Easy tab-leave: no grace countdown anymore — the timer just pauses and
+  // resumes freely when the user returns.
 
   if (!isOpen) return null;
 
@@ -525,21 +609,12 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
           <span>Leaves: {astroLog.log.totalLeaves} ✦</span>
         </div>
 
-        <button onClick={() => setShowConnect(true)} className="fd-close" style={{ marginRight: "0.25rem" }} title="Hardcore Connect — paste a boost code or see connected devices">🔗</button>
-        <button onClick={() => setShowHelp(true)} className="fd-close" style={{ marginRight: "0.25rem" }} title="How focus modes work">📖</button>
+        <button onClick={() => setShowConnect(true)} className="fd-close fd-icon-btn" style={{ marginRight: "0.25rem" }} title="Hardcore Connect — paste a boost code or see connected devices"><IconLink /></button>
+        <button onClick={() => setShowHelp(true)} className="fd-close fd-icon-btn" style={{ marginRight: "0.25rem" }} title="How focus modes work"><IconBook /></button>
         <button onClick={onClose} className="fd-close">✕</button>
       </div>
 
-      <div className="fd-clock-wrap">
-        <div className="fd-simple-timer">
-          <div className="fd-timer-display">
-            {String(Math.floor(remaining / 60)).padStart(2, '0')}:{String(remaining % 60).padStart(2, '0')}
-          </div>
-          <div className="fd-timer-status">
-            {isPaused ? '⏸ Paused' : isRunning ? '▶ Running' : '⏸ Paused'}
-          </div>
-        </div>
-      </div>
+      {/* Timer — only shown once a session is actually running (mode + duration chosen) */}
 
       {/* ============================ BODY ============================ */}
       <div className="fd-body">
@@ -552,15 +627,17 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
               {(["easy", "medium", "hardcore"] as TierKey[]).map((t) => {
                 const meta = tierMeta(t, pickDur);
                 const sel = pickTier === t;
+                const comingSoon = t === 'hardcore';
                 return (
                   <button
                     key={t}
-                    className={`fd-tier-card ${sel ? 'selected' : ''}`}
+                    className={`fd-tier-card ${sel ? 'selected' : ''} ${comingSoon ? 'soon' : ''}`}
                     style={sel ? { borderColor: meta.color, background: meta.softColor, boxShadow: `0 0 30px ${meta.softColor}` } : undefined}
-                    onClick={() => setPickTier(t)}
+                    onClick={() => { if (!comingSoon) setPickTier(t); }}
+                    disabled={comingSoon}
                   >
                     <div className="fd-tier-head">
-                      <span className="fd-tier-emoji">{meta.emoji}</span>
+                      <span className="fd-tier-dot" style={{ background: meta.color }} />
                       <span className="fd-tier-name">{meta.name.toUpperCase()}</span>
                     </div>
                     <div className="fd-tier-rate" style={{ color: meta.color }}>
@@ -569,11 +646,11 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
                     <div className="fd-tier-desc">{meta.desc}</div>
                     <div className="fd-tier-row"><span>Reward</span><b>{meta.reward}</b></div>
                     <div className="fd-tier-row"><span>Risk</span><b style={{ color: t === 'hardcore' ? '#f87171' : 'rgba(255,255,255,0.6)' }}>{meta.risk}</b></div>
-                    {t === 'hardcore' && (
+                    {comingSoon && (
                       <>
                         <div className="fd-tier-row">
                           <span>Min wager</span>
-                          <b style={{ color: '#fbbf24' }}>{minWagerFor(pickDur)} 🍃</b>
+                          <b style={{ color: '#fbbf24' }}>{minWagerFor(pickDur)} <IconLeaf /></b>
                         </div>
                         <div className="fd-tier-row">
                           <span>Mult</span>
@@ -581,11 +658,12 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
                         </div>
                         <div className="fd-tier-row">
                           <span>Device boost</span>
-                          <b style={{ color: '#34d399' }}>+{boostPct(1)}% each 📱</b>
+                          <b style={{ color: '#34d399' }}><IconDevice /> +{boostPct(1)}% each</b>
                         </div>
+                        <div className="fd-tier-soon">COMING SOON</div>
                       </>
                     )}
-                    {sel && <div className="fd-tier-check" style={{ background: meta.color }}>✓</div>}
+                    {sel && !comingSoon && <div className="fd-tier-check" style={{ background: meta.color }}>✓</div>}
                   </button>
                 );
               })}
@@ -680,8 +758,8 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
                 className="fd-btn fd-btn-primary fd-btn-start"
                 style={{ borderColor: activeTier.color, background: activeTier.softColor, color: activeTier.color }}
               >
-                START {activeTier.name.toUpperCase()}
-                {pickType === 'tabata' ? ' TABATA' : pickType === 'pomodoro' && pickBreaks > 0 ? ` • ${pickBreaks} BREAKS` : ''}
+                {pickTier === 'hardcore' ? 'COMING SOON' : `START ${activeTier.name.toUpperCase()}`}
+                {pickTier !== 'hardcore' && (pickType === 'tabata' ? ' TABATA' : pickType === 'pomodoro' && pickBreaks > 0 ? ` • ${pickBreaks} BREAKS` : '')}
               </button>
 
               <div className="fd-config-footer">
@@ -695,19 +773,55 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
           <div className="fd-session">
             {/* Session mode chip */}
             <div className="fd-session-chip" style={{ borderColor: sessionTier.color, color: sessionTier.color, background: sessionTier.softColor }}>
-              {sessionTier.emoji} {modeLabel(focusMode).toUpperCase()} · {sessionTier.rate} leaves/min
-              {focusMode === 'hardcore' && hardcode.wager > 0 && <span> · WAGER {hardcode.wager} 🍃</span>}
+              <span className="fd-tier-dot" style={{ background: sessionTier.color }} /> {modeLabel(focusMode).toUpperCase()} · {sessionTier.rate} leaves/min
+              {focusMode === 'hardcore' && hardcode.wager > 0 && <span> · WAGER {hardcode.wager} <IconLeaf /></span>}
               {focusMode === 'hardcore' && <span> · {hardcode.effMult}×</span>}
-              {focusMode === 'hardcore' && hardcode.devices > 0 && <span> · 📱 +{hardcode.devices}</span>}
+              {focusMode === 'hardcore' && hardcode.devices > 0 && <span> · <IconDevice /> +{hardcode.devices}</span>}
             </div>
 
             <div className="fd-clock-wrap">
-              <div className="fd-simple-timer">
-                <div className="fd-timer-display">
-                  {String(Math.floor(remaining / 60)).padStart(2, '0')}:{String(remaining % 60).padStart(2, '0')}
-                </div>
-                <div className="fd-timer-status">
-                  {isPaused ? '⏸ Paused' : isRunning ? '▶ Running' : '⏸ Paused'}
+              <div className="fd-orb">
+                <div className="fd-orb-ambient" />
+                <svg className="fd-orb-ring" viewBox="0 0 100 100" aria-hidden>
+                  {/* track */}
+                  <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="2.5" />
+                  {/* progress */}
+                  <circle
+                    cx="50" cy="50" r="46" fill="none"
+                    stroke={sessionTier.color}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 46}
+                    strokeDashoffset={2 * Math.PI * 46 * (1 - Math.max(0, Math.min(1, timerProgress)))}
+                    transform="rotate(-90 50 50)"
+                    style={{ transition: 'stroke-dashoffset 0.5s ease, stroke 0.4s ease' }}
+                  />
+                </svg>
+                <div className="fd-orb-inner">
+                  <div className="fd-timer-display">
+                    {String(Math.floor(remaining / 60)).padStart(2, '0')}:{String(remaining % 60).padStart(2, '0')}
+                  </div>
+                  <div className="fd-timer-status">
+                    {isPaused
+                      ? <span className="fd-status-inline"><IconPause /> Paused</span>
+                      : isRunning
+                        ? <span className="fd-status-inline"><IconPlay /> Running</span>
+                        : <span className="fd-status-inline"><IconPause /> Paused</span>}
+                  </div>
+                  {timerType === 'pomodoro' && breakCount > 0 && (
+                    <div className="fd-orb-pips">
+                      {Array.from({ length: breakCount + 1 }, (_, i) => (
+                        <span
+                          key={i}
+                          className={`fd-orb-pip ${i < segmentsCompleted ? 'filled' : i === segmentsCompleted && (isFocusPhase || isBreakPhase) ? 'active' : ''}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <div className="fd-orb-phase" style={{ color: sessionTier.color }}>
+                    {isBreakPhase ? 'Break' : isFocusPhase ? 'Focus' : 'Session'}
+                    {subject && ` · ${subject}`}
+                  </div>
                 </div>
               </div>
             </div>
@@ -727,9 +841,9 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
             </div>
 
             {/* Session leaves counter */}
-            {phase !== 'idle' && totalSessionLeaves > 0 && (
+            {totalSessionLeaves > 0 && (
               <div className="fd-session-leaves">
-                🍃 {totalSessionLeaves} <span className="fd-session-leaves-label">{focusMode === 'easy' ? 'earned so far (split)' : 'session total'}</span>
+                <IconLeaf /> {totalSessionLeaves} <span className="fd-session-leaves-label">{focusMode === 'easy' ? 'earned so far (split)' : 'session total'}</span>
               </div>
             )}
 
@@ -744,7 +858,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
             {/* Reward popup */}
             {lastReward && (
               <div className="fd-reward" onClick={clearReward}>
-                <span className="fd-reward-leaf">🍃</span>
+                <span className="fd-reward-leaf"><IconLeaf size={15} /></span>
                 <span className="fd-reward-amount">+{lastReward.leaves}</span>
                 <span className="fd-reward-label">Leaves</span>
                 {lastReward.noTabBonus > 0 && <span className="fd-reward-bonus">+{lastReward.noTabBonus} deep work</span>}
@@ -757,13 +871,13 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
               const suggested = suggestBreakActivity(segmentIndex - 1);
               return (
                 <div className="fd-break-card">
-                  <div className="fd-break-head">☕ BREAK TIME — Suggested: {suggested.icon} {suggested.label}</div>
+                  <div className="fd-break-head"><IconBreak id="music" /> BREAK TIME — Suggested: <IconBreak id={suggested.icon} /> {suggested.label}</div>
                   <div className="fd-break-list">
                     {BREAK_ACTIVITIES.map((a) => {
                       const isSuggested = a.id === suggested.id;
                       return (
                         <div key={a.id} className={`fd-break-chip ${isSuggested ? 'suggested' : ''}`} style={isSuggested ? { borderColor: sessionTier.color } : undefined}>
-                          <span>{a.icon}</span>
+                          <IconBreak id={a.icon} />
                           <span>{a.label}</span>
                           <span className="fd-break-sec">{a.duration}s</span>
                         </div>
@@ -785,6 +899,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
         width={dock.width}
         onTabChange={dock.setTab}
         onClose={dock.close}
+        onResizeWidth={dock.setWidth}
         lockOpen={hardcode.hardcodeActive}
         tasks={locker.tasks}
         activeTaskId={locker.activeTaskId}
@@ -881,28 +996,23 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
       {hardcode.hardcodeActive && hardcode.graceLeft > 0 && (
         <div className="fd-warning-overlay">
           <div className="fd-warning-box">
-            <div className="fd-warning-label">⚠ FULLSCREEN REQUIRED</div>
+            <div className="fd-warning-label"><IconWarn /> FULLSCREEN REQUIRED</div>
             <div className="fd-warning-count" style={{ color: sessionTier.color }}>{hardcode.graceLeft}</div>
             <div className="fd-warning-text">
               Return to fullscreen within <b>{hardcode.graceLeft}s</b> or the session fails
-              {focusMode === 'hardcore' && hardcode.wager > 0 ? ` and you lose ${hardcode.wager} 🍃` : ' and rewards are lost'}. Your timer is still running.
+              {focusMode === 'hardcore' && hardcode.wager > 0 ? ` and you lose ${hardcode.wager} leaves` : ' and rewards are lost'}. Your timer is still running.
             </div>
+            <button
+              className="fd-btn fd-btn-primary fd-reenter"
+              onClick={() => useHardcore.getState().enterFullscreen()}
+            >
+              RE-ENTER FULLSCREEN <span className="fd-key-hint">F</span>
+            </button>
           </div>
         </div>
       )}
 
-      {/* Easy tab-leave 20s warning */}
-      {focusMode === 'easy' && easyGraceLeft > 0 && (
-        <div className="fd-warning-overlay">
-          <div className="fd-warning-box">
-            <div className="fd-warning-label">⚠ RETURN TO THE TAB</div>
-            <div className="fd-warning-count" style={{ color: '#34d399' }}>{easyGraceLeft}</div>
-            <div className="fd-warning-text">
-              You left the study tab. Come back within <b>{easyGraceLeft}s</b> or the session forfeits (you keep already-earned splits).
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Easy: leaving the tab pauses the timer — no warning, nothing is lost. */}
 
       {/* Session-complete ceremony */}
       {isFinishedPhase && (
@@ -910,7 +1020,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
           <div className="fd-ceremony-box" style={{ borderColor: sessionTier.color }}>
             <div className="fd-ceremony-label" style={{ color: sessionTier.color }}>✦ SESSION COMPLETE ✦</div>
             <div className="fd-ceremony-leaves" style={{ color: sessionTier.color }}>
-              +{focusMode === 'hardcore' ? hardcode.wonAmount : totalSessionLeaves} 🍃
+              <IconLeaf size={26} /> +{focusMode === 'hardcore' ? hardcode.wonAmount : totalSessionLeaves}
             </div>
             <div className="fd-ceremony-meta">
               {Math.floor(totalElapsed / 60)} minutes of deep focus{subject ? ` · ${subject}` : ""}
@@ -918,13 +1028,13 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
 
             {/* Session summary */}
             <div className="fd-summary">
-              <div className="fd-summary-row"><span>Mode</span><b style={{ color: sessionTier.color }}>{sessionTier.emoji} {modeLabel(focusMode)}</b></div>
+              <div className="fd-summary-row"><span>Mode</span><b style={{ color: sessionTier.color }}><span className="fd-tier-dot" style={{ background: sessionTier.color }} /> {modeLabel(focusMode)}</b></div>
               <div className="fd-summary-row"><span>Rate</span><b>{sessionTier.rate} leaves/min</b></div>
               {focusMode === 'hardcore' && (
                 <>
                   <div className="fd-summary-row"><span>Multiplier</span><b style={{ color: '#fbbf24' }}>{hardcode.effMult}×</b></div>
-                  <div className="fd-summary-row"><span>Wager</span><b>{hardcode.wager} 🍃 {hardcode.status === 'won' ? '(returned)' : '(lost)'}</b></div>
-                  {hardcode.devices > 0 && <div className="fd-summary-row"><span>Devices</span><b>📱 +{hardcode.devices}</b></div>}
+                  <div className="fd-summary-row"><span>Wager</span><b>{hardcode.wager} <IconLeaf /> {hardcode.status === 'won' ? '(returned)' : '(lost)'}</b></div>
+                  {hardcode.devices > 0 && <div className="fd-summary-row"><span>Devices</span><b><IconDevice /> +{hardcode.devices}</b></div>}
                 </>
               )}
               <div className="fd-summary-row"><span>Payout</span><b style={{ color: '#34d399' }}>{focusMode === 'easy' ? 'Split per segment' : 'End of session'}</b></div>

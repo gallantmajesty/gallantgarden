@@ -4,12 +4,12 @@ import type { DockTab } from "./types";
 const STORAGE_KEY = "sg.focus.side-dock";
 
 function loadPrefs(): { open: boolean; tab: DockTab; width: number } {
-  if (typeof window === "undefined") return { open: false, tab: "ai", width: 400 };
+  if (typeof window === "undefined") return { open: false, tab: "tasks", width: 400 };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { open: false, tab: "ai", width: 400 };
+    return raw ? JSON.parse(raw) : { open: false, tab: "tasks", width: 400 };
   } catch {
-    return { open: false, tab: "ai", width: 400 };
+    return { open: false, tab: "tasks", width: 400 };
   }
 }
 

@@ -8,6 +8,7 @@ import {
   type BufferGeometry,
   type Group,
   type Mesh,
+  type MeshStandardMaterial,
   Vector3,
 } from 'three'
 import { getTrain, useTrainX, type TrainId } from '../../store/trainx'

@@ -336,7 +336,7 @@ useEffect(() => {
               alignItems: 'center',
               gap: 12,
               cursor: 'pointer',
-            }} onClick={() => setPanel('profile')}>
+            }} onClick={() => { setPanel(null); navigate('/profile'); }}>
               <span style={{ fontSize: 22 }}>⚠️</span>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: '#ff6b6b' }}>Your name needs updating</div>
@@ -705,7 +705,7 @@ useEffect(() => {
   )
 }
 
-function Glyph({ name }: { name: string }) {
+function Glyph({ name, className }: { name: string; className?: string }) {
   const paths: Record<string, string> = {
     note: 'M5 3h14v14l-5 5H5z M14 22v-5h5',
     globe: 'M12 2a10 10 0 100 20 10 10 0 000-20z M2 12h20 M12 2c3 3 3 17 0 20 M12 2c-3 3-3 17 0 20',
@@ -723,7 +723,7 @@ function Glyph({ name }: { name: string }) {
     stickman: 'M12 2a3 3 0 100 6 3 3 0 000-6z M8 22v-6a4 4 0 018 0v6 M12 12v4',
   }
   return (
-    <svg className="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+    <svg className={className ? `glyph ${className}` : 'glyph'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
       strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={paths[name] ?? paths.star} />
     </svg>

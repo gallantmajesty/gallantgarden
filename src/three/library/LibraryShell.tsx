@@ -256,7 +256,7 @@ function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Tex
           Opaque restores depth occlusion (geometry behind the glass is rejected
           before shading) while the colour + emissive map keep the jewelled look
           identical. DoubleSide stays so the one batch faces both window walls. */}
-      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} roughness={0.4} metalness={0.1} side={DoubleSide} transparent opacity={0.6} depthWrite={false}>
+      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} roughness={0.4} metalness={0.1} side={DoubleSide}>
         <planeGeometry args={[step - 0.7, h]} />
       </InstancedShape>
 

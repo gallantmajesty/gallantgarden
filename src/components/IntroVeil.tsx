@@ -154,6 +154,11 @@ export function IntroVeil({ ready }: { ready: boolean }) {
 
       cx = w / 2
       cy = h / 2
+      // Guard against a zero-size first paint (CSS not applied yet): keep the
+      // sane defaults above — zeroing logoR/maxR makes arc() throw
+      // IndexSizeError ("radius is negative") for the halo rings and gives
+      // the ember galaxy an infinite radius.
+      if (w < 1 || h < 1) return
       logoR = Math.min(150, Math.min(w, h) * 0.26)
       maxR = Math.hypot(w, h) / 2
 
@@ -198,6 +203,7 @@ export function IntroVeil({ ready }: { ready: boolean }) {
     }
 
     function draw(now: number) {
+      if (w < 1 || h < 1) return
       const t = now / 1000
       const ph = phaseRef.current
       const phaseT = Math.max(0, t - ph.t0 / 1000)
@@ -222,7 +228,7 @@ export function IntroVeil({ ready }: { ready: boolean }) {
 
       // Rotating dashed halo rings
       for (let k = 0; k < 3; k++) {
-        const r = logoR * (1.25 + k * 0.62) + 8 * Math.sin(t * 0.8 + k * 2.1)
+        const r = Math.max(2, logoR * (1.25 + k * 0.62) + 8 * Math.sin(t * 0.8 + k * 2.1))
         const rot = t * (0.25 + k * 0.12)
         ctx.strokeStyle = `rgba(255,190,90,${0.14 * intro})`
         ctx.lineWidth = 1.5

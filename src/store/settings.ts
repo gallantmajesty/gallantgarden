@@ -90,6 +90,10 @@ export interface QualityAxes {
   postProcessing: PostQuality
   textureQuality: TextureQuality
   lodBias: number // 0 .. 1.5   — higher sheds ornament/particles sooner
+  /** When ON (default) the realm opens at Low quality for a fast settle, then
+   *  auto-detects the device and steps up to a fitting tier. Optional on preset
+   *  bundles (only DEFAULT_AXES carries it — the user toggle lives on SettingsState). */
+  autoQuality?: boolean
 }
 
 /** Named presets, expressed as axis bundles. Reproduces the old low/medium/high
@@ -204,7 +208,7 @@ interface SettingsState {
   /** When ON (default) the realm opens at Low quality for a fast settle, then
    *  auto-detects the device and steps up to a fitting tier. Turn OFF to take
    *  full manual control of the six quality axes. */
-  autoQuality: boolean
+  autoQuality?: boolean
   /** Opt-in heavy post-FX (SSAO + DoF + god rays). Default off; separate from the
    *  six axes so toggling it never reshuffles the named-preset selector. */
   ultra: boolean
@@ -281,6 +285,7 @@ type SettingsData = Omit<
   | 'setPomo'
   | 'applyQualityPreset'
   | 'setQualityAxis'
+  | 'setQualityAxes'
   | 'hydrateFromCloud'
   | 'bindCloud'
   | 'unbindCloud'
@@ -330,13 +335,14 @@ function load(): Partial<SettingsState> {
   }
 }
 
-/** The starting graphics axes for every user (tuned for a good looks/FPS balance
- *  out of the box; fully editable in Settings afterwards). Not one of the named
- *  presets, so the Overall-quality selector reads 'Custom'. */
+/** The starting graphics axes for every user (High preset — tuned for a good
+ *  looks/FPS balance out of the box; fully editable in Settings afterwards).
+ *  Overall quality reads 'High' and ultra effects are ON by default; the user
+ *  can lower everything themselves later. */
 export const DEFAULT_AXES: QualityAxes = {
-  resolutionScale: 0.8,
-  viewDistance: 0.7,
-  shadowQuality: 'low',
+  resolutionScale: 1,
+  viewDistance: 1,
+  shadowQuality: 'high',
   postProcessing: 'high', // bloom + fog on, full strength
   // 'high' = anisotropy 16. Aniso has a one-time cost only; 'low' (aniso 1) was the
   // chief cause of the "blurry textures" report on the procedural floor/walls/glass.
@@ -358,9 +364,9 @@ const DEFAULTS: SettingsData = {
   theme: 'light',
   brightness: 1,
   themePreset: 'forest',
-  quality: 'custom', // the default axes below aren't a named preset
+  quality: 'high', // High preset — DEFAULT_AXES below matches it
   ...DEFAULT_AXES, // resolutionScale / viewDistance / shadow / post / texture / lodBias
-  ultra: false, // heavy post-FX tier — opt-in
+  ultra: true, // heavy post-FX tier — ON by default
   fps: false,
   animations: true,
   reduceMotion: false,
@@ -389,7 +395,7 @@ bloom: true,
   distantTags: false,
   impostorSprites: true,
   pauseWhenHidden: true,
-  keepAwake: false,
+  keepAwake: true,
 }
 
 export const useSettings = create<SettingsState>((set, get) => {

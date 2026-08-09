@@ -87,9 +87,11 @@ interface SeatFlowState {
 }
 
 function getInitialStage(): FlowStage {
-  const saved = loadSavedSeatIfValid()
-  if (saved != null) return 'seated' // Restore seat from tab leave
-  saveSeat(null)
+  // Always land on the seat picker first. A saved seat from a previous session
+  // used to auto-restore straight into 'seated', which mounted the heavy WebGL
+  // scene at page load — the whole shader-compile storm fired before the picker
+  // (or its loader) ever showed, freezing returning users on entry. The picker
+  // itself shows the saved seat as occupied/selectable, so nothing is lost.
   return 'selecting'
 }
 
@@ -123,11 +125,14 @@ export const useSeatFlow = create<SeatFlowState>((set, get) => ({
     set({ stage: 'seated', seatLockUntil: lockUntil, lockedRoomId: roomId ?? get().lockedRoomId })
   },
   lockSeat: () => set({ seatLockUntil: Date.now() + SEAT_LOCK_MS }),
-  /** Stand up but keep the room locked — user must wait 10 min or change rooms. */
+  /** Stand up and fully release the room lock so the seat picker is immediately
+   *  usable again. The pomodoro anti-dodge guard (SeatedPanel) already blocks
+   *  standing up *during* a running session, so keeping the lock here only
+   *  froze the picker for up to 30s on the normal "sit → stand up → re-pick"
+   *  flow with no real benefit. */
   standUp: () => {
     saveSeat(null)
-    set({ stage: 'selecting', selectedSeatId: null })
-    // seatLockUntil and lockedRoomId are intentionally preserved
+    set({ stage: 'selecting', selectedSeatId: null, seatLockUntil: null, lockedRoomId: null })
   },
   /** Reserve the current seat for 30 seconds (tab leave). */
   reserveSeat: () => {

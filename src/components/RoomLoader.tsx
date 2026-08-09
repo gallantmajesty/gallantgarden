@@ -40,15 +40,27 @@ export function RoomLoader({
   const [leaving, setLeaving] = useState(false)
   const [gone, setGone] = useState(false)
 
+  // The minimum-duration clock starts when the loader actually APPEARS (show
+  // flips true), not at mount: the seat picker can sit open for minutes while
+  // `show` is false, and the loader must still hold its full minimum after the
+  // Join click — otherwise it would blink out in under a second onto a scene
+  // that is still compiling its first frames.
   useEffect(() => {
-    const t = setTimeout(() => setMinDone(true), minDuration)
+    if (!show) return
+    setMinDone(false)
+    setLeaving(false)
+    setGone(false)
+    const t = setTimeout(() => {
+      setMinDone(true)
+    }, minDuration)
     return () => clearTimeout(t)
-  }, [minDuration])
+  }, [show, minDuration])
 
   // Fill the bar toward ~92% while waiting (capped so the user knows it's not
   // finished yet — the last stretch only completes once the room is ready).
   const [pct, setPct] = useState(0)
   useEffect(() => {
+    if (!show) { setPct(0); return }
     if (ready) { setPct(1); return }
     const start = performance.now()
     const dur = minDuration
@@ -60,19 +72,40 @@ export function RoomLoader({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [ready, minDuration])
+  }, [ready, minDuration, show])
 
   // Small grace beat after everything is ready, then a soft fade-out.
   const done = minDone && ready
   useEffect(() => {
     if (!done) return
-    const t = setTimeout(() => setLeaving(true), 250)
+    const t = setTimeout(() => {
+      setLeaving(true)
+    }, 250)
     return () => clearTimeout(t)
+  }, [done])
+
+  // Rotating flavour lines while the doors are closed — gives the (now longer)
+  // minimum hold a deliberate, storybook feel instead of a dead bar.
+  const LINES = [
+    'Dust settles on the reading lamps…',
+    'The fireflies remember their paths…',
+    'Scholars are finding their seats…',
+    'The sigils begin to glow…',
+    'Laying out the study tables…',
+    'Polishing the stained glass…',
+  ]
+  const [line, setLine] = useState(0)
+  useEffect(() => {
+    if (done) return
+    const id = window.setInterval(() => setLine((l) => (l + 1) % LINES.length), 1400)
+    return () => window.clearInterval(id)
   }, [done])
 
   useEffect(() => {
     if (!leaving) return
-    const t = setTimeout(() => setGone(true), 550)
+    const t = setTimeout(() => {
+      setGone(true)
+    }, 550)
     return () => clearTimeout(t)
   }, [leaving])
 
@@ -97,7 +130,7 @@ export function RoomLoader({
               <div className="rl-fill" style={{ transform: `scaleX(${pct})` }} />
             </div>
             <div className="rl-sub">
-              {ready ? 'Opening the doors…' : 'Loading the room…'}
+              {ready ? 'Opening the doors…' : LINES[line]}
             </div>
           </div>
         </div>

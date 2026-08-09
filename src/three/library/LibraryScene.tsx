@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Component, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
+import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { createNullSafeEvents } from '../safeEvents'
 import { Sparkles } from '@react-three/drei'
@@ -34,7 +34,7 @@ import { PlayerController } from './PlayerController'
 import { avatarRoots } from '../../avatar/CharacterAvatar'
 import { RemotePlayers } from './RemotePlayers'
 import { NpcPlayers } from './NpcPlayers'
-import { impostorBusy } from './ImpostorSprites'
+import { setBakeGate } from './ImpostorSprites'
 import { SeasonalOverlay } from './SeasonalOverlay'
 import { TableAccessories } from './TableAccessories'
 
@@ -133,6 +133,14 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
   const seatStage = useSeatFlow((s) => s.stage)
   const selecting = seatStage === 'selecting'
 
+  // NOTE: the loop freezes IMMEDIATELY during selection (frameloop='never',
+  // see the Canvas below). A previous "2 s warm-up" that kept rendering behind
+  // the picker made the ENTIRE scene compile its shaders at the moment of the
+  // Join click — a multi-second main-thread block that Chrome flags as
+  // "page isn't responding" right there. Keeping the loop dead until the seat
+  // is committed pushes that work under the loading veil instead (as it was
+  // originally), so the page never hard-stalls on the picker.
+
   // The sun disc mesh feeds the Ultra GodRays effect. It lives in DayNightWeather;
   // we hold a ref to it here and only mount GodRays once the mesh exists.
   const sunRef = useRef<Mesh | null>(null)
@@ -192,28 +200,76 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
   // until the next 1 s heartbeat tick.
 
   const handleReady = () => {
+    // Open the impostor bake gate: bakes drain ONLY after the loading veil has
+    // lifted, so the entry mount + first frames never also absorb ~30 full-rig
+    // bake renders + readbacks (that synchronous load tripped Chrome's
+    // "page isn't responding" right after clicking Join).
+    setBakeGate(true)
     onReady?.()
   }
 
   // Canvas health check: monitors actual rendered frames via rAF.
-  // If no frame is rendered for 4 seconds, force-remounts the Canvas.
+  // If no frame is rendered for 10 seconds, force-remounts the Canvas once.
+  // Mirrors of local state so the pause check below never reads stale values.
+  const selectingRef = useRef(selecting)
+  selectingRef.current = selecting
+  const tabHiddenRef = useRef(tabHidden)
+  tabHiddenRef.current = tabHidden
   useEffect(() => {
     let lastFrame = -1
     let lastChange = performance.now()
     let running = true
+    let raf = 0
+    let poll: number | undefined
+    // A remount reloads the ENTIRE WebGL world — a multi-second main-thread
+    // block that Chrome flags as "page isn't responding". It's a last-resort
+    // recovery allowed exactly ONCE per session: if the loop stalls again
+    // afterwards, this GPU simply can't hold the cadence and remounting only
+    // freezes the room in a restart loop — disable the watchdog instead.
+    let remounts = 0
+    // Entry grace: the mount + first frames legitimately take a while (shader
+    // compilation on a cold cache can stall the loop for seconds). Never
+    // remount during that window — a remount here would double the freeze.
+    const mountedAt = performance.now()
+    const ENTRY_GRACE_MS = 20_000
+
+    const isPaused = () =>
+      useSocialOverlay.getState().open ||
+      selectingRef.current ||
+      tabHiddenRef.current ||
+      useWorld.getState().renderPaused
 
     const check = () => {
       if (!running) return
       // A deliberately-paused loop (social hub open, tab hidden, or seat
       // selection) isn't a freeze — keep the watchdog calm instead of forcing a
       // remount that would reload the world behind the chat overlay.
-      if (useSocialOverlay.getState().open || selecting || (pauseWhenHidden && tabHidden)) {
+      if (isPaused()) {
+        // Suspend the 60 Hz rAF entirely while paused; poll cheaply every 1.5 s
+        // so the watchdog wakes the moment the loop thaws again.
         lastChange = performance.now()
         lastFrame = libFrameTs
-        requestAnimationFrame(check)
+        poll = window.setInterval(() => {
+          if (!running) { if (poll) { clearInterval(poll); poll = undefined } return }
+          if (!isPaused()) {
+            if (poll) { clearInterval(poll); poll = undefined }
+            lastChange = performance.now()
+            lastFrame = libFrameTs
+            raf = requestAnimationFrame(check)
+          }
+        }, 1500)
         return
       }
       const currentFrame = libFrameTs
+
+      // Entry grace: skip the stall check until the mount + first frames have
+      // had time to settle (shader compilation can legitimately stall the loop
+      // for seconds on a cold cache — remounting during that window would only
+      // freeze the page a second time).
+      if (performance.now() - mountedAt < ENTRY_GRACE_MS) {
+        raf = requestAnimationFrame(check)
+        return
+      }
 
       // Only real heartbeat timestamps (>0) count as proof of life. RenderHeartbeat
       // zeroes the global on mount, so a slow first load would otherwise look like
@@ -221,24 +277,31 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
       if (currentFrame > 0 && currentFrame !== lastFrame) {
         lastChange = performance.now()
         lastFrame = currentFrame
-      } else if (lastFrame > 0 && performance.now() - lastChange > 4000) {
+      } else if (lastFrame > 0 && performance.now() - lastChange > 10_000) {
+        if (remounts > 0) {
+          console.warn('[LibraryScene] watchdog fired again after a remount — disabling it (scene too heavy for this GPU, remounts only make it worse)')
+          running = false
+          cancelAnimationFrame(raf)
+          return
+        }
+        remounts += 1
         console.warn('[LibraryScene] Canvas not rendering new frames — remounting')
         setCanvasKey((k) => k + 1)
         lastChange = performance.now()
       }
 
-      requestAnimationFrame(check)
+      raf = requestAnimationFrame(check)
     }
-    requestAnimationFrame(check)
-    return () => { running = false }
-  }, [canvasKey])
+    raf = requestAnimationFrame(check)
+    return () => { running = false; cancelAnimationFrame(raf); if (poll) clearInterval(poll) }
+  }, [canvasKey, pauseWhenHidden])
 
   return (
     <>
     <Canvas
       key={canvasKey}
       events={createNullSafeEvents}
-      frameloop={(selecting || (pauseWhenHidden && tabHidden) || socialOpen) ? 'never' : frameloop}
+      frameloop={(selecting || (pauseWhenHidden && tabHidden) || socialOpen || renderPaused) ? 'never' : frameloop}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
@@ -372,7 +435,7 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
           <PostEffects preset={preset} postTier={postTier} composerKey={composerKey} sunReady={sunReady} sunVisible={sunVisible} sunRef={sunRef} cinematic={cinematic} bloom={bloomOn} nightMode={nightMode} />
         </CanvasBoundary>
       )}
-      <SceneReady onReady={handleReady} />
+      <SceneReady onReady={handleReady} active={!selecting} />
       </CanvasGuard>
     </Canvas>
     </>
@@ -430,9 +493,11 @@ function PostEffects({
 
   // Night mode gets an automatic cinematic bloom + grade (the Harry-Potter
   // glowing-hall look) so the emissive lanterns / candles / runes glow. Daytime
-  // is unchanged — bloom only during the Cinematic Tour there.
-  const nightCine = nightMode
-  const showBloom = (cinematic && bloom) || nightCine
+  // is unchanged — bloom only during the Cinematic Tour there. Bloom is also
+  // gated to the 'high' post tier: it is a full-screen pass on every frame, and
+  // on low/standard tiers the glow is what keeps low-end GPUs at 30–40 fps.
+  const nightCine = nightMode && postTier === 'high'
+  const showBloom = (cinematic && bloom && postTier === 'high') || nightCine
   // The Ultra tier's heavy passes are further gated by the post-processing axis:
   // SSAO needs at least a 'low' (medium-preset) tier, the 30-sample GodRays pass
   // only survives on 'high' — the single most expensive full-screen shader here.
@@ -739,15 +804,24 @@ function RenderHeartbeat() {
 
 /**
  * SceneReady — fires onReady after the scene has actually rendered a few frames,
- * the camera has settled into its final position, AND the impostor sprite bakes
- * (the last heavy async work a mount does) have drained. The loading veil stays
- * until the room is genuinely ready to look at — not a fraction of a second in.
+ * the camera has settled into its final position, and the progressive shader
+ * primer has covered every material. The loading veil stays until the room is
+ * genuinely ready to look at — not a fraction of a second in.
  *
- * We wait for 3 actual rendered frames after the camera has settled, with a 7 s
- * cap on the bake wait (a slow GPU shouldn't hang the loader forever) and a 10 s
- * safety timeout as the final fallback.
+ * WHY the primer exists: the first rendered frame compiles EVERY material's
+ * shader program in one synchronous block (hundreds of programs). On a weak GPU
+ * that single block takes many seconds — the main thread stops answering, the
+ * loader freezes, and Chrome flags the page as unresponsive right after the
+ * Join click. Instead the first frames render the scene in slices: each frame
+ * unhides the next batch of materials, so compile stalls spread across the
+ * loading window as short pauses instead of one long freeze.
+ *
+ * `active` gates everything: while the seat picker is open the render loop is
+ * frozen (frameloop='never'), so useFrame cannot run at all — the safety clock
+ * must only start when rendering actually starts, or `ready` would pre-fire on
+ * the picker and the loader would blink out onto a half-compiled scene.
  */
-function SceneReady({ onReady }: { onReady?: () => void }) {
+function SceneReady({ onReady, active }: { onReady?: () => void; active: boolean }) {
   const frameCount = useRef(0)
   const readyCalled = useRef(false)
   const lastPos = useRef(new Vector3())
@@ -756,14 +830,130 @@ function SceneReady({ onReady }: { onReady?: () => void }) {
 
   // Get access to the camera position from the R3F store
   const camera = useThree((s) => s.camera)
-  
+  const scene = useThree((s) => s.scene)
+  const gl = useThree((s) => s.gl)
+
+  // ---- Progressive shader primer -----------------------------------------
+  const matList = useRef<Material[]>([])
+  const matMeshes = useRef<Map<Material, Object3D[]>>(new Map())
+  const hiddenMeshes = useRef<Object3D[]>([])
+  const slice = useRef(0)
+  const collected = useRef(false)
+  const primerDone = useRef(false)
+  const warmFrames = useRef(0)
+  const lastPrograms = useRef(0)
+  // Materials unhidden per frame. 24 ≈ 24 × ~30–60 ms of compile per frame —
+  // a noticeable but survivable pause, nothing like a 10 s single block.
+  const PRIME_BATCH = 24
+
+  const unhideAll = () => {
+    for (const o of hiddenMeshes.current) o.visible = true
+    hiddenMeshes.current = []
+  }
+
+  const collect = () => {
+    if (collected.current) return
+    collected.current = true
+    const list: Material[] = []
+    const map = new Map<Material, Object3D[]>()
+    const hidden: Object3D[] = []
+    scene.traverse((o) => {
+      const m = o as unknown as { isMesh?: boolean; material?: Material | Material[] }
+      if (!m.isMesh) return
+      const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : []
+      for (const mat of mats) {
+        if (!map.has(mat)) {
+          map.set(mat, [])
+          list.push(mat)
+        }
+        map.get(mat)!.push(o)
+      }
+      hidden.push(o)
+      o.visible = false
+    })
+    matList.current = list
+    matMeshes.current = map
+    hiddenMeshes.current = hidden
+    slice.current = 0
+    warmFrames.current = 0
+    lastPrograms.current = gl.info.programs.length
+  }
+
+  // Unhide the next PRIME_BATCH of materials' meshes. Uses the previous
+  // frame's compiled-program delta: if several batches in a row compiled
+  // nothing new, the GPU is warm (cached programs) — skip the slicing and
+  // reveal everything immediately.
+  const primeTick = () => {
+    const compiledPrev = gl.info.programs.length - lastPrograms.current
+    lastPrograms.current = gl.info.programs.length
+    if (slice.current > 0) {
+      if (compiledPrev === 0) warmFrames.current += 1
+      else warmFrames.current = 0
+    }
+    if (matList.current.length === 0) {
+      unhideAll()
+      primerDone.current = true
+      return
+    }
+    const end = Math.min(slice.current + PRIME_BATCH, matList.current.length)
+    for (let i = slice.current; i < end; i++) {
+      const meshes = matMeshes.current.get(matList.current[i])
+      if (meshes) for (const o of meshes) o.visible = true
+    }
+    slice.current = end
+    if (slice.current >= matList.current.length || warmFrames.current >= 3) {
+      unhideAll()
+      primerDone.current = true
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (!active) return
+    start.current = performance.now()
+    frameCount.current = 0
+    hasStarted.current = false
+    unhideAll()
+    matList.current = []
+    matMeshes.current = new Map()
+    slice.current = 0
+    collected.current = false
+    primerDone.current = false
+    warmFrames.current = 0
+
+    // Hide EVERYTHING during React's commit phase — synchronously, before the
+    // browser paints the first frame and before R3F's render loop runs its
+    // first gl.render(). On a real GPU the first rendered frame otherwise
+    // compiles all ~hundreds of shader programs in one synchronous main-thread
+    // block — the "page isn't responding" hang right after the Join click.
+    // Hiding first means frame #1 compiles nothing; primeTick() below then
+    // reveals PRIME_BATCH materials per frame so the compile cost spreads
+    // across the loading veil as short pauses instead of one giant freeze.
+    collect()
+
+    // Safety net OUTSIDE the frame loop: if no frame ever renders (WebGL dead,
+    // context lost for good, GPU process crashed), useFrame can't run and
+    // `ready` would never fire — the loader would trap the user forever. After
+    // 12 s of activity, restore every mesh and signal ready anyway; the
+    // watchdog's remount is the recovery for the truly-dead canvas.
+    const safety = window.setTimeout(() => {
+      if (readyCalled.current) return
+      unhideAll()
+      primerDone.current = true
+      readyCalled.current = true
+      onReady?.()
+    }, 12_000)
+    return () => window.clearTimeout(safety)
+  }, [active])
+
   useFrame(() => {
-    const currentPos = camera.position.clone()
-    
+    if (!active || readyCalled.current) return
     if (!hasStarted.current) {
       lastPos.current.copy(camera.position)
       hasStarted.current = true
       frameCount.current = 0
+      // First REAL frame — the scene graph is fully committed by now
+      // (including the seat-commit mounts), so collection sees everything.
+      collect()
       return
     }
 
@@ -778,27 +968,19 @@ function SceneReady({ onReady }: { onReady?: () => void }) {
       frameCount.current = 0
     }
 
-    const bakesDone = !impostorBusy()
+    if (!primerDone.current) primeTick()
+
     const elapsed = performance.now() - start.current
-    if (!readyCalled.current && frameCount.current >= 3 && (bakesDone || elapsed > 7000)) {
+    if ((primerDone.current && frameCount.current >= 3) || elapsed > 10_000) {
+      // Cap path: never reveal onto a half-hidden scene — restore everything.
+      if (!primerDone.current) {
+        unhideAll()
+        primerDone.current = true
+      }
       readyCalled.current = true
       onReady?.()
     }
   })
-
-  // Safety timeout: if frames don't arrive in 10 seconds, force ready
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!readyCalled.current) {
-        readyCalled.current = true
-        onReady?.()
-      }
-    }, 10000)
-
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [onReady])
 
   return null
 }
@@ -887,30 +1069,38 @@ function PerfLogger() {
 }
 
 /**
- * Disable frustum culling on every skinned AVATAR mesh, on a slow interval. For
- * a static, enclosed interior culling itself is fine — the problem is avatar-
- * specific:
+ * Frustum-culling pass for avatars. For a static, enclosed interior culling
+ * itself is fine — the risk is avatar-specific:
  *
- *   A skinned mesh's bounding sphere is computed at its bind pose / origin, NOT
- *   at the seat where the avatar is actually placed. When the camera looks AWAY
- *   from the origin (presets 3/4: behind / side), that sphere leaves the frustum
- *   and the avatar gets culled for a frame → it vanishes, revealing the dark
- *   background → "blink". Front presets (1/2) look toward the origin, so the
- *   avatar stays in frustum and never flickers.
+ *   A skinned mesh's bounding sphere is computed at its bind pose, so when a
+ *   pose extends a limb (arms forward, leg lifted) vertices can leave the
+ *   sphere and the avatar gets culled for a frame → it vanishes → "blink".
+ *   Simply disabling culling fixed the blink but made every avatar render even
+ *   when fully behind the camera — a real fill-rate cost with 30 NPCs.
  *
- * The scan walks ONLY the registered CharacterAvatar roots (local player, remote
- * players, NPCs — see `avatarRoots`) instead of the entire scene graph, so every
- * static mesh keeps its default culling and off-screen geometry is still skipped.
- * The 500 ms re-scan covers late-loaded GLTF bodies, whose real SkinnedMesh is
- * created after the model loads.
+ * Instead we KEEP frustum culling on and inflate each skinned mesh's sphere
+ * once (radius ×1.6 + 0.5 m) so every reachable pose stays inside — nothing
+ * behind the camera is drawn, and no pose can pop the avatar out of the
+ * frustum. Procedural rigs (plain meshes, correct rest-pose spheres) are
+ * untouched. The scan walks ONLY the registered CharacterAvatar roots (local
+ * player, remote players, NPCs — see `avatarRoots`) instead of the entire
+ * scene graph, so every static mesh keeps its default culling. The 500 ms
+ * re-scan covers late-loaded GLTF bodies, whose real SkinnedMesh appears after
+ * the model loads.
  */
 function DisableFrustumCulling() {
   useEffect(() => {
     const scan = () => {
       for (const root of avatarRoots) {
         root.traverse((o: Object3D) => {
-          const mesh = o as unknown as { isSkinnedMesh?: boolean; frustumCulled?: boolean }
-          if (mesh.isSkinnedMesh && mesh.frustumCulled) mesh.frustumCulled = false
+          const mesh = o as unknown as { isSkinnedMesh?: boolean; frustumCulled?: boolean; geometry?: { boundingSphere?: { radius: number } | null; computeBoundingSphere?: () => void } }
+          if (!mesh.isSkinnedMesh) return
+          mesh.frustumCulled = true
+          const geom = mesh.geometry
+          if (!geom) return
+          if (!geom.boundingSphere) geom.computeBoundingSphere?.()
+          const bs = geom.boundingSphere
+          if (bs) bs.radius = Math.max(bs.radius, bs.radius * 1.6 + 0.5)
         })
       }
     }

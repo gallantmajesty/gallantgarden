@@ -88,7 +88,7 @@ function PercentageCalc() {
   return (
     <CalcLayout>
       <Field label="Mode">
-        <Segmented value={mode} onChange={setMode} options={[
+        <Segmented value={mode} onChange={(v) => setMode(v as 'of' | 'change' | 'isWhat')} options={[
           { value: 'of', label: 'X% of Y' },
           { value: 'isWhat', label: 'X is what % of Y' },
           { value: 'change', label: '% change' },

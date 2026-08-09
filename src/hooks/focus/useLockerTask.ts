@@ -22,6 +22,26 @@ function saveTasks(tasks: LockerTask[]) {
   }
 }
 
+// ---- Recursive tree helpers (subtask-in-subtask, "cherry tree") ------------
+
+/** Append `child` under the node whose id is `parentId`, anywhere in the tree. */
+function addSubToSubtasks(list: SubTask[], parentId: string, child: SubTask): SubTask[] {
+  return list.map((s) =>
+    s.id === parentId
+      ? { ...s, children: [...(s.children ?? []), child] }
+      : { ...s, children: addSubToSubtasks(s.children ?? [], parentId, child) }
+  );
+}
+
+/** Toggle `completed` on the node with the given id, anywhere in the tree. */
+function toggleInSubtasks(list: SubTask[], id: string): SubTask[] {
+  return list.map((s) =>
+    s.id === id
+      ? { ...s, completed: !s.completed }
+      : { ...s, children: toggleInSubtasks(s.children ?? [], id) }
+  );
+}
+
 export function useLockerTask() {
   const [tasks, setTasks] = useState<LockerTask[]>(() => loadTasks());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -51,32 +71,26 @@ export function useLockerTask() {
     setActiveTaskId((aid) => (aid === id ? null : aid));
   }, [persistAndSet]);
 
-  const addSubTask = useCallback((taskId: string, title: string) => {
+  const addSubTask = useCallback((parentId: string, title: string) => {
+    const child: SubTask = {
+      id: crypto.randomUUID(),
+      title,
+      completed: false,
+      createdAt: Date.now(),
+      children: [],
+    };
     persistAndSet((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const sub: SubTask = {
-          id: crypto.randomUUID(),
-          title,
-          completed: false,
-          createdAt: Date.now(),
-        };
-        return { ...t, subtasks: [...t.subtasks, sub] };
-      })
+      prev.map((t) =>
+        t.id === parentId
+          ? { ...t, subtasks: [...(t.subtasks ?? []), child] }
+          : { ...t, subtasks: addSubToSubtasks(t.subtasks ?? [], parentId, child) }
+      )
     );
   }, [persistAndSet]);
 
-  const toggleSubTask = useCallback((taskId: string, subId: string) => {
+  const toggleSubTask = useCallback((subId: string) => {
     persistAndSet((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        return {
-          ...t,
-          subtasks: t.subtasks.map((s) =>
-            s.id === subId ? { ...s, completed: !s.completed } : s
-          ),
-        };
-      })
+      prev.map((t) => ({ ...t, subtasks: toggleInSubtasks(t.subtasks ?? [], subId) }))
     );
   }, [persistAndSet]);
 

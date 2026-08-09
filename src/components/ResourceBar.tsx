@@ -4,6 +4,7 @@
 // Hover any bar to see the percentage filled (max 10000 per leaf type).
 
 import { useProfile } from '../store/profile'
+import { GREEN_LEAF_ICON, GOLD_LEAF_ICON } from '../lib/leafIcons'
 import './ResourceBar.css'
 
 const MAX_LEAVES = 10_000
@@ -19,7 +20,7 @@ export function ResourceBar() {
   <div className="resource-bar">
   {/* green leaf bar (top) */}
   <div className="resource-bar__bar resource-bar__bar--leaf" title={`${leafPct}% filled — ${xp.toLocaleString()} / ${MAX_LEAVES.toLocaleString()} leaves`}>
-  <img className="resource-bar__bar-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
+  <img className="resource-bar__bar-icon" src={GREEN_LEAF_ICON} alt="" draggable={false} />
   <div className="resource-bar__bar-track">
   <div className="resource-bar__bar-fill resource-bar__bar-fill--leaf" style={{ width: `${Math.max(2, leafPct)}%` }} />
   </div>
@@ -28,7 +29,7 @@ export function ResourceBar() {
 
   {/* golden leaf bar (bottom) — rare */}
   <div className="resource-bar__bar resource-bar__bar--golden" title={`${goldenPct}% filled — ${premiumXp.toLocaleString()} / ${MAX_LEAVES.toLocaleString()} golden leaves`}>
-  <img className="resource-bar__bar-icon" src="/icons/leaf.png" alt="" draggable={false} />
+  <img className="resource-bar__bar-icon" src={GOLD_LEAF_ICON} alt="" draggable={false} />
   <div className="resource-bar__bar-track">
   <div className="resource-bar__bar-fill resource-bar__bar-fill--golden" style={{ width: `${Math.max(2, goldenPct)}%` }} />
   </div>

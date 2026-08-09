@@ -26,7 +26,6 @@ export function useKeepAwake(): void {
     // Request the wake lock
     const requestWakeLock = async () => {
       try {
-        // @ts-expect-error - Wake Lock API may not be in TS lib
         const lock = await navigator.wakeLock.request("screen");
         if (!cancelled) {
           wakeLockRef.current = lock;

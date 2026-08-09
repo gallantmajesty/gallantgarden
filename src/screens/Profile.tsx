@@ -32,6 +32,7 @@ import { AddFriendButton } from '../components/AddFriendButton'
 import { UserListModal } from '../components/UserListModal'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import { AchievementsPanel } from '../components/profile/AchievementsPanel'
+import { GREEN_LEAF_ICON, GOLD_LEAF_ICON } from '../lib/leafIcons'
 import { useShop } from '../shop/store'
 import './Profile.css'
 
@@ -155,11 +156,11 @@ function TopBar({ onBack, right }: { onBack: () => void; right?: React.ReactNode
       </div>
       <div className="pf-topbar-right">
         <span className="pf-resource">
-          <img className="pf-resource-icon" src="/icons/leaf.png" alt="" draggable={false} />
+          <img className="pf-resource-icon" src={GOLD_LEAF_ICON} alt="" draggable={false} />
           {goldenXp.toLocaleString()}
         </span>
         <span className="pf-resource">
-          <img className="pf-resource-icon" src="/icons/golden-leaf.png" alt="" draggable={false} />
+          <img className="pf-resource-icon" src={GREEN_LEAF_ICON} alt="" draggable={false} />
           {xp >= 1000 ? `${(xp / 1000).toFixed(1)}K` : xp.toLocaleString()}
         </span>
         {right}

@@ -5,6 +5,9 @@
 //   "events"    — the full event catalog (FocusEvent[])
 //   "bundles"   — saved bundles (SavedBundle[])
 //   "overrides" — runtime config overrides (xp, ranks, achievements, etc.)
+//   "updates"   — announcement update entries (UpdateEntry[])
+//   "news"      — announcement news entries (NewsEntry[])
+//   "wheel"     — lucky-wheel config (LuckyWheelConfig)
 
 import { supabase } from './supabase'
 
@@ -12,6 +15,9 @@ const LS_KEYS = {
   events: 'sf.owner.content.events',
   bundles: 'sf.owner.content.bundles',
   overrides: 'sf.owner.content.overrides',
+  updates: 'sf.owner.content.updates',
+  news: 'sf.owner.content.news',
+  wheel: 'sf.owner.content.wheel',
 } as const
 
 export type ContentKey = keyof typeof LS_KEYS

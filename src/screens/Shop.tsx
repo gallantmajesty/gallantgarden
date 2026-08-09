@@ -1,17 +1,20 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import * as THREE from 'three'
 import { createNullSafeEvents } from '../three/safeEvents'
 import { useProfile } from '../store/profile'
 import { useShop } from '../shop/store'
 import { effectiveBanners, effectiveLogos, type BannerCategory, type LogoCategory, type Banner, type Logo, logoFilter } from '../lib/banners'
 import { effectiveCharacters, characterById } from '../avatar/characters'
-import { ACCESSORIES, type AccessoryId } from '../avatar/config'
+import { ACCESSORIES } from '../avatar/config'
+import { AccessoryLogo } from '../avatar/AccessoryLogo'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
-import { AccessoryModel } from '../avatar/Accessories'
+import { BigDiningTable } from '../avatar/Accessories'
+import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
+import { ConcertStage, CafePedestal, DustMotes, SoftShadow } from './AvatarCreator'
 import { useAvatar } from '../avatar/store'
+import { GREEN_LEAF_ICON, GOLD_LEAF_ICON } from '../lib/leafIcons'
 import './Shop.css'
 
 type ShopTab = 'characters' | 'banners' | 'logos' | 'accessories'
@@ -33,37 +36,6 @@ const MAIN_TABS: { id: ShopTab; label: string }[] = [
   { id: 'logos', label: 'Logos' },
   { id: 'accessories', label: 'Accessories' },
 ]
-
-/** Focus Store emblem — monochrome coin with a green sprouting leaf, drawn as
- *  pure SVG so there are no emoji or image dependencies. */
-function ShopLogo() {
-  return (
-    <svg className="shop-logo" viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <radialGradient id="sl-core" cx="35%" cy="28%" r="85%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="60%" stopColor="#e5e5e5" />
-          <stop offset="100%" stopColor="#9ca3af" />
-        </radialGradient>
-        <linearGradient id="sl-leaf" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#4ade80" />
-          <stop offset="100%" stopColor="#16a34a" />
-        </linearGradient>
-      </defs>
-      {/* black outer ring with white rim */}
-      <circle cx="32" cy="32" r="30" fill="#050505" />
-      <circle cx="32" cy="32" r="29.2" fill="none" stroke="#ffffff" strokeWidth="2.6" />
-      {/* white coin face */}
-      <circle cx="32" cy="32" r="22.5" fill="url(#sl-core)" />
-      <circle cx="32" cy="32" r="22.5" fill="none" stroke="rgba(0, 0, 0, 0.25)" strokeWidth="0.8" />
-      {/* sprouting leaf */}
-      <path d="M32 44.5 C 24.5 38.5, 22.5 28.5, 26.5 20.5 C 30.5 26, 34 26, 37.5 21.5 C 41.5 29, 39.5 38.5, 32 44.5 Z" fill="url(#sl-leaf)" />
-      <path d="M26.5 20.5 C 30.5 26, 34 26, 37.5 21.5" fill="none" stroke="#064e1e" strokeWidth="1.4" strokeLinecap="round" />
-      {/* green spark above the leaf */}
-      <path d="M32 10.5 l 2.1 4.4 4.9 0.7 -3.5 3.4 0.8 4.9 -4.3 -2.3 -4.3 2.3 0.8 -4.9 -3.5 -3.4 4.9 -0.7 Z" fill="#4ade80" />
-    </svg>
-  )
-}
 
 /** Small line icons for the main shop tabs (no emoji). */
 function ShopIcon({ id }: { id: ShopTab }) {
@@ -110,33 +82,16 @@ function ShopIcon({ id }: { id: ShopTab }) {
   )
 }
 
-/** Green star for the premium balance pill (no emoji). */
-function StarIcon() {
+/** Real leaf currency icons — the same leaf.png / golden-leaf.png the rest of
+ *  the app uses, so balances and prices show the actual green & gold leaves. */
+function LeafImg({ gold }: { gold?: boolean }) {
   return (
-    <svg className="shop-balance-star" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 2.6l2.55 5.8 6.35 0.55 -4.8 4.25 1.4 6.25 -5.5 -3.25 -5.5 3.25 1.4 -6.25 -4.8 -4.25 6.35 -0.55 Z"
-        fill="#4ade80"
-        stroke="#16a34a"
-        strokeWidth="0.9"
-      />
-    </svg>
-  )
-}
-
-/** Small leaf for leaf-price chips (no emoji, no image dependency). */
-function LeafIcon() {
-  return (
-    <svg className="shop-leaf" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M19.5 4.8c-6.6-.4-12.3 2-12.3 7.5 0 3.6 2.6 6.2 6 6.2 5.4 0 6.8-7.5 6.3-13.7Z"
-        fill="#4ade80"
-        stroke="#16a34a"
-        strokeWidth="1"
-        strokeLinejoin="round"
-      />
-      <path d="M7.8 17.2c2.8-4.3 6.4-7.9 11-9.6" fill="none" stroke="#16a34a" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
+    <img
+      className="shop-leaf"
+      src={gold ? GOLD_LEAF_ICON : GREEN_LEAF_ICON}
+      alt=""
+      draggable={false}
+    />
   )
 }
 
@@ -365,12 +320,13 @@ export function Shop() {
           Back
         </button>
         <div className="shop-brand">
-          <ShopLogo />
+          <span className="shop-brand-pill">FocusLily</span>
           <span className="shop-brand-name">Focus Store</span>
+          <span className="shop-brand-sub">Premium catalogue — coming soon</span>
         </div>
         <div className="shop-balance">
-          <span className="shop-balance-pill"><LeafIcon />{xp.toLocaleString()}</span>
-          <span className="shop-balance-pill shop-balance-pill--gold"><StarIcon />{premiumXp.toLocaleString()}</span>
+          <span className="shop-balance-pill"><LeafImg />{xp.toLocaleString()}</span>
+          <span className="shop-balance-pill shop-balance-pill--gold"><LeafImg gold />{premiumXp.toLocaleString()}</span>
           <button className="shop-gold-btn" onClick={() => navigate('/store')}>Get Golden</button>
         </div>
       </header>
@@ -426,7 +382,7 @@ export function Shop() {
                         <img className="card-img" src={(item as { icon?: string }).icon} alt={name} draggable={false} />
                       ) : tab === 'accessories' ? (
                         <span className="card-acc">
-                          {((item as { name?: string }).name || '?').charAt(0)}
+                          <AccessoryLogo id={(item as { id: string }).id} size={64} />
                         </span>
                       ) : tab === 'banners' ? (
                         (item as Banner).image ? (
@@ -446,7 +402,7 @@ export function Shop() {
                       <span className="card-name">{name}</span>
                       {!owned && price > 0 ? (
                         <span className="card-price" data-gold={gold(cur) ? '' : undefined}>
-                          {gold(cur) ? <StarIcon /> : <LeafIcon />}
+                          {gold(cur) ? <LeafImg gold /> : <LeafImg />}
                           {price}
                         </span>
                       ) : price === 0 && !owned ? (
@@ -512,8 +468,8 @@ export function Shop() {
               <p className="pv-desc">{(meta as { blurb?: string }).blurb}</p>
             )}
             {meta && metaPrice !== 0 && (
-              <div className="pv-price-row">
-                {metaCur === 'gold' ? <StarIcon /> : <LeafIcon />}
+              <div className="pv-price-row" data-gold={metaCur === 'gold' ? '' : undefined}>
+                {metaCur === 'gold' ? <LeafImg gold /> : <LeafImg />}
                 <span className="pv-price">{metaPrice}</span>
                 <span className="pv-currency">{metaCur === 'gold' ? 'Golden' : 'Leaves'}</span>
               </div>
@@ -531,7 +487,9 @@ export function Shop() {
 
 /* ---------------------------------------------------------------- pieces */
 
-/** Live 3D preview of a character on the right panel (Free-Fire style). */
+/** Live 3D preview of a character on the right panel — the exact same cozy
+ *  Korean café showcase as the avatar creator (same stage, same warm lighting,
+ *  same dust motes). No auto-rotation: the user orbits and zooms freely. */
 function CharacterPreview3D({ characterId }: { characterId: string }) {
   // Preview the player's REAL avatar when they're looking at the character they
   // have equipped (skin/hair/outfit/accessories all carry over), and the
@@ -547,32 +505,40 @@ function CharacterPreview3D({ characterId }: { characterId: string }) {
       events={createNullSafeEvents}
       shadows={false}
       dpr={[1, 1.5]}
-      camera={{ position: [0, 1.1, 3.6], fov: 40, near: 0.1, far: 50 }}
+      camera={{ position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
-      <color attach="background" args={['#050505']} />
-      <hemisphereLight args={['#ffffff', '#0a0a0a', 0.9]} />
-      <directionalLight position={[3, 5, 2]} intensity={1.2} color="#ffffff" />
-      <directionalLight position={[-2, 3, -1]} intensity={0.35} color="#cfead8" />
-      <pointLight position={[0, 0.6, 0]} intensity={0.7} color="#4ade80" distance={4} decay={2} />
-      <ambientLight intensity={0.3} color="#ffffff" />
-      <group position={[0, -0.95, 0]}>
+      {/* warm café lighting — golden key + soft amber fill (same as the creator) */}
+      <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
+      <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
+      <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
+      <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
+      <ambientLight intensity={0.25} color="#ffe8d0" />
+
+      <DustMotes count={60} />
+
+      <group position={[0, -0.9, 0]}>
         <CharacterAvatar config={config} static />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
-          <circleGeometry args={[0.7, 48]} />
-          <meshStandardMaterial color="#151515" roughness={0.9} metalness={0} />
-        </mesh>
+
+        {/* 360° cozy Korean café showcase surrounding the character */}
+        <KoreanCafeShowcase />
+
+        {/* warm wooden pedestal with glowing edge */}
+        <CafePedestal />
+
+        {/* soft circular contact shadow */}
+        <SoftShadow />
       </group>
+
       <OrbitControls
         enablePan={false}
-        autoRotate
-        autoRotateSpeed={2.2}
+        autoRotate={false}
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.8}
         minDistance={2}
-        maxDistance={5}
-        minPolarAngle={0.35}
+        maxDistance={6}
+        minPolarAngle={0.4}
         maxPolarAngle={Math.PI / 1.9}
         target={[0, 0.1, 0]}
       />
@@ -580,42 +546,50 @@ function CharacterPreview3D({ characterId }: { characterId: string }) {
   )
 }
 
-/** Live 3D turntable preview of the selected accessory — every laptop shows its
- *  real procedural model (aluminum study laptop, dark RGB gaming rig, navy
- *  triple-monitor trading station) instead of a flat emoji. */
-function SpinningAccessory({ id }: { id: AccessoryId }) {
-  const spin = useRef<THREE.Group>(null)
-  useFrame((_, dt) => {
-    if (spin.current) spin.current.rotation.y += dt * 0.5
-  })
-  return (
-    <group ref={spin}>
-      <AccessoryModel id={id} />
-    </group>
-  )
-}
-
+/** Live 3D preview of the selected accessory on the same dining table as the
+ *  avatar creator (grand piano gets its concert stage). No auto-rotation and no
+ *  turntable spin — the user orbits and zooms freely. */
 function AccessoryPreview3D({ id }: { id: string }) {
   return (
     <Canvas
       events={createNullSafeEvents}
       shadows={false}
       dpr={[1, 1.5]}
-      camera={{ position: [0, 0.5, 2.6], fov: 40, near: 0.1, far: 50 }}
+      camera={{ position: [0, 1.1, 3.4], fov: 38, near: 0.1, far: 50 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
-      <color attach="background" args={['#050505']} />
-      <hemisphereLight args={['#ffffff', '#0a0a0a', 0.9]} />
-      <directionalLight position={[3, 5, 2]} intensity={1.2} color="#ffffff" />
-      <directionalLight position={[-2, 3, -1]} intensity={0.35} color="#cfead8" />
-      <ambientLight intensity={0.3} color="#ffffff" />
-      <group position={[0, -0.42, 0]}>
-        <SpinningAccessory id={id as AccessoryId} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
-          <circleGeometry args={[0.55, 48]} />
-          <meshStandardMaterial color="#151515" roughness={0.9} metalness={0} />
-        </mesh>
+      {/* warm café lighting — same as the creator accessory preview */}
+      <hemisphereLight args={['#ffe8c0', '#3a2a18', 0.7]} />
+      <directionalLight position={[3, 5, 2]} intensity={1.1} color="#ffecd0" />
+      <directionalLight position={[-2, 3, -1]} intensity={0.4} color="#ffb870" />
+      <pointLight position={[0, 0.5, 0]} intensity={0.6} color="#ff9040" distance={4} decay={2} />
+      <ambientLight intensity={0.25} color="#ffe8d0" />
+
+      <DustMotes count={50} />
+
+      <group position={[0, -0.9, 0]}>
+        {id === 'piano' ? (
+          <ConcertStage />
+        ) : (
+          <>
+            <BigDiningTable accessory={id} />
+            <SoftShadow />
+          </>
+        )}
       </group>
+
+      <OrbitControls
+        enablePan={false}
+        autoRotate={false}
+        enableDamping
+        dampingFactor={0.08}
+        rotateSpeed={0.8}
+        minDistance={2}
+        maxDistance={6}
+        minPolarAngle={0.4}
+        maxPolarAngle={Math.PI / 1.9}
+        target={[0, 0.15, 0]}
+      />
     </Canvas>
   )
 }

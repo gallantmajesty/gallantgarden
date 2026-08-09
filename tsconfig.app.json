@@ -19,7 +19,9 @@
   "noUnusedLocals": false,
   "noUnusedParameters": false,
   "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    /* TS 6.0 enables strict by default; the project was written without it. */
+    "strict": false
   },
   "include": ["src"]
 }

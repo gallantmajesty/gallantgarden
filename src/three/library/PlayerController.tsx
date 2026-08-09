@@ -8,6 +8,7 @@ import { useSettings } from '../../store/settings'
 import { useWorld } from '../../store/world'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import { setLocalState, getCineHostId, getCineHostCam, publishCineCam, publishCineState, setLocalCineActive, getSelfId } from '../../multiplayer/net'
+import { activityOfAccessories, type Locomotion } from '../../avatar/animation'
 
 /** Fisher-Yates shuffle — mutates and returns the array. */
 function shuffle<T>(arr: T[]): T[] {
@@ -74,7 +75,7 @@ function getInitialPos(seats: ReturnType<typeof seatAnchors>): [number, number, 
 
 export function PlayerController() {
   const avatarRef = useRef<any>(null)
-  const loco = useRef({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
+  const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
   const seats = useMemo(() => seatAnchors(), [])
   const collision = useMemo(() => buildCollision(), [])
   const { gl, camera: camRef } = useThree() as any
@@ -479,7 +480,7 @@ export function PlayerController() {
           }
         }
       }
-      setLocalState({ x: cam.position.x, y: cam.position.y, z: cam.position.z, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: true })
+      setLocalState({ x: cam.position.x, y: cam.position.y, z: cam.position.z, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: true, timerStartedAt: 0, timerDurationMs: 0, subject: '' })
       return
     }
 
@@ -511,6 +512,9 @@ export function PlayerController() {
         const l = loco.current
         l.seated = true
         l.speed = 0
+        // What are we doing at this desk? Drives the seated pose (laptop →
+        // hands on the machine, phone → bent over it, book → held up, else idle).
+        l.activity = activityOfAccessories(useAvatar.getState().config.accessories)
 
         if (!st.seatedInit) {
           st.seatedInit = true
@@ -529,7 +533,7 @@ export function PlayerController() {
          if (s.cameraMode === 'first') {
           cam.position.set(seat.pos[0], eyeY, seat.pos[2])
           cam.rotation.set(0, seat.yaw + Math.PI, 0)
-          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false })
+          setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' })
           return
         }
 
@@ -571,7 +575,7 @@ export function PlayerController() {
         camLookTmp.current.set(seat.pos[0], eyeY - 0.1, seat.pos[2])
         camTarget.current.lerp(camLookTmp.current, a)
         cam.lookAt(camTarget.current)
-        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false })
+        setLocalState({ x: seat.pos[0], y: seat.pos[1], z: seat.pos[2], yaw: seat.yaw + Math.PI, speed: 0, grounded: true, seated: true, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' })
       }
       return
     }
@@ -623,7 +627,7 @@ export function PlayerController() {
         cam.lookAt(camTarget.current)
       }
 
-      setLocalState({ x: st.x, y: st.y, z: st.z, yaw: st.faceYaw, speed: 0, grounded: true, seated: false, cinematic: false })
+      setLocalState({ x: st.x, y: st.y, z: st.z, yaw: st.faceYaw, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, subject: '' })
     }
   })
 

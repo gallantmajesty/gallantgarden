@@ -239,7 +239,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut()
     if (error) console.error('[Auth] signOut error:', error)
     // Release session on sign out
-    await supabase.rpc('release_session').catch(() => {})
+    try {
+      await supabase.rpc('release_session')
+    } catch {
+      // non-fatal: the RPC is not a real promise chain in this client version
+    }
     runUserTeardown()
     setUser(null)
   }, [])

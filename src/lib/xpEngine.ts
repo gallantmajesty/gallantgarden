@@ -30,7 +30,7 @@ import { recordDailyActivity } from './analytics'
 // Tasks/habits/milestones award 0 — leaves are study-only currency
 export const XP_VALUES = {
   task: 0,
-  focusMin: 1.32, // ~33 leaves per 25 min session (5hrs = 400 leaves = Epic skin)
+  focusMin: 0.51, // ~13 leaves per 25 min session
   habit: 0,
   milestone: 0,
   tree: 15,
@@ -81,11 +81,9 @@ export const XP_VALUES = {
 } as const
 
 // Pomodoro session rewards — the main study currency engine
-// Epic skin = 400 leaves = ~5 hours (12 × 25min sessions)
-// Legendary skin = 2000 leaves = ~25 hours (60 × 25min sessions)
 export const POMO_REWARDS = {
-  // Base leaves per minute of study (33 leaves / 25 min = 1.32)
-  basePerMin: 1.32,
+  // Base leaves per minute of study (13 leaves / 25 min = 0.51)
+  basePerMin: 0.51,
   // Bonus: no tab switching during focus (deep work quality)
   noTabBonusPct: 0.30, // +30% of base
   // Bonus: subject tag entered
@@ -407,8 +405,8 @@ export interface FocusAwardInput {
   streakDays?: number
   /** session completed without forfeit/leave (>=90% timer) → 1.5× base */
   quality?: boolean
-  /** override the per-minute base rate (Medium 2.64 / Hardcore scaled).
-   *  Defaults to POMO_REWARDS.basePerMin (1.32). */
+  /** override the per-minute base rate (Medium 2.2 / Hardcore scaled).
+   *  Defaults to POMO_REWARDS.basePerMin (0.51). */
   ratePerMin?: number
 }
 

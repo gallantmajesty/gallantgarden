@@ -3,7 +3,7 @@ export type ClockMode =
   | "pendulum"
   | "digital";
 
-export type DockTab = "ai" | "youtube" | "tasks";
+export type DockTab = "tasks" | "search";
 
 export interface LockerTask {
   id: string;
@@ -18,6 +18,8 @@ export interface SubTask {
   title: string;
   completed: boolean;
   createdAt: number;
+  /** Nested subtasks — the cherry-tree model: task → chapters → topics. */
+  children: SubTask[];
 }
 
 export interface TimerState {

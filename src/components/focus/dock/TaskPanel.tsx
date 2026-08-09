@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { LockerTask } from "../../hooks/focus/types";
+import type { LockerTask, SubTask } from "../../../hooks/focus/types";
 
 interface TaskPanelProps {
   tasks: LockerTask[];
@@ -7,12 +7,111 @@ interface TaskPanelProps {
   onAddTask: (title: string, description: string) => void;
   onRemoveTask: (id: string) => void;
   onSetActive: (id: string | null) => void;
-  onAddSubTask: (taskId: string, title: string) => void;
-  onToggleSubTask: (taskId: string, subId: string) => void;
+  onAddSubTask: (parentId: string, title: string) => void;
+  onToggleSubTask: (subId: string) => void;
   onLockIn: (taskId: string, duration: number) => void;
 }
 
 const DURATION_PRESETS = [15, 25, 45, 60, 90, 120];
+const MAX_DEPTH = 4;
+
+/** Recursive subtree — the cherry-tree model: subtasks inside subtasks. */
+function Subtree({
+  parentId,
+  subs,
+  depth,
+  inputs,
+  setInputs,
+  onToggle,
+  onAdd,
+}: {
+  parentId: string;
+  subs: SubTask[];
+  depth: number;
+  inputs: Record<string, string>;
+  setInputs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onToggle: (id: string) => void;
+  onAdd: (parentId: string, title: string) => void;
+}) {
+  const addAt = (parentId: string) => {
+    const title = inputs[parentId]?.trim();
+    if (!title) return;
+    onAdd(parentId, title);
+    setInputs((prev) => ({ ...prev, [parentId]: "" }));
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {subs.map((sub) => (
+        <div
+          key={sub.id}
+          style={{
+            marginLeft: depth * 12,
+            paddingLeft: depth > 0 ? 6 : 0,
+            borderLeft: depth > 0 ? "1px solid rgba(201,168,76,0.18)" : "none",
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "0.75rem",
+              cursor: "pointer",
+              color: sub.completed ? "var(--color-genshin-bronze)" : "var(--color-genshin-gold-light)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={sub.completed}
+              onChange={() => onToggle(sub.id)}
+              style={{ accentColor: "var(--color-genshin-gold)" }}
+            />
+            <span style={{ flex: 1, minWidth: 0, ...(sub.completed ? { textDecoration: "line-through", opacity: 0.4 } : {}) }}>
+              {sub.title}
+            </span>
+          </label>
+
+          {(sub.children ?? []).length > 0 && (
+            <Subtree
+              parentId={sub.id}
+              subs={sub.children}
+              depth={depth + 1}
+              inputs={inputs}
+              setInputs={setInputs}
+              onToggle={onToggle}
+              onAdd={onAdd}
+            />
+          )}
+
+          {depth < MAX_DEPTH && (
+            <div
+              style={{ display: "flex", gap: 4, marginTop: 3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                className="genshin-input"
+                style={{ flex: 1, fontSize: "0.7rem", padding: "0.2rem 0.45rem" }}
+                placeholder="+ sub..."
+                value={inputs[sub.id] ?? ""}
+                onChange={(e) => setInputs((prev) => ({ ...prev, [sub.id]: e.target.value }))}
+                onKeyDown={(e) => e.key === "Enter" && addAt(sub.id)}
+              />
+              <button
+                onClick={() => addAt(sub.id)}
+                className="genshin-btn genshin-btn-secondary"
+                style={{ padding: "0.2rem 0.45rem", fontSize: "0.6rem" }}
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function TaskPanel({
   tasks,
@@ -34,13 +133,6 @@ export function TaskPanel({
     onAddTask(newTitle.trim(), newDesc.trim());
     setNewTitle("");
     setNewDesc("");
-  };
-
-  const handleAddSubTask = (taskId: string) => {
-    const title = subTaskInputs[taskId]?.trim();
-    if (!title) return;
-    onAddSubTask(taskId, title);
-    setSubTaskInputs((prev) => ({ ...prev, [taskId]: "" }));
   };
 
   const activeTask = tasks.find((t) => t.id === activeTaskId);
@@ -151,25 +243,17 @@ export function TaskPanel({
               </p>
             )}
 
-            {task.subtasks.length > 0 && (
-              <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: 4 }}>
-                {task.subtasks.map((sub) => (
-                  <label
-                    key={sub.id}
-                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", cursor: "pointer", color: sub.completed ? "var(--color-genshin-bronze)" : "var(--color-genshin-gold-light)" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={sub.completed}
-                      onChange={() => onToggleSubTask(task.id, sub.id)}
-                      style={{ accentColor: "var(--color-genshin-gold)" }}
-                    />
-                    <span style={sub.completed ? { textDecoration: "line-through", opacity: 0.4 } : undefined}>
-                      {sub.title}
-                    </span>
-                  </label>
-                ))}
+            {(task.subtasks ?? []).length > 0 && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <Subtree
+                  parentId={task.id}
+                  subs={task.subtasks}
+                  depth={1}
+                  inputs={subTaskInputs}
+                  setInputs={setSubTaskInputs}
+                  onToggle={onToggleSubTask}
+                  onAdd={onAddSubTask}
+                />
               </div>
             )}
 
@@ -183,10 +267,22 @@ export function TaskPanel({
                 placeholder="+ subtask..."
                 value={subTaskInputs[task.id] ?? ""}
                 onChange={(e) => setSubTaskInputs((prev) => ({ ...prev, [task.id]: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && handleAddSubTask(task.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const title = subTaskInputs[task.id]?.trim();
+                    if (!title) return;
+                    onAddSubTask(task.id, title);
+                    setSubTaskInputs((prev) => ({ ...prev, [task.id]: "" }));
+                  }
+                }}
               />
               <button
-                onClick={() => handleAddSubTask(task.id)}
+                onClick={() => {
+                  const title = subTaskInputs[task.id]?.trim();
+                  if (!title) return;
+                  onAddSubTask(task.id, title);
+                  setSubTaskInputs((prev) => ({ ...prev, [task.id]: "" }));
+                }}
                 className="genshin-btn genshin-btn-secondary"
                 style={{ padding: "0.25rem 0.5rem", fontSize: "0.6rem" }}
               >

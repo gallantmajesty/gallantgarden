@@ -425,8 +425,8 @@ export function paperFibre(): CT {
     ctx.stroke()
     h.ctx.stroke()
   }
-  const { normal } = heightToNormal(h.c, 0.5, 1, 0.7)
-  _fibre = tiling(normal.c as unknown as HTMLCanvasElement, false)
+  heightToNormal(h.c, 0.5, 1, 0.7)
+  _fibre = tiling(h.c, false)
   return _fibre
 }
 
