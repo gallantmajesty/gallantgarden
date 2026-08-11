@@ -370,6 +370,24 @@ function calcSegmentXP(minutes: number, tabVisible: boolean, hasSubject: boolean
   return base + noTab + subj
 }
 
+/** LIVE leaves accrued so far this session: banked segments (totalSessionLeaves)
+ *  plus the current focus segment's continuous accrual at the active tier rate.
+ *  The live portion is fractional (per-second precision) so the counter ticks up
+ *  continuously; banked segments stay integer. The flat subject bonus only
+ *  counts once its segment completes (it shows in the segment reward popup). */
+export function liveFocusLeaves(s: Pick<PomodoroState, 'phase' | 'remaining' | 'sessionMinutes' | 'segmentIndex' | 'totalSessionLeaves' | 'tabAlwaysVisible' | 'focusMode' | 'breakCount'>): number {
+  let live = s.totalSessionLeaves
+  if (s.phase === 'running' && s.remaining > 0) {
+    const segs = computeSegments(s.sessionMinutes, s.breakCount)
+    const segMin = segs[s.segmentIndex] ?? 25
+    const elapsedMin = Math.max(0, Math.min(segMin, (segMin * 60 - s.remaining) / 60))
+    const rate = rateForMode(s.focusMode, s.sessionMinutes)
+    const base = elapsedMin * rate
+    if (base > 0) live += base + (s.tabAlwaysVisible ? base * 0.3 : 0)
+  }
+  return live
+}
+
 // ---- Store ----
 
 export const usePomodoro = create<PomodoroState>((set, get) => {

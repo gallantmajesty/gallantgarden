@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { DoubleSide } from 'three'
-import { HALL, windowZs } from './layout'
+import { HALL } from './layout'
 import { makeBannerTexture } from './textures'
 import { InstancedShape, type ShapeItem } from './Instanced'
 
@@ -37,8 +37,6 @@ export function Decor() {
     const potRims: ShapeItem[] = []
     const trunks: ShapeItem[] = []
     const fronds: ShapeItem[] = []
-    const sconceCores: ShapeItem[] = []
-    const sconceArms: ShapeItem[] = []
     const bannerRods: ShapeItem[] = []
     const bannerCloths: ShapeItem[] = []
     const bannerTails: ShapeItem[] = []
@@ -84,15 +82,6 @@ export function Decor() {
       fronds.push({ pos: [x, 2.55, z], rot: [0, 0, 0], scale: 0.5, color: '#3f9a4a' })
     }
 
-    // warm wall sconces between the windows (glow via bloom, no light cost)
-    windowZs().forEach((z) => {
-      for (const sx of [-1, 1]) {
-        const gx = sx * (halfW - 0.7)
-        sconceCores.push({ pos: [gx, 5.4, z] })
-        sconceArms.push({ pos: [gx + sx * 0.12, 5.1, z], rot: [0, 0, sx * 0.4] })
-      }
-    })
-
     // grand house banners hanging from the balcony
     for (const z of [-22, -8, 8, 22]) {
       for (const sx of [-1, 1]) {
@@ -104,7 +93,7 @@ export function Decor() {
       }
     }
 
-    return { chandBulbs, chandRods, chandRings, potBodies, potRims, trunks, fronds, sconceCores, sconceArms, bannerRods, bannerCloths, bannerTails }
+    return { chandBulbs, chandRods, chandRings, potBodies, potRims, trunks, fronds, bannerRods, bannerCloths, bannerTails }
   }, [chandPositions, halfW, halfL, wallH, balconyY])
 
   const crystals = useMemo(
@@ -411,14 +400,6 @@ export function Decor() {
           <meshStandardMaterial color="#4a2030" roughness={1} side={DoubleSide} />
         </mesh>
       ))}
-
-      {/* sconces: glowing cores + iron arms, instanced across every window pier */}
-      <InstancedShape items={instanced.sconceCores} color="#fff0c8" emissive="#ffb24a" emissiveIntensity={2}>
-        <sphereGeometry args={[0.17, 10, 10]} />
-      </InstancedShape>
-      <InstancedShape items={instanced.sconceArms} color="#3a2c10" metalness={0.5} roughness={0.5}>
-        <cylinderGeometry args={[0.04, 0.08, 0.6, 8]} />
-      </InstancedShape>
 
       {/* elegant glowing crystals (glow via bloom; each a unique emissive hue) */}
       {crystals.map((cr, i) => (

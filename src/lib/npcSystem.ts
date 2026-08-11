@@ -432,28 +432,38 @@ export function npcSeatOccupied(
 }
 
 /**
- * Map NPC indices to their permanent seats. `takenByUser` (players' seats) is
- * the ONLY user input and is consulted as a last resort: if a user is
- * physically sitting in an NPC's permanent seat — only possible if they took it
- * while the NPC was offline — the NPC claims their next permanent slot instead,
- * skipping seats other NPCs own. Everyone else keeps their own seat, always.
+ * Map NPC indices to their permanent seats. `takenByUser` (local player's AND
+ * remote players' seats) is the ONLY user input and is consulted as a last
+ * resort: if a player is physically sitting in an NPC's permanent seat — only
+ * possible if they took it while the NPC was offline — the NPC claims their
+ * next permanent slot instead, skipping seats other NPCs own. If every
+ * alternative is taken the NPC is unmapped (`undefined`) rather than stacking
+ * on top of a player. Everyone else keeps their own seat, always.
  */
 export function assignNpcSeats(
   indices: number[],
   seats: Seat[],
   takenByUser?: ReadonlySet<number>
-): Map<number, Seat> {
-  const out = new Map<number, Seat>()
+): Map<number, Seat | undefined> {
+  const out = new Map<number, Seat | undefined>()
   const n = seats.length
   if (n === 0) return out
   const permanent = new Set<number>(indices.map((i) => npcSeatId(i, n)))
   for (const idx of indices) {
     let k = 0
     if (takenByUser?.has(seats[npcSeatId(idx, n)].id)) {
+      let found = false
       while (k < n) {
         const cid = npcSeatId(idx + k, n)
-        if (cid !== npcSeatId(idx, n) && !permanent.has(cid) && !takenByUser.has(seats[cid].id)) break
+        if (cid !== npcSeatId(idx, n) && !permanent.has(cid) && !takenByUser.has(seats[cid].id)) {
+          found = true
+          break
+        }
         k++
+      }
+      if (!found) {
+        out.set(idx, undefined)
+        continue
       }
     }
     out.set(idx, seats[npcSeatId(idx + k, n)])

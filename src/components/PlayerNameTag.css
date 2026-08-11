@@ -253,3 +253,12 @@
 .ptb-time-break {
   color: #60a5fa;
 }
+.ptb-leaves {
+  font-size: 9px;
+  font-weight: 700;
+  color: #a7f3d0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-family: var(--sans, system-ui, sans-serif);
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.45);
+}

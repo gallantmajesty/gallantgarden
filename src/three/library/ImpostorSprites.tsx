@@ -29,6 +29,7 @@ import {
   Scene,
   SpriteMaterial,
   SRGBColorSpace,
+  Vector3,
   WebGLRenderTarget,
 } from 'three'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
@@ -46,6 +47,11 @@ export interface ImpostorEntry {
   /** Normalized texture y of the avatar's feet (0 = bottom of quad) — lets the
    *  sprite sit with its feet exactly on the group origin like the 3D body. */
   centerY: number
+  /** World-y offset of the sprite's feet from the group origin, baked from the
+   *  avatar's lowest vertex. The seated pose drops the rig root (rootY -0.25)
+   *  so the hips rest on the chair; the sprite must drop the same amount or it
+   *  floats above the chair. Standing (idle) bakes sit at 0. */
+  offsetY: number
 }
 
 /* ------------------------------------------------ session bake cache + queue */
@@ -79,12 +85,14 @@ interface BakeJob {
   key: string
   config: AvatarConfig
   pose: ImpostorPose
+  yaw: number
 }
 
 const cache = new Map<string, ImpostorEntry>()
 const queue = new Map<string, BakeJob>()
 const listeners = new Set<() => void>()
 let busy = false
+const tmpV = new Vector3()
 
 if (import.meta.env.DEV) {
   ;(window as any).__impostorDebug = {
@@ -117,18 +125,22 @@ if (import.meta.env.DEV) {
   window.addEventListener('message', (ev) => { if (ev.data === 'impostor-report') report() })
 }
 
-/** Deterministic per-look identity: the normalized config + the pose. */
-function keyFor(config: AvatarConfig, pose: ImpostorPose): string {
-  return pose + '|' + JSON.stringify(normalizeAvatar(config))
+/** Deterministic per-look identity: the normalized config + the pose + the
+ *  bake camera yaw (each look bakes a left/center/right lean variant). */
+function keyFor(config: AvatarConfig, pose: ImpostorPose, yaw: number): string {
+  return pose + '|' + yaw.toFixed(2) + '|' + JSON.stringify(normalizeAvatar(config))
 }
 
 /**
  * Returns the shared impostor texture for this look (or null while it is still
  * baking). Registers a bake request on first use; every completed bake notifies
  * subscribers so consumers re-render with the new entry.
+ *
+ * `yaw` is the bake camera's azimuth relative to the avatar's front (+Z):
+ *   +0.6 → avatar leans LEFT in the texture, 0 → dead-front, -0.6 → leans RIGHT.
  */
-export function useImpostorTexture(config: AvatarConfig, pose: ImpostorPose): ImpostorEntry | null {
-  const key = keyFor(config, pose)
+export function useImpostorTexture(config: AvatarConfig, pose: ImpostorPose, yaw = 0): ImpostorEntry | null {
+  const key = keyFor(config, pose, yaw)
   const [, tick] = useState(0)
   const has = useRef<boolean>(!!cache.get(key))
 
@@ -141,7 +153,7 @@ export function useImpostorTexture(config: AvatarConfig, pose: ImpostorPose): Im
           cache.delete(oldest)
         }
       }
-      queue.set(key, { key, config, pose })
+      queue.set(key, { key, config, pose, yaw })
     }
     // Only re-render when THIS look's bake completes — not on every bake in the
     // queue, which would re-render every avatar in the room on each completion.
@@ -159,6 +171,21 @@ export function useImpostorTexture(config: AvatarConfig, pose: ImpostorPose): Im
   }, [key])
 
   return cache.get(key) ?? null
+}
+
+/**
+ * All four view variants for a look. Distant billboards always face the
+ * camera, so a single baked lean can only point one way on screen; baking
+ * left/center/right/back lets the sprite show the view matching the camera's
+ * azimuth around the avatar — the NPC always reads as facing its desk (never
+ * the camera), no matter where the camera is.
+ */
+export function useImpostorTextures(config: AvatarConfig, pose: ImpostorPose) {
+  const left = useImpostorTexture(config, pose, 0.6)
+  const center = useImpostorTexture(config, pose, 0)
+  const right = useImpostorTexture(config, pose, -0.6)
+  const back = useImpostorTexture(config, pose, Math.PI)
+  return { left, center, right, back }
 }
 
 /**
@@ -207,10 +234,13 @@ export function ImpostorBakeStage() {
         lastStart.current = now
         const first = queue.keys().next().value
         if (first === undefined) return
+        const nextJob = queue.get(first)!
         busy = true
         settle.current = 0
-        loco.current.seated = false
-        setJob(queue.get(first)!)
+        // The sit bake drops the rig root (-0.25) like the in-world seated body,
+        // so the baked silhouette matches what the 3D body looks like on a chair.
+        loco.current.seated = nextJob.pose === 'sit'
+        setJob(nextJob)
         queue.delete(first)
       }
       return
@@ -229,8 +259,22 @@ export function ImpostorBakeStage() {
     scene.updateMatrixWorld(true)
     const box = new Box3().setFromObject(scene)
     const h = Math.max(box.max.y - box.min.y, 0.5)
-    const w = Math.max(box.max.x - box.min.x, 0.2)
+    // Bake from a yawed angle (never dead-front): the sprite always faces the
+    // camera, so a front-view bake makes every distant NPC stare at the viewer.
+    // Each look bakes three yaws (left/center/right) so the sprite can pick the
+    // variant whose lean points at the desk. Width is measured along the BAKE
+    // camera's view axis (the rotated projection), so the 3/4 view never clips
+    // the arms/accessories.
+    const cosY = Math.cos(job.yaw)
+    const sinY = Math.sin(job.yaw)
+    let w = 0.1
+    for (let i = 0; i < 8; i++) {
+      const px = (i & 1 ? box.max.x : box.min.x) * cosY - (i & 4 ? box.max.z : box.min.z) * sinY
+      w = Math.max(w, Math.abs(px))
+    }
     const cy = (box.min.y + box.max.y) / 2
+    // w is a half-extent; convert to full width for the max() below.
+    w *= 2
 
     // Ortho frame with 20 % margin so the full avatar (including accessories)
     // is guaranteed inside the quad; the resulting quad is slightly larger than
@@ -240,7 +284,7 @@ export function ImpostorBakeStage() {
     cam.right = V * 0.5
     cam.top = V * 0.5
     cam.bottom = -V * 0.5
-    cam.position.set(0, cy, 10)
+    cam.position.set(sinY * 10, cy, cosY * 10)
     cam.lookAt(0, cy, 0)
     cam.updateProjectionMatrix()
 
@@ -274,7 +318,7 @@ export function ImpostorBakeStage() {
 
     const texture = new CanvasTexture(canvas)
     texture.colorSpace = SRGBColorSpace
-    cache.set(job.key, { texture, scale: V, centerY })
+    cache.set(job.key, { texture, scale: V, centerY, offsetY: box.min.y })
 
     busy = false
     setJob(null)
@@ -290,7 +334,7 @@ export function ImpostorBakeStage() {
           config={job.config}
           locomotion={loco}
           lod="near"
-          preview={job.pose === 'sit' ? 'sit' : 'auto'}
+          preview="auto"
           static={job.pose === 'idle'}
         />,
         scene,
@@ -303,14 +347,78 @@ export function ImpostorBakeStage() {
  * the 3D body), fades in/out over ~0.2 s when `onRef` flips, and does nothing
  * until a baked texture exists. `toneMapped` is off because the texture was
  * already tone-mapped by the bake pass.
+ *
+ * `facing` (world yaw the avatar is turned toward, e.g. a seated NPC's desk):
+ * PERMANENT RULE — the sprite always shows the avatar as if it were facing
+ * `facing`, regardless of the camera. Each frame we measure the camera's
+ * azimuth around the avatar relative to that axis and show the nearest baked
+ * view (left/center/right/back), so from any camera position the sprite reads
+ * exactly like a body that is turned toward its desk — it never stares at the
+ * camera, not even when the camera lines up with the desk axis (there the
+ * correct view is the avatar's BACK). Hysteresis margins keep the boundary
+ * between two views from flickering.
  */
-export function ImpostorSprite({ entry, onRef }: { entry: ImpostorEntry | null; onRef: RefObject<boolean> }) {
-  const mat = useRef<SpriteMaterial>(null)
-  const state = useRef(false)
+type Variant = 'left' | 'center' | 'right' | 'back'
 
-  useFrame((_, dt) => {
+export function ImpostorSprite({ entries, onRef, facing }: { entries: Record<Variant, ImpostorEntry | null>; onRef: RefObject<boolean>; facing?: RefObject<number> | number }) {
+  const mat = useRef<SpriteMaterial>(null)
+  const spr = useRef<THREE.Sprite>(null)
+  const state = useRef(false)
+  const current = useRef<ImpostorEntry | null>(null)
+  const zone = useRef<Variant>('center')
+
+  useFrame(({ camera }, dt) => {
     const m = mat.current
-    if (!m) return
+    const spr0 = spr.current
+    if (!m || !spr0) return
+
+    // Desk-facing view pick — runs every frame (independent of the fade) so the
+    // view tracks the camera even after the sprite is fully up.
+    let pick = zone.current
+    const yaw = typeof facing === 'number' ? facing : facing?.current
+    if (yaw !== undefined) {
+      const fx = Math.sin(yaw)
+      const fz = Math.cos(yaw)
+      // Avatar's right = cross(up, front).
+      const rx = fz
+      const rz = -fx
+      spr0.getWorldPosition(tmpV)
+      const e = camera.matrixWorld.elements
+      const vx = e[12] - tmpV.x
+      const vz = e[14] - tmpV.z
+      const len = Math.hypot(vx, vz) || 1
+      // Camera azimuth around the avatar relative to its facing axis:
+      // 0 = dead ahead, ±π = directly behind, + = toward its right.
+      const phi = Math.atan2((vx * rx + vz * rz) / len, (vx * fx + vz * fz) / len)
+      const a = Math.abs(phi)
+      if (pick === 'center') {
+        if (a > 2.7) pick = 'back'
+        else if (a > 0.55) pick = phi > 0 ? 'left' : 'right'
+      } else if (pick === 'back') {
+        if (a < 2.5) pick = 'center'
+      } else {
+        if (a > 2.7) pick = 'back'
+        else if (a < 0.35) pick = 'center'
+        else if ((pick === 'left') !== (phi > 0)) pick = phi > 0 ? 'left' : 'right'
+      }
+      zone.current = pick
+    } else {
+      pick = 'center'
+      zone.current = 'center'
+    }
+
+    let entry = entries[pick] ?? entries.center ?? entries.left ?? entries.right ?? entries.back
+    if (entry !== current.current) {
+      current.current = entry
+      if (entry) {
+        m.map = entry.texture
+        m.needsUpdate = true
+        spr0.position.y = entry.offsetY
+        spr0.scale.set(entry.scale, entry.scale, 1)
+        spr0.center.set(0.5, entry.centerY)
+      }
+    }
+
     const want = !!entry && !!onRef.current
     if (want === state.current) return
     const k = 1 - Math.exp(-dt * 10)
@@ -324,10 +432,16 @@ export function ImpostorSprite({ entry, onRef }: { entry: ImpostorEntry | null; 
     }
   })
 
+  const entry = entries.left ?? entries.center ?? entries.right ?? entries.back ?? current.current
   if (!entry) return null
 
   return (
-    <sprite scale={[entry.scale, entry.scale, 1]} center={[0.5, entry.centerY]}>
+    <sprite
+      ref={spr}
+      position={[0, entry.offsetY, 0]}
+      scale={[entry.scale, entry.scale, 1]}
+      center={[0.5, entry.centerY]}
+    >
       <spriteMaterial ref={mat} map={entry.texture} transparent depthWrite={false} opacity={0} toneMapped={false} />
     </sprite>
   )

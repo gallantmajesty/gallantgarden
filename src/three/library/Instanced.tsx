@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode, type Ref } from 'react'
 import { Color, type InstancedMesh, type MeshStandardMaterial, Object3D, type Side, type Texture } from 'three'
-
 export interface BoxItem {
   pos: [number, number, number]
   /** full size on each axis (the base geometry is a unit cube) */
@@ -21,6 +20,13 @@ export function InstancedBoxes({
   metalness = 0,
   emissive,
   emissiveIntensity = 0,
+  transparent = false,
+  opacity = 1,
+  side,
+  depthWrite,
+  map,
+  normalMap,
+  roughnessMap,
   castShadow = false,
   receiveShadow = false,
 }: {
@@ -30,6 +36,13 @@ export function InstancedBoxes({
   metalness?: number
   emissive?: string
   emissiveIntensity?: number
+  transparent?: boolean
+  opacity?: number
+  side?: Side
+  depthWrite?: boolean
+  map?: Texture
+  normalMap?: Texture
+  roughnessMap?: Texture
   castShadow?: boolean
   receiveShadow?: boolean
 }) {
@@ -71,6 +84,13 @@ export function InstancedBoxes({
         metalness={metalness}
         emissive={emissive ?? '#000000'}
         emissiveIntensity={emissiveIntensity}
+        transparent={transparent}
+        opacity={opacity}
+        side={side}
+        depthWrite={depthWrite}
+        map={map}
+        normalMap={normalMap}
+        roughnessMap={roughnessMap}
       />
     </instancedMesh>
   )

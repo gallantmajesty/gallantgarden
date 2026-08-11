@@ -21,6 +21,7 @@ import { StudyTables } from './StudyTable'
 import { Decor } from './Decor'
 import { Lanterns } from './Lanterns'
 import { KnowledgeTree } from './KnowledgeTree'
+import { LodCull } from './LodCull'
 import { NightMagic } from './NightMagic'
 import { Fireflies } from './Fireflies'
 import { FlyingCandles } from './FlyingCandles'
@@ -365,15 +366,28 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
 
       <ToggleGroup group="interior">
         <LibraryShell />
-        <Bookshelves />
-        <StudyTables />
-        <TableAccessories />
-        <Decor />
+        {/* Distance LOD (settings-controlled via "Mesh detail · LOD bias"): the
+            big instanced furniture batches shed past their cull distance. Near
+            behaviour is pixel-identical — levels only kick in at distance. */}
+        <LodCull base={70}>
+          <Bookshelves />
+        </LodCull>
+        <LodCull base={70}>
+          <StudyTables />
+        </LodCull>
+        <LodCull base={45}>
+          <TableAccessories />
+        </LodCull>
+        <LodCull base={55}>
+          <Decor />
+        </LodCull>
         <KnowledgeTree />
       </ToggleGroup>
 
       <ToggleGroup group="lanterns">
-        <Lanterns />
+        <LodCull base={60}>
+          <Lanterns />
+        </LodCull>
       </ToggleGroup>
 
       {/* Harry-Potter night magic — only mounted when night mode is on (enchanted
@@ -389,7 +403,11 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
           The signature floating candles stay. Daytime is unchanged & full. */}
       {!selecting && (
       <ToggleGroup group="particles">
-        {!nightMode && preset.particles && <Fireflies count={Math.min(Math.round(8 + preset.dust * 0.6), 12)} />}
+        {!nightMode && preset.particles && (
+          <LodCull base={40}>
+            <Fireflies count={Math.min(Math.round(8 + preset.dust * 0.6), 12)} />
+          </LodCull>
+        )}
         {!nightMode && preset.particles && (
           <SoftBoundary>
             <FantasyLayer />
@@ -397,7 +415,11 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
         )}
         {/* FloatingBooks (transparent overdraw) is now high-tier only — it shed on
             medium/low so the weakest GPUs skip the extra draw + fill cost. */}
-        {!nightMode && preset.lodBias < 0.5 && <FloatingBooks count={8} />}
+        {!nightMode && preset.lodBias < 0.5 && (
+          <LodCull base={45}>
+            <FloatingBooks count={8} />
+          </LodCull>
+        )}
         {!nightMode && preset.dust > 0 && (
           <Sparkles count={Math.min(preset.dust, 20)} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />
         )}
@@ -405,7 +427,11 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
             look is never touched. This is the signature night atmosphere.
             PERF: 70→30 (full particles) / 40→15 (reduced) — half the instanced
             matrices re-uploaded per tick; imperceptible at night density. */}
-        {nightMode && <FlyingCandles count={preset.particles ? 30 : 15} night={nightMode} />}
+        {nightMode && (
+          <LodCull base={50}>
+            <FlyingCandles count={preset.particles ? 30 : 15} night={nightMode} />
+          </LodCull>
+        )}
       </ToggleGroup>
       )}
 

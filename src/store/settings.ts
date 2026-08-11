@@ -90,6 +90,9 @@ export interface QualityAxes {
   postProcessing: PostQuality
   textureQuality: TextureQuality
   lodBias: number // 0 .. 1.5   — higher sheds ornament/particles sooner
+  /** 0 .. 1.5 — higher swaps distant players/NPCs to the cheap 2D billboard
+   *  sooner (stronger sprite LOD). 0 = swap at the default distance. */
+  impostorLod: number
   /** When ON (default) the realm opens at Low quality for a fast settle, then
    *  auto-detects the device and steps up to a fitting tier. Optional on preset
    *  bundles (only DEFAULT_AXES carries it — the user toggle lives on SettingsState). */
@@ -99,9 +102,9 @@ export interface QualityAxes {
 /** Named presets, expressed as axis bundles. Reproduces the old low/medium/high
  *  look (see scenePreset reproduction below). */
 export const QUALITY_AXES: Record<QualityPresetName, QualityAxes> = {
-  low:    { resolutionScale: 0.7,  viewDistance: 0.6, shadowQuality: 'off',  postProcessing: 'off',  textureQuality: 'low',    lodBias: 1.5 },
-  medium: { resolutionScale: 0.85, viewDistance: 0.8, shadowQuality: 'low',  postProcessing: 'low',  textureQuality: 'medium', lodBias: 0.75 },
-  high:   { resolutionScale: 1,    viewDistance: 1,   shadowQuality: 'high', postProcessing: 'high', textureQuality: 'high',   lodBias: 0 },
+  low:    { resolutionScale: 0.7,  viewDistance: 0.6, shadowQuality: 'off',  postProcessing: 'off',  textureQuality: 'low',    lodBias: 1.5,   impostorLod: 1.5 },
+  medium: { resolutionScale: 0.85, viewDistance: 0.8, shadowQuality: 'low',  postProcessing: 'low',  textureQuality: 'medium', lodBias: 0.75,  impostorLod: 0.75 },
+  high:   { resolutionScale: 1,    viewDistance: 1,   shadowQuality: 'high', postProcessing: 'high', textureQuality: 'high',   lodBias: 0,     impostorLod: 0 },
 }
 
 /** Applied on top of the user's axes while the transient Performance Mode
@@ -113,6 +116,7 @@ export const PERF_OVERRIDE: QualityAxes = {
   postProcessing: 'low',
   textureQuality: 'medium',
   lodBias: 1.5,
+  impostorLod: 1.5,
 }
 
 const SHADOW_MAP: Record<ShadowQuality, number> = { off: 0, low: 1024, high: 2048 }
@@ -126,6 +130,9 @@ export interface ScenePreset extends QualityPreset {
   far: number // camera far plane
   anisotropy: number // texture anisotropic-filtering level
   lodBias: number
+  /** Sprite-swap distance multiplier for far players/NPCs: 1 at impostorLod 0,
+   *  ~0.14 at impostorLod 1.5 — stronger swaps bodies to the 2D billboard sooner. */
+  impostorSwap: number
   /** Opt-in heavy post-FX (SSAO + DoF + god rays). Off by default; for strong
    *  GPUs that accept lower FPS. Forced off while Performance Mode is active. */
   ultra: boolean
@@ -170,6 +177,9 @@ export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false)
     far: Math.round(700 + 700 * vd),
     anisotropy: ANISO_LEVEL[a.textureQuality],
     lodBias: lod,
+    // impostorLod 0 → 1.0 (default swap distance); 1.5 → 0.14 (bodies become
+    // billboards within ~2 m — max FPS at the cost of up-close sprite blur).
+    impostorSwap: 1 / (1 + 4 * a.impostorLod),
     ultra: ultra && !perfMode,
   }
 }
@@ -205,6 +215,9 @@ interface SettingsState {
   postProcessing: PostQuality
   textureQuality: TextureQuality
   lodBias: number
+  /** Stronger sprite LOD: higher swaps distant players/NPCs to 2D billboards
+   *  sooner (see QualityAxes.impostorLod — mirrored flat for the settings UI). */
+  impostorLod: number
   /** When ON (default) the realm opens at Low quality for a fast settle, then
    *  auto-detects the device and steps up to a fitting tier. Turn OFF to take
    *  full manual control of the six quality axes. */
@@ -348,6 +361,7 @@ export const DEFAULT_AXES: QualityAxes = {
   // chief cause of the "blurry textures" report on the procedural floor/walls/glass.
   textureQuality: 'high',
   lodBias: 0,
+  impostorLod: 0, // default swap distance — distant players keep full 3D bodies longer
   autoQuality: true, // realms open Low then auto-step up by default
 }
 

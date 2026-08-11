@@ -19,15 +19,16 @@ export function useScenePreset(): ScenePreset {
   const postProcessing = useSettings((s) => s.postProcessing)
   const textureQuality = useSettings((s) => s.textureQuality)
   const lodBias = useSettings((s) => s.lodBias)
+  const impostorLod = useSettings((s) => s.impostorLod)
   const ultra = useSettings((s) => s.ultra)
   const perfMode = useHud((s) => s.perfMode)
   return useMemo(
     () =>
       scenePreset(
-        { resolutionScale, viewDistance, shadowQuality, postProcessing, textureQuality, lodBias },
+        { resolutionScale, viewDistance, shadowQuality, postProcessing, textureQuality, lodBias, impostorLod },
         perfMode,
         ultra,
       ),
-    [resolutionScale, viewDistance, shadowQuality, postProcessing, textureQuality, lodBias, ultra, perfMode],
+    [resolutionScale, viewDistance, shadowQuality, postProcessing, textureQuality, lodBias, impostorLod, ultra, perfMode],
   )
 }

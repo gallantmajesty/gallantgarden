@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { groundShelves, SHELF, upperShelves } from './furniture'
 import { InstancedBoxes, type BoxItem } from './Instanced'
+import { useScenePreset } from '../../store/quality'
 
 const WOOD = '#3f2712'
 const WOOD_HI = '#52331a'
@@ -46,6 +47,10 @@ function toWorld(lx: number, lz: number, a: number, ox: number, oz: number): [nu
  *  for the WHOLE library are drawn as TWO instanced meshes (boards/posts +
  *  backs) and every book is a third — three draws total instead of hundreds. */
 export function Bookshelves() {
+  // PERF: the shelf frames are the hall's biggest shadow-casters. Shed their
+  // shadow pass when "Mesh detail · LOD bias" is raised past 0.75 — a settings
+  // knob for the dominant shadow cost, not a hard rule.
+  const castShadow = useScenePreset().lodBias < 0.75
   const placements = useMemo(() => {
     const ground = groundShelves().map((p, i) => ({ ...p, seed: 200 + i, levels: LEVELS }))
     const upper = upperShelves().map((p, i) => ({ ...p, seed: 900 + i, levels: LEVELS.slice(0, 4) }))
@@ -125,7 +130,7 @@ export function Bookshelves() {
     <group>
       {/* frames cast shadow (big silhouettes) — but as a single instanced draw it
            stays cheap in the shadow pass too */}
-      <InstancedBoxes items={frames} roughness={0.88} castShadow receiveShadow />
+      <InstancedBoxes items={frames} roughness={0.88} castShadow={castShadow} receiveShadow />
       {/* books are tiny: skip shadow-casting to keep the shadow pass light */}
       <InstancedBoxes items={books} roughness={0.6} />
       {/* gold foil title bands — a touch of metallic sheen on the spines */}

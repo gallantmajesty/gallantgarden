@@ -280,7 +280,7 @@ export const REALISTIC: Proportions = {
   headR: 0.095,
 }
 
-/** Uniform scale — fixed at 1.0 so all avatars are the same height. */
+/** Uniform scale — all avatars share the same height (chibi ~1.5 standing). */
 export function heightScale(_heightCm: number): number {
-  return 1.12
+  return 1.35
 }

@@ -205,8 +205,8 @@ export function AvatarAnimator({ rig, locomotion, preview = 'auto', lod = 'near'
       // Sit lowers the whole body so the seated pose reads as "on a chair" rather
       // than floating; otherwise it's the gait bob (walk/run) and zero at rest.
       let rootY: number
-      if (preview === 'sit') rootY = -0.26 // editor emote: no chair, drop so it reads as seated
-      else if (preview === 'auto' && loco.seated) rootY = -0.10 // in-world: rest the hips on the chair seat (~0.52, hip joint ~0.62)
+      if (preview === 'sit') rootY = -0.31 // editor emote: no chair, drop so it reads as seated
+      else if (preview === 'auto' && loco.seated) rootY = -0.25 // in-world: rest the hips on the chair seat (~0.5, hip joint ~0.62, rig scaled 1.35)
       else rootY = g > 0.06 && loco.grounded ? Math.abs(Math.sin(phase)) * gaitBounce(Math.max(1, g)) : 0
       // root.position.y is the avatar's own offset; keep x/z as-is
       root.position.y = rootY

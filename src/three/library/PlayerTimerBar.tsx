@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Html } from '@react-three/drei'
 import { getTarget } from '../../multiplayer/net'
-import { usePomodoro } from '../../store/pomodoro'
+import { usePomodoro, liveFocusLeaves } from '../../store/pomodoro'
 
 interface Props {
   /** Remote player id — omit and pass `self` to render the local player's timer. */
@@ -47,6 +47,7 @@ export function PlayerTimerBar({ playerId, headY = 2.9, self = false }: Props) {
 
     const mm = String(Math.floor(pomo.remaining / 60)).padStart(2, '0')
     const ss = String(pomo.remaining % 60).padStart(2, '0')
+    const leaves = liveFocusLeaves(pomo)
 
     return (
       <Html
@@ -66,6 +67,7 @@ export function PlayerTimerBar({ playerId, headY = 2.9, self = false }: Props) {
           <span className={`ptb-time ${focus ? '' : 'ptb-time-break'}`}>
             {focus ? `${mm}:${ss}` : `☕ ${mm}:${ss}`}
           </span>
+          {focus && leaves > 0 && <span className="ptb-leaves">🍃 {Math.round(leaves)}</span>}
         </div>
       </Html>
     )

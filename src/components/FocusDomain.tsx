@@ -5,7 +5,7 @@ import { CornerFiligree } from "./focus/CornerFiligree";
 import { SideDock } from "./focus/SideDock";
 import { TimerControls } from "./focus/TimerControls";
 import { MultiplayerBar } from "./focus/MultiplayerBar";
-import { usePomodoro, computeSegments, SESSION_OPTIONS, BREAK_ACTIVITIES, suggestBreakActivity } from "../store/pomodoro";
+import { usePomodoro, computeSegments, liveFocusLeaves, SESSION_OPTIONS, BREAK_ACTIVITIES, suggestBreakActivity } from "../store/pomodoro";
 import type { TimerPreset, SessionSummary, SessionHistoryEntry } from "../store/pomodoro";
 import type { ClockMode } from "../hooks/focus/types";
 import { useWorld } from "../store/world";
@@ -437,6 +437,10 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
   const dock = useSideDock();
 
   const isIdle = phase === "idle";
+  // Live leaves counter: banked segments + the running segment's continuous
+  // accrual. Recomputes each render; FocusDomain re-renders every store tick
+  // (remaining changes each second), so the count ticks up live.
+  const liveLeaves = liveFocusLeaves(usePomodoro.getState());
 
   // Keep the picker in sync when a session resets. Hardcore is "Coming Soon" —
   // never auto-select it, fall back to Easy.
@@ -840,12 +844,11 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
               />
             </div>
 
-            {/* Session leaves counter */}
-            {totalSessionLeaves > 0 && (
-              <div className="fd-session-leaves">
-                <IconLeaf /> {totalSessionLeaves} <span className="fd-session-leaves-label">{focusMode === 'easy' ? 'earned so far (split)' : 'session total'}</span>
-              </div>
-            )}
+            {/* Session leaves counter — live: banked segments + the current
+                segment's continuous accrual, ticking every second */}
+            <div className="fd-session-leaves">
+              <IconLeaf /> {liveLeaves.toFixed(1)} <span className="fd-session-leaves-label">{focusMode === 'easy' ? 'earned so far' : focusMode === 'hardcore' ? 'projected win' : 'session total'} · live</span>
+            </div>
 
             {/* Progress bar */}
             <div className="fd-progress">

@@ -319,8 +319,8 @@ export function laptopPose(t: number): Pose {
     hips: { x: 0.02 },
     spine: { x: 0.03 },
     chest: { x: 0.06 + breath * 0.012 },
-    neck: { x: 0.05 },
-    head: { x: 0.07, y: breath * 0.025 },
+    neck: { x: 0.03 },
+    head: { x: 0.05, y: breath * 0.025 },
     legUpperL: { x: -1.48, z: 0.05 },
     legUpperR: { x: -1.48, z: -0.05 },
     legLowerL: { x: 1.55 },
@@ -334,16 +334,17 @@ export function laptopPose(t: number): Pose {
   }
 }
 
-/** Seated ON THE PHONE: body bends DOWN toward the phone held between the
- *  hands near the lap — elbows slightly out, head tipped forward. */
+/** Seated ON THE PHONE: body bends down toward the phone held between the
+ *  hands near the lap — elbows slightly out, head tipped forward (a relaxed,
+ *  natural glance, not a bowed head). */
 export function phonePose(t: number): Pose {
   const breath = Math.sin(t * 1.2)
   return {
-    hips: { x: 0.1 },
-    spine: { x: 0.12 },
-    chest: { x: 0.14 + breath * 0.01 },
-    neck: { x: 0.2 },
-    head: { x: 0.24, y: breath * 0.02 },
+    hips: { x: 0.08 },
+    spine: { x: 0.08 },
+    chest: { x: 0.1 + breath * 0.01 },
+    neck: { x: 0.1 },
+    head: { x: 0.14, y: breath * 0.02 },
     legUpperL: { x: -1.48, z: 0.05 },
     legUpperR: { x: -1.48, z: -0.05 },
     legLowerL: { x: 1.55 },

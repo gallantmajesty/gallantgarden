@@ -12,9 +12,11 @@ import { activityOfAccessories } from '../../avatar/animation'
 import { BANNERS } from '../../lib/banners'
 import { characterById } from '../../avatar/characters'
 import { useWorld } from '../../store/world'
+import { getRemoteOccupied } from '../../multiplayer/net'
 import { useNpcProfile } from '../../store/npcProfile'
 import { useSettings } from '../../store/settings'
-import { ImpostorBakeStage, ImpostorSprite, useImpostorTexture } from './ImpostorSprites'
+import { useScenePreset } from '../../store/quality'
+import { ImpostorBakeStage, ImpostorSprite, useImpostorTextures } from './ImpostorSprites'
 import {
   npcOnlineInRoom,
   assignNpcSeats,
@@ -136,12 +138,20 @@ function NpcAvatar({ npc, seat, visible, castShadow }: { npc: NpcProfile; seat: 
   const showNameTags = useSettings((s) => s.showNameTags)
   const distantTags = useSettings((s) => s.distantTags)
   const impostorSprites = useSettings((s) => s.impostorSprites)
+  // Stronger sprite LOD (Settings → Graphics → Distant player LOD) scales the
+  // swap distances down so far NPCs become cheap billboards sooner.
+  const impostorSwap = useScenePreset().impostorSwap
+  const swapOut = SWAP_OUT * impostorSwap
+  const swapIn = SWAP_IN * impostorSwap
 
   const config: AvatarConfig = useMemo(() => configFor(npc), [npc])
-  // Baked billboard of this NPC's exact look in the SITTING pose (shared across
-  // NPCs with the same appearance). Null until the offscreen bake completes —
-  // until then the 3D body simply stays, so nothing ever pops.
-  const impostor = useImpostorTexture(config, 'sit')
+  // Baked billboards of this NPC's exact look in the SITTING pose (shared across
+  // NPCs with the same appearance): left/center/right/back view variants so the
+  // sprite always shows the NPC facing its desk from any camera angle. Null
+  // until the offscreen bake completes — until then the 3D body stays, so
+  // nothing ever pops.
+  const impostors = useImpostorTextures(config, 'sit')
+  const impostor = impostors.center ?? impostors.left ?? impostors.right ?? impostors.back
   // Impostor mode with hysteresis — enter past SWAP_OUT (or outside the
   // visibility cap), leave only once the NPC re-enters SWAP_IN.
   const spriteOn = useRef(false)
@@ -178,8 +188,8 @@ function NpcAvatar({ npc, seat, visible, castShadow }: { npc: NpcProfile; seat: 
     // costs ~1 draw call, so there is no reason to fully hide them).
     if (!impostorSprites) spriteOn.current = false
     if (spriteOn.current) {
-      if (dist < SWAP_IN) spriteOn.current = false
-    } else if (impostorSprites && impostor && (dist > SWAP_OUT || !visible)) {
+      if (dist < swapIn) spriteOn.current = false
+    } else if (impostorSprites && impostor && (dist > swapOut || !visible)) {
       spriteOn.current = true
     }
 
@@ -261,7 +271,7 @@ function NpcAvatar({ npc, seat, visible, castShadow }: { npc: NpcProfile; seat: 
       <group ref={bodyGroup}>
         {bodyMounted && <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />}
       </group>
-      {impostorSprites && <ImpostorSprite entry={impostor} onRef={spriteOn} />}
+      {impostorSprites && <ImpostorSprite entries={impostors} onRef={spriteOn} facing={seat.yaw + Math.PI} />}
       {tagShown && <NpcTag npc={npc} onInfoClick={handleInfoClick} />}
     </group>
   )
@@ -296,14 +306,26 @@ export function NpcPlayers({ roomId }: { roomId?: string }) {
     return roomIdx < 0 ? [] : npcOnlineInRoom(roomIdx, now)
   }, [roomId, now])
 
+  // Remote players' occupied seats (polled — `targets` is deliberately not
+  // reactive). NPCs must never claim a seat a REAL player is sitting in, or the
+  // NPC would render on top of them.
+  const [remoteTaken, setRemoteTaken] = useState<ReadonlySet<number>>(() => new Set())
+  useEffect(() => {
+    const sync = () => setRemoteTaken(new Set(Object.keys(getRemoteOccupied()).map(Number)))
+    sync()
+    const iv = window.setInterval(sync, 2000)
+    return () => window.clearInterval(iv)
+  }, [])
+
   const assignments = useMemo(() => {
-    const userTaken = userSeat != null ? new Set([userSeat]) : new Set<number>()
+    const userTaken = new Set<number>(remoteTaken)
+    if (userSeat != null) userTaken.add(userSeat)
     return assignNpcSeats(
       online.map((n) => n.idx),
       seats,
       userTaken,
     )
-  }, [online, seats, userSeat])
+  }, [online, seats, userSeat, remoteTaken])
 
   // Throttled ranking: NPCs are static, so their distance rank only changes
   // when the CAMERA moves. Every RANK_INTERVAL we keep the nearest MAX_VISIBLE

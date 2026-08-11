@@ -3,13 +3,14 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, type Object3D, Vector3 } from 'three'
 import { CharacterAvatar } from '../../avatar/CharacterAvatar'
 import { useSettings } from '../../store/settings'
+import { useScenePreset } from '../../store/quality'
 import type { Locomotion } from '../../avatar/animation'
 import type { AvatarConfig } from '../../avatar/config'
 import type { Lod } from '../../avatar/AvatarAnimator'
 import { getTarget, useRealmNet } from '../../multiplayer/net'
 import { PlayerNameTag3D } from './PlayerNameTag3D'
 import { PlayerTimerBar } from './PlayerTimerBar'
-import { ImpostorBakeStage, ImpostorSprite, useImpostorTexture } from './ImpostorSprites'
+import { ImpostorBakeStage, ImpostorSprite, useImpostorTextures } from './ImpostorSprites'
 import { activityOfAccessories } from '../../avatar/animation'
 import { useNpcProfile } from '../../store/npcProfile'
 
@@ -127,11 +128,22 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
   const showNameTags   = useSettings((s) => s.showNameTags)
   const distantTags    = useSettings((s) => s.distantTags)
   const impostorSprites = useSettings((s) => s.impostorSprites)
-  // Baked billboard for this look (shared across every player with the same
-  // appearance). Null until the offscreen bake completes.
-  const impostor = useImpostorTexture(config, 'idle')
+  // Stronger sprite LOD (Settings → Graphics → Distant player LOD) scales the
+  // swap distances down so far bodies become cheap billboards sooner.
+  const impostorSwap = useScenePreset().impostorSwap
+  const swapOut = SWAP_OUT * impostorSwap
+  const swapIn  = SWAP_IN * impostorSwap
+  // Baked billboards for this look (shared across every player with the same
+  // appearance): left/center/right/back view variants so the sprite shows the
+  // player turned toward whatever they face from any camera angle. Null until
+  // the bake completes.
+  const impostors = useImpostorTextures(config, 'idle')
+  const impostor = impostors.center ?? impostors.left ?? impostors.right ?? impostors.back
   // Impostor mode, with hysteresis so a player on the boundary doesn't flicker.
   const spriteOn = useRef(false)
+  // Live facing yaw for the sprite mirror (matches the body's rotation.y, which
+  // is smoothed per frame below).
+  const facingRef = useRef(0)
   // Locomotion fed to the shared avatar animator (same type the local player
   // uses) so remote bodies idle / walk / run / sit in sync with their motion.
   const loco    = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: false })
@@ -189,6 +201,7 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
 
     g.position.set(r.x, r.y, r.z)
     g.rotation.y = r.yaw
+    facingRef.current = r.yaw
 
     const l = loco.current
     l.speed    = t.speed
@@ -228,8 +241,8 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
     // happens once the bake is ready — until then the 3D body simply stays, so
     // nothing ever pops.
     if (spriteOn.current) {
-      if (dist < SWAP_IN) spriteOn.current = false
-    } else if (impostorSprites && impostor && (dist > SWAP_OUT || !visible)) {
+      if (dist < swapIn) spriteOn.current = false
+    } else if (impostorSprites && impostor && (dist > swapOut || !visible)) {
       spriteOn.current = true
     }
 
@@ -277,7 +290,7 @@ function RemotePlayerAvatar({ id, p, config, visible }: { id: string; p: { id: s
       <group ref={bodyGroup}>
         {bodyMounted && <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />}
       </group>
-      {impostorSprites && <ImpostorSprite entry={impostor} onRef={spriteOn} />}
+      {impostorSprites && <ImpostorSprite entries={impostors} onRef={spriteOn} facing={facingRef} />}
       {tagShown && (
         <PlayerNameTag3D name={p.name} rank={p.rank} country={p.country} headY={2.55} banner={p.banner} logo={p.logo} onInfoClick={handleInfoClick} />
       )}

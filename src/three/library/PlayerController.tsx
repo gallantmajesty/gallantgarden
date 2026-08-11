@@ -29,16 +29,16 @@ import { PlayerTimerBar } from './PlayerTimerBar'
 // Seated camera pivot height above the seat base. Tuned to the chibi rig: the
 // seated head is ~1.2 tall, so the pivot sits around chest/eye level (~1.15) —
 // NOT ~2.2 (which aimed the camera above the head at the hall/lanterns).
-const SEAT_EYE = 0.7
+const SEAT_EYE = 0.84
 const CHAIR_SEAT_Y = 0.45
-const THIRD_DIST = 4.0 // default orbit distance when seated
+const THIRD_DIST = 4.4 // default orbit distance when seated
 
 // A single, clean seated camera: a smooth third-person orbit you aim with drag
 // and zoom with the wheel. No numbered presets. Default view faces the avatar
 // (so you see your own character), and you can orbit a full 360°. First-person
 // mode (cameraMode) drops the camera to eye level.
 const ORBIT_SMOOTHNESS = 9
-const MIN_ZOOM = 2.5
+const MIN_ZOOM = 3.0
 const MAX_ZOOM = 9
 const MIN_PITCH = -0.4
 const MAX_PITCH = 0.7
@@ -104,7 +104,7 @@ export function PlayerController() {
     camDist: THIRD_DIST,
     zoom: THIRD_DIST,
     preset: 0, // 0 = free orbit, 1-4 = seated preset
-    eye: 1.62,
+    eye: 1.95,
     nearSeat: null as number | null,
     seatedInit: false,
     autoWalkInit: false,

@@ -19,7 +19,7 @@ import {
 } from '../store/settings'
 import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
-import { usePomodoro, SESSION_OPTIONS, computeSegments, suggestBreakActivity } from '../store/pomodoro'
+import { usePomodoro, SESSION_OPTIONS, computeSegments, liveFocusLeaves, suggestBreakActivity } from '../store/pomodoro'
 import { hardcoreMultiplier, minWagerFor } from '../store/hardcore'
 import { useDeviceBoost } from '../lib/deviceBoost'
 import { DeviceConnect } from '../components/focus/DeviceConnect'
@@ -1064,6 +1064,8 @@ function RewardPopup() {
 
 function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, setFocusMode, focusMode, segmentsCompleted, segmentIndex, totalSessionLeaves } = usePomodoro()
+  // Live leaves during the running segment (ticks up each store tick).
+  const liveLeaves = liveFocusLeaves(usePomodoro.getState())
   const show = useSettings((s) => s.pomo.showTimer)
   const chimeVolume = useSettings((s) => s.pomo.chimeVolume)
   const setChimeVolume = useSettings((s) => s.setPomo)
@@ -1162,9 +1164,9 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
             </svg>
           </button>
         )}
-        {/* Session leaves counter */}
-        {phase !== 'idle' && totalSessionLeaves > 0 && (
-          <div className="pomo-session-xp">🍃 {totalSessionLeaves}</div>
+        {/* Session leaves counter — live (ticks up during the running segment) */}
+        {phase !== 'idle' && Math.round(liveLeaves ?? totalSessionLeaves) > 0 && (
+          <div className="pomo-session-xp">🍃 {Math.round(liveLeaves ?? totalSessionLeaves)}</div>
         )}
       </div>
 
@@ -1432,6 +1434,15 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               max={1.5}
               step={0.25}
               onChange={(v) => s.setQualityAxis('lodBias', v)}
+            />
+            <Slider
+              label="Distant player LOD · sprite swap"
+              display={`${Math.round(100 / (1 + 1.5 * s.impostorLod))}% of default distance`}
+              value={s.impostorLod}
+              min={0}
+              max={1.5}
+              step={0.25}
+              onChange={(v) => s.setQualityAxis('impostorLod', v)}
             />
             <Toggle label="Ultra effects (SSAO · god rays · DoF) — high-end GPU" value={s.ultra} onChange={(v) => s.set('ultra', v)} />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />

@@ -220,17 +220,26 @@ export function makeCarpetTexture(repeat = 1, seed = 3): CanvasTexture {
   return finish(c, repeat)
 }
 
-/** A tall leaded stained-glass panel in jewel tones with a glowing arched
- *  motif — used as both colour and emissive map so the windows shine like a
- *  wizard's hall. Drawn once per call; callers memoise. */
+/**
+ * A tall leaded-glass window in the warm, candlelit manner of a wizarding Great
+ * Hall — antique diamond-quarry panes in honey/amber glass with a scatter of
+ * pale cool panes (the night sky seen through the glass), each pane hand-blown
+ * so it bows with a brighter centre and darker came edges, carrying faint
+ * streaks, stray bubbles and a slightly different tone from its neighbour. The
+ * lead cames are blackened but pick up a thin metallic sheen, with little
+ * solder joints where they meet. A soft warm backlight pools behind a quiet
+ * gothic quatrefoil oculus near the top. Used as BOTH colour and emissive map,
+ * so the windows glow like a hall of candlelight after dark. Drawn once per
+ * call; callers memoise.
+ *
+ * Supersampled 4× (1024×2048 effective) so the fine leading and the tiny
+ * bubbles/streaks stay crisp on the tall bay panels — a one-time cost, no
+ * per-frame impact.
+ */
 export function makeStainedGlassTexture(seed = 5): CanvasTexture {
   const W = 256
   const H = 512
-  // Render at 3× and let the context scale, so the tall window panels stay crisp
-  // (no blocky diamonds) without touching any of the drawing maths below. This is
-  // a one-time generation cost — zero per-frame impact. Bumped 2×→3× to clear the
-  // "blurry stained glass" report (768×1536 effective).
-  const SS = 3
+  const SS = 4
   const c = document.createElement('canvas')
   c.width = W * SS
   c.height = H * SS
@@ -238,70 +247,169 @@ export function makeStainedGlassTexture(seed = 5): CanvasTexture {
   ctx.scale(SS, SS)
   const rand = rng(seed)
 
-  // jewel palette
-  const jewels = ['#3a6ea5', '#8a2f3a', '#2f7a4a', '#caa84a', '#5a3a7a', '#2f5c8a', '#a8602a']
+  // hex -> [r,g,b]
+  const rgb = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255] as const
+  }
+  // rescale a hex colour's brightness (f<1 darken, >1 lighten, clamped)
+  const shade = (hex: string, f: number) => {
+    const [r, g, b] = rgb(hex)
+    const q = (v: number) => Math.max(0, Math.min(255, Math.round(v * f)))
+    return `rgb(${q(r)},${q(g)},${q(b)})`
+  }
 
-  // dark leading background
-  ctx.fillStyle = '#1a1206'
+  // Warm candlelit palette — HP Great Hall reads gold/amber, NOT rainbow. A few
+  // pale cool panes give the night-sky-through-glass contrast. Weighted ~82%
+  // warm so the wall glows honey, never purple/green/red.
+  const warm = ['#efce82', '#e3b25a', '#d9a441', '#e9bd66', '#f0cf8c', '#d68f37', '#e0a64e', '#c9953f', '#e6b65c']
+  const cool = ['#c4d2dc', '#aebfce', '#c2cdbf', '#b7c7d4']
+  const pick = () => (rand() < 0.82 ? warm[(rand() * warm.length) | 0] : cool[(rand() * cool.length) | 0])
+
+  // dark leaded background (the came network behind the panes)
+  const bg = ctx.createLinearGradient(0, 0, 0, H)
+  bg.addColorStop(0, '#1c140a')
+  bg.addColorStop(0.5, '#15100a')
+  bg.addColorStop(1, '#0f0b06')
+  ctx.fillStyle = bg
   ctx.fillRect(0, 0, W, H)
 
-  // diamond lattice of glass panes
-  const cell = 42
+  // diamond lattice of antique glass panes
+  const cell = 40
   for (let y = -cell; y < H + cell; y += cell) {
     for (let x = -cell; x < W + cell; x += cell) {
       const cx = x + ((Math.floor(y / cell) % 2) * cell) / 2
-      ctx.fillStyle = jewels[Math.floor(rand() * jewels.length)]
+      const base = pick()
+      ctx.save()
       ctx.beginPath()
       ctx.moveTo(cx, y - cell * 0.5)
       ctx.lineTo(cx + cell * 0.5, y)
       ctx.lineTo(cx, y + cell * 0.5)
       ctx.lineTo(cx - cell * 0.5, y)
       ctx.closePath()
+      // base glass, lightly jittered so no two panes share a tone
+      const jit = 0.84 + rand() * 0.3
+      ctx.fillStyle = shade(base, jit)
       ctx.fill()
-      // pane shading for depth
-      ctx.fillStyle = `rgba(255,255,255,${0.06 + rand() * 0.1})`
+      // hand-blown curvature: brighter bowed centre, darker toward the came edges
+      const grad = ctx.createRadialGradient(cx, y, 1, cx, y, cell * 0.62)
+      grad.addColorStop(0, 'rgba(255,244,214,0.20)')
+      grad.addColorStop(0.55, 'rgba(255,236,196,0.05)')
+      grad.addColorStop(1, 'rgba(18,11,4,0.34)')
+      ctx.fillStyle = grad
       ctx.fill()
+      // a couple of faint streaks — cylinder-blown glass grain
+      const streaks = 1 + ((rand() * 2) | 0)
+      for (let s = 0; s < streaks; s++) {
+        ctx.strokeStyle = `rgba(255,250,230,${0.03 + rand() * 0.05})`
+        ctx.lineWidth = 0.6 + rand() * 0.8
+        const sx = cx + (rand() - 0.5) * cell * 0.6
+        ctx.beginPath()
+        ctx.moveTo(sx, y - cell * 0.46)
+        ctx.lineTo(sx + (rand() - 0.5) * cell * 0.3, y + cell * 0.46)
+        ctx.stroke()
+      }
+      // an occasional tiny bubble caught in the molten glass
+      if (rand() < 0.13) {
+        const bx = cx + (rand() - 0.5) * cell * 0.5
+        const by = y + (rand() - 0.5) * cell * 0.5
+        const br = 0.6 + rand() * 1.3
+        ctx.fillStyle = 'rgba(255,255,245,0.5)'
+        ctx.beginPath()
+        ctx.arc(bx, by, br, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.restore()
     }
   }
 
-  // leading lines (the dark cames between panes)
-  ctx.strokeStyle = '#0d0a04'
-  ctx.lineWidth = 4
+  // lead cames — blackened strokes with a thin warm metallic sheen on the
+  // top-left (as if catching the hall's candlelight). Drawn as a helper so the
+  // highlight can be a slightly offset, thinner pass.
+  ctx.lineCap = 'round'
+  const drawCames = (dx: number, dy: number, width: number, style: string) => {
+    ctx.strokeStyle = style
+    ctx.lineWidth = width
+    for (let y = -cell; y < H + cell; y += cell) {
+      for (let x = -cell; x < W + cell; x += cell) {
+        const cx = x + ((Math.floor(y / cell) % 2) * cell) / 2
+        ctx.beginPath()
+        ctx.moveTo(cx + dx, y - cell * 0.5 + dy)
+        ctx.lineTo(cx + cell * 0.5 + dx, y + dy)
+        ctx.lineTo(cx + dx, y + cell * 0.5 + dy)
+        ctx.lineTo(cx - cell * 0.5 + dx, y + dy)
+        ctx.closePath()
+        ctx.stroke()
+      }
+    }
+  }
+  // soft dark body of the came…
+  drawCames(0, 0, 4, '#0d0904')
+  // …then a bright hairline offset up-left for a hand-soldered metal glint.
+  drawCames(0.8, -0.6, 1.1, 'rgba(126,100,54,0.55)')
+
+  // solder joints where the cames cross — dark bead with a tiny warm catch-light
   for (let y = -cell; y < H + cell; y += cell) {
     for (let x = -cell; x < W + cell; x += cell) {
       const cx = x + ((Math.floor(y / cell) % 2) * cell) / 2
+      ctx.fillStyle = '#080501'
       ctx.beginPath()
-      ctx.moveTo(cx, y - cell * 0.5)
-      ctx.lineTo(cx + cell * 0.5, y)
-      ctx.lineTo(cx, y + cell * 0.5)
-      ctx.lineTo(cx - cell * 0.5, y)
-      ctx.closePath()
-      ctx.stroke()
+      ctx.arc(cx, y, 2.3, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = 'rgba(150,120,66,0.5)'
+      ctx.beginPath()
+      ctx.arc(cx - 0.6, y - 0.6, 0.9, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
 
-  // a glowing central roundel (magical sigil) near the top
+  // soft candlelit backlight — the panes read as lit from behind after dark
   ctx.save()
-  ctx.translate(W / 2, H * 0.32)
-  const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 60)
-  grad.addColorStop(0, '#fff3cf')
-  grad.addColorStop(0.5, '#ffcf7a')
-  grad.addColorStop(1, 'rgba(255,180,80,0.1)')
-  ctx.fillStyle = grad
+  ctx.globalCompositeOperation = 'lighter'
+  const glow = ctx.createRadialGradient(W / 2, H * 0.34, 8, W / 2, H * 0.34, H * 0.42)
+  glow.addColorStop(0, 'rgba(255,206,130,0.16)')
+  glow.addColorStop(0.5, 'rgba(255,176,96,0.07)')
+  glow.addColorStop(1, 'rgba(255,150,70,0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, W, H)
+  ctx.restore()
+
+  // a quiet gothic quatrefoil oculus in the came work near the top — reads as
+  // HP tracery, not a logo. Double ring + four petal lobes + a warm boss.
+  ctx.save()
+  ctx.translate(W / 2, H * 0.34)
+  ctx.strokeStyle = 'rgba(20,12,6,0.85)'
+  ctx.lineWidth = 2.4
   ctx.beginPath()
-  ctx.arc(0, 0, 58, 0, Math.PI * 2)
-  ctx.fill()
-  // an eight-point star
-  ctx.fillStyle = '#fff7e0'
+  ctx.arc(0, 0, 54, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.strokeStyle = 'rgba(150,120,66,0.6)'
+  ctx.lineWidth = 1
   ctx.beginPath()
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2
-    const r = i % 2 === 0 ? 40 : 16
-    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r)
+  ctx.arc(-0.6, -0.6, 54, 0, Math.PI * 2)
+  ctx.stroke()
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4
+    const px = Math.cos(a) * 38
+    const py = Math.sin(a) * 38
+    ctx.strokeStyle = 'rgba(18,11,5,0.8)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(px, py, 14, 0, Math.PI * 2)
+    ctx.stroke()
   }
-  ctx.closePath()
+  ctx.fillStyle = 'rgba(255,222,160,0.5)'
+  ctx.beginPath()
+  ctx.arc(0, 0, 6, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
+
+  // gentle warm vignette so the glow pools toward the centre, corners fall away
+  const vig = ctx.createRadialGradient(W / 2, H * 0.4, H * 0.2, W / 2, H * 0.4, H * 0.62)
+  vig.addColorStop(0, 'rgba(0,0,0,0)')
+  vig.addColorStop(1, 'rgba(10,6,2,0.42)')
+  ctx.fillStyle = vig
+  ctx.fillRect(0, 0, W, H)
 
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
@@ -371,6 +479,119 @@ export function makeBannerTexture(): CanvasTexture {
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
   tex.anisotropy = ANISO
+  return tex
+}
+
+/**
+ * A multi-tongue flame texture with turbulent edges and proper color ramps.
+ * Generated procedurally on a canvas. Used on an additive billboard with a
+ * minimal shader that adds vertical turbulence for living movement.
+ */
+export function makeFlameTexture(seed = 3): CanvasTexture {
+  const W = 256
+  const H = 512
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const ctx = c.getContext('2d')!
+  const rand = rng(seed)
+
+  // transparent base
+  ctx.clearRect(0, 0, W, H)
+
+  // Helper: draw a single flame tongue at given x center, with given width/height
+  const drawTongue = (cx: number, baseY: number, width: number, height: number, phase: number) => {
+    const tipY = baseY - height
+    const left = cx - width / 2
+    const right = cx + width / 2
+    // Build a noise-distorted flame shape
+    const segments = 16
+    ctx.beginPath()
+    ctx.moveTo(left, baseY)
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments
+      const y = baseY - t * height
+      // noise-based horizontal offset
+      const n = rand() - 0.5
+      const sway = n * width * 0.3 * (1 - t * 0.5)
+      const x = cx + sway + (rand() - 0.5) * width * 0.15 * (1 - t)
+      if (i === 0) ctx.lineTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.lineTo(right, baseY)
+    ctx.closePath()
+    ctx.clip()
+
+    // Color gradient: white-hot core → yellow → orange → red → transparent
+    const grad = ctx.createLinearGradient(cx, baseY, cx, tipY)
+    grad.addColorStop(0, 'rgba(255,255,255,0)')           // transparent at base
+    grad.addColorStop(0.08, 'rgba(255,255,220,0.95)')    // white-hot
+    grad.addColorStop(0.22, 'rgba(255,235,160,0.9)')     // bright yellow
+    grad.addColorStop(0.42, 'rgba(255,190,80,0.85)')     // golden
+    grad.addColorStop(0.62, 'rgba(255,130,30,0.8)')      // orange
+    grad.addColorStop(0.78, 'rgba(255,60,15,0.6)')       // red-orange
+    grad.addColorStop(0.92, 'rgba(180,20,10,0.25)')      // deep red
+    grad.addColorStop(1, 'rgba(80,10,5,0)')               // transparent tip
+    ctx.fillStyle = grad
+    ctx.fillRect(left, tipY, width, height)
+
+    // Add a hotter core stripe down the center
+    ctx.beginPath()
+    ctx.moveTo(cx - width * 0.12, baseY)
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments
+      const y = baseY - t * height
+      const n = rand() - 0.5
+      const x = cx + n * width * 0.08 * (1 - t * 0.5)
+      ctx.lineTo(x, y)
+    }
+    ctx.lineTo(cx + width * 0.12, baseY)
+    ctx.closePath()
+    const core = ctx.createLinearGradient(cx, baseY, cx, tipY)
+    core.addColorStop(0, 'rgba(255,255,255,0.5)')
+    core.addColorStop(0.3, 'rgba(255,255,200,0.4)')
+    core.addColorStop(0.7, 'rgba(255,200,100,0.15)')
+    core.addColorStop(1, 'rgba(255,150,50,0)')
+    ctx.fillStyle = core
+    ctx.fill()
+
+    ctx.restore()
+  }
+
+  // Draw 5-6 flame tongues at slightly different positions and phases
+  const centers = [
+    { x: W * 0.5, baseY: H * 0.92, w: W * 0.42, h: H * 0.55 },
+    { x: W * 0.32, baseY: H * 0.9, w: W * 0.28, h: H * 0.48 },
+    { x: W * 0.68, baseY: H * 0.9, w: W * 0.28, h: H * 0.48 },
+    { x: W * 0.18, baseY: H * 0.88, w: W * 0.2, h: H * 0.35 },
+    { x: W * 0.82, baseY: H * 0.88, w: W * 0.2, h: H * 0.35 },
+    { x: W * 0.5, baseY: H * 0.95, w: W * 0.18, h: H * 0.25 }, // center core
+  ]
+
+  centers.forEach((t, i) => {
+    // Each tongue gets its own rand sequence by re-seeding
+    const tongueRand = rng(seed + i * 137)
+    // swap rng temporarily
+    const savedRand = ctx.rand
+    ctx.rand = tongueRand
+    drawTongue(t.x, t.baseY, t.w, t.h, i)
+    ctx.rand = savedRand
+  })
+
+  // Add subtle glowing ember particles at the base
+  ctx.fillStyle = 'rgba(255,120,30,0.4)'
+  for (let i = 0; i < 30; i++) {
+    const x = W * 0.25 + rand() * W * 0.5
+    const y = H * 0.82 + rand() * H * 0.12
+    const r = 1 + rand() * 3
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  const tex = new CanvasTexture(c)
+  tex.colorSpace = SRGBColorSpace
+  tex.wrapS = tex.wrapT = RepeatWrapping
   return tex
 }
 

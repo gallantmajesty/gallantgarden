@@ -1,13 +1,46 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { DoubleSide, type MeshStandardMaterial, type Texture } from 'three'
+import { AdditiveBlending, DoubleSide, type Mesh, type MeshBasicMaterial, type MeshStandardMaterial, type PointLight, ShaderMaterial, type Texture } from 'three'
 import { HALL, WINDOW, windowStep, windowZs } from './layout'
 import { balconyPlatforms, columns, GALLERY_FRONT_Z, staircases } from './furniture'
-import { makeCarpetTexture, makePlasterTexture, makeStainedGlassTexture, makeStoneNormalTexture, makeWoodNormalTexture, makeWoodRoughnessTexture, makeWoodTexture } from './textures'
+import { makeCarpetTexture, makeFlameTexture, makePlasterTexture, makeStainedGlassTexture, makeStoneNormalTexture, makeWoodNormalTexture, makeWoodRoughnessTexture, makeWoodTexture } from './textures'
 import { InstancedBoxes, InstancedShape, type BoxItem, type ShapeItem } from './Instanced'
 import { env } from './env'
 import { useScenePreset } from '../../store/quality'
 import { useSettings } from '../../store/settings'
+
+// Minimal flame shader: vertical UV distortion + color ramp (bulletproof)
+const FLAME_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+
+const FLAME_FRAG = /* glsl */ `
+  varying vec2 vUv;
+  uniform sampler2D map;
+  uniform float time;
+  uniform float intensity;
+
+  void main() {
+    vec2 uv = vUv;
+    // subtle vertical turbulence from noise
+    float n = texture2D(map, uv * vec2(1.0, 0.5) + vec2(time * 0.03, -time * 0.08)).r;
+    float n2 = texture2D(map, uv * vec2(2.0, 1.0) + vec2(-time * 0.02, -time * 0.12)).r;
+    float distort = (n - 0.5) * 0.04 + (n2 - 0.5) * 0.02;
+    uv.x += distort * (1.0 - uv.y) * 0.5;  // more sway at top
+    uv.y += distort * 0.02;
+
+    vec4 col = texture2D(map, uv);
+    // boost the hottest parts slightly
+    float heat = max(col.r, max(col.g, col.b));
+    col.rgb += vec3(0.15, 0.08, 0.02) * heat * (1.0 - uv.y) * 0.5;
+    col.a *= intensity;
+    gl_FragColor = col;
+  }
+`
 
 const STONE = '#9c8158' // warmer honey-stone (was a washed-out cream)
 const STONE_DARK = '#6f5a39'
@@ -140,25 +173,189 @@ export function LibraryShell() {
           lanterns for both stairs as a handful of instanced batches */}
       <Staircases stairs={stairs} wood={balconyWood} />
 
-      {/* fireplace on the far wall */}
-      <group position={[0, 0, -halfL + 0.4]}>
-        <mesh position={[0, 2, 0]} castShadow>
-          <boxGeometry args={[6, 4, 1.2]} />
-          <meshStandardMaterial color="#5b5048" roughness={1} />
+      {/* grand hearth on the far wall — carved stone surround, arched
+          firebox, a grate with logs & dancing flames, and a mantel dressed
+          with brass candlesticks + a clock. See <Fireplace> below. */}
+      <Fireplace stoneNormal={stoneNormal} realLights={realLights} />
+    </group>
+  )
+}
+
+// (The hearth fire uses a procedural canvas flame texture + a minimal
+//  ShaderMaterial for living turbulence. See makeFlameTexture in textures.ts
+//  and FLAME_FRAG/FLAME_VERT above.)
+
+/**
+ * The library's great hearth — a proper wizarding fireplace, not a plain box.
+ * A honey-stone chimney breast carries a moulded arch over a dark firebox, with
+ * jambs, a heavy mantel shelf on carved corbels, a keystone and an overmantel
+ * panel. Inside: an iron grate, stacked logs, a glowing ember bed and a single
+ * living flame — a procedural canvas texture with a minimal ShaderMaterial
+ * that adds vertical turbulence and color boost — plus a warm firelight
+ * point-light (gated to real GPUs) and a small mantel clock, for the cosy
+ * Great-Hall feel.
+ */
+function Fireplace({ stoneNormal, realLights }: { stoneNormal: Texture; realLights: boolean }) {
+  const { halfL } = HALL
+  const fireLight = useRef<PointLight>(null)
+  const emberRef = useRef<Mesh>(null)
+
+  const openW = 3.2
+  const archR = openW / 2
+  const archBaseY = 2.2
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    // firelight breathes — layered sines + a touch of noise, no harsh jitter
+    const flick = 0.8 + Math.sin(t * 9.1) * 0.08 + Math.sin(t * 17.3 + 1.2) * 0.05 + (Math.random() - 0.5) * 0.06
+    if (fireLight.current) fireLight.current.intensity = 8.5 * flick
+    // drive the flame shader: time for turbulence, intensity for overall brightness
+    if (flameMat.current) {
+      flameMat.current.uniforms.time.value = t
+      flameMat.current.uniforms.intensity.value = 0.9 + flick * 0.15
+    }
+    if (emberRef.current) {
+      const mat = emberRef.current.material as MeshStandardMaterial
+      mat.emissiveIntensity = 2.2 + Math.sin(t * 12.5) * 0.4 + (Math.random() - 0.5) * 0.3
+    }
+  })
+
+  // a single living flame: a procedural canvas flame texture + minimal shader
+  // for living turbulence (vertical noise distortion + color boost).
+  const flameTex = useMemo(() => makeFlameTexture(3), [])
+  const flameMat = useRef<ShaderMaterial>(null)
+  // a few logs leaning in the grate
+  const logs = [
+    { x: -0.5, ry: 0.3, rz: 0.18 },
+    { x: 0.5, ry: -0.35, rz: -0.15 },
+    { x: 0.0, ry: 0.0, rz: 0.32 },
+  ]
+
+  return (
+    <group position={[0, 0, -halfL + 0.4]}>
+      {/* stone breast wings flanking the opening — built out from the wall but
+          kept clear of the firebox so the cavity reads as a real recess, not a
+          slab floating in front of the stone */}
+      {[-1, 1].map((s) => (
+        <mesh key={`breast-${s}`} position={[s * 4.1, 3.7, 0.1]} castShadow receiveShadow>
+          <boxGeometry args={[1.8, 7.8, 1.0]} />
+          <meshStandardMaterial color={STONE} normalMap={stoneNormal} roughness={1} />
         </mesh>
-        <mesh position={[0, 1.2, 0.3]}>
-          <boxGeometry args={[3.4, 2.2, 0.8]} />
-          <meshStandardMaterial color="#0c0907" roughness={1} />
+      ))}
+      {/* dark firebox back — set INTO the wall so the opening is a true cavity */}
+      <mesh position={[0, 2.3, -0.2]}>
+        <boxGeometry args={[openW + 0.6, 4.4, 0.3]} />
+        <meshStandardMaterial color="#0a0705" roughness={1} />
+      </mesh>
+      {/* hearth stone — slab on the floor, projecting into the room */}
+      <mesh position={[0, 0.16, 0.6]} castShadow receiveShadow>
+        <boxGeometry args={[9.0, 0.32, 1.9]} />
+        <meshStandardMaterial color={STONE_DARK} normalMap={stoneNormal} roughness={1} />
+      </mesh>
+      {/* jambs framing the opening (inner edge meets the arch spring) */}
+      {[-1, 1].map((s) => (
+        <mesh key={`jamb-${s}`} position={[s * 2.5, 2.6, 0.0]} castShadow receiveShadow>
+          <boxGeometry args={[1.8, 5.0, 1.1]} />
+          <meshStandardMaterial color={STONE} normalMap={stoneNormal} roughness={1} />
         </mesh>
-        {/* embers (glow via bloom) */}
-        <mesh position={[0, 0.5, 0.6]}>
-          <boxGeometry args={[2.6, 0.5, 0.5]} />
-          <meshStandardMaterial color="#ff7a2a" emissive="#ff7a2a" emissiveIntensity={2.6} />
+      ))}
+      {/* lintel stone above the arch, below the mantel */}
+      <mesh position={[0, 4.0, 0.05]} castShadow receiveShadow>
+        <boxGeometry args={[6.8, 1.3, 1.0]} />
+        <meshStandardMaterial color={STONE} normalMap={stoneNormal} roughness={1} />
+      </mesh>
+      {/* overmantel panel — a recessed, slightly darker stone field */}
+      <mesh position={[0, 6.3, 0.15]} receiveShadow>
+        <boxGeometry args={[5.0, 2.4, 0.7]} />
+        <meshStandardMaterial color="#6f5a39" normalMap={stoneNormal} roughness={1} />
+      </mesh>
+      {/* carved relief inset on the overmantel */}
+      <mesh position={[0, 6.3, 0.52]}>
+        <boxGeometry args={[3.6, 1.4, 0.12]} />
+        <meshStandardMaterial color="#8a7350" normalMap={stoneNormal} roughness={0.95} />
+      </mesh>
+      {/* heavy mantel shelf on carved corbels */}
+      {[-1, 1].map((s) => (
+        <mesh key={`corbel-${s}`} position={[s * 2.6, 4.55, 0.35]} castShadow>
+          <boxGeometry args={[0.55, 0.5, 0.8]} />
+          <meshStandardMaterial color={STONE_DARK} roughness={1} />
         </mesh>
-        {/* real firelight — dropped on Low (the emissive embers + bloom still
-            read as a fire) so the weakest GPUs carry one fewer dynamic light */}
-        {realLights && <pointLight position={[0, 1.2, 1.2]} intensity={9} distance={14} decay={2} color="#ff8a3a" />}
-      </group>
+      ))}
+      <mesh position={[0, 4.95, 0.2]} castShadow receiveShadow>
+        <boxGeometry args={[10.2, 0.5, 1.5]} />
+        <meshStandardMaterial color={TRIM} roughness={0.85} />
+      </mesh>
+      {/* (the firebox cavity is the dark back panel set into the wall above) */}
+      {/* moulded stone arch over the opening */}
+      <mesh position={[0, archBaseY, 0.1]} castShadow>
+        <torusGeometry args={[archR, 0.38, 14, 28, Math.PI]} />
+        <meshStandardMaterial color={STONE} normalMap={stoneNormal} roughness={1} />
+      </mesh>
+      {/* keystone at the crown */}
+      <mesh position={[0, archBaseY + archR + 0.05, 0.12]} castShadow>
+        <boxGeometry args={[0.7, 0.95, 0.8]} />
+        <meshStandardMaterial color={STONE_DARK} roughness={1} />
+      </mesh>
+
+      {/* ---- the fire ---- */}
+      {/* iron grate: front bar + two andirons */}
+      <mesh position={[0, 0.72, 0.4]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.06, 0.06, 2.7, 10]} />
+        <meshStandardMaterial color="#2a2622" metalness={0.6} roughness={0.5} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={`andiron-${s}`} position={[s * 1.15, 0.5, 0.4]} castShadow>
+          <cylinderGeometry args={[0.08, 0.11, 0.95, 8]} />
+          <meshStandardMaterial color="#2a2622" metalness={0.6} roughness={0.5} />
+        </mesh>
+      ))}
+      {/* logs leaning in the embers */}
+      {logs.map((l, i) => (
+        <mesh key={`log-${i}`} position={[l.x, 0.82, 0.02]} rotation={[0, l.ry, l.rz]} castShadow>
+          <cylinderGeometry args={[0.15, 0.18, 1.5, 10]} />
+          <meshStandardMaterial color="#3a241a" roughness={1} />
+        </mesh>
+      ))}
+      {/* glowing ember bed */}
+      <mesh ref={emberRef} position={[0, 0.62, 0.05]}>
+        <boxGeometry args={[2.6, 0.22, 0.7]} />
+        <meshStandardMaterial color="#ff5a1e" emissive="#ff5a1e" emissiveIntensity={2.2} />
+      </mesh>
+      {/* a single, living flame — textured canvas + minimal shader for
+          living turbulence and color boost */}
+      <mesh ref={flameMat} position={[0, 0.7 + 3.0 / 2, 0.05]}>
+        <planeGeometry args={[2.6, 3.2]} />
+        <shaderMaterial
+          vertexShader={FLAME_VERT}
+          fragmentShader={FLAME_FRAG}
+          transparent
+          depthWrite={false}
+          blending={AdditiveBlending}
+          side={DoubleSide}
+          toneMapped={false}
+          uniforms={{\
+            map: { value: flameTex },\
+            time: { value: 0 },\
+            intensity: { value: 1.0 },\
+          }}
+        />
+      </mesh>
+
+      {/* mantel clock */}
+      <mesh position={[0, 5.5, 0.4]} castShadow>
+        <boxGeometry args={[0.9, 0.8, 0.3]} />
+        <meshStandardMaterial color="#3a2a1a" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 5.5, 0.56]}>
+        <circleGeometry args={[0.3, 24]} />
+        <meshStandardMaterial color="#efe2c0" emissive="#caa84a" emissiveIntensity={0.25} />
+      </mesh>
+
+      {/* real firelight — dropped on Low (embers + flames + bloom still read
+          as a fire) so the weakest GPUs carry one fewer dynamic light */}
+      {realLights && (
+        <pointLight ref={fireLight} position={[0, 1.8, 1.4]} intensity={8.5} distance={16} decay={2} color="#ff8a3a" />
+      )}
     </group>
   )
 }
@@ -171,14 +368,22 @@ function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Tex
   const { halfW, halfL, wallH } = HALL
   const glassMat = useRef<MeshStandardMaterial>(null)
 
-  // make the stained glass read as a lit lantern wall after dark: subtle wash by
-  // day, a soft glow at night. The glass is rendered semi-transparent in BOTH
-  // modes (user wants the wall see-through), so the whole hall reads airy.
-  useFrame(() => {
+  // make the stained glass read as a lit lantern wall after dark: subtle warm
+  // wash by day, a soft candlelit glow that gently flickers at night.
+  useFrame((state) => {
     if (glassMat.current) {
       const night = useSettings.getState().nightMode
       const nightTerm = night ? 0.6 : 2.8
-      glassMat.current.emissiveIntensity = 0.45 + (1 - env.dayFactor) * nightTerm
+      const base = 0.45 + (1 - env.dayFactor) * nightTerm
+      // candle flicker — layered sines give a slow, living sway (no harsh
+      // white-noise jitter); only audible once the glass is actually glowing
+      // at night, and a touch of randomness keeps it from looping obviously.
+      const t = state.clock.elapsedTime
+      const flicker =
+        1 +
+        (1 - env.dayFactor) *
+          (Math.sin(t * 6.7) * 0.045 + Math.sin(t * 11.3 + 1.7) * 0.028 + (Math.random() - 0.5) * 0.03)
+      glassMat.current.emissiveIntensity = base * flicker
     }
   })
   const zs = useMemo(() => windowZs(), [])
@@ -247,16 +452,29 @@ function WindowWalls({ glass, plaster, stoneNormal, windowDetail }: { glass: Tex
       <InstancedBoxes items={data.bayBoxes} roughness={1} />
 
       {/* stained glass (main panels) — one instanced draw for every bay; its
-          emissive glow is animated up at night (see useFrame above).
-          PERF: rendered OPAQUE (was transparent opacity 0.92 — visually already
-          near-solid). Transparency disabled early-Z, so every fragment of the
-          forest/mountains/sky BEHIND these big bay-filling panes was still shaded
-          and the panes themselves were blend-sorted over a huge slice of the
-          screen — the hall's single biggest fill-rate cost on integrated GPUs.
-          Opaque restores depth occlusion (geometry behind the glass is rejected
-          before shading) while the colour + emissive map keep the jewelled look
-          identical. DoubleSide stays so the one batch faces both window walls. */}
-      <InstancedShape items={data.glassPanes} materialRef={glassMat} map={glass} emissiveMap={glass} emissive="#ffffff" emissiveIntensity={0.5} roughness={0.4} metalness={0.1} side={DoubleSide}>
+           warm emissive glow is animated + candle-flickered at night (see
+           useFrame above). PERF: kept OPAQUE on the Low/Medium tiers — transparency
+           disables early-Z, so the whole forest/mountains/sky behind these
+           bay-filling panes would still be shaded and blend-sorted over a huge
+           slice of the screen (the hall's biggest fill-rate cost on integrated
+           GPUs). On the High tier (windowDetail) we re-enable a light transparency
+           so the warm candlelit glass reads see-through without hurting weak GPUs.
+           emissive is tinted warm gold (#ffd9a0) so the night glow is candlelight,
+           not white. DoubleSide stays so the one batch faces both window walls. */}
+      <InstancedShape
+        items={data.glassPanes}
+        materialRef={glassMat}
+        map={glass}
+        emissiveMap={glass}
+        emissive="#ffd9a0"
+        emissiveIntensity={0.5}
+        roughness={0.4}
+        metalness={0.1}
+        side={DoubleSide}
+        transparent={windowDetail}
+        opacity={windowDetail ? 0.8 : 1}
+        depthWrite={!windowDetail}
+      >
         <planeGeometry args={[step - 0.7, h]} />
       </InstancedShape>
 
@@ -496,6 +714,7 @@ function Pillars({ cols, h, stoneNormal }: { cols: [number, number, number][]; h
       <InstancedShape items={glyphAccents} color={GLYPH} metalness={0.5} roughness={0.45} emissive="#3a2c10" emissiveIntensity={0.35}>
         <torusGeometry args={[0.61, 0.05, 8, 24]} />
       </InstancedShape>
+
     </group>
   )
 }
