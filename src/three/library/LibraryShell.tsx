@@ -323,9 +323,10 @@ function Fireplace({ stoneNormal, realLights }: { stoneNormal: Texture; realLigh
       </mesh>
       {/* a single, living flame — textured canvas + minimal shader for
           living turbulence and color boost */}
-      <mesh ref={flameMat} position={[0, 0.7 + 3.0 / 2, 0.05]}>
+      <mesh position={[0, 0.7 + 3.0 / 2, 0.05]}>
         <planeGeometry args={[2.6, 3.2]} />
         <shaderMaterial
+          ref={flameMat}
           vertexShader={FLAME_VERT}
           fragmentShader={FLAME_FRAG}
           transparent
@@ -333,10 +334,10 @@ function Fireplace({ stoneNormal, realLights }: { stoneNormal: Texture; realLigh
           blending={AdditiveBlending}
           side={DoubleSide}
           toneMapped={false}
-          uniforms={{\
-            map: { value: flameTex },\
-            time: { value: 0 },\
-            intensity: { value: 1.0 },\
+          uniforms={{
+            map: { value: flameTex },
+            time: { value: 0 },
+            intensity: { value: 1.0 },
           }}
         />
       </mesh>
