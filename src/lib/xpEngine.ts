@@ -46,6 +46,8 @@ export const XP_VALUES = {
   // Daily engagement (GREEN)
   dailyTaskComplete: 10,
   perfectDay: 30,
+  /** modest once-per-day focus claim (Profile page) */
+  dailyFocusClaim: 15,
 
   // Study quality (GREEN)
   hrLibraryFocus: 15,
@@ -57,6 +59,14 @@ export const XP_VALUES = {
   weeklyWarrior: 25,
   streak7: 50,
   streak30: 200,
+
+  // Task Magnet consistency (GREEN) — awarded ONLY at milestone days, never per
+  // action, so the magnet can't be farmed. Daily task-completion bonus is
+  // awarded by awardDailyTaskCompletion (once per day).
+  taskStreak7: 50,
+  taskStreak30: 200,
+  habitStreak7: 25,
+  habitStreak30: 100,
 
   // Exploration (GREEN)
   multiModeDay: 15,
@@ -159,6 +169,8 @@ interface DailyRecord {
   penaltyPanelShown: boolean
   /** active XP-earning minutes today (capped at DAILY_CAPS.activeMinCap) */
   activeMinToday: number
+  /** whether today's daily focus claim has been taken */
+  focusClaimed: boolean
 }
 
 const DAILY_KEY = 'sf.xp.daily'
@@ -192,6 +204,7 @@ function loadDaily(): DailyRecord {
   penaltyApplied: (parsed.penaltyApplied as boolean) || false,
   penaltyPanelShown: (parsed.penaltyPanelShown as boolean) || false,
   activeMinToday: (parsed.activeMinToday as number) || 0,
+  focusClaimed: (parsed.focusClaimed as boolean) || false,
     }
   } catch {
     return freshDaily()
@@ -215,6 +228,7 @@ function freshDaily(): DailyRecord {
   penaltyApplied: false,
   penaltyPanelShown: false,
   activeMinToday: 0,
+  focusClaimed: false,
   }
 }
 
@@ -401,6 +415,9 @@ export interface FocusAwardInput {
   rankXp?: number
   /** subject tag entered — earns a flat green bonus */
   hasSubject?: boolean
+  /** tab stayed visible for the whole segment — +30% deep-work bonus.
+   *  Shown on the segment popup, so it must actually credit the wallet too. */
+  tabAlwaysVisible?: boolean
   /** active study streak days → tier multiplier (7/30/90) */
   streakDays?: number
   /** session completed without forfeit/leave (>=90% timer) → 1.5× base */
@@ -421,6 +438,10 @@ export function awardFocusLeaves(input: FocusAwardInput): AwardResult {
 
   // Subject bonus (flat) when a subject tag was entered.
   if (input.hasSubject) total += getOverride('pomoRewards', 'subjectBonusFlat', POMO_REWARDS.subjectBonusFlat)
+
+  // Kept-the-tab-visible deep-work bonus (+30% of base, mirroring the segment
+  // popup's "no-tab bonus") — so what the UI shows actually reaches the wallet.
+  if (input.tabAlwaysVisible) total += Math.round(base * 0.3)
 
   // Streak-tier multiplier on top.
   total = Math.round(total * streakXpMultiplier(input.streakDays ?? 1))
@@ -485,6 +506,28 @@ export function checkDailyLogin(
   daily.loginAwarded = true
   saveDaily(daily)
   return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.dailyLogin, currentRankId)
+}
+
+/** Minutes of daily focus required before the focus claim unlocks. */
+export const DAILY_FOCUS_CLAIM_MIN_MINUTES = 25
+
+/**
+ * Claim today's daily focus bonus (GREEN). Requires 25+ focus minutes today,
+ * once per day. Mirrors checkDailyLogin — the server RPC gate
+ * (claim_daily_focus) is applied by the caller.
+ */
+export function claimDailyFocus(
+  currentLeaves: number,
+  currentGoldenLeaves: number,
+  currentRankId: string,
+): AwardResult {
+  const daily = loadDaily()
+  if (daily.focusClaimed || daily.totalFocusMin < DAILY_FOCUS_CLAIM_MIN_MINUTES) {
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+  daily.focusClaimed = true
+  saveDaily(daily)
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.dailyFocusClaim, currentRankId)
 }
 
 /** Call when streak hits 7 or 30 days. Awards GREEN leaves (golden is premium-only). */
@@ -599,6 +642,66 @@ export function awardDailyTaskCompletion(
   }
 
   return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.dailyTaskComplete, currentRankId)
+}
+
+/**
+ * Task Magnet streak award — paid ONCE per streak crossing, at the exact
+ * milestone day (7 or 30 consecutive days with >=1 completed task).
+ *
+ * Anti-spam: a streak can only be crossed once per run, and the milestone is
+ * keyed to the streak's anchor day, so toggling tasks off/on to re-farm the
+ * same streak pays nothing a second time. It costs 7 (or 30) real consecutive
+ * days of completing tasks to re-earn — genuine consistency, not clicking.
+ */
+export function awardTaskStreak(
+  currentLeaves: number,
+  currentGoldenLeaves: number,
+  currentRankId: string,
+  streakDays: number,
+  rankXp?: number,
+): AwardResult {
+  const value =
+    streakDays === 7 ? XP_VALUES.taskStreak7 : streakDays === 30 ? XP_VALUES.taskStreak30 : 0
+  if (value <= 0) {
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+  const key = `sf.xp.taskstreak.${todayStr()}`
+  try {
+    if (localStorage.getItem(key)) {
+      return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+    }
+  } catch { /* ignore */ }
+  try { localStorage.setItem(key, '1') } catch { /* ignore */ }
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', value, currentRankId, rankXp)
+}
+
+/**
+ * Habit streak award — paid ONCE per streak crossing per habit, at the exact
+ * milestone day (7 or 30 consecutive check-ins). Same anti-spam design as
+ * awardTaskStreak: keyed to the streak's anchor day per habit, so re-checking
+ * a habit repeatedly on one day can never re-award.
+ */
+export function awardHabitStreak(
+  currentLeaves: number,
+  currentGoldenLeaves: number,
+  currentRankId: string,
+  habitId: string,
+  streakDays: number,
+  rankXp?: number,
+): AwardResult {
+  const value =
+    streakDays === 7 ? XP_VALUES.habitStreak7 : streakDays === 30 ? XP_VALUES.habitStreak30 : 0
+  if (value <= 0) {
+    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+  }
+  const key = `sf.xp.habitstreak.${habitId}.${todayStr()}`
+  try {
+    if (localStorage.getItem(key)) {
+      return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false }
+    }
+  } catch { /* ignore */ }
+  try { localStorage.setItem(key, '1') } catch { /* ignore */ }
+  return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', value, currentRankId, rankXp)
 }
 
 /** Call when studying in library with 2+ friends online. */
@@ -721,6 +824,9 @@ export function getDailyEngagement() {
     penaltyThresholdMin: XP_VALUES.inactivityThresholdMin,
     activeMinToday: daily.activeMinToday,
     activeMinCap: getOverride('dailyCaps', 'activeMinCap', DAILY_CAPS.activeMinCap),
+    focusClaimed: daily.focusClaimed,
+    focusClaimMin: DAILY_FOCUS_CLAIM_MIN_MINUTES,
+    focusClaimLeaves: XP_VALUES.dailyFocusClaim,
   }
 }
 

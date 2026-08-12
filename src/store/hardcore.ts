@@ -26,8 +26,8 @@ import { getOverride } from '../lib/ownerOverrides'
 
 export type FocusMode = 'easy' | 'medium' | 'hardcore'
 
-/** Base green-leaf rate for the free (Easy) tier — 0.51 leaves/min. */
-export const EASY_RATE = 0.51
+/** Base green-leaf rate for the free (Easy) tier — 0.8 leaves/min (~48/hr). */
+export const EASY_RATE = 0.8
 /** Medium tier = fullscreen-enforced, end-only credit. */
 export const MEDIUM_RATE = 2.2
 /** Hardcore anchor at a 1-hour session (premium-feeling without flooding the

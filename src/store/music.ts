@@ -2,11 +2,9 @@ import { create } from 'zustand'
 import { getMusic } from '../lib/music/engine'
 import {
   searchLiveTracks,
-  genreLiveTracks,
-  RADIO_STATIONS,
+  defaultLiveTracks,
   trackToPreset,
   type LiveTrack,
-  type MusicGenre,
 } from '../lib/music/catalog'
 
 // Live music store for the Library Realm widget. There is no fixed playlist —
@@ -19,6 +17,8 @@ export interface WidgetPos {
   x: number
   y: number
 }
+
+export type RepeatMode = 'off' | 'all' | 'one'
 
 interface MusicStore {
   // Runtime
@@ -34,14 +34,18 @@ interface MusicStore {
   volume: number // 0..1
   expanded: boolean
   pos: WidgetPos | null // null = default bottom-right corner
+  shuffle: boolean
+  repeat: RepeatMode
 
   // Actions
   search: (q: string) => void
-  browseGenre: (g: MusicGenre | null) => void
   playTrack: (t: LiveTrack) => void
   toggle: () => void
   next: () => void
   prev: () => void
+  seekTo: (seconds: number) => void
+  toggleShuffle: () => void
+  cycleRepeat: () => void
   setVolume: (v: number) => void
   setExpanded: (v: boolean) => void
   setPos: (p: WidgetPos) => void
@@ -59,6 +63,8 @@ interface Persisted {
   current: LiveTrack | null
   queue: LiveTrack[]
   qIndex: number
+  shuffle: boolean
+  repeat: RepeatMode
 }
 
 function load(): Persisted {
@@ -70,6 +76,8 @@ function load(): Persisted {
     current: null,
     queue: [],
     qIndex: 0,
+    shuffle: false,
+    repeat: 'off',
   }
   try {
     const raw = localStorage.getItem(KEY)
@@ -85,14 +93,25 @@ function load(): Persisted {
         y: Math.max(m, Math.min(p.pos.y, maxY)),
       }
     }
+    // Radio stations were removed — drop any stale persisted radio entries so
+    // the player doesn't restore a dead SomaFM stream as "now playing".
+    const isPlayable = (t: LiveTrack | null | undefined): t is LiveTrack =>
+      !!t && typeof t.url === 'string' && t.kind !== 'radio'
+    const current = isPlayable(p.current) ? p.current : null
+    const queue = Array.isArray(p.queue) ? p.queue.filter(isPlayable) : []
+    const repeat: RepeatMode = p.repeat === 'one' || p.repeat === 'all' ? p.repeat : 'off'
     return {
       volume: typeof p.volume === 'number' ? Math.max(0, Math.min(1, p.volume)) : fallback.volume,
-      playing: !!p.playing,
+      // If the saved "now playing" was a radio station (now removed), don't
+      // resume a phantom playback state either.
+      playing: !!p.playing && !!current,
       expanded: !!p.expanded,
       pos,
-      current: p.current && typeof p.current.url === 'string' ? p.current : null,
-      queue: Array.isArray(p.queue) ? p.queue.filter((t) => t && typeof t.url === 'string') : [],
+      current,
+      queue,
       qIndex: Number.isFinite(p.qIndex) ? Math.max(0, p.qIndex) : 0,
+      shuffle: !!p.shuffle,
+      repeat,
     }
   } catch {
     return fallback
@@ -117,8 +136,8 @@ export const useMusic = create<MusicStore>((set, get) => {
   getMusic().onTrackEnd = () => get().next()
 
   const persist = () => {
-    const { volume, playing, expanded, pos, current, queue, qIndex } = get()
-    save({ volume, playing, expanded, pos, current, queue, qIndex })
+    const { volume, playing, expanded, pos, current, queue, qIndex, shuffle, repeat } = get()
+    save({ volume, playing, expanded, pos, current, queue, qIndex, shuffle, repeat })
   }
 
   const playIndex = (index: number) => {
@@ -139,27 +158,19 @@ export const useMusic = create<MusicStore>((set, get) => {
     qIndex: init.qIndex,
     playing: init.playing,
     query: '',
-    results: [],
+    results: defaultLiveTracks(),
     browsing: false,
     volume: init.volume,
     expanded: init.expanded,
     pos: init.pos,
+    shuffle: init.shuffle,
+    repeat: init.repeat,
 
     search: async (q) => {
       const query = q.trim()
       set({ query: q, browsing: true })
       const tracks = await searchLiveTracks(query, 0)
       if (get().query !== q) return // stale response
-      set({ results: tracks, browsing: false })
-    },
-
-    browseGenre: async (g) => {
-      if (!g) {
-        set({ query: '', results: [], browsing: false })
-        return
-      }
-      set({ query: '', browsing: true })
-      const tracks = await genreLiveTracks(g, 0)
       set({ results: tracks, browsing: false })
     },
 
@@ -179,9 +190,9 @@ export const useMusic = create<MusicStore>((set, get) => {
       } else {
         const cur = get().current
         if (!cur) {
-          // Nothing chosen yet — start the first radio station.
-          const station = RADIO_STATIONS[0]
-          get().playTrack(station)
+          // Nothing chosen yet — start the first curated track.
+          const first = defaultLiveTracks().find((t) => t.id === 'fb-lofi') ?? defaultLiveTracks()[0]
+          get().playTrack(first)
           return
         }
         eng.load(trackToPreset(cur))
@@ -192,16 +203,30 @@ export const useMusic = create<MusicStore>((set, get) => {
     },
 
     next: () => {
-      const { queue, qIndex } = get()
+      const { queue, qIndex, repeat, shuffle } = get()
       if (queue.length === 0) {
-        get().playTrack(RADIO_STATIONS[0])
+        const first = defaultLiveTracks().find((t) => t.id === 'fb-lofi') ?? defaultLiveTracks()[0]
+        get().playTrack(first)
         return
       }
-      // A lone radio station that fails to stream would otherwise loop back onto
-      // itself forever — rotate through the station list instead.
-      if (queue.length === 1 && queue[0].kind === 'radio') {
-        const idx = RADIO_STATIONS.findIndex((r) => r.id === queue[0].id)
-        get().playTrack(RADIO_STATIONS[(idx + 1) % RADIO_STATIONS.length])
+      // Repeat-one: replay the same track from the top.
+      if (repeat === 'one') {
+        getMusic().seek(0)
+        playIndex(qIndex)
+        return
+      }
+      // Shuffle: jump to a random different queue position.
+      if (shuffle && queue.length > 1) {
+        let i = Math.floor(Math.random() * queue.length)
+        if (i === qIndex) i = (i + 1) % queue.length
+        playIndex(i)
+        return
+      }
+      // Repeat-off at the end of the queue: stop instead of wrapping.
+      if (repeat === 'off' && qIndex >= queue.length - 1) {
+        getMusic().pause()
+        set({ playing: false })
+        persist()
         return
       }
       playIndex(qIndex + 1)
@@ -211,6 +236,22 @@ export const useMusic = create<MusicStore>((set, get) => {
       const { queue, qIndex } = get()
       if (queue.length === 0) return
       playIndex(qIndex - 1)
+    },
+
+    seekTo: (seconds) => {
+      if (!get().current) return
+      getMusic().seek(seconds)
+    },
+
+    toggleShuffle: () => {
+      set({ shuffle: !get().shuffle })
+      persist()
+    },
+
+    cycleRepeat: () => {
+      const nextMode: Record<RepeatMode, RepeatMode> = { off: 'all', all: 'one', one: 'off' }
+      set({ repeat: nextMode[get().repeat] })
+      persist()
     },
 
     setVolume: (v) => {
@@ -239,5 +280,3 @@ export const useMusic = create<MusicStore>((set, get) => {
     },
   }
 })
-
-export { RADIO_STATIONS }

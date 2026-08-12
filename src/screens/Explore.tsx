@@ -19,12 +19,12 @@ import {
 } from '../store/settings'
 import { useHud } from '../store/hud'
 import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../components/settings/controls'
-import { usePomodoro, SESSION_OPTIONS, computeSegments, liveFocusLeaves, suggestBreakActivity } from '../store/pomodoro'
+import { usePomodoro, SESSION_OPTIONS, computeSegments, liveFocusLeaves, formatLiveLeaves, suggestBreakActivity } from '../store/pomodoro'
 import { hardcoreMultiplier, minWagerFor } from '../store/hardcore'
 import { useDeviceBoost } from '../lib/deviceBoost'
 import { DeviceConnect } from '../components/focus/DeviceConnect'
-import type { TimerType } from '../store/pomodoro'
-import { getRemoteOccupied, setLocalTimer } from '../multiplayer/net'
+import type { TimerType, PomoPhase } from '../store/pomodoro'
+import { getRemoteOccupied, setLocalTimer, setLocalCelebrate } from '../multiplayer/net'
 import { useWorld } from '../store/world'
 import { useDesk } from '../store/desk'
 import { useMagnet } from '../store/magnet'
@@ -42,6 +42,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
 import { getRank, rankForLifetime } from '../lib/ranks'
 import { AddFriendButton } from '../components/AddFriendButton'
+import { GREEN_LEAF_ICON } from '../lib/leafIcons'
 import { Icon } from '../components/magnet/Icon'
 import { SocialHub } from '../features/social/SocialHub'
 import { LibraryCalc } from '../calc/ui/LibraryCalc'
@@ -238,7 +239,14 @@ export function Explore({ defaultWorld }: ExploreProps) {
   // your live study progress as a small bar above your head. Breaks are
   // broadcast as a fresh short countdown so friends see you're on a break.
   useEffect(() => {
+    let prevPhase: PomoPhase = usePomodoro.getState().phase
     const push = (s: ReturnType<typeof usePomodoro.getState>) => {
+      // When the whole session completes (phase -> 'finished'), broadcast a
+      // celebration so other players see the leaf burst over this avatar.
+      if (prevPhase !== 'finished' && s.phase === 'finished') {
+        setLocalCelebrate(Date.now())
+      }
+      prevPhase = s.phase
       if (s.phase === 'running' && s.startedAt) {
         setLocalTimer(s.startedAt, s.sessionMinutes * 60 * 1000, 'focus')
       } else if (s.phase === 'break' && s.remaining > 0) {
@@ -629,7 +637,7 @@ function RoomRoster() {
   const displayName = useProfile((s) => s.displayName)
   const realm = useRealm((s) => s.active)
   const roster = useRealmNet((s) => s.roster)
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [profileTarget, setProfileTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string } | null>(null)
   const [cardTarget, setCardTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string; banner?: string; logo?: string } | null>(null)
 
@@ -644,51 +652,87 @@ function RoomRoster() {
   const rosterEntries = Object.entries(roster)
   const total = rosterEntries.length + 1
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (open && scrollRef.current) handleScroll()
+  }, [open, rosterEntries.length])
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const cards = el.querySelectorAll<HTMLElement>('.roster-user-card')
+    const containerTop = el.scrollTop
+    const containerH = el.clientHeight
+    const center = containerTop + containerH / 2
+    cards.forEach((card) => {
+      const cardCenter = card.offsetTop + card.offsetHeight / 2
+      const dist = (center - cardCenter) / (containerH / 2)
+      const clamped = Math.max(-1, Math.min(dist, 1))
+      const abs = Math.abs(clamped)
+      const scale = 1 - abs * 0.12
+      const rotateX = clamped * 6
+      const translateZ = -abs * 20
+      card.style.transform = `perspective(500px) rotateX(${rotateX}deg) scale(${scale}) translateZ(${translateZ}px)`
+      card.style.opacity = `${1 - abs * 0.25}`
+    })
+  }
+
   return (
-    <div className={`room-roster ${open ? 'open' : ''}`}>
-      <button className="room-roster-head" onClick={() => setOpen((v) => !v)}>
-        <span className="room-roster-dot" />
-        In this room <strong>{total}</strong>
-        <span className="room-roster-chev">{open ? '▾' : '▸'}</span>
+    <div className={`room-roster ${open ? '' : 'collapsed'}`}>
+      <button className="room-roster-toggle" onClick={() => setOpen((v) => !v)} title="In this room">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        <span className="room-roster-badge">{total}</span>
       </button>
       {open && (
-        <div className="room-roster-list">
-          <div className="room-roster-card me">
-            <div className="roster-card-banner" />
-            <div className="roster-card-content">
-              <div className="roster-card-avatar">
-                <ProfileAvatar name={self.name} avatarUrl={null} rankId={self.rank} size={36} />
-              </div>
-              <div className="roster-card-info">
-                <span className="roster-card-name">{self.name}</span>
-                <span className="roster-card-you">You</span>
-              </div>
-              <RankBadge rankId={self.rank} size={20} className="roster-card-rank" />
-            </div>
+        <div className="room-roster-panel">
+          <div className="room-roster-panel-head">
+            <span className="room-roster-dot" />
+            <span>In this room</span>
+            <strong>{total}</strong>
           </div>
-          {rosterEntries.map(([id, entry]) => (
-            <div
-              key={id}
-              className="room-roster-card clickable"
-              onClick={() => setCardTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank, banner: entry.banner, logo: entry.logo })}
-            >
-              <div className="roster-card-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
-              <div className="roster-card-content">
-                <div className="roster-card-avatar">
-                  <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={36} />
+          <div className="room-roster-scroll" ref={scrollRef} onScroll={handleScroll}>
+            <div className="roster-user-card me">
+              <div className="roster-user-banner" />
+              <div className="roster-user-body">
+                <div className="roster-user-avatar">
+                  <ProfileAvatar name={self.name} avatarUrl={null} rankId={self.rank} size={32} />
                 </div>
-                <div className="roster-card-info">
-                  <span className="roster-card-name">{entry.name}</span>
-                </div>
-                <RankBadge rankId={entry.rank} size={20} className="roster-card-rank" />
+                <span className="roster-user-name">{self.name} <span className="roster-user-you">You</span></span>
+                <button className="roster-user-info" onClick={() => setProfileTarget({ name: self.name, playerId: self.playerId, country: self.country, rank: self.rank })} title="Profile">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                </button>
               </div>
             </div>
-          ))}
-          {rosterEntries.length === 0 && (
-            <p className="room-roster-empty">
-              <span>Others studying in this realm will appear here live.</span>
-            </p>
-          )}
+            {rosterEntries.map(([id, entry]) => (
+              <div
+                key={id}
+                className="roster-user-card clickable"
+                onClick={() => setCardTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank, banner: entry.banner, logo: entry.logo })}
+              >
+                <div className="roster-user-banner" style={{ '--rank-color': getRank(entry.rank).accent } as React.CSSProperties} />
+                <div className="roster-user-body">
+                  <div className="roster-user-avatar">
+                    <ProfileAvatar name={entry.name} avatarUrl={null} rankId={entry.rank} size={32} />
+                  </div>
+                  <span className="roster-user-name">{entry.name}</span>
+                  <button className="roster-user-info" onClick={(e) => { e.stopPropagation(); setCardTarget({ name: entry.name, playerId: id, country: entry.country, rank: entry.rank, banner: entry.banner, logo: entry.logo }) }} title="Info">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+            {rosterEntries.length === 0 && (
+              <p className="room-roster-empty">
+                Others studying in this realm will appear here live.
+              </p>
+            )}
+          </div>
         </div>
       )}
       {profileTarget && (
@@ -1062,6 +1106,81 @@ function RewardPopup() {
   )
 }
 
+/** Full-session completion celebration — shown ONLY when the whole timer is
+ *  finished (never on a break). Leaves fly in and collect into a count-up of
+ *  the total leaves earned for the session. Auto-dismisses or click to close. */
+function SessionCelebration() {
+  const phase = usePomodoro((s) => s.phase)
+  const leaves = usePomodoro((s) => s.totalSessionLeaves)
+  const [show, setShow] = useState(false)
+  const [count, setCount] = useState(0)
+  const prevPhase = useRef(phase)
+
+  // Fire once on the transition into 'finished' (whole session done).
+  useEffect(() => {
+    if (prevPhase.current !== 'finished' && phase === 'finished') {
+      setShow(true)
+      setCount(0)
+    }
+    prevPhase.current = phase
+  }, [phase])
+
+  // Count the leaves up to the session total, then auto-dismiss.
+  useEffect(() => {
+    if (!show) return
+    const target = Math.max(0, Math.round(leaves))
+    const dur = 1300
+    const start = performance.now()
+    let raf = 0
+    const step = (t: number) => {
+      const p = Math.min(1, (t - start) / dur)
+      setCount(Math.round(target * (1 - Math.pow(1 - p, 3))))
+      if (p < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    const t = window.setTimeout(() => setShow(false), 3600)
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(t) }
+  }, [show, leaves])
+
+  if (!show) return null
+  return (
+    <div className="pomo-celebrate" onClick={() => setShow(false)}>
+      {/* Full-screen falling leaf rain */}
+      <div className="pomo-celebrate-rain">
+        {Array.from({ length: 34 }).map((_, i) => (
+          <img
+            key={i}
+            className="pomo-rain-leaf"
+            src={GREEN_LEAF_ICON}
+            alt=""
+            draggable={false}
+            style={{ ['--i' as string]: i }}
+          />
+        ))}
+      </div>
+      {/* Center burst */}
+      <div className="pomo-celebrate-burst">
+        {Array.from({ length: 16 }).map((_, i) => (
+          <img
+            key={i}
+            className="pomo-celebrate-leaf"
+            src={GREEN_LEAF_ICON}
+            alt=""
+            draggable={false}
+            style={{ ['--i' as string]: i }}
+          />
+        ))}
+      </div>
+      <div className="pomo-celebrate-card">
+        <div className="pomo-celebrate-title">Session Complete</div>
+        <img className="pomo-celebrate-leaf-big" src={GREEN_LEAF_ICON} alt="" draggable={false} />
+        <div className="pomo-celebrate-amount">+{count}</div>
+        <div className="pomo-celebrate-label">leaves collected</div>
+      </div>
+    </div>
+  )
+}
+
 function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   const { phase, remaining, running, toggle, forfeit, subject, completed, timerType, sessionMinutes, breakCount, configure, setFocusMode, focusMode, segmentsCompleted, segmentIndex, totalSessionLeaves } = usePomodoro()
   // Live leaves during the running segment (ticks up each store tick).
@@ -1111,7 +1230,7 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
   }
 
   const handleConfigOpen = () => {
-    if (phase !== 'idle') return
+    if (phase !== 'idle' && phase !== 'finished') return
     setPickType(timerType)
     setPickDur(sessionMinutes)
     setPickBreaks(breakCount)
@@ -1125,78 +1244,46 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
       data-no-hotkeys
     >
       <RewardPopup />
+      <SessionCelebration />
       <div className={`explore-pomo ${phase}`}>
-        {/* Forfeit button — only show during active session */}
+        {/* Forfeit button */}
         {isActive && running && (
-          <button className="pomo-forfeit" onClick={forfeit} title="Forfeit session (lose all progress)">
+          <button className="pomo-forfeit" onClick={forfeit} title="Forfeit session">
             <Icon name="close" size={12} />
           </button>
         )}
-        <div className="pomo-ring-wrap" onClick={handleConfigOpen} title={phase === 'idle' ? 'Configure & start session' : ''}>
-          <ProgressRing progress={progress} size={64} stroke={3} color={ringColor} />
-          <div className="pomo-center">
-            {phase === 'idle' ? (
-              <Icon name="play" size={18} />
-            ) : phase === 'break' ? (
-              <svg className="pomo-phase-glyph" viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="#7fb3d5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 2v3" />
-                <path d="M12 5a5.5 5.5 0 0 1 5.5 5.5c0 3-2.5 4.5-2.5 7h-6c0-2.5-2.5-4-2.5-7A5.5 5.5 0 0 1 12 5z" />
-                <path d="M9.5 21h5" />
-              </svg>
-            ) : (
-              <svg className="pomo-phase-glyph" viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="#34d399" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M4 20C4 11 9 4 20 4c0 11-7 16-16 16z" />
-                <path d="M4 20c4-6 8-10 13-13" />
-              </svg>
-            )}
-          </div>
+
+        {/* Left pill: Timer label + time */}
+        <div className="pomo-pill pomo-timer-pill" onClick={handleConfigOpen} title={phase === 'idle' || phase === 'finished' ? 'Configure & start a new session' : ''}>
+          <span className="pomo-pill-label">Timer</span>
+          {isActive && <span className="pomo-pill-time">{mm}:{ss}</span>}
+          {phase === 'finished' && <span className="pomo-pill-time pomo-pill-done">Done</span>}
         </div>
-        {isActive && (
-          <button className="pomo-play" onClick={toggle} title={running ? 'Pause' : 'Resume'}>
-            <Icon name={running ? 'pause' : 'play'} size={16} />
-          </button>
-        )}
-        {/* Fullscreen Focus Mode button */}
-        {isActive && onFullscreen && (
-          <button className="pomo-fullscreen" onClick={onFullscreen} title="Fullscreen Focus Mode (pauses 3D rendering)">
-            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-            </svg>
-          </button>
-        )}
-        {/* Session leaves counter — live (ticks up during the running segment) */}
-        {phase !== 'idle' && Math.round(liveLeaves ?? totalSessionLeaves) > 0 && (
-          <div className="pomo-session-xp">🍃 {Math.round(liveLeaves ?? totalSessionLeaves)}</div>
-        )}
+
+        {/* Center: Play / Pause button */}
+        <button className="pomo-play-btn" onClick={toggle} title={phase === 'idle' || phase === 'finished' ? 'Start new session' : running ? 'Pause' : 'Resume'}>
+          <Icon name={running ? 'pause' : 'play'} size={16} />
+        </button>
+
+        {/* Right pill: live leaf counter — fractional while the current segment
+            accrues, so it visibly counts up in points instead of rounding */}
+        <div className="pomo-pill pomo-xp-pill">
+          <img className="pomo-pill-leaf" src={GREEN_LEAF_ICON} alt="" draggable={false} />
+          <span className="pomo-pill-xp">{formatLiveLeaves(liveLeaves ?? totalSessionLeaves)}</span>
+        </div>
       </div>
 
-      {/* Subject label during focus, break suggestion during break */}
-      {phase === 'running' && subject && (
-        <div className="pomo-subject" title={subject}>📖 {subject}</div>
-      )}
-      {phase === 'break' && (() => {
-        const act = suggestBreakActivity(segmentIndex - 1)
-        return (
-          <div className="pomo-break-tip" title="Break suggestion">
-            {act.icon} {act.label} · {act.duration}s
-          </div>
-        )
-      })()}
-
-      {/* Segment dots — one per focus segment (breaks + 1), filled as completed */}
-      {phase !== 'idle' && timerType === 'pomodoro' && breakCount > 0 && (
-        <div className="pomo-dots">
-          {Array.from({ length: breakCount + 1 }, (_, i) => (
-            <span
-              key={i}
-              className={`pomo-dot ${i < segmentsCompleted ? 'filled' : i === segmentsCompleted && (phase === 'running' || phase === 'break') ? 'active' : ''}`}
-            />
-          ))}
-        </div>
+      {/* Fullscreen button */}
+      {isActive && onFullscreen && (
+        <button className="pomo-fullscreen" onClick={onFullscreen} title="Fullscreen Focus Mode">
+          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+        </button>
       )}
 
       {/* Configuration panel */}
-      {configOpen && phase === 'idle' && (
+      {configOpen && (phase === 'idle' || phase === 'finished') && (
         <div className="pomo-config">
           <div className="pomo-config-row">
             <span className="pomo-config-label">Tier</span>
@@ -1435,15 +1522,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               step={0.25}
               onChange={(v) => s.setQualityAxis('lodBias', v)}
             />
-            <Slider
-              label="Distant player LOD · sprite swap"
-              display={`${Math.round(100 / (1 + 1.5 * s.impostorLod))}% of default distance`}
-              value={s.impostorLod}
-              min={0}
-              max={1.5}
-              step={0.25}
-              onChange={(v) => s.setQualityAxis('impostorLod', v)}
-            />
             <Toggle label="Ultra effects (SSAO · god rays · DoF) — high-end GPU" value={s.ultra} onChange={(v) => s.set('ultra', v)} />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
           </Section>
@@ -1458,11 +1536,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               label="Show name tags for distant players"
               value={s.distantTags}
               onChange={(v) => s.set('distantTags', v)}
-            />
-            <Toggle
-              label="Swap distant players to 2D sprites"
-              value={s.impostorSprites}
-              onChange={(v) => s.set('impostorSprites', v)}
             />
             <Toggle
               label="Pause rendering when tab is hidden"

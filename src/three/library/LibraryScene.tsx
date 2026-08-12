@@ -35,7 +35,6 @@ import { PlayerController } from './PlayerController'
 import { avatarRoots } from '../../avatar/CharacterAvatar'
 import { RemotePlayers } from './RemotePlayers'
 import { NpcPlayers } from './NpcPlayers'
-import { setBakeGate } from './ImpostorSprites'
 import { SeasonalOverlay } from './SeasonalOverlay'
 import { TableAccessories } from './TableAccessories'
 
@@ -201,11 +200,6 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
   // until the next 1 s heartbeat tick.
 
   const handleReady = () => {
-    // Open the impostor bake gate: bakes drain ONLY after the loading veil has
-    // lifted, so the entry mount + first frames never also absorb ~30 full-rig
-    // bake renders + readbacks (that synchronous load tripped Chrome's
-    // "page isn't responding" right after clicking Join).
-    setBakeGate(true)
     onReady?.()
   }
 

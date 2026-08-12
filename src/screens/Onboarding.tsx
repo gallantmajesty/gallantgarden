@@ -17,6 +17,7 @@ import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import { SparklesText } from '../components/SparklesText'
+import { GhostMascot } from '../components/GhostMascot'
 import './Onboarding.css'
 
 /* ------------------------------------------------------------------ magical particles */
@@ -106,6 +107,17 @@ function MagicalParticles() {
 
 type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 const LAST_STEP: StepId = 7
+
+/** Short guide lines Max the ghost says on each onboarding step, in his
+ *  casual voice. Step 1 (name) has none so he reacts to what's being typed. */
+const GUIDE_HINTS: Partial<Record<StepId, string>> = {
+  0: "yo, welcome in — let's get you set up, it's quick",
+  2: 'where you reppin from?',
+  // Steps 3 (age) and 5 (goals) are left out — Max reacts to the input there.
+  4: 'pick who you wanna be in the forest',
+  6: 'last bit — agree and you are in',
+  7: 'that is it — see you in the forest!',
+}
 const STEP_COUNT = 8
 
 export function Onboarding() {
@@ -289,6 +301,19 @@ export function Onboarding() {
           )}
         </div>
       </div>
+
+      {/* Max the ghost — floating guide on EVERY onboarding step until the
+          player reaches the lobby. Step 1 (name) lets him react to typing;
+          the other steps give a short guide line. Rendered OUTSIDE .ob-card
+          so its `position: fixed` anchors to the screen, not the card (the
+          card's pop-in transform would otherwise trap it inside the card). */}
+      <GhostMascot
+        name={fullName}
+        hint={step === 3 || step === 5 ? undefined : GUIDE_HINTS[step]}
+        age={step === 3 ? age : undefined}
+        guardianOk={step === 3 ? guardianConsent : undefined}
+        goals={step === 5 ? goals : undefined}
+      />
     </div>
   )
 }

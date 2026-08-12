@@ -1,12 +1,24 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
-import type { Task, FocusSession, Goal } from '../../../lib/magnet/types'
-import { PRIORITY_META } from '../../../lib/magnet/types'
-import { SectionHead, EmptyState } from '../ui'
+import { AREA_META, PRIORITY_META, type LifeArea, type Priority, type Task, type FocusSession, type Goal } from '../../../lib/magnet/types'
+import { SectionHead, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
-import Dock from '../Dock'
+import { useNow } from '../useNow'
 import './CalendarView.css'
+
+const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'urgent']
+const AREAS: LifeArea[] = ['academic', 'personal', 'health', 'career', 'creative', 'social']
+
+interface EditState {
+  id?: string
+  title: string
+  notes: string
+  priority: Priority
+  subject: string
+  area: LifeArea
+  due: string
+}
 
 type Mode = 'month' | 'week'
 
@@ -48,12 +60,50 @@ function addDays(d: Date, n: number): Date {
 export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void }) {
   const { t, i18n } = useTranslation()
   const data = useMagnet((s) => s.data)
+  const addTask = useMagnet((s) => s.addTask)
+  const updateTask = useMagnet((s) => s.updateTask)
+  const deleteTask = useMagnet((s) => s.deleteTask)
 
   const [mode, setMode] = useState<Mode>('month')
   const [cursor, setCursor] = useState<Date>(() => new Date())
   const [selected, setSelected] = useState<string | null>(null)
+  const [edit, setEdit] = useState<EditState | null>(null)
 
-  const todayKey = iso(new Date())
+  function openCreate(due: string) {
+    setEdit({ title: '', notes: '', priority: 'medium', subject: '', area: 'academic', due })
+  }
+  function openEdit(task: Task) {
+    setEdit({
+      id: task.id,
+      title: task.title,
+      notes: task.notes,
+      priority: task.priority,
+      subject: task.subject,
+      area: task.area,
+      due: task.due ?? '',
+    })
+  }
+  function saveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!edit) return
+    const title = edit.title.trim()
+    if (!title) return
+    const payload = {
+      title,
+      notes: edit.notes.trim(),
+      priority: edit.priority,
+      subject: edit.subject.trim(),
+      area: edit.area,
+      due: edit.due || null,
+    }
+    if (edit.id) updateTask(edit.id, payload)
+    else addTask(payload)
+    setEdit(null)
+  }
+  // Keep the legacy prop working (navigate away) if a caller still provides it.
+  const legacyAdd = onAddTask ?? undefined
+
+  const todayKey = iso(useNow())
   const locale = i18n.language || undefined
 
   // Index events by date once per data change.
@@ -187,7 +237,8 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             selected={selected === cell.key}
             addLabel={t('calendar.addOnDate', { date: cell.key })}
             onSelect={() => setSelected(cell.key)}
-            onAddTask={onAddTask ? (d) => onAddTask(d) : undefined}
+            onAdd={() => openCreate(cell.key)}
+            onEditTask={openEdit}
           />
         ))}
       </div>
@@ -204,11 +255,9 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
                 new Date(selected + 'T00:00:00'),
               )}
             </h3>
-            {onAddTask && (
-              <button className="mg-btn small" onClick={() => onAddTask(selected)}>
-                <Icon name="plus" size={14} /> {t('calendar.addTask')}
-              </button>
-            )}
+            <button className="mg-btn small" onClick={() => openCreate(selected)}>
+              <Icon name="plus" size={14} /> {t('calendar.addTask')}
+            </button>
           </div>
           {selectedItems && (selectedItems.tasks.length || selectedItems.focus.length || selectedItems.goals.length) ? (
             <div className="mg-cal-day-lists">
@@ -216,9 +265,11 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
                 <ul className="mg-cal-list">
                   {selectedItems.tasks.map((task) => (
                     <li key={task.id} style={{ ['--mg-c' as string]: PRIORITY_META[task.priority].color }}>
-                      <span className="mg-cal-dot" />
-                      <span className={task.done ? 'mg-cal-done' : ''}>{task.title}</span>
-                      {task.done && <Icon name="check" size={13} />}
+                      <button className="mg-cal-task" onClick={() => openEdit(task)}>
+                        <span className="mg-cal-dot" />
+                        <span className={task.done ? 'mg-cal-done' : ''}>{task.title}</span>
+                        {task.done && <Icon name="check" size={13} />}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -240,39 +291,94 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
         </div>
       )}
 
-      <div className="mg-cal-dock">
-        <Dock
-          panelHeight={72}
-          baseItemSize={52}
-          magnification={74}
-          distance={160}
-          items={[
-            {
-              icon: (
-                <span className="mg-cal-flip">
-                  <Icon name="chevron" size={20} />
-                </span>
-              ),
-              label: t('calendar.prev'),
-              onClick: () => step(-1),
-            },
-            { icon: <Icon name="calendar" size={20} />, label: t('calendar.today'), onClick: goToday },
-            { icon: <Icon name="chevron" size={20} />, label: t('calendar.next'), onClick: () => step(1) },
-            {
-              icon: <Icon name="grid" size={20} />,
-              label: t('calendar.month'),
-              className: mode === 'month' ? 'active' : '',
-              onClick: () => setMode('month'),
-            },
-            {
-              icon: <Icon name="list" size={20} />,
-              label: t('calendar.week'),
-              className: mode === 'week' ? 'active' : '',
-              onClick: () => setMode('week'),
-            },
-          ]}
-        />
-      </div>
+      {/* Inline task editor — add & edit tasks right in the calendar */}
+      <MgModal
+        open={!!edit}
+        title={edit?.id ? t('tasks.editTask') : t('tasks.newTask')}
+        onClose={() => setEdit(null)}
+        width={500}
+      >
+        <form className="mg-form" onSubmit={saveEdit}>
+          <Field label={t('tasks.titleLabel')}>
+            <input
+              autoFocus
+              value={edit?.title ?? ''}
+              onChange={(e) => edit && setEdit({ ...edit, title: e.target.value })}
+              placeholder={t('tasks.titlePlaceholder')}
+            />
+          </Field>
+          <Field label={t('tasks.notesLabel')}>
+            <textarea
+              rows={2}
+              value={edit?.notes ?? ''}
+              onChange={(e) => edit && setEdit({ ...edit, notes: e.target.value })}
+              placeholder={t('tasks.notesPlaceholder')}
+            />
+          </Field>
+          <div className="mg-form-row">
+            <Field label={t('tasks.priorityLabel')}>
+              <select
+                value={edit?.priority ?? 'medium'}
+                onChange={(e) => edit && setEdit({ ...edit, priority: e.target.value as Priority })}
+              >
+                {PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {PRIORITY_META[p].label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label={t('tasks.areaLabel')}>
+              <select
+                value={edit?.area ?? 'academic'}
+                onChange={(e) => edit && setEdit({ ...edit, area: e.target.value as LifeArea })}
+              >
+                {AREAS.map((a) => (
+                  <option key={a} value={a}>
+                    {AREA_META[a].label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="mg-form-row">
+            <Field label={t('tasks.subjectLabel')}>
+              <input
+                value={edit?.subject ?? ''}
+                onChange={(e) => edit && setEdit({ ...edit, subject: e.target.value })}
+                placeholder={t('tasks.subjectPlaceholder')}
+              />
+            </Field>
+            <Field label={t('tasks.dueDateLabel')}>
+              <input
+                type="date"
+                value={edit?.due ?? ''}
+                onChange={(e) => edit && setEdit({ ...edit, due: e.target.value })}
+              />
+            </Field>
+          </div>
+          <div className="mg-form-actions">
+            {edit?.id && (
+              <button
+                type="button"
+                className="mg-btn glass danger"
+                onClick={() => {
+                  if (edit.id) deleteTask(edit.id)
+                  setEdit(null)
+                }}
+              >
+                <Icon name="trash" size={14} /> {t('common.delete')}
+              </button>
+            )}
+            <button type="button" className="mg-btn glass" onClick={() => setEdit(null)}>
+              Cancel
+            </button>
+            <button type="submit" className="mg-btn primary">
+              {edit?.id ? t('tasks.saveChanges') : t('tasks.addTask')}
+            </button>
+          </div>
+        </form>
+      </MgModal>
     </div>
   )
 }
@@ -283,14 +389,16 @@ function DayCellView({
   selected,
   addLabel,
   onSelect,
-  onAddTask,
+  onAdd,
+  onEditTask,
 }: {
   cell: DayCell
   items: DayItems | undefined
   selected: boolean
   addLabel: string
   onSelect: () => void
-  onAddTask?: (date: string) => void
+  onAdd: (date: string) => void
+  onEditTask: (task: Task) => void
 }) {
   const { t } = useTranslation()
   const tasks = items?.tasks ?? []
@@ -313,8 +421,7 @@ function DayCellView({
           aria-label={addLabel}
           onClick={(e) => {
             e.stopPropagation()
-            if (onAddTask) onAddTask(cell.key)
-            else onSelect()
+            onAdd(cell.key)
           }}
         >
           <Icon name="plus" size={12} />
@@ -322,15 +429,19 @@ function DayCellView({
       </div>
       <div className="mg-cal-chips">
         {shownTasks.map((task) => (
-          <span
+          <button
             key={task.id}
             className={`mg-cal-chip task${task.done ? ' done' : ''}`}
             style={{ ['--mg-c' as string]: PRIORITY_META[task.priority].color }}
             title={`${t('calendar.tasks')}: ${task.title}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditTask(task)
+            }}
           >
             {task.done && <Icon name="check" size={10} />}
             <span className="mg-cal-chip-txt">{task.title}</span>
-          </span>
+          </button>
         ))}
         {extra > 0 && <span className="mg-cal-more">+{extra}</span>}
         {focusMin > 0 && (

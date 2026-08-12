@@ -75,7 +75,7 @@ function Dot({ color }: { color: string }) {
     />
   );
 }
-function IconWarn({ size = 14 }: { size?: number }) {
+function IconWarn({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
@@ -83,7 +83,7 @@ function IconWarn({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
-function IconLeaf({ size = 14 }: { size?: number }) {
+function IconLeaf({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M4 20C4 11 9 4 20 4c0 11-7 16-16 16z" />
@@ -91,7 +91,7 @@ function IconLeaf({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
-function IconDevice({ size = 14 }: { size?: number }) {
+function IconDevice({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <rect x="7" y="3" width="10" height="18" rx="2" />
@@ -99,7 +99,7 @@ function IconDevice({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
-function IconTarget({ size = 14 }: { size?: number }) {
+function IconTarget({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="9" />
@@ -108,31 +108,12 @@ function IconTarget({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
-
-function TabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function IconBook({ size = 17 }: { size?: number }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        fontSize: "0.72rem",
-        fontWeight: 700,
-        letterSpacing: "0.05em",
-        padding: "0.5rem 0.9rem",
-        borderRadius: 999,
-        border: active ? "1px solid rgba(201,168,76,0.6)" : "1px solid rgba(255,255,255,0.12)",
-        background: active ? "rgba(201,168,76,0.14)" : "transparent",
-        color: active ? "#e8c86a" : "#9aa3b2",
-        cursor: "pointer",
-        fontFamily: "inherit",
-        transition: "all 0.2s",
-        whiteSpace: "nowrap",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "0.4rem",
-      }}
-    >
-      {children}
-    </button>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
   );
 }
 
@@ -140,244 +121,153 @@ export function HelpGuide({ onClose }: HelpGuideProps) {
   const [view, setView] = useState<"overview" | "easy" | "medium" | "hardcore">("overview");
 
   return (
-    <div className="fd-modal-body" style={{ padding: "1.1rem", maxWidth: 520 }}>
-      {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: "0.9rem" }}>
-        <div style={{ fontSize: "0.95rem", letterSpacing: "0.16em", color: "#e8c86a", fontWeight: 700 }}>
-          FOCUS MODE GUIDE
+    <div className="fd-help-overlay" onClick={onClose}>
+      <div className="fd-help-panel" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="fd-help-head">
+          <div className="fd-help-title">
+            <IconBook /> FOCUS MODE GUIDE
+            <span className="fd-help-title-rule" />
+          </div>
+          <button className="fd-help-close" onClick={onClose} aria-label="Close guide">✕</button>
         </div>
-        <div style={{ fontSize: "0.72rem", color: "#9aa3b2", marginTop: "0.25rem" }}>
-          Every session runs in one of three tiers — pick your commitment level.
-        </div>
-      </div>
 
-      {/* Tab bar */}
-      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", justifyContent: "center", marginBottom: "0.9rem" }}>
-        <TabButton active={view === "overview"} onClick={() => setView("overview")}>Overview</TabButton>
-        {TIERS.map((t) => (
-          <TabButton key={t.key} active={view === t.key} onClick={() => setView(t.key as "easy" | "medium" | "hardcore")}>
-            <Dot color={t.color} /> {t.name}
-          </TabButton>
-        ))}
-      </div>
-
-      {/* Overview: comparison table */}
-      {view === "overview" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-          <div
-            style={{
-              padding: "0.7rem 0.9rem",
-              borderRadius: 12,
-              background: "rgba(255,255,255,0.035)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              fontSize: "0.74rem",
-              lineHeight: 1.6,
-              color: "#c3cad6",
-            }}
-          >
-            <b style={{ color: "#fbbf24", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-              <IconWarn /> The {GRACE_SEC}-second warning
-            </b>{" "}
-            applies to Medium and Hardcore: leave fullscreen and a <b style={{ color: "#fff" }}>{GRACE_SEC}s</b>{" "}
-            countdown starts — press <b style={{ color: "#fff" }}>F</b> (or the button) to re-enter, or the session
-            fails. Easy has no warning: leaving the tab simply pauses the timer.
+        <div className="fd-help-body">
+          <div className="fd-help-sub">
+            Every session runs in one of three tiers — pick your commitment level.
           </div>
 
-          <div
-            style={{
-              borderRadius: 12,
-              overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.02)",
-            }}
-          >
-            {TIERS.map((t, i) => (
+          {/* Tab bar */}
+          <div className="fd-help-tabs">
+            <button className={`fd-help-tab ${view === "overview" ? "active" : ""}`} onClick={() => setView("overview")}>
+              Overview
+            </button>
+            {TIERS.map((t) => (
               <button
                 key={t.key}
+                className={`fd-help-tab ${view === t.key ? "active" : ""}`}
                 onClick={() => setView(t.key as "easy" | "medium" | "hardcore")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.8rem",
-                  width: "100%",
-                  padding: "0.75rem 0.9rem",
-                  border: "none",
-                  borderTop: i > 0 ? "1px solid rgba(255,255,255,0.06)" : undefined,
-                  background: "transparent",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  fontFamily: "inherit",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                <div
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    background: t.soft,
-                    border: `1px solid ${t.color}44`,
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Dot color={t.color} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#e6e9f0" }}>
-                    {t.name}
-                    {t.key === "hardcore" && (
-                      <span style={{ marginLeft: "0.5rem", fontSize: "0.58rem", fontWeight: 800, letterSpacing: "0.12em", color: "#fda4af", border: "1px solid rgba(248,113,113,0.4)", borderRadius: 999, padding: "0.15rem 0.45rem" }}>
-                        COMING SOON
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: "0.68rem", color: "#9aa3b2", marginTop: "0.1rem" }}>{t.oneLine}</div>
-                </div>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: t.color, flexShrink: 0 }}>
-                  {t.key === "hardcore" ? `${hardcoreMultiplier(60)}×` : t.key === "medium" ? `${MEDIUM_RATE}` : `${EASY_RATE}`}
-                </div>
+                <Dot color={t.color} /> {t.name}
               </button>
             ))}
           </div>
 
-          <div
-            style={{
-              padding: "0.7rem 0.9rem",
-              borderRadius: 12,
-              background: "rgba(52,211,153,0.06)",
-              border: "1px solid rgba(52,211,153,0.2)",
-              fontSize: "0.72rem",
-              color: "#9fb8a8",
-              lineHeight: 1.55,
-              display: "flex",
-              gap: "0.5rem",
-              alignItems: "flex-start",
-            }}
-          >
-            <IconLeaf /> <span><b style={{ color: "#34d399" }}>Leaves</b> are your spendable currency — earn them from focused study,
-            spend them in the Shop. Focus time also grows your lifetime <b style={{ color: "#e6e9f0" }}>Rank XP</b>,
-            which never drops when you spend.</span>
-          </div>
-        </div>
-      )}
-
-      {/* Tier detail */}
-      {view !== "overview" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-          {TIERS.filter((t) => t.key === view).map((t) => (
-            <div key={t.key}>
-              <div
-                style={{
-                  padding: "0.8rem 0.95rem",
-                  borderRadius: 12,
-                  background: t.soft,
-                  border: `1px solid ${t.color}44`,
-                  marginBottom: "0.6rem",
-                }}
-              >
-                <div style={{ fontSize: "0.9rem", fontWeight: 700, color: t.color, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Dot color={t.color} /> {t.name.toUpperCase()} MODE
-                </div>
-                <div style={{ fontSize: "0.72rem", color: "#c3cad6", marginTop: "0.2rem" }}>{t.oneLine}</div>
+          {/* Overview: comparison table */}
+          {view === "overview" && (
+            <>
+              <div className="fd-help-card fd-help-note">
+                <IconWarn />
+                <span>
+                  <b className="fd-help-note-ember">The {GRACE_SEC}-second warning</b> applies to Medium and
+                  Hardcore: leave fullscreen and a <b>{GRACE_SEC}s</b> countdown starts — press{" "}
+                  <b>F</b> (or the button) to re-enter, or the session fails. Easy has no warning: leaving
+                  the tab simply pauses the timer.
+                </span>
               </div>
 
-              <div
-                style={{
-                  padding: "0.8rem 0.95rem",
-                  borderRadius: 12,
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  marginBottom: "0.6rem",
-                }}
-              >
-                <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", color: "#9aa3b2", marginBottom: "0.4rem" }}>
-                  HOW IT WORKS
-                </div>
-                <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.73rem", lineHeight: 1.7, color: "#c3cad6" }}>
-                  {t.bullets.map((b, i) => <li key={i}>{b}</li>)}
-                </ul>
-              </div>
-
-              {t.key === "hardcore" && (
-                <div
-                  style={{
-                    padding: "0.8rem 0.95rem",
-                    borderRadius: 12,
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    marginBottom: "0.6rem",
-                  }}
-                >
-                  <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", color: "#9aa3b2", marginBottom: "0.4rem" }}>
-                    MULTIPLIER & MIN WAGER
-                  </div>
-                  {[60, 120, 180, 240].map((m) => (
-                    <div key={m} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "0.72rem" }}>
-                      <span style={{ color: "#9aa3b2" }}>{m >= 60 ? `${m / 60} h` : `${m} min`}</span>
-                      <span>
-                        <b style={{ color: "#fbbf24" }}>{hardcoreMultiplier(m)}×</b>{" "}
-                        <span style={{ color: "#9aa3b2" }}>· min {minWagerFor(m)} leaves</span>
+              <div className="fd-help-card" style={{ padding: 0 }}>
+                {TIERS.map((t, i) => (
+                  <button
+                    key={t.key}
+                    className="fd-help-row"
+                    onClick={() => setView(t.key as "easy" | "medium" | "hardcore")}
+                  >
+                    <span className="fd-help-row-icon" style={{ background: t.soft, border: `1px solid ${t.color}44` }}>
+                      <Dot color={t.color} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="fd-help-row-name">
+                        {t.name}
+                        {t.key === "hardcore" && <span className="fd-help-badge">COMING SOON</span>}
                       </span>
+                      <div className="fd-help-row-sub">{t.oneLine}</div>
+                    </span>
+                    <span className="fd-help-row-rate" style={{ color: t.color }}>
+                      {t.key === "hardcore" ? `${hardcoreMultiplier(60)}×` : t.key === "medium" ? `${MEDIUM_RATE}` : `${EASY_RATE}`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="fd-help-card-moss fd-help-note fd-help-note-moss">
+                <IconLeaf />
+                <span>
+                  <b style={{ color: "#34d399" }}>Leaves</b> are your spendable currency — earn them from
+                  focused study, spend them in the Shop. Focus time also grows your lifetime{" "}
+                  <b style={{ color: "var(--fd-ivory)" }}>Rank XP</b>, which never drops when you spend.
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* Tier detail */}
+          {view !== "overview" && (
+            <>
+              {TIERS.filter((t) => t.key === view).map((t) => (
+                <div key={t.key} className="fd-help-detail">
+                  <div className="fd-help-card" style={{ background: t.soft, borderColor: `${t.color}55` }}>
+                    <div className="fd-help-tiername" style={{ color: t.color }}>
+                      <Dot color={t.color} /> {t.name.toUpperCase()} MODE
                     </div>
-                  ))}
-                  <div style={{ fontSize: "0.62rem", color: "#6b7280", marginTop: "0.45rem" }}>
-                    Example rate: 1 h = {hardcoreRateFor(60).toFixed(1)} leaves/min · 4 h = {hardcoreRateFor(240).toFixed(1)} leaves/min.
-                    Wagering above the minimum adds a risk bonus (1.5×→+0.5×, 3×→+1×, 5×→+2×).
+                    <div className="fd-help-row-sub">{t.oneLine}</div>
                   </div>
-                  <div style={{ marginTop: "0.55rem", textAlign: "center", fontSize: "0.7rem", fontWeight: 800, letterSpacing: "0.14em", color: "#fda4af", border: "1px dashed rgba(248,113,113,0.45)", borderRadius: 10, padding: "0.5rem" }}>
-                    COMING SOON — WAGERED SESSIONS ARRIVE IN AN UPCOMING UPDATE
+
+                  <div className="fd-help-card">
+                    <div className="fd-help-label">How it works</div>
+                    <ul className="fd-help-list">
+                      {t.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                    </ul>
+                  </div>
+
+                  {t.key === "hardcore" && (
+                    <div className="fd-help-card">
+                      <div className="fd-help-label">Multiplier & min wager</div>
+                      {[60, 120, 180, 240].map((m) => (
+                        <div key={m} className="fd-help-mult">
+                          <span>{m >= 60 ? `${m / 60} h` : `${m} min`}</span>
+                          <span>
+                            <b>{hardcoreMultiplier(m)}×</b>{" "}
+                            <span>· min {minWagerFor(m)} leaves</span>
+                          </span>
+                        </div>
+                      ))}
+                      <div className="fd-help-hint" style={{ textAlign: "left", marginTop: "0.5rem" }}>
+                        Example rate: 1 h = {hardcoreRateFor(60).toFixed(1)} leaves/min · 4 h = {hardcoreRateFor(240).toFixed(1)} leaves/min.
+                        Wagering above the minimum adds a risk bonus (1.5×→+0.5×, 3×→+1×, 5×→+2×).
+                      </div>
+                      <div className="fd-help-soon">
+                        COMING SOON — WAGERED SESSIONS ARRIVE IN AN UPCOMING UPDATE
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="fd-help-card fd-help-note">
+                    <IconTarget />
+                    <span>
+                      <b>Best for:</b> {t.best}
+                    </span>
                   </div>
                 </div>
-              )}
+              ))}
 
-              <div
-                style={{
-                  padding: "0.7rem 0.95rem",
-                  borderRadius: 12,
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  fontSize: "0.72rem",
-                  color: "#c3cad6",
-                  lineHeight: 1.5,
-                  display: "flex",
-                  gap: "0.5rem",
-                  alignItems: "flex-start",
-                }}
-              >
-                <IconTarget /> <span><b style={{ color: "#e6e9f0" }}>Best for:</b> {t.best}</span>
+              <div className="fd-help-card-moss fd-help-note fd-help-note-moss">
+                <IconDevice />
+                <span>
+                  <b style={{ color: "#34d399" }}>Multi-device boost:</b> in Hardcore, connect up to{" "}
+                  <b style={{ color: "var(--fd-ivory)" }}>{DEVICE_BOOST_MAX_DEVICES} devices</b> (via Hardcore
+                  Connect) — each adds +{DEVICE_BOOST_MAX_DEVICES * 5}% max ({5}% each) to the multiplier.
+                </span>
               </div>
-            </div>
-          ))}
+            </>
+          )}
 
-          <div
-            style={{
-              padding: "0.7rem 0.95rem",
-              borderRadius: 12,
-              background: "rgba(52,211,153,0.06)",
-              border: "1px solid rgba(52,211,153,0.2)",
-              fontSize: "0.72rem",
-              color: "#9fb8a8",
-              lineHeight: 1.55,
-              display: "flex",
-              gap: "0.5rem",
-              alignItems: "flex-start",
-            }}
-          >
-            <IconDevice /> <span><b style={{ color: "#34d399" }}>Multi-device boost:</b> in Hardcore, connect up to{" "}
-            <b style={{ color: "#fff" }}>{DEVICE_BOOST_MAX_DEVICES} devices</b> (via Hardcore Connect) — each adds
-            +{DEVICE_BOOST_MAX_DEVICES * 5}% max ({5}% each) to the multiplier.</span>
+          <div className="fd-help-foot">
+            <button onClick={onClose} className="fd-btn fd-btn-primary">
+              Got it
+            </button>
           </div>
         </div>
-      )}
-
-      <div style={{ textAlign: "center", marginTop: "1rem" }}>
-        <button onClick={onClose} className="fd-btn" style={{ padding: "0.55rem 2rem" }}>
-          GOT IT
-        </button>
       </div>
     </div>
   );

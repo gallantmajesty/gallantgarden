@@ -42,6 +42,9 @@ export interface PlayerState {
   /** timer phase — 'focus' for a live study session, 'break' for a pomodoro
    *  break, '' when no timer. Drives the remote player timer bar styling. */
   timerPhase?: 'focus' | 'break' | ''
+  /** wall-clock timestamp (ms) of the last completed study session — remote
+   *  clients render a short celebration burst over this player when recent. */
+  timerCelebrateAt?: number
   /** current study subject / task name — empty string when not studying */
   subject: string
   /** true while this player is driving / watching the shared Cinematic Tour — their

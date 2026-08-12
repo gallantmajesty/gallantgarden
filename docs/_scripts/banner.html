@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
+<title>Focuslily banner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+
+  .banner {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    background:
+      radial-gradient(120% 90% at 12% 8%, #8fd0c4 0%, rgba(143,208,196,0) 45%),
+      radial-gradient(100% 80% at 85% 100%, #6bbf4f 0%, rgba(107,191,79,0) 50%),
+      linear-gradient(160deg, #f6ecd7 0%, #f0e3c6 52%, #ddeecf 100%);
+    font-family: 'Baloo 2', system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    padding: 0 110px;
+    overflow: hidden;
+  }
+
+  /* soft forest silhouette at the bottom edge */
+  .hills {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 190px;
+    background:
+      radial-gradient(420px 260px at 8% 100%, rgba(107,191,79,0.5) 60%, transparent 62%),
+      radial-gradient(560px 300px at 40% 100%, rgba(79,158,60,0.42) 55%, transparent 62%),
+      radial-gradient(460px 280px at 72% 100%, rgba(107,191,79,0.48) 58%, transparent 63%),
+      radial-gradient(520px 300px at 96% 100%, rgba(79,158,60,0.38) 55%, transparent 62%);
+  }
+
+  /* the actual Focuslily logo mark */
+  .logo {
+    position: absolute;
+    top: 92px; right: 120px;
+    width: 220px; height: 220px;
+    object-fit: contain;
+    filter: drop-shadow(0 14px 30px rgba(79, 98, 60, 0.28));
+  }
+
+  .content { position: relative; z-index: 2; max-width: 1180px; }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-weight: 700;
+    font-size: 30px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: #4f9e3c;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 74px; height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #ffce54, #6bbf4f);
+  }
+
+  h1 {
+    margin: 34px 0 0;
+    font-weight: 800;
+    font-size: 172px;
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    color: #2f4b2c;
+  }
+  h1 em {
+    font-style: normal;
+    background: linear-gradient(100deg, #6bbf4f 10%, #ffce54 85%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .tagline {
+    margin-top: 30px;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    font-style: italic;
+    font-size: 58px;
+    color: #6b5740;
+  }
+
+  .cta-row {
+    margin-top: 52px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 42px;
+    border-radius: 999px;
+    background: linear-gradient(100deg, #4f9e3c, #6bbf4f);
+    color: #fffdf6;
+    font-weight: 700;
+    font-size: 36px;
+    letter-spacing: 0.01em;
+    box-shadow: 0 18px 44px rgba(79, 158, 60, 0.38);
+  }
+  .pill .dot { width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+  .free {
+    font-weight: 700;
+    font-size: 34px;
+    color: #8a6cff;
+    letter-spacing: 0.04em;
+  }
+
+  /* footer strip */
+  .footer {
+    position: absolute;
+    left: 110px; right: 110px; bottom: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2;
+  }
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 27px;
+    color: #7a5a36;
+  }
+  .feature .tick {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(107, 191, 79, 0.16);
+    color: #4f9e3c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+  }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <div class="hills"></div>
+
+    <img class="logo" src="../docs/ad-shots/focuslily-logo.png" alt="Focuslily" />
+
+    <div class="content">
+      <div class="eyebrow">Study · Focus · Grow</div>
+      <h1>Focus<em>lily</em></h1>
+      <div class="tagline">Where your focus grows into a forest.</div>
+      <div class="cta-row">
+        <span class="pill"><span class="dot"></span>Start focusing free</span>
+        <span class="free">Free to play · No install</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="feature"><span class="tick">✓</span>3D study world</div>
+      <div class="feature"><span class="tick">✓</span>Focus timer &amp; streaks</div>
+      <div class="feature"><span class="tick">✓</span>Lofi soundtrack</div>
+      <div class="feature"><span class="tick">✓</span>Level up &amp; rank</div>
+    </div>
+  </div>
+</body>
+</html>

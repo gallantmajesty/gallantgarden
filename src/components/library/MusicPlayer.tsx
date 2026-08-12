@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useMusic, RADIO_STATIONS, type WidgetPos } from '../../store/music'
+import { useMusic, type WidgetPos } from '../../store/music'
 import { getMusic } from '../../lib/music/engine'
-import { GENRES, tintFor, imageFor, type LiveTrack, type MusicGenre } from '../../lib/music/catalog'
+import { tintFor, imageFor, type LiveTrack } from '../../lib/music/catalog'
 import './MusicPlayer.css'
 
 const MARGIN = 10
@@ -18,6 +18,11 @@ const I = {
   collapse: (s: number) => <svg width={s} height={s} viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><path d="M4 4l6 6M10 4l-6 6" /></svg>,
   search: (s: number) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>,
   vol: (s: number) => <svg width={s} height={s} viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M2.5 6h2.5L9 3v10l-4-3H2.5A1.5 1.5 0 0 1 1 8.5v-1A1.5 1.5 0 0 1 2.5 6z" /><path d="M10.5 5.2a4 4 0 0 1 0 5.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>,
+  low: (s: number) => <svg width={s} height={s} viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M2.5 6h2.5L9 3v10l-4-3H2.5A1.5 1.5 0 0 1 1 8.5v-1A1.5 1.5 0 0 1 2.5 6z" /><path d="M10.5 6.4a2.6 2.6 0 0 1 0 3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>,
+  muted: (s: number) => <svg width={s} height={s} viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M2.5 6h2.5L9 3v10l-4-3H2.5A1.5 1.5 0 0 1 1 8.5v-1A1.5 1.5 0 0 1 2.5 6z" /><path d="M11 5.8l3.6 4.4M14.6 5.8L11 10.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>,
+  shuffle: (s: number) => <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>,
+  repeat: (s: number) => <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" /></svg>,
+  repeatOne: (s: number) => <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z" /></svg>,
   grip: () => <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" opacity="0.45" aria-hidden><circle cx="3" cy="2" r="1.2" /><circle cx="9" cy="2" r="1.2" /><circle cx="3" cy="6" r="1.2" /><circle cx="9" cy="6" r="1.2" /><circle cx="3" cy="10" r="1.2" /><circle cx="9" cy="10" r="1.2" /></svg>,
 }
 
@@ -81,7 +86,6 @@ export function MusicPlayer() {
   const results = useMusic((s) => s.results)
   const browsing = useMusic((s) => s.browsing)
   const search = useMusic((s) => s.search)
-  const browseGenre = useMusic((s) => s.browseGenre)
   const playTrack = useMusic((s) => s.playTrack)
   const toggle = useMusic((s) => s.toggle)
   const next = useMusic((s) => s.next)
@@ -89,12 +93,48 @@ export function MusicPlayer() {
   const setVolume = useMusic((s) => s.setVolume)
   const setExpanded = useMusic((s) => s.setExpanded)
   const setPos = useMusic((s) => s.setPos)
+  const shuffle = useMusic((s) => s.shuffle)
+  const repeat = useMusic((s) => s.repeat)
+  const seekTo = useMusic((s) => s.seekTo)
+  const toggleShuffle = useMusic((s) => s.toggleShuffle)
+  const cycleRepeat = useMusic((s) => s.cycleRepeat)
 
   const [searchInput, setSearchInput] = useState(query)
-  const [genre, setGenre] = useState<MusicGenre | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const seekRef = useRef<HTMLDivElement>(null)
+  const volRef = useRef<HTMLDivElement>(null)
+  /** Seek ratio 0..1 while the user is dragging the timeline (null = idle). */
+  const [dragRatio, setDragRatio] = useState<number | null>(null)
+  const [volOpen, setVolOpen] = useState(false)
+  const [lastVol, setLastVol] = useState(0.7)
   const progress = useProgress(playing)
+
+  // Close the volume popover on outside click / Escape.
+  useEffect(() => {
+    if (!volOpen) return
+    const onDown = (e: PointerEvent) => {
+      if (volRef.current && !volRef.current.contains(e.target as Node)) setVolOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setVolOpen(false)
+    }
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [volOpen])
+
+  const muted = volume <= 0
+  const toggleMute = () => {
+    if (muted) setVolume(lastVol > 0 ? lastVol : 0.7)
+    else {
+      setLastVol(volume)
+      setVolume(0)
+    }
+  }
 
   useEffect(() => { setSearchInput(query) }, [query])
 
@@ -153,23 +193,40 @@ export function MusicPlayer() {
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const submitSearch = useCallback((q: string) => {
-    setGenre(null)
     void search(q)
   }, [search])
 
-  const pickGenre = useCallback((g: MusicGenre | null) => {
-    setGenre(g)
-    setSearchInput('')
-    void browseGenre(g)
-  }, [browseGenre])
+  // ─── Seekable timeline ────────────────────────────────────────────────
+  const seekRatio = (e: React.PointerEvent) => {
+    const el = seekRef.current
+    if (!el) return 0
+    const r = el.getBoundingClientRect()
+    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+  }
+  const onSeekDown = (e: React.PointerEvent) => {
+    if (progress.duration <= 0) return
+    e.stopPropagation()
+    setDragRatio(seekRatio(e))
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onSeekMove = (e: React.PointerEvent) => {
+    if (dragRatio === null) return
+    setDragRatio(seekRatio(e))
+  }
+  const onSeekUp = (e: React.PointerEvent) => {
+    if (dragRatio === null) return
+    seekTo(seekRatio(e) * progress.duration)
+    setDragRatio(null)
+  }
 
   const style = pos ? { left: pos.x, top: pos.y, right: 'auto' as const, bottom: 'auto' as const } : { left: 16, bottom: 16 }
   const portalStyle = { ...style, position: 'fixed' as const, zIndex: 9999 }
   const stop = (e: React.PointerEvent) => e.stopPropagation()
 
-  const isRadio = current?.kind === 'radio'
   const pct = progress.duration > 0 ? Math.min(1, progress.position / progress.duration) : 0
-  const live = playing && isRadio
+  // While dragging, show the drag position instead of the live position.
+  const displayPct = dragRatio !== null ? dragRatio : pct
+  const displayPos = dragRatio !== null ? dragRatio * progress.duration : progress.position
 
   // ─── Compact chip ──────────────────────────────────────────────────────
   if (!expanded) {
@@ -190,13 +247,18 @@ export function MusicPlayer() {
             <span className="mp-chip-empty">{I.play(14)}</span>
           )}
           <span className="mp-chip-text">
-            <span className="mp-chip-title" title={current?.title ?? 'Live Music'}>
-              {current?.title ?? 'Live Music'}
+            <span className="mp-chip-title" title={current?.title ?? 'Music'}>
+              {current?.title ?? 'Music'}
             </span>
-            <span className="mp-chip-sub" title={current?.artist ?? 'Internet radio & live catalog'}>
-              {live ? 'LIVE' : current ? current.artist : 'Internet radio & live catalog'}
+            <span className="mp-chip-sub" title={current?.artist ?? 'Curated & local study music'}>
+              {current ? current.artist : 'Curated & local study music'}
             </span>
           </span>
+          {current && (
+            <span className="mp-chip-time" title={progress.duration > 0 ? `${fmt(progress.position)} / ${fmt(progress.duration)}` : fmt(progress.position)}>
+              {fmt(progress.position)}{progress.duration > 0 ? ` / ${fmt(progress.duration)}` : ''}
+            </span>
+          )}
           <button className="mp-play sm" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>
             {playing ? I.pause(13) : I.play(13)}
           </button>
@@ -204,6 +266,9 @@ export function MusicPlayer() {
             {I.expand(14)}
           </button>
         </div>
+        {current && (
+          <div className="mp-chip-progress"><div style={{ width: `${displayPct * 100}%` }} /></div>
+        )}
       </div>,
       document.body,
     )
@@ -220,8 +285,7 @@ export function MusicPlayer() {
     >
       <header className="mp-head" onPointerDown={startDrag}>
         <span className="mp-grip">{I.grip()}</span>
-        <span className="mp-head-title">LIVE MUSIC</span>
-        <span className="mp-live-badge"><span className={`mp-live-dot ${live ? 'on' : ''}`} /> LIVE</span>
+        <span className="mp-head-title">MUSIC</span>
         <button className="mp-icon" onClick={() => setExpanded(false)} aria-label="Minimize">
           {I.collapse(14)}
         </button>
@@ -234,59 +298,105 @@ export function MusicPlayer() {
         </div>
         <div className="mp-now-info">
           <span className="mp-now-title" title={current?.title}>{current?.title ?? 'Nothing playing yet'}</span>
-          <span className="mp-now-artist" title={current?.artist}>{current?.artist ?? 'Pick a track or a radio station'}</span>
-          <span className="mp-now-extra">
-            {live
-              ? 'Streaming live from the web'
-              : current
-                ? isRadio
-                  ? 'Radio station'
-                  : `${fmt(progress.position)} / ${fmt(progress.duration)}`
-                : ''}
-          </span>
+          <span className="mp-now-artist" title={current?.artist}>{current?.artist ?? 'Pick a track from the list'}</span>
+          <span className="mp-now-extra">{current ? `${fmt(progress.position)} / ${fmt(progress.duration)}` : ''}</span>
         </div>
-        {playing && !isRadio && current && (
+        {playing && current && (
           <span className="mp-now-live"><span className="mp-eq"><i /><i /><i /></span></span>
         )}
       </div>
 
-      {/* Progress (tracks only) */}
-      {current && !isRadio && (
+      {/* Seekable timeline */}
+      {current && progress.duration > 0 && (
         <div className="mp-progress">
-          <div className="mp-progress-track">
-            <div className="mp-progress-fill" style={{ width: `${pct * 100}%` }} />
+          <div
+            ref={seekRef}
+            className={`mp-seek ${dragRatio !== null ? 'dragging' : ''}`}
+            role="slider"
+            aria-label="Seek"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(progress.duration)}
+            aria-valuenow={Math.round(displayPos)}
+            onPointerDown={onSeekDown}
+            onPointerMove={onSeekMove}
+            onPointerUp={onSeekUp}
+            onPointerCancel={() => setDragRatio(null)}
+          >
+            <div className="mp-seek-fill" style={{ width: `${displayPct * 100}%` }} />
+            <div className="mp-seek-thumb" style={{ left: `${displayPct * 100}%` }} />
+          </div>
+          <div className="mp-seek-times">
+            <span>{fmt(displayPos)}</span>
+            <span>{fmt(progress.duration)}</span>
           </div>
         </div>
       )}
 
       {/* Transport + volume */}
       <div className="mp-transport">
+        <button
+          className={`mp-ctrl ${shuffle ? 'on' : ''}`}
+          onClick={toggleShuffle}
+          aria-label={shuffle ? 'Shuffle on' : 'Shuffle'}
+          aria-pressed={shuffle}
+          title={shuffle ? 'Shuffle: on' : 'Shuffle: off'}
+        >
+          {I.shuffle(17)}
+        </button>
         <button className="mp-ctrl" onClick={prev} aria-label="Previous">{I.prev(18)}</button>
         <button className="mp-play" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>
           {playing ? I.pause(18) : I.play(18)}
         </button>
         <button className="mp-ctrl" onClick={next} aria-label="Next">{I.next(18)}</button>
-        <div className="mp-vol">
-          <span className="mp-vol-ico">{I.vol(14)}</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            aria-label="Volume"
-          />
+        <button
+          className={`mp-ctrl ${repeat !== 'off' ? 'on' : ''}`}
+          onClick={cycleRepeat}
+          aria-label={`Repeat: ${repeat}`}
+          aria-pressed={repeat !== 'off'}
+          title={`Repeat: ${repeat}`}
+        >
+          {repeat === 'one' ? I.repeatOne(17) : I.repeat(17)}
+        </button>
+        <div className="mp-vol-wrap" ref={volRef}>
+          <button
+            className={`mp-ctrl ${volOpen ? 'on' : ''}`}
+            onClick={() => setVolOpen((v) => !v)}
+            aria-label={muted ? 'Volume: muted' : 'Volume'}
+            aria-expanded={volOpen}
+            title={muted ? 'Volume: muted' : `Volume: ${Math.round(volume * 100)}%`}
+          >
+            {muted ? I.muted(16) : volume < 0.5 ? I.low(16) : I.vol(16)}
+          </button>
+          {volOpen && (
+            <div className="mp-vol-pop" role="dialog" aria-label="Volume">
+              <button type="button" className="mp-vol-mute" onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
+                {muted ? I.muted(15) : I.vol(15)}
+                <span>{muted ? 'Unmute' : 'Mute'}</span>
+              </button>
+              <div className="mp-vol-slider">
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  aria-label="Volume"
+                />
+                <span className="mp-vol-pct">{Math.round(volume * 100)}%</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Search + genres */}
+      {/* Search */}
       <div className="mp-search">
         <span className="mp-search-ico">{I.search(14)}</span>
         <input
           className="mp-search-input"
           type="text"
-          placeholder="Search live music..."
+          placeholder="Search the library..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(searchInput) }}
@@ -296,47 +406,15 @@ export function MusicPlayer() {
           <button className="mp-search-go" onClick={() => submitSearch(searchInput)}>Search</button>
         )}
       </div>
-      <div className="mp-genres">
-        {GENRES.map((g) => (
-          <button
-            key={g.id}
-            className={`mp-genre ${genre === g.id && query === '' ? 'on' : ''}`}
-            onClick={() => pickGenre(genre === g.id ? null : g.id)}
-          >
-            {g.label}
-          </button>
-        ))}
-      </div>
 
       {/* Results */}
       <div className="mp-scroll">
-        <div className="mp-section-label">RADIO</div>
-        {RADIO_STATIONS.map((st) => {
-          const active = current?.id === st.id
-          return (
-            <button
-              key={st.id}
-              className={`mp-row ${active ? 'active' : ''}`}
-              onClick={() => playTrack(st)}
-            >
-              <span className="mp-row-art"><Art track={st} size={28} /></span>
-              <span className="mp-row-name">{st.title}</span>
-              <span className="mp-row-sub">{st.artist}</span>
-              <span className="mp-row-live"><span className="mp-live-dot on" /></span>
-              {active && playing && <span className="mp-row-eq"><span className="mp-eq"><i /><i /><i /></span></span>}
-            </button>
-          )
-        })}
-
         <div className="mp-section-label">TRACKS</div>
         {browsing && results.length === 0 ? (
-          <div className="mp-empty">Searching live catalog...</div>
+          <div className="mp-empty">Searching the catalog...</div>
         ) : results.length === 0 ? (
           <div className="mp-empty">
-            Search the live catalog or pick a genre above.
-            {!import.meta.env.VITE_JAMENDO_CLIENT_ID && (
-              <span className="mp-empty-sub">Tip: add VITE_JAMENDO_CLIENT_ID (free at developer.jamendo.com) for the full 2000+ track catalog.</span>
-            )}
+            No tracks found — try a different search.
           </div>
         ) : (
           results.map((t) => {

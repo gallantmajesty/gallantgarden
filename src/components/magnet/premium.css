@@ -9,15 +9,16 @@
   --pr-glass: var(--mg-panel);
   --pr-glass-2: var(--mg-panel-soft);
   --pr-border: color-mix(in srgb, var(--mg-border) 55%, transparent);
-  --pr-shadow: 0 20px 55px -28px rgba(18, 20, 38, 0.5);
-  --pr-shadow-soft: 0 10px 30px -20px rgba(18, 20, 38, 0.45);
-  --pr-radius: 24px;
-  --pr-radius-sm: 16px;
+  /* professional instrument surface: flat, precise, barely-there depth */
+  --pr-shadow: 0 1px 1px rgba(0, 0, 0, 0.16), 0 12px 30px -22px rgba(0, 0, 0, 0.55);
+  --pr-shadow-soft: 0 1px 1px rgba(0, 0, 0, 0.12), 0 5px 16px -12px rgba(0, 0, 0, 0.45);
+  --pr-radius: 14px;
+  --pr-radius-sm: 10px;
   --pr-muted: var(--mg-text-soft);
   --pr-ease: cubic-bezier(0.22, 1, 0.36, 1);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   padding-bottom: 28px;
 }
 
@@ -32,12 +33,12 @@
   overflow: hidden;
 }
 .mg-pr::after {
-  /* faint top sheen — glass reflection */
+  /* quiet inner top highlight instead of glass sheen */
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
-  height: 40%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mg-text) 10%, transparent) 40%, transparent);
   pointer-events: none;
 }
 .mg-pr.pad-sm {
@@ -51,7 +52,7 @@
   margin-bottom: 14px;
 }
 .mg-pr-head h3 {
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: -0.01em;
   display: flex;
@@ -61,6 +62,12 @@
 }
 .mg-pr-head h3 .mg-icon {
   color: var(--mg-accent);
+  flex: none;
+  padding: 4px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--mg-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 20%, var(--mg-border));
+  box-sizing: content-box;
 }
 .mg-kicker {
   font-size: 11px;
@@ -245,6 +252,20 @@
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+/* dashboard chip that's actually a button (next-session CTA) */
+.mg-chip.mg-chip-cta {
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  align-self: stretch;
+}
+.mg-chip.mg-chip-cta > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .mg-chip span {
   font-size: 11.5px;
@@ -575,6 +596,151 @@
   width: 100%;
 }
 
+/* ════════════════ FOCUS CHART (analytics) ════════════════
+   One clean daily chart: flat bars with rounded caps on a hairline grid,
+   hover values, and the live today bar picked out in the primary accent. */
+.mg-fchart {
+  position: relative;
+  padding-top: 4px;
+}
+.mg-fchart-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 170px;
+  padding: 10px 4px 0;
+  border-radius: 10px;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 100% 33.33%;
+}
+.mg-fcol {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.mg-fbar-track {
+  width: 100%;
+  max-width: 34px;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--mg-text) 6%, transparent);
+  overflow: visible;
+}
+.mg-fbar-fill {
+  position: relative;
+  width: 100%;
+  min-height: 3px;
+  border-radius: 5px 5px 3px 3px;
+  background: var(--mg-accent2);
+  opacity: 0.78;
+  transition: opacity 0.18s, filter 0.18s;
+}
+.mg-fcol:hover .mg-fbar-fill {
+  opacity: 1;
+  filter: brightness(1.12);
+}
+.mg-fcol.today .mg-fbar-fill {
+  background: var(--mg-accent);
+  opacity: 1;
+}
+.mg-fbar-val {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--mg-text);
+  background: var(--mg-panel-soft);
+  border: 1px solid var(--mg-border);
+  padding: 1px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.mg-fcol:hover .mg-fbar-val,
+.mg-fcol.today .mg-fbar-val {
+  opacity: 1;
+}
+.mg-fbar-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--pr-muted);
+  white-space: nowrap;
+}
+.mg-fcol.today .mg-fbar-label {
+  color: var(--mg-accent);
+  font-weight: 700;
+}
+
+/* ════════════════ HEATMAP — month labels + today ════════════════ */
+.mg-heat-body {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.mg-heat-days {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--pr-muted);
+  width: 30px;
+  flex: none;
+}
+.mg-heat-days span {
+  height: 14px;
+  line-height: 14px;
+}
+.mg-heat-plot {
+  min-width: 0;
+}
+.mg-heat-months {
+  display: flex;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--pr-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mg-heat-month {
+  width: 14px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mg-heat-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--mg-text) 7%, transparent);
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: default;
+}
+.mg-heat-cell.is-today {
+  border-color: color-mix(in srgb, var(--mg-accent) 85%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mg-accent) 35%, transparent);
+}
+.mg-heat-grid,
+.mg-heat-col {
+  gap: 5px;
+}
+.mg-heat-legend { margin-top: 12px; }
+
 /* ════════════════ MINI RING ════════════════ */
 .mg-miniring {
   display: flex;
@@ -612,6 +778,156 @@
   font-size: 12px;
   color: var(--pr-muted);
   font-style: normal;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADQUARTERS — professional instrument panel
+   Flat, precise surfaces. One restrained accent, tabular numbers, hairline
+   structure. No gradients, no glow, no glass — the data carries the design.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* hero — quiet header, accent used once on the name */
+.mg-hero-hello {
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+.mg-hero-hello .mg-name-accent {
+  color: var(--mg-accent);
+}
+.mg-hero-date {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pr-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mg-hero-date::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: var(--mg-accent);
+  opacity: 0.8;
+}
+.mg-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pr-muted);
+  max-width: 46ch;
+}
+
+/* quick capture — flat input, accent only on the action */
+.mg-quick2 {
+  border-radius: 10px;
+}
+.mg-quick2:focus-within {
+  border-color: color-mix(in srgb, var(--mg-accent) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mg-accent) 30%, transparent);
+}
+.mg-quick2 button {
+  border-radius: 8px;
+}
+.mg-quick2 button:hover {
+  filter: brightness(1.04);
+  transform: none;
+}
+
+/* hero chips — flat cards, tabular numbers */
+.mg-chip {
+  border-radius: 10px;
+  background: var(--pr-glass-2);
+}
+.mg-chip:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--mg-accent) 40%, var(--pr-border));
+}
+.mg-chip .mg-chip-ico {
+  color: var(--mg-accent);
+}
+.mg-chip b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* section heads — flat accent marker, smaller type */
+.mg-pr-head h3 {
+  position: relative;
+  padding-left: 12px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--mg-text);
+}
+.mg-pr-head h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--mg-accent);
+}
+
+/* stat tiles — flat KPI cards, tabular values */
+.mg-tile {
+  border-radius: 12px;
+  padding: 16px;
+}
+.mg-tile:hover {
+  transform: none;
+  box-shadow: var(--pr-shadow-soft);
+}
+.mg-tile::before {
+  display: none;
+}
+.mg-tile::after {
+  display: none;
+}
+.mg-tile-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.mg-tile-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mg-tile-tone, var(--mg-accent)) 13%, transparent);
+  color: var(--mg-tile-tone, var(--mg-accent));
+}
+.mg-tile-value {
+  font-variant-numeric: tabular-nums;
+}
+.mg-tile.size-sm .mg-tile-value { font-size: 19px; }
+
+/* AI card — flat, tone edge only */
+.mg-ai {
+  border-radius: 10px;
+  background: var(--pr-glass-2);
+}
+.mg-ai::before {
+  top: 12px;
+  bottom: 12px;
+}
+
+/* quote — small serif mark, kept quiet */
+.mg-quote blockquote::before {
+  content: '“';
+  position: absolute;
+  top: -0.4em;
+  left: -0.3em;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.6em;
+  line-height: 1;
+  color: color-mix(in srgb, var(--mg-accent) 30%, transparent);
+  pointer-events: none;
 }
 
 /* two-column section helper */

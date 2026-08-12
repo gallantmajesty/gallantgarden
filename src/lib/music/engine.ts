@@ -51,6 +51,13 @@ export class LocalMusicEngine implements MusicSource {
     return { position: el.currentTime, duration: el.duration, src }
   }
 
+  /** Seek the current stream to a position in seconds (0 = start). */
+  seek(seconds: number) {
+    const el = this.jamEl ?? this.el
+    if (!el || Number.isNaN(el.duration) || el.duration <= 0) return
+    el.currentTime = Math.max(0, Math.min(seconds, el.duration - 0.05))
+  }
+
   // ---- MusicSource -------------------------------------------------------
 
   load(preset: MusicPreset) {

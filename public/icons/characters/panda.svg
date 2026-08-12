@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <linearGradient id="pdWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbf7ee"/>
+      <stop offset="100%" stop-color="#e8e2d4"/>
+    </linearGradient>
+    <linearGradient id="pdBlack" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2c2e33"/>
+      <stop offset="100%" stop-color="#16171b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- EARS -->
+  <circle cx="56" cy="34" r="18" fill="url(#pdBlack)"/>
+  <circle cx="144" cy="34" r="18" fill="url(#pdBlack)"/>
+  <circle cx="60" cy="30" r="7" fill="#4a4c52"/>
+  <circle cx="140" cy="30" r="7" fill="#4a4c52"/>
+
+  <!-- HEAD -->
+  <circle cx="100" cy="78" r="58" fill="url(#pdWhite)"/>
+  <!-- eye patches -->
+  <ellipse cx="74" cy="72" rx="17" ry="20" fill="url(#pdBlack)"/>
+  <ellipse cx="126" cy="72" rx="17" ry="20" fill="url(#pdBlack)"/>
+  <!-- eyes -->
+  <circle cx="74" cy="72" r="7" fill="#101114"/>
+  <circle cx="126" cy="72" r="7" fill="#101114"/>
+  <circle cx="76" cy="69" r="2.6" fill="white"/>
+  <circle cx="128" cy="69" r="2.6" fill="white"/>
+  <!-- nose -->
+  <ellipse cx="100" cy="88" rx="7" ry="5" fill="#191a1d"/>
+  <!-- muzzle -->
+  <ellipse cx="100" cy="94" rx="16" ry="11" fill="#ece6d8"/>
+  <!-- smile -->
+  <path d="M92 98 Q100 104 108 98" stroke="#3a3c42" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- blush -->
+  <circle cx="58" cy="90" r="7" fill="#f6c2cb" opacity="0.55"/>
+  <circle cx="142" cy="90" r="7" fill="#f6c2cb" opacity="0.55"/>
+
+  <!-- BODY -->
+  <ellipse cx="100" cy="172" rx="58" ry="46" fill="url(#pdWhite)"/>
+  <!-- black chest/shoulder marks -->
+  <ellipse cx="58" cy="158" rx="24" ry="18" fill="url(#pdBlack)"/>
+  <ellipse cx="142" cy="158" rx="24" ry="18" fill="url(#pdBlack)"/>
+  <!-- belly patch -->
+  <ellipse cx="100" cy="178" rx="30" ry="24" fill="#fbf7ee"/>
+
+  <!-- ARMS -->
+  <ellipse cx="40" cy="176" rx="16" ry="26" fill="url(#pdBlack)"/>
+  <ellipse cx="160" cy="176" rx="16" ry="26" fill="url(#pdBlack)"/>
+  <!-- paw pads -->
+  <circle cx="40" cy="196" r="5" fill="#e39a90"/>
+  <circle cx="160" cy="196" r="5" fill="#e39a90"/>
+
+  <!-- LEGS -->
+  <rect x="64" y="206" width="30" height="26" rx="13" fill="url(#pdBlack)"/>
+  <rect x="106" y="206" width="30" height="26" rx="13" fill="url(#pdBlack)"/>
+  <!-- feet -->
+  <ellipse cx="79" cy="236" rx="18" ry="10" fill="url(#pdBlack)"/>
+  <ellipse cx="121" cy="236" rx="18" ry="10" fill="url(#pdBlack)"/>
+  <!-- toe pads -->
+  <circle cx="68" cy="236" r="2.5" fill="#e39a90"/>
+  <circle cx="79" cy="238" r="2.5" fill="#e39a90"/>
+  <circle cx="90" cy="236" r="2.5" fill="#e39a90"/>
+  <circle cx="110" cy="236" r="2.5" fill="#e39a90"/>
+  <circle cx="121" cy="238" r="2.5" fill="#e39a90"/>
+  <circle cx="132" cy="236" r="2.5" fill="#e39a90"/>
+</svg>

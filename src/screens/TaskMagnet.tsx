@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
+import { RankBadge } from '../components/RankBadge'
+import { getRank, rankForTotalXp } from '../lib/ranks'
 import { useMagnet } from '../store/magnet'
 import { levelProgress } from '../lib/magnet/types'
 import { Icon } from '../components/magnet/Icon'
@@ -129,6 +131,9 @@ export function TaskMagnet() {
     user?.email?.split('@')[0] ||
     t('auth.defaultName')
   const lp = levelProgress(data.xp)
+  // Rank is driven by lifetime rankXp (monotonic) — the rail chip shows the
+  // live rank so the magnet's streak/daily awards visibly feed it.
+  const rankId = rankForTotalXp(data.rankXp || data.xp).id
 
   if (!ready) {
     return (
@@ -148,7 +153,7 @@ export function TaskMagnet() {
 
         <div className="mg-brand">
           <span className="mg-brand-orb">
-            <img className="mg-brand-logo-img" src="/icons/focus-lily-logo.png" alt="FocusLily" />
+            <img className="mg-brand-logo-img" src="/task-mgmt-logo.png" alt="Task Magnet" />
           </span>
           <div>
             <strong>{t('taskMagnet.brand')}</strong>
@@ -169,7 +174,9 @@ export function TaskMagnet() {
               {n.png ? (
                 <PngIcon name={n.png} size={24} className="mg-navpng" />
               ) : (
-                <Icon name={n.icon} size={20} />
+                <span className="mg-navtile">
+                  <Icon name={n.icon} size={18} />
+                </span>
               )}
               <span>{n.label}</span>
             </button>
@@ -178,8 +185,14 @@ export function TaskMagnet() {
 
         <div className="mg-levelcard">
           <div className="mg-levelcard-top">
-            <span className="mg-levelbadge">{t('taskMagnet.level', { level: lp.level })}</span>
-            <span className="mg-levelxp">{t('taskMagnet.xpValue', { xp: data.xp })}</span>
+            <span className="mg-rankchip" style={{ ['--rank' as string]: getRank(rankId).accent }}>
+              <RankBadge rankId={rankId} size={22} />
+              <span>{getRank(rankId).name}</span>
+            </span>
+            <span className="mg-levelxp">
+              <Icon name="leaf" size={13} />
+              {t('taskMagnet.xpValue', { xp: data.xp })}
+            </span>
           </div>
           <div className="mg-levelbar">
             <div className="mg-levelbar-fill" style={{ width: `${lp.pct * 100}%` }} />
@@ -212,14 +225,7 @@ export function TaskMagnet() {
           {view === 'goals' && <GoalsView />}
           {view === 'habits' && <HabitsView />}
           {view === 'sanctuary' && <SanctuaryView />}
-          {view === 'calendar' && (
-            <CalendarView
-              onAddTask={(date) => {
-                setPrefillDue(date)
-                setView('tasks')
-              }}
-            />
-          )}
+          {view === 'calendar' && <CalendarView />}
         </div>
       </main>
 

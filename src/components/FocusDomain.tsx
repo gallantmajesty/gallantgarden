@@ -10,6 +10,7 @@ import type { TimerPreset, SessionSummary, SessionHistoryEntry } from "../store/
 import type { ClockMode } from "../hooks/focus/types";
 import { useWorld } from "../store/world";
 import { useSettings } from "../store/settings";
+import { useProfile } from "../store/profile";
 import { useHardcore, EASY_RATE, MEDIUM_RATE, hardcoreRateFor, hardcoreMultiplier, minWagerFor, wagerBonusMultiplier } from "../store/hardcore";
 import { useDeviceBoost, boostPct } from "../lib/deviceBoost";
 import { useHardcodeMode } from "../hooks/focus/useHardcodeMode";
@@ -404,6 +405,9 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
   const [showConnect, setShowConnect] = useState(false);
   const chimeVolume = useSettings((s) => s.pomo.chimeVolume);
   const setChimeVolume = useSettings((s) => s.setPomo);
+  // Spendable leaf wallet — the balance the Shop actually spends. (The
+  // astronomical log's totalLeaves is a lifetime stat, not the wallet.)
+  const walletLeaves = useProfile((s) => s.xp);
   const [tabataRounds, setTabataRounds] = useState(8);
   const [tabataWorkSec, setTabataWorkSec] = useState(20);
   const [tabataRestSec, setTabataRestSec] = useState(10);
@@ -596,9 +600,9 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
       {/* ============================ HEADER ============================ */}
       <div className="fd-header">
         <div className="fd-header-left">
-          <span className="fd-title">✦ FOCUS DOMAIN</span>
+          <span className="fd-title"><span className="fd-title-leaf"><IconLeaf size={16} /></span> FOCUS DOMAIN</span>
           <span className="fd-subtitle">
-            {phase === 'idle' ? 'Scholar Sanctuary' : `${modeLabel(focusMode)} · ${sessionTier.rate} leaves/min`}
+            {phase === 'idle' ? 'The candlelit study' : `${modeLabel(focusMode)} · ${sessionTier.rate} leaves/min`}
           </span>
         </div>
 
@@ -610,7 +614,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
 
         <div className="fd-stats">
           <span>Streak: {astroLog.log.currentStreak}d</span>
-          <span>Leaves: {astroLog.log.totalLeaves} ✦</span>
+          <span>Leaves: {walletLeaves}</span>
         </div>
 
         <button onClick={() => setShowConnect(true)} className="fd-close fd-icon-btn" style={{ marginRight: "0.25rem" }} title="Hardcore Connect — paste a boost code or see connected devices"><IconLink /></button>
@@ -636,7 +640,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
                   <button
                     key={t}
                     className={`fd-tier-card ${sel ? 'selected' : ''} ${comingSoon ? 'soon' : ''}`}
-                    style={sel ? { borderColor: meta.color, background: meta.softColor, boxShadow: `0 0 30px ${meta.softColor}` } : undefined}
+                    style={sel ? { borderColor: meta.color, boxShadow: `0 0 30px ${meta.softColor}` } : undefined}
                     onClick={() => { if (!comingSoon) setPickTier(t); }}
                     disabled={comingSoon}
                   >
@@ -667,7 +671,13 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
                         <div className="fd-tier-soon">COMING SOON</div>
                       </>
                     )}
-                    {sel && !comingSoon && <div className="fd-tier-check" style={{ background: meta.color }}>✓</div>}
+                    {sel && !comingSoon && (
+                      <div className="fd-tier-check" style={{ background: meta.color }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10200f" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M5 12l4 4 10-10" />
+                        </svg>
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -787,19 +797,51 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
               <div className="fd-orb">
                 <div className="fd-orb-ambient" />
                 <svg className="fd-orb-ring" viewBox="0 0 100 100" aria-hidden>
-                  {/* track */}
-                  <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="2.5" />
-                  {/* progress */}
+                  {/* brass graduations — 60 ticks around the rim, majors every 5th */}
+                  {Array.from({ length: 60 }, (_, i) => {
+                    const major = i % 5 === 0;
+                    return (
+                      <line
+                        key={i}
+                        x1="50"
+                        y1={major ? 1.6 : 2.6}
+                        x2="50"
+                        y2={major ? 5.2 : 4.2}
+                        stroke={major ? 'rgba(233,189,127,0.6)' : 'rgba(233,189,127,0.22)'}
+                        strokeWidth={major ? 1.1 : 0.6}
+                        transform={`rotate(${i * 6} 50 50)`}
+                      />
+                    );
+                  })}
+                  {/* astrolabe rings */}
+                  <circle cx="50" cy="50" r="46.4" fill="none" stroke="rgba(185,138,68,0.28)" strokeWidth="0.8" />
+                  <circle cx="50" cy="50" r="43.2" fill="none" stroke="rgba(185,138,68,0.16)" strokeWidth="0.5" strokeDasharray="1 2.6" />
+                  {/* progress comet trail */}
                   <circle
-                    cx="50" cy="50" r="46" fill="none"
+                    cx="50" cy="50" r="44.6" fill="none"
                     stroke={sessionTier.color}
-                    strokeWidth="2.5"
+                    strokeOpacity="0.16"
+                    strokeWidth="3.4"
                     strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * 46}
-                    strokeDashoffset={2 * Math.PI * 46 * (1 - Math.max(0, Math.min(1, timerProgress)))}
+                    strokeDasharray={2 * Math.PI * 44.6 * 0.28}
+                    strokeDashoffset={2 * Math.PI * 44.6 * (1 - Math.max(0, Math.min(1, timerProgress)))}
                     transform="rotate(-90 50 50)"
-                    style={{ transition: 'stroke-dashoffset 0.5s ease, stroke 0.4s ease' }}
+                    style={{ transition: 'stroke-dashoffset 0.5s linear' }}
                   />
+                  {/* progress arc */}
+                  <circle
+                    cx="50" cy="50" r="44.6" fill="none"
+                    stroke={sessionTier.color}
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 44.6}
+                    strokeDashoffset={2 * Math.PI * 44.6 * (1 - Math.max(0, Math.min(1, timerProgress)))}
+                    transform="rotate(-90 50 50)"
+                    style={{ transition: 'stroke-dashoffset 0.5s ease, stroke 0.4s ease', filter: `drop-shadow(0 0 5px ${sessionTier.color})` }}
+                  />
+                  {/* inner dial */}
+                  <circle cx="50" cy="50" r="34.4" fill="none" stroke="rgba(185,138,68,0.18)" strokeWidth="0.7" />
+                  <circle cx="50" cy="50" r="32.2" fill="none" stroke="rgba(185,138,68,0.12)" strokeWidth="0.5" strokeDasharray="0.7 2.2" />
                 </svg>
                 <div className="fd-orb-inner">
                   <div className="fd-timer-display">
@@ -965,19 +1007,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
         </div>
       )}
 
-      {showHelp && (
-        <div className="udm-overlay" onClick={() => setShowHelp(false)}>
-          <div className="udm-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="udm-head">
-              <div className="udm-head-left"><span className="udm-head-name">Focus Mode Guide</span></div>
-              <button className="udm-close" onClick={() => setShowHelp(false)}>×</button>
-            </div>
-            <div className="udm-body" style={{ maxHeight: '70vh', overflow: 'auto' }}>
-              <HelpGuide onClose={() => setShowHelp(false)} />
-            </div>
-          </div>
-        </div>
-      )}
+      {showHelp && <HelpGuide onClose={() => setShowHelp(false)} />}
 
       {showWager && (
         <div className="udm-overlay" onClick={() => setShowWager(false)}>

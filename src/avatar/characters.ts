@@ -161,7 +161,7 @@ export const CHARACTERS: Character[] = [
     color: '#6cbf4a',
     bg: '#eaf7dd',
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
   {
     id: 'rabbit',
@@ -182,7 +182,7 @@ export const CHARACTERS: Character[] = [
     color: '#f2a3c0',
     bg: '#fdeaf2',
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
   {
     id: 'robot',
@@ -227,7 +227,7 @@ export const CHARACTERS: Character[] = [
     bg: '#0f2417',
     special: true,
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
   {
     id: 'pig',
@@ -248,7 +248,7 @@ export const CHARACTERS: Character[] = [
     color: '#f29ac0',
     bg: '#fde6f1',
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
   {
     id: 'angel',
@@ -316,7 +316,7 @@ export const CHARACTERS: Character[] = [
     color: '#8a8f94',
     bg: '#eef1f4',
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
   {
     id: 'monkey',
@@ -337,7 +337,7 @@ export const CHARACTERS: Character[] = [
     color: '#8B5E3C',
     bg: '#f5e6d3',
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
 
   // ============================================================================
@@ -368,7 +368,7 @@ export const CHARACTERS: Character[] = [
     color: '#3a3a3a',
     bg: '#f0f4f8',
     isAnimal: true,
-    price: 2000,
+    price: 1200,
   },
 ]
 

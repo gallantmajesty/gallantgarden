@@ -126,6 +126,11 @@ export function TasksView({
   }, [data.tasks, status, area, search, manual])
 
   const openCount = data.tasks.filter((t) => !t.done).length
+  const doneCount = data.tasks.length - openCount
+
+  function clearDone() {
+    for (const t of data.tasks) if (t.done) deleteTask(t.id)
+  }
 
   function startCreate(due?: string) {
     setEditId(null)
@@ -223,6 +228,11 @@ export function TasksView({
             >
               <Icon name="grid" size={15} /> {manual ? t('tasks.sortManual') : t('tasks.sortSmart')}
             </button>
+            {doneCount > 0 && (
+              <button className="mg-btn glass small" onClick={clearDone} title={t('tasks.clearDone')}>
+                <Icon name="trash" size={15} /> {t('tasks.clearDone')}
+              </button>
+            )}
             <button className="mg-btn primary" onClick={() => startCreate()}>
               <Icon name="plus" size={16} /> {t('tasks.newTask')}
             </button>
@@ -322,6 +332,7 @@ export function TasksView({
                 className={`mg-taskcard ${task.done ? 'done' : ''} ${isBlocked ? 'blocked' : ''} ${
                   doneAnim === task.id ? 'mg-burst' : ''
                 }`}
+                style={{ ['--mg-prio' as string]: PRIORITY_META[task.priority].color }}
                 draggable={manual && status === 'open'}
                 onDragStart={() => (dragId.current = task.id)}
                 onDragOver={(e) => manual && e.preventDefault()}

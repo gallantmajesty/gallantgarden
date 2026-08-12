@@ -5,6 +5,7 @@ import type { Habit } from '../../../lib/magnet/types'
 import { dayKey, addDays } from '../../../lib/magnet/insights'
 import { SectionHead, Panel, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
+import { useNow } from '../useNow'
 
 const HABIT_ICONS = ['fire', 'book', 'brain', 'leaf', 'heart', 'spark', 'sun', 'moon', 'rocket', 'star']
 const HABIT_COLORS = ['#ff7a3d', '#46d6a0', '#6c8cff', '#ff6f9c', '#b76cff', '#4fd1e0', '#ffb454']
@@ -36,7 +37,7 @@ export function HabitsView() {
   const [icon, setIcon] = useState(HABIT_ICONS[0])
   const [color, setColor] = useState(HABIT_COLORS[0])
 
-  const now = useMemo(() => new Date(), [])
+  const now = useNow()
   const tk = dayKey(now)
   const gridDays = useMemo(() => {
     const out: string[] = []

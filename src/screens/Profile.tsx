@@ -33,6 +33,7 @@ import { UserListModal } from '../components/UserListModal'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
 import { AchievementsPanel } from '../components/profile/AchievementsPanel'
 import { GREEN_LEAF_ICON, GOLD_LEAF_ICON } from '../lib/leafIcons'
+import { getDailyEngagement } from '../lib/xpEngine'
 import { useShop } from '../shop/store'
 import './Profile.css'
 
@@ -210,6 +211,27 @@ function ProfileBody({
   const [listModal, setListModal] = useState<null | 'followers' | 'following' | 'mutual'>(null)
   const [deleteModal, setDeleteModal] = useState(false)
 
+  const [daily, setDaily] = useState(() => getDailyEngagement())
+  const [claiming, setClaiming] = useState(false)
+  useEffect(() => {
+    setDaily(getDailyEngagement())
+  }, [isOwn, focusSessions, totalFocusMin])
+
+  const handleClaimFocus = async () => {
+    if (claiming) return
+    setClaiming(true)
+    try {
+      const { claimed } = await useProfile.getState().claimDailyFocus()
+      if (claimed) {
+        setDaily((d) => ({ ...d, focusClaimed: true }))
+        // trigger a fresh engagement snapshot after applyXp mirrors
+        setTimeout(() => setDaily(getDailyEngagement()), 50)
+      }
+    } finally {
+      setClaiming(false)
+    }
+  }
+
   const counts = isOwn ? myCounts : remoteCounts
 
   // Generate Player ID if missing
@@ -355,6 +377,42 @@ function ProfileBody({
             <div className="pf-stat-card-value rank-val">{rank.name}</div>
           </div>
         </div>
+
+        {/* ========== DAILY FOCUS CLAIM (own profile only) ========== */}
+        {isOwn && (
+          <div className={`pf-focus-claim ${daily.focusClaimed ? 'claimed' : ''} ${daily.totalFocusMin >= daily.focusClaimMin ? 'ready' : ''}`}>
+            <div className="pf-focus-claim-left">
+              <div className="pf-focus-claim-title">
+                Daily Focus
+                {daily.focusClaimed && <span className="pf-focus-claim-badge">Claimed</span>}
+              </div>
+              <div className="pf-focus-claim-progress">
+                <div className="pf-focus-claim-track">
+                  <div
+                    className="pf-focus-claim-fill"
+                    style={{ width: `${Math.min(100, (daily.totalFocusMin / daily.focusClaimMin) * 100)}%` }}
+                  />
+                </div>
+                <span className="pf-focus-claim-meta">
+                  {Math.min(daily.totalFocusMin, daily.focusClaimMin)}/{daily.focusClaimMin} min focused today
+                </span>
+              </div>
+            </div>
+            <div className="pf-focus-claim-right">
+              <span className="pf-focus-claim-reward">
+                <img className="pf-resource-icon" src={GREEN_LEAF_ICON} alt="" draggable={false} />
+                +{daily.focusClaimLeaves}
+              </span>
+              <button
+                className="pf-focus-claim-btn"
+                disabled={daily.focusClaimed || claiming || daily.totalFocusMin < daily.focusClaimMin}
+                onClick={handleClaimFocus}
+              >
+                {daily.focusClaimed ? 'Claimed' : claiming ? '…' : 'Claim'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ========== XP BAR ========== */}
         <div className="pf-xp-bar-wrap">

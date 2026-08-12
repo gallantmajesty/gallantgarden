@@ -262,3 +262,57 @@
   font-family: var(--sans, system-ui, sans-serif);
   text-shadow: 0 0 6px rgba(74, 222, 128, 0.45);
 }
+
+/* Player completion celebration burst — leaves fly up from the head.
+   `--power` (0..1) scales size/spread; the burst fades out on its own. */
+.ptb-celebrate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  user-select: none;
+  --power: 1;
+  animation: ptb-burst-out 3.4s ease forwards;
+}
+@keyframes ptb-burst-out {
+  0%, 72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.ptb-leaf {
+  position: absolute;
+  width: calc(16px + var(--power) * 16px);
+  height: calc(16px + var(--power) * 16px);
+  object-fit: contain;
+  opacity: 0;
+  animation: ptb-leaf-fly 1.7s cubic-bezier(.22,.61,.36,1) forwards;
+  animation-delay: calc(var(--i) * 0.06s);
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+}
+@keyframes ptb-leaf-fly {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(0.4); }
+  15% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(cos(var(--i) * 36deg) * (55px + var(--power) * 70px)),
+      calc(sin(var(--i) * 36deg) * -(70px + var(--power) * 70px))
+    ) rotate(calc(var(--i) * 50deg)) scale(1.15);
+  }
+}
+.ptb-done {
+  font-size: calc(12px + var(--power) * 4px);
+  font-weight: 800;
+  color: #a7f3d0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+  animation: ptb-done-in 0.4s ease both, ptb-done-float 1.2s ease-in-out 0.4s infinite;
+}
+@keyframes ptb-done-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ptb-done-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}

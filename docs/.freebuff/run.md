@@ -21,10 +21,25 @@ These edits were applied with idempotent Node patch scripts in `docs/_scripts/`
 fresh checkout lacks the artifacts:
 
 ```bash
-node docs/_scripts/patch-preview.mjs      # wires __shot route + PUBLIC_PATHS
+node docs/_scripts/patch-preview.mjs      # adds '/__shot' to PUBLIC_PATHS (route must already exist)
 node docs/_scripts/splice-head-only.mjs   # current elephant head (eyes/clothes/robe state)
 node docs/_scripts/legendary-robe.mjs     # legendary robe additions
 ```
+
+IMPORTANT (2026-08-12): `patch-preview.mjs` only patches `PUBLIC_PATHS` — it does
+NOT create the `/__shot` route or `ShotHarness.tsx`. Those were deleted in commit
+`6f4830b`; restore them from the last intact commit `1828be8` if they're missing:
+
+```bash
+git show 1828be8:src/screens/ShotHarness.tsx > src/screens/ShotHarness.tsx
+```
+
+Then wire the route into `src/App.tsx` (3 edits): add
+`import { ShotHarness } from './screens/ShotHarness'` near the other screen
+imports, add `'/__shot'` to the `PUBLIC_PATHS` set, and add
+`<Route path="/__shot" element={<ShotHarness />} />` as the first route inside
+the public `<Routes>` block. `patch-preview.mjs` re-verifies/patches the
+PUBLIC_PATHS part idempotently.
 
 No env copying is needed: `.env.local` already exists in the parent project root
 (`C:\Users\taksh\studyforest\.env.local`) and this workspace is the same checkout.

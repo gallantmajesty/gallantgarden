@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getAtmosphereConfig } from '../../lib/season'
@@ -26,15 +26,20 @@ function SeasonalParticles({ multiplier }: { multiplier: number }) {
   const config = getAtmosphereConfig()
   const count = Math.round(config.particleCount * multiplier)
 
-  // Build an array of per-instance random offsets (0..1) — stable across renders
-  const refs = useRef(
-    Array.from({ length: count }, () => ({
-      x: (Math.random() - 0.5) * 2,
-      z: (Math.random() - 0.5) * 2,
-      speed: 0.5 + Math.random() * 0.5,
-      offset: Math.random() * Math.PI * 2,
-    }))
-  ).current
+  // Build an array of per-instance random offsets (0..1). Sized to the LIVE
+  // count: `count` changes when the quality preset flips (particleMultiplier /
+  // season), and a stale shorter array made the per-frame loop read
+  // `refs[i].speed` of undefined → "Cannot read properties of undefined".
+  const refs = useMemo(
+    () =>
+      Array.from({ length: count }, () => ({
+        x: (Math.random() - 0.5) * 2,
+        z: (Math.random() - 0.5) * 2,
+        speed: 0.5 + Math.random() * 0.5,
+        offset: Math.random() * Math.PI * 2,
+      })),
+    [count],
+  )
 
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const dummy = useRef(new THREE.Object3D()).current

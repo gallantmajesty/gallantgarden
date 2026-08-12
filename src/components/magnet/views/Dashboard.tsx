@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MagnetView } from '../../../screens/TaskMagnet'
 import { useMagnet } from '../../../store/magnet'
-import { computeStats, computeStreak, generateInsights, addDays } from '../../../lib/magnet/insights'
+import { computeStats, computeStreak, generateInsights } from '../../../lib/magnet/insights'
 import { AREA_META, PRIORITY_META } from '../../../lib/magnet/types'
 import { Panel, EmptyState, ProgressRing } from '../ui'
 import type { MagnetData } from '../../../lib/magnet/types'
@@ -26,6 +26,7 @@ import '../premium.css'
 import { awardWeeklyWarrior } from '../../../lib/xpEngine'
 import { rankForTotalXp } from '../../../lib/ranks'
 import { useProfile } from '../../../store/profile'
+import { useNow } from '../useNow'
 
 // The emotional "home" of the world — redone in the calm, story-telling Korean
 // minimal style: a big hero that answers "how is my life today?", a performance
@@ -69,7 +70,9 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
     if (d.getDay() === 0 && d.getHours() >= 17) setReviewOpen(true)
   }, [])
 
-  const now = useMemo(() => new Date(), [])
+  // Live clock — refreshes every 30s so "today", streak and weekly numbers
+  // stay real-time (and roll over correctly at midnight) while the app is open.
+  const now = useNow()
   const tk = todayKey(now)
 
   const today = useMemo(() => computeStats(data, now, 1), [data, now])
@@ -101,6 +104,13 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
 
   const hasData = data.tasks.length > 0 || data.focus.length > 0 || data.habits.length > 0
 
+  // Next planned session = the soonest open task (due soonest first).
+  const nextSession = useMemo(() => {
+    const open = data.tasks.filter((t) => !t.done)
+    if (open.length === 0) return null
+    return [...open].sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'))[0]
+  }, [data.tasks])
+
   // today's agenda: overdue + due-today + undated open tasks, priority-sorted
   const agenda = useMemo(() => {
     const open = data.tasks.filter((t) => !t.done)
@@ -116,20 +126,11 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
     return scored.slice(0, 4)
   }, [data.tasks, tk])
 
-  const dailySummary = useMemo(() => {
-    const wf = s7.focusMinutes
-    const pf = computeStats(data, addDays(now, -7), 7).focusMinutes
-    if (!hasData) return 'Your world is calm and quiet. Capture one intention and let the story begin.'
-    if (wf >= pf * 1.15 && pf > 0)
-      return `You studied ${Math.round(wf / 60)}h this week — up ${Math.round(((wf - pf) / pf) * 100)}% from last. Ride the evening momentum; your focus peaks after sunset.`
-    if (streak >= 3)
-      return `You've shown up ${streak} days straight. Keep today's first session before noon and the streak compounds quietly.`
-    if (s7.completed >= 5)
-      return `You finished ${s7.completed} tasks this week. Batch the small ones — momentum loves a cleared list.`
-    return `You've logged ${Math.round(wf / 60)}h of focus this week. One 25-minute block today is all the curve needs.`
-  }, [s7, streak, hasData, data, now])
-
   const quote = useMemo(() => QUOTES[now.getDate() % QUOTES.length], [now])
+  const dateLine = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(now),
+    [now],
+  )
 
   function submitQuick(e: React.FormEvent) {
     e.preventDefault()
@@ -151,7 +152,8 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
           <div className="mg-hero2">
             <div className="mg-hero2-main">
               <span className="mg-kicker"><Icon name="sparkle" size={13} />{t('dashboard.headquarters')}</span>
-              <h1 className="mg-hero-hello">{greeting(now)}, {name} <span className="mg-wave">👋</span></h1>
+              <h1 className="mg-hero-hello">{greeting(now)}, <span className="mg-name-accent">{name}</span></h1>
+              <p className="mg-hero-date">{dateLine}</p>
               <p className="mg-hero-sub">A clear horizon. Plant one small intention and watch your world grow.</p>
               <form className="mg-quick2" onSubmit={submitQuick}>
                 <input value={quick} onChange={(e) => setQuick(e.target.value)} placeholder={t('dashboard.quickCapturePlaceholder')} />
@@ -174,12 +176,9 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
             <div className="mg-hero2">
               <div className="mg-hero2-main">
                 <span className="mg-kicker"><Icon name="sparkle" size={13} />{t('dashboard.headquarters')}</span>
-                <h1 className="mg-hero-hello mg-anim">{greeting(now)}, {name} <span className="mg-wave">👋</span></h1>
+                <h1 className="mg-hero-hello mg-anim">{greeting(now)}, <span className="mg-name-accent">{name}</span></h1>
+                <p className="mg-hero-date">{dateLine}</p>
                 <p className="mg-hero-sub">{agenda.length > 0 ? `You have ${agenda.length} thing${agenda.length > 1 ? 's' : ''} waiting — let's make today count.` : 'A clear horizon today. Protect one deep session and the rest flows.'}</p>
-                <div className="mg-ai-summary">
-                  <span className="mg-ai-badge"><Icon name="sparkle" size={12} /><span>AI</span></span>
-                  <p>{dailySummary}</p>
-                </div>
                 <form className="mg-quick2" onSubmit={submitQuick}>
                   <input value={quick} onChange={(e) => setQuick(e.target.value)} placeholder={t('dashboard.quickCapturePlaceholder')} />
                   <button type="submit" aria-label={t('common.add')}><Icon name="plus" size={18} /></button>
@@ -212,11 +211,11 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
                     <b>{data.goals.filter((g) => g.progress < 100).length}</b>
                     <span>{t('dashboard.activeGoals')}</span>
                   </div>
-                  <div className="mg-chip">
+                  <button className="mg-chip mg-chip-cta" onClick={() => onNavigate('tasks')} title={nextSession ? nextSession.title : ''}>
                     <span className="mg-chip-ico"><Icon name="play" size={18} /></span>
-                    <b>25m</b>
-                    <span>{t('dashboard.nextSession')}</span>
-                  </div>
+                    <b>{nextSession ? `${nextSession.estimateMin > 0 ? nextSession.estimateMin : 25}m` : '—'}</b>
+                    <span>{nextSession ? nextSession.title : t('dashboard.nextSession')}</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -376,7 +375,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
               <h3><Icon name="grid" size={18} />{t('dashboard.studyMap')}</h3>
               <span className="mg-muted" style={{ fontSize: 12 }}>18 weeks · {t('dashboard.lighterLess')}</span>
             </div>
-            <Heatmap cells={heat} />
+            <Heatmap cells={heat} today={tk} />
             <div className="mg-heat-legend">
               <span>Less</span>
               {[0, 1, 2, 3, 4].map((l) => (
@@ -396,7 +395,9 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
             <Panel className="mg-quote">
               <div className="mg-pr-head"><h3><Icon name="heart" size={18} />{t('dashboard.todayMood')}</h3></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 34 }}>{moodEmoji(score, streak)}</span>
+                <span className="mg-mood-ico" style={{ ['--mg-mood' as string]: moodColor(score) }}>
+                  <Icon name={moodIcon(score, streak)} size={22} />
+                </span>
                 <div>
                   <strong style={{ fontSize: 15 }}>{moodLabel(score, streak)}</strong>
                   <p className="mg-muted" style={{ margin: '2px 0 0', fontSize: 12.5 }}>{t('dashboard.moodSub')}</p>
@@ -428,11 +429,16 @@ function MiniRingLive({ pct, label }: { pct: number; label: string }) {
   )
 }
 
-function moodEmoji(score: number, streak: number): string {
-  if (score >= 75 && streak >= 5) return '😄'
-  if (score >= 60) return '🙂'
-  if (score >= 40) return '😌'
-  return '🌱'
+function moodIcon(score: number, streak: number): string {
+  if (score >= 75 && streak >= 5) return 'sun'
+  if (score >= 60) return 'spark'
+  if (score >= 40) return 'leaf'
+  return 'moon'
+}
+function moodColor(score: number): string {
+  if (score >= 60) return '#d8a657'
+  if (score >= 40) return '#9b6dff'
+  return '#46d6a0'
 }
 function moodLabel(score: number, streak: number): string {
   if (score >= 75 && streak >= 5) return 'Thriving'

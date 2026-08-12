@@ -8,6 +8,7 @@ import { SectionHead, EmptyState } from '../ui'
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'urgent']
 const AREAS: LifeArea[] = ['academic', 'personal', 'health', 'career', 'creative', 'social']
 const RECURRENCES: Recurrence[] = ['none', 'daily', 'weekly', 'monthly']
+const COL_LETTERS = ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] // gutter + 10 content cols
 
 type Status = 'all' | 'open' | 'done'
 
@@ -21,6 +22,7 @@ export function SheetView() {
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<Status>('all')
+  const [active, setActive] = useState<{ l: string; r: number } | null>(null)
 
   const rows = useMemo(() => {
     let r = data.tasks.slice()
@@ -92,6 +94,15 @@ export function SheetView() {
         </div>
       </div>
 
+      {/* formula bar — feels like a real sheet: shows the active cell ref + its value */}
+      <div className="mg-sheet-fbar">
+        <span className="mg-sheet-fx">fx</span>
+        <span className="mg-sheet-fref">{active ? `${active.l}${active.r + 2}` : ''}</span>
+        <span className="mg-sheet-fval">
+          {active && rows[active.r] ? rows[active.r].title : t('taskMagnet.sheetFbarHint')}
+        </span>
+      </div>
+
       {rows.length === 0 ? (
         <EmptyState icon="journal" title={t('tasks.noTasksTitle')} body={t('tasks.noTasksBody')} />
       ) : (
@@ -99,22 +110,26 @@ export function SheetView() {
           <table className="mg-sheet">
             <thead>
               <tr>
-                <th className="cell-check" />
-                <th>{t('tasks.titleLabel')}</th>
-                <th className="cell-priority">{t('tasks.priorityLabel')}</th>
-                <th className="cell-area">{t('tasks.areaLabel')}</th>
-                <th className="cell-subject">{t('tasks.subjectLabel')}</th>
-                <th className="cell-due">{t('tasks.dueDateLabel')}</th>
-                <th className="cell-est">{t('tasks.estimateLabel')}</th>
-                <th className="cell-recur">{t('tasks.repeatLabel')}</th>
-                <th className="cell-notes">{t('taskMagnet.sheetNotesCol')}</th>
-                <th className="cell-actions" />
+                {COL_LETTERS.map((l, i) => (
+                  <th key={i} className={i === 0 ? 'cell-rowhead' : i === COL_LETTERS.length - 1 ? 'cell-actions' : ''}>
+                    {l || ''}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((task) => (
-                <tr key={task.id} className={task.done ? 'row-done' : ''}>
-                  <td className="cell-check">
+              {rows.map((task, idx) => (
+                <tr
+                  key={task.id}
+                  className={task.done ? 'row-done' : ''}
+                  onFocus={(e) => {
+                    const cell = (e.target as HTMLElement).closest('td') as HTMLElement | null
+                    const l = cell?.dataset?.col
+                    if (l) setActive({ l, r: idx })
+                  }}
+                >
+                  <td className="cell-row">{idx + 1}</td>
+                  <td className="cell-check" data-col="A">
                     <button
                       className={`mg-sheet-check ${task.done ? 'on' : ''}`}
                       onClick={() => toggleTask(task.id)}
@@ -124,7 +139,7 @@ export function SheetView() {
                     </button>
                   </td>
 
-                  <td className="cell-title">
+                  <td className="cell-title" data-col="B">
                     <input
                       className="cell-input"
                       value={task.title}
@@ -132,7 +147,7 @@ export function SheetView() {
                     />
                   </td>
 
-                  <td className="cell-priority" style={{ borderLeft: `3px solid ${PRIORITY_META[task.priority].color}` }}>
+                  <td className="cell-priority" data-col="C" style={{ borderLeft: `3px solid ${PRIORITY_META[task.priority].color}` }}>
                     <select
                       className="cell-input"
                       value={task.priority}
@@ -146,7 +161,7 @@ export function SheetView() {
                     </select>
                   </td>
 
-                  <td className="cell-area">
+                  <td className="cell-area" data-col="D">
                     <select
                       className="cell-input"
                       value={task.area}
@@ -160,7 +175,7 @@ export function SheetView() {
                     </select>
                   </td>
 
-                  <td className="cell-subject">
+                  <td className="cell-subject" data-col="E">
                     <input
                       className="cell-input"
                       value={task.subject}
@@ -169,7 +184,7 @@ export function SheetView() {
                     />
                   </td>
 
-                  <td className="cell-due">
+                  <td className="cell-due" data-col="F">
                     <input
                       type="date"
                       className="cell-input"
@@ -178,7 +193,7 @@ export function SheetView() {
                     />
                   </td>
 
-                  <td className="cell-est">
+                  <td className="cell-est" data-col="G">
                     <input
                       type="number"
                       min={0}
@@ -191,7 +206,7 @@ export function SheetView() {
                     />
                   </td>
 
-                  <td className="cell-recur">
+                  <td className="cell-recur" data-col="H">
                     <select
                       className="cell-input"
                       value={task.recurring}
@@ -205,7 +220,7 @@ export function SheetView() {
                     </select>
                   </td>
 
-                  <td className="cell-notes">
+                  <td className="cell-notes" data-col="I">
                     <input
                       className="cell-input"
                       value={task.notes}

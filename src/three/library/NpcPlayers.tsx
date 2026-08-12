@@ -15,8 +15,6 @@ import { useWorld } from '../../store/world'
 import { getRemoteOccupied } from '../../multiplayer/net'
 import { useNpcProfile } from '../../store/npcProfile'
 import { useSettings } from '../../store/settings'
-import { useScenePreset } from '../../store/quality'
-import { ImpostorBakeStage, ImpostorSprite, useImpostorTextures } from './ImpostorSprites'
 import {
   npcOnlineInRoom,
   assignNpcSeats,
@@ -45,18 +43,6 @@ const TAG_OFF = 16
 const LOD_FAR  = 10
 const LOD_CULL = 18
 
-// Impostor sprite swap thresholds (metres, hysteresis) — same as RemotePlayers.
-// Past SWAP_OUT the full ~110-mesh rig is replaced by a single baked billboard
-// (1 draw call); the rig only returns once the NPC re-enters SWAP_IN. NPCs are
-// static at their desks, so this is the #1 FPS win in a crowded room: with 30
-// NPCs it cuts ~3,300 draws to a few hundred.
-const SWAP_OUT = 13
-const SWAP_IN  = 9
-
-// Visibility cap: only the nearest MAX_VISIBLE NPCs render their rig at all;
-// everyone else renders as a sprite (1 draw call) or nothing past the cull
-// distance. Re-ranked every RANK_INTERVAL seconds.
-const MAX_VISIBLE   = 8
 const SHADOW_LIMIT  = 2   // only the nearest N NPCs cast/receive shadows
 const RANK_INTERVAL = 0.5
 
@@ -128,37 +114,16 @@ function NpcTag({ npc, onInfoClick }: { npc: NpcProfile; onInfoClick: () => void
   )
 }
 
-function NpcAvatar({ npc, seat, visible, castShadow }: { npc: NpcProfile; seat: Seat; visible: boolean; castShadow: boolean }) {
+function NpcAvatar({ npc, seat, castShadow }: { npc: NpcProfile; seat: Seat; castShadow: boolean }) {
   const group = useRef<Group>(null)
-  const bodyGroup = useRef<Group>(null)
   const loco = useRef<Locomotion>({ speed: 0, grounded: true, vy: 0, turnRate: 0, seated: true })
   const lodRef = useRef<Lod>('near')
   const shadowsOn = useRef(true)
   const showProfile = useNpcProfile((s) => s.show)
   const showNameTags = useSettings((s) => s.showNameTags)
   const distantTags = useSettings((s) => s.distantTags)
-  const impostorSprites = useSettings((s) => s.impostorSprites)
-  // Stronger sprite LOD (Settings → Graphics → Distant player LOD) scales the
-  // swap distances down so far NPCs become cheap billboards sooner.
-  const impostorSwap = useScenePreset().impostorSwap
-  const swapOut = SWAP_OUT * impostorSwap
-  const swapIn = SWAP_IN * impostorSwap
 
   const config: AvatarConfig = useMemo(() => configFor(npc), [npc])
-  // Baked billboards of this NPC's exact look in the SITTING pose (shared across
-  // NPCs with the same appearance): left/center/right/back view variants so the
-  // sprite always shows the NPC facing its desk from any camera angle. Null
-  // until the offscreen bake completes — until then the 3D body stays, so
-  // nothing ever pops.
-  const impostors = useImpostorTextures(config, 'sit')
-  const impostor = impostors.center ?? impostors.left ?? impostors.right ?? impostors.back
-  // Impostor mode with hysteresis — enter past SWAP_OUT (or outside the
-  // visibility cap), leave only once the NPC re-enters SWAP_IN.
-  const spriteOn = useRef(false)
-  // The rig stays mounted only while it should render; once swapped to a sprite
-  // it is unmounted (after the fade) so far NPCs cost one quad, not ~110 meshes.
-  const [bodyMounted, setBodyMounted] = useState(true)
-  const unmountTimer = useRef<number | null>(null)
 
   // Distance-gated tag hysteresis (only meaningful when distant tags are off).
   const [tagShown, setTagShown] = useState(showNameTags)
@@ -182,45 +147,17 @@ function NpcAvatar({ npc, seat, visible, castShadow }: { npc: NpcProfile; seat: 
 
     const dist = camera.position.distanceTo(g.position)
 
-    // ---- Impostor swap (hysteresis) --------------------------------------
-    // If sprites are disabled the body must always render, so force the swap
-    // off. NPCs outside the visibility cap become sprites too (a billboard
-    // costs ~1 draw call, so there is no reason to fully hide them).
-    if (!impostorSprites) spriteOn.current = false
-    if (spriteOn.current) {
-      if (dist < swapIn) spriteOn.current = false
-    } else if (impostorSprites && impostor && (dist > swapOut || !visible)) {
-      spriteOn.current = true
-    }
-
-    const bodyOn = visible && !spriteOn.current
-    const body = bodyGroup.current
-    if (body && body.visible !== bodyOn) body.visible = bodyOn
-
-    // Cross-fade-friendly body unmount: mount the instant it should show (it
-    // appears under the still-fading sprite, no pop), unmount only after the
-    // sprite has finished fading in.
-    if (bodyOn) {
-      if (unmountTimer.current != null) {
-        clearTimeout(unmountTimer.current)
-        unmountTimer.current = null
-      }
-      if (!bodyMounted) setBodyMounted(true)
-    } else if (bodyMounted && unmountTimer.current == null) {
-      unmountTimer.current = window.setTimeout(() => {
-        setBodyMounted(false)
-        unmountTimer.current = null
-      }, 250)
-    }
-
     // ---- Distance LOD (body rig only) -------------------------------------
-    lodRef.current = bodyOn ? (dist < LOD_FAR ? 'near' : dist < LOD_CULL ? 'far' : 'cull') : 'cull'
+    // The body ALWAYS renders as its full 3D rig — characters are never swapped
+    // to billboards or hidden, no matter the LOD setting. Distance only steps
+    // the ANIMATION update rate and shadows; what you see is always the real body.
+    lodRef.current = dist < LOD_FAR ? 'near' : dist < LOD_CULL ? 'far' : 'cull'
 
     // ---- Shadow LOD ---------------------------------------------------------
     // Shadows are the dominant shadow-pass cost, so only the nearest
     // SHADOW_LIMIT NPCs (AND near bodies) cast/receive. Toggle the whole body
     // in one traversal, only when the desired state actually flips.
-    const wantShadow = bodyOn && castShadow && lodRef.current === 'near'
+    const wantShadow = castShadow && lodRef.current === 'near'
     if (wantShadow !== shadowsOn.current) {
       shadowsOn.current = wantShadow
       g.traverse((o: Object3D) => {
@@ -268,10 +205,7 @@ function NpcAvatar({ npc, seat, visible, castShadow }: { npc: NpcProfile; seat: 
 
   return (
     <group ref={group}>
-      <group ref={bodyGroup}>
-        {bodyMounted && <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />}
-      </group>
-      {impostorSprites && <ImpostorSprite entries={impostors} onRef={spriteOn} facing={seat.yaw + Math.PI} />}
+      <CharacterAvatar config={config} locomotion={loco} lod={lodRef} />
       {tagShown && <NpcTag npc={npc} onInfoClick={handleInfoClick} />}
     </group>
   )
@@ -327,16 +261,12 @@ export function NpcPlayers({ roomId }: { roomId?: string }) {
     )
   }, [online, seats, userSeat, remoteTaken])
 
-  // Throttled ranking: NPCs are static, so their distance rank only changes
-  // when the CAMERA moves. Every RANK_INTERVAL we keep the nearest MAX_VISIBLE
-  // NPCs in full rig (everyone else is a 1-draw billboard) and mark only the
-  // nearest SHADOW_LIMIT as shadow casters — a 30-NPC room drops from ~3,300
-  // rig draws + a full shadow pass to a few hundred draws and 2 shadow rigs.
-  const [ranked, setRanked] = useState(() => {
-    const ids = online.map((n) => n.id)
-    return { visible: new Set(ids), shadow: new Set(ids.slice(0, SHADOW_LIMIT)) }
-  })
-  const rankedRef = useRef(ranked)
+  // Throttled shadow ranking: NPCs are static, so their distance rank only
+  // changes when the CAMERA moves. Every RANK_INTERVAL the nearest SHADOW_LIMIT
+  // NPCs are marked as shadow casters. Bodies ALWAYS render as full 3D rigs —
+  // no visibility cap, no billboard swap — but only 2 feed the shadow pass.
+  const [shadowIds, setShadowIds] = useState(() => new Set(online.map((n) => n.id).slice(0, SHADOW_LIMIT)))
+  const shadowRef = useRef(shadowIds)
   const acc = useRef(0)
   useFrame((_, dt) => {
     acc.current += dt
@@ -344,11 +274,11 @@ export function NpcPlayers({ roomId }: { roomId?: string }) {
     acc.current = 0
 
     const ids = online.map((n) => n.id)
-    if (ids.length <= MAX_VISIBLE) {
-      const next = { visible: new Set(ids), shadow: new Set(ids.slice(0, SHADOW_LIMIT)) }
-      if (!sameSet(next.visible, rankedRef.current.visible) || !sameSet(next.shadow, rankedRef.current.shadow)) {
-        rankedRef.current = next
-        setRanked(next)
+    if (ids.length <= SHADOW_LIMIT) {
+      const next = new Set(ids)
+      if (!sameSet(next, shadowRef.current)) {
+        shadowRef.current = next
+        setShadowIds(next)
       }
       return
     }
@@ -360,11 +290,10 @@ export function NpcPlayers({ roomId }: { roomId?: string }) {
       return [id, d] as const
     })
     scored.sort((a, b) => a[1] - b[1])
-    const visibleIds = scored.slice(0, MAX_VISIBLE).map(([id]) => id)
-    const next = { visible: new Set(visibleIds), shadow: new Set(visibleIds.slice(0, SHADOW_LIMIT)) }
-    if (!sameSet(next.visible, rankedRef.current.visible) || !sameSet(next.shadow, rankedRef.current.shadow)) {
-      rankedRef.current = next
-      setRanked(next)
+    const next = new Set(scored.slice(0, SHADOW_LIMIT).map(([id]) => id))
+    if (!sameSet(next, shadowRef.current)) {
+      shadowRef.current = next
+      setShadowIds(next)
     }
   })
 
@@ -372,10 +301,6 @@ export function NpcPlayers({ roomId }: { roomId?: string }) {
 
   return (
     <>
-      {/* NPC bakes must exist even in an empty multiplayer room — this stage
-          renders whatever looks are queued (shared module-level queue with the
-          remote players' stage, so nothing bakes twice). */}
-      <ImpostorBakeStage />
       {online.map((npc) => {
         const seat = assignments.get(npc.idx)
         if (!seat) return null
@@ -384,8 +309,7 @@ export function NpcPlayers({ roomId }: { roomId?: string }) {
             key={npc.id}
             npc={npc}
             seat={seat}
-            visible={ranked.visible.has(npc.id)}
-            castShadow={ranked.shadow.has(npc.id)}
+            castShadow={shadowIds.has(npc.id)}
           />
         )
       })}

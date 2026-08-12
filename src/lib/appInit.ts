@@ -152,6 +152,7 @@ function bindFocusLogging(): void {
         rankXp: rankBase,
         hasSubject: !!subject,
         ratePerMin: opts?.ratePerMin,
+        tabAlwaysVisible: opts?.tabVisible,
       })
       if (result.leaves > 0) {
         // Single write-through: updates profile, syncs the DB, mirrors Magnet.

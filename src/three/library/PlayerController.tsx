@@ -519,8 +519,10 @@ export function PlayerController() {
         if (!st.seatedInit) {
           st.seatedInit = true
           // Default: face the avatar (see your own character) at a comfy distance.
+          // Slightly negative pitch (camera below eye level looking up) so the
+          // wooden floor edge drops out of the bottom of the frame entirely.
           st.yaw = seat.yaw
-          st.pitch = 0.15
+          st.pitch = -0.16
           st.zoom = THIRD_DIST
           st.camDist = THIRD_DIST
           st.preset = 0

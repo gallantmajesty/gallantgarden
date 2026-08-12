@@ -138,7 +138,7 @@ let currentChannel: string | null = null
 let selfId: string | null = null
 let selfIdentity: PlayerIdentity | null = null
 let localSubject = ''
-let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, timerPhase: '', subject: '' }
+let localState: PlayerState = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, seated: false, cinematic: false, timerStartedAt: 0, timerDurationMs: 0, timerPhase: '', timerCelebrateAt: 0, subject: '' }
 let supabaseChannel: RealtimeChannel | null = null
 let moveTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -206,6 +206,7 @@ function handleHello(payload: { payload: Record<string, unknown> }) {
       timerStartedAt: Number(st.timerStartedAt) || 0,
       timerDurationMs: Number(st.timerDurationMs) || 0,
       timerPhase: parseTimerPhase(st.timerPhase),
+      timerCelebrateAt: Number(st.timerCelebrateAt) || 0,
       subject: (st.subject as string) || '',
       cinematic: st.cinematic === true,
     })
@@ -230,6 +231,7 @@ function handleMove(payload: { payload: Record<string, unknown> }) {
     timerStartedAt: Number(body.timerStartedAt) || 0,
     timerDurationMs: Number(body.timerDurationMs) || 0,
     timerPhase: parseTimerPhase(body.timerPhase),
+    timerCelebrateAt: Number(body.timerCelebrateAt) || 0,
     subject: (body.subject as string) || '',
     cinematic: body.cinematic === true,
   })
@@ -333,6 +335,7 @@ function moved(a: PlayerState, b: PlayerState): boolean {
     a.timerStartedAt !== b.timerStartedAt ||
     a.timerDurationMs !== b.timerDurationMs ||
     a.timerPhase !== b.timerPhase ||
+    a.timerCelebrateAt !== b.timerCelebrateAt ||
     a.subject !== b.subject ||
     a.cinematic !== b.cinematic
   )
@@ -380,6 +383,7 @@ export function getRemotePlayers(): RemotePlayer[] {
       timerStartedAt: st?.timerStartedAt ?? 0,
       timerDurationMs: st?.timerDurationMs ?? 0,
       timerPhase: st?.timerPhase ?? '',
+      timerCelebrateAt: st?.timerCelebrateAt ?? 0,
       subject: st?.subject ?? '',
     })
   }
@@ -436,6 +440,12 @@ export function setLocalSeatId(seatId: number | undefined): void {
  *  `phase` tells remote players whether the session is focus time or a pomodoro break. */
 export function setLocalTimer(startedAt: number, durationMs: number, phase: 'focus' | 'break' | '' = 'focus'): void {
   localState = { ...localState, timerStartedAt: startedAt, timerDurationMs: durationMs, timerPhase: phase }
+}
+
+/** Broadcast that the local player just completed a study session, so remote
+ *  players render a short celebration burst over their head. */
+export function setLocalCelebrate(at: number): void {
+  localState = { ...localState, timerCelebrateAt: at }
 }
 
 /** Set the local player's current study subject (broadcast to other players). */

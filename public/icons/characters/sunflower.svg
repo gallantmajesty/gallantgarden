@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <defs>
+    <linearGradient id="sfYellow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd94d"/>
+      <stop offset="100%" stop-color="#f0b53c"/>
+    </linearGradient>
+    <linearGradient id="sfGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6ab63f"/>
+      <stop offset="100%" stop-color="#4c9a2f"/>
+    </linearGradient>
+    <linearGradient id="sfBrown" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#9a7440"/>
+      <stop offset="100%" stop-color="#7a5a30"/>
+    </linearGradient>
+  </defs>
+
+  <!-- PETAL DRESS -->
+  <path d="M48 152 Q42 200 60 238 L140 238 Q158 200 152 152 Z" fill="url(#sfYellow)"/>
+  <path d="M48 152 Q42 200 60 238 L140 238 Q158 200 152 152 Z" fill="none" stroke="#e8b800" stroke-width="2"/>
+  <!-- dress hem petals -->
+  <path d="M60 238 Q52 244 60 250 L140 250 Q148 244 140 238" fill="#e8b800"/>
+  <path d="M60 238 Q70 248 82 250" stroke="#d9a800" stroke-width="2" fill="none"/>
+  <path d="M118 238 Q130 248 140 238" stroke="#d9a800" stroke-width="2" fill="none"/>
+  <!-- green leaf belt -->
+  <ellipse cx="100" cy="150" rx="56" ry="8" fill="url(#sfGreen)"/>
+
+  <!-- LEAFY ARMS -->
+  <path d="M52 160 Q28 168 20 190" stroke="url(#sfGreen)" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M148 160 Q172 168 180 190" stroke="url(#sfGreen)" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <!-- leaf hands -->
+  <path d="M20 190 Q14 198 20 206 Q28 210 30 200" fill="url(#sfGreen)"/>
+  <path d="M180 190 Q186 198 180 206 Q172 210 170 200" fill="url(#sfGreen)"/>
+
+  <!-- LEGS -->
+  <rect x="72" y="236" width="18" height="12" rx="6" fill="#8c6c30"/>
+  <rect x="110" y="236" width="18" height="12" rx="6" fill="#8c6c30"/>
+  <!-- root feet -->
+  <ellipse cx="81" cy="250" rx="15" ry="6" fill="#7a5a30"/>
+  <ellipse cx="119" cy="250" rx="15" ry="6" fill="#7a5a30"/>
+
+  <!-- BLOOM HEAD -->
+  <!-- outer petals ring -->
+  <g fill="url(#sfYellow)" stroke="#e8b800" stroke-width="1.5">
+    <ellipse cx="100" cy="28" rx="14" ry="26"/>
+    <ellipse cx="100" cy="116" rx="14" ry="26"/>
+    <ellipse cx="28" cy="72" rx="26" ry="14"/>
+    <ellipse cx="172" cy="72" rx="26" ry="14"/>
+    <ellipse cx="48" cy="38" rx="22" ry="16" transform="rotate(-45 48 38)"/>
+    <ellipse cx="152" cy="38" rx="22" ry="16" transform="rotate(45 152 38)"/>
+    <ellipse cx="48" cy="106" rx="22" ry="16" transform="rotate(45 48 106)"/>
+    <ellipse cx="152" cy="106" rx="22" ry="16" transform="rotate(-45 152 106)"/>
+  </g>
+  <!-- inner petals -->
+  <g fill="#ffd94d">
+    <ellipse cx="100" cy="34" rx="10" ry="20"/>
+    <ellipse cx="100" cy="110" rx="10" ry="20"/>
+    <ellipse cx="34" cy="72" rx="20" ry="10"/>
+    <ellipse cx="166" cy="72" rx="20" ry="10"/>
+  </g>
+  <!-- seed center -->
+  <circle cx="100" cy="72" r="38" fill="url(#sfBrown)"/>
+  <circle cx="100" cy="72" r="34" fill="#8c6c30"/>
+  <!-- seed dots -->
+  <g fill="#603813">
+    <circle cx="88" cy="60" r="3"/><circle cx="100" cy="56" r="3"/><circle cx="112" cy="60" r="3"/>
+    <circle cx="82" cy="72" r="3"/><circle cx="118" cy="72" r="3"/>
+    <circle cx="88" cy="84" r="3"/><circle cx="100" cy="88" r="3"/><circle cx="112" cy="84" r="3"/>
+  </g>
+  <!-- happy face -->
+  <circle cx="90" cy="68" r="4" fill="#2b1a08"/>
+  <circle cx="110" cy="68" r="4" fill="#2b1a08"/>
+  <circle cx="91" cy="66.5" r="1.4" fill="white"/>
+  <circle cx="111" cy="66.5" r="1.4" fill="white"/>
+  <path d="M90 84 Q100 94 110 84" stroke="#2b1a08" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="80" cy="78" r="5" fill="#e8a080" opacity="0.5"/>
+  <circle cx="120" cy="78" r="5" fill="#e8a080" opacity="0.5"/>
+</svg>

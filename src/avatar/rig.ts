@@ -140,26 +140,27 @@ const CHARACTER_PROPORTIONS: Record<string, Partial<Proportions>> = {
   // robot — broad shoulders, narrow waist, compact head, mechanical limbs
   robot: { headR: 0.15, shoulderW: 0.195, hipW: 0.08, chestW: 0.155, waistW: 0.105, hipBoneW: 0.11, torsoD: 0.105, shoulderR: 0.06, thighR: 0.06, kneeR: 0.045, ankleR: 0.034, wristR: 0.03, handLen: 0.1, footLen: 0.19 },
 
-  // alien — lanky: big head, narrow shoulders, slim wiry limbs
-  alien: { headR: 0.18, shoulderW: 0.16, hipW: 0.075, chestW: 0.13, waistW: 0.1, hipBoneW: 0.1, torsoD: 0.09, shoulderR: 0.048, elbowR: 0.036, wristR: 0.028, thighR: 0.058, kneeR: 0.042, ankleR: 0.032, handLen: 0.11, footLen: 0.16 },
+  // alien — friendly green ET: big head, a slim-but-healthy frame (not lanky),
+  // dark jumpsuit + green skin
+  alien: { headR: 0.18, shoulderW: 0.17, hipW: 0.082, chestW: 0.138, waistW: 0.112, hipBoneW: 0.115, torsoD: 0.098, shoulderR: 0.052, elbowR: 0.038, wristR: 0.029, thighR: 0.062, kneeR: 0.045, ankleR: 0.034, handLen: 0.11, footLen: 0.16 },
 
-  // pig — roundest of all: biggest head, widest waist/hips, stubby fat limbs
-  pig: { headR: 0.19, shoulderW: 0.185, hipW: 0.11, chestW: 0.16, waistW: 0.145, hipBoneW: 0.155, torsoD: 0.125, shoulderR: 0.062, thighR: 0.078, kneeR: 0.055, ankleR: 0.044, handLen: 0.09, footLen: 0.19 },
+  // pig — plump pink piglet: big head, a nice round belly (cute, not obese)
+  pig: { headR: 0.19, shoulderW: 0.18, hipW: 0.108, chestW: 0.152, waistW: 0.135, hipBoneW: 0.148, torsoD: 0.118, shoulderR: 0.06, thighR: 0.072, kneeR: 0.052, ankleR: 0.042, handLen: 0.09, footLen: 0.19 },
 
   // angel — graceful slim figure, smaller head, delicate limbs
   angel: { headR: 0.155, shoulderW: 0.135, hipW: 0.1, chestW: 0.115, waistW: 0.088, hipBoneW: 0.125, torsoD: 0.088, shoulderR: 0.04, elbowR: 0.032, wristR: 0.026, thighR: 0.055, kneeR: 0.04, ankleR: 0.031, handLen: 0.09, footLen: 0.15, bust: 0.05 },
 
-  // sunflower — plump happy bloom: round torso, wide hips, thick stems
-  sunflower: { headR: 0.17, shoulderW: 0.15, hipW: 0.115, chestW: 0.135, waistW: 0.11, hipBoneW: 0.15, torsoD: 0.11, shoulderR: 0.05, thighR: 0.068, kneeR: 0.048, ankleR: 0.036, handLen: 0.09, footLen: 0.17, bust: 0.04 },
+  // sunflower — bright happy bloom: soft rounded torso under the petal dress
+  sunflower: { headR: 0.17, shoulderW: 0.15, hipW: 0.112, chestW: 0.13, waistW: 0.105, hipBoneW: 0.145, torsoD: 0.105, shoulderR: 0.05, thighR: 0.064, kneeR: 0.046, ankleR: 0.035, handLen: 0.09, footLen: 0.17, bust: 0.04 },
 
   // elephant — heaviest build: huge head, barrel torso, thick columns
   elephant: { headR: 0.19, shoulderW: 0.19, hipW: 0.1, chestW: 0.16, waistW: 0.135, hipBoneW: 0.15, torsoD: 0.12, shoulderR: 0.065, thighR: 0.07, kneeR: 0.052, ankleR: 0.044, handLen: 0.1, footLen: 0.2 },
 
-  // monkey — lean and agile: narrow hips, slim limbs, long hands
-  monkey: { headR: 0.17, shoulderW: 0.15, hipW: 0.07, chestW: 0.125, waistW: 0.095, hipBoneW: 0.1, torsoD: 0.088, shoulderR: 0.048, thighR: 0.055, kneeR: 0.04, ankleR: 0.03, handLen: 0.12, footLen: 0.15 },
+  // monkey — agile but healthy: slim chest, firm waist, lively limbs
+  monkey: { headR: 0.17, shoulderW: 0.16, hipW: 0.085, chestW: 0.135, waistW: 0.105, hipBoneW: 0.115, torsoD: 0.095, shoulderR: 0.052, thighR: 0.062, kneeR: 0.045, ankleR: 0.035, handLen: 0.12, footLen: 0.15 },
 
-  // panda — plump chibi: biggest rounded hips, wide waist, big head
-  panda: { headR: 0.19, shoulderW: 0.18, hipW: 0.115, chestW: 0.155, waistW: 0.135, hipBoneW: 0.16, torsoD: 0.115, shoulderR: 0.06, thighR: 0.07, kneeR: 0.05, ankleR: 0.04, handLen: 0.09, footLen: 0.18 },
+  // panda — cuddly chibi: rounded but not overblown, big head
+  panda: { headR: 0.19, shoulderW: 0.175, hipW: 0.112, chestW: 0.148, waistW: 0.128, hipBoneW: 0.155, torsoD: 0.11, shoulderR: 0.058, thighR: 0.066, kneeR: 0.047, ankleR: 0.038, handLen: 0.09, footLen: 0.18 },
 
   // grim — slender ominous reaper: narrow build, thin limbs
   grim: { headR: 0.17, shoulderW: 0.165, hipW: 0.078, chestW: 0.13, waistW: 0.1, hipBoneW: 0.105, torsoD: 0.09, shoulderR: 0.05, thighR: 0.06, kneeR: 0.043, ankleR: 0.033, handLen: 0.095, footLen: 0.16 },
@@ -215,26 +216,26 @@ const CHARACTER_TORSO: Record<string, readonly number[]> = {
   // robot — inverted triangle: narrow hips, broad chest
   robot: [0.9, 0.92, 1.0, 1.06, 1.1, 1.12, 1.08, 1.0],
 
-  // alien — lanky wire frame
-  alien: [0.9, 0.9, 0.9, 0.92, 0.95, 0.98, 0.95, 1.0],
+  // alien — soft taper, healthy frame
+  alien: [0.95, 0.95, 0.95, 0.98, 1.02, 1.05, 1.0, 1.0],
 
-  // pig — roundest barrel of them all
-  pig: [1.1, 1.12, 1.12, 1.15, 1.18, 1.15, 1.08, 1.0],
+  // pig — round belly, still a proper pig not a balloon
+  pig: [1.05, 1.07, 1.06, 1.1, 1.12, 1.1, 1.05, 1.0],
 
   // angel — slim graceful column
   angel: [0.95, 0.96, 0.9, 0.95, 1.0, 1.02, 0.95, 0.95],
 
-  // sunflower — bell bloom: wide base, full chest
-  sunflower: [1.05, 1.06, 1.02, 1.05, 1.1, 1.1, 1.05, 1.0],
+  // sunflower — soft bloom: gentle flare under the dress
+  sunflower: [1.02, 1.03, 1.0, 1.03, 1.07, 1.08, 1.03, 1.0],
 
   // elephant — heavy barrel (base rings)
   elephant: [1.0, 1.02, 1.05, 1.1, 1.12, 1.1, 1.05, 1.0],
 
-  // monkey — slim agile trunk
-  monkey: [0.9, 0.92, 0.92, 0.95, 0.98, 1.0, 0.95, 0.98],
+  // monkey — agile with a healthy chest
+  monkey: [0.95, 0.96, 0.96, 0.98, 1.0, 1.03, 1.0, 1.0],
 
-  // panda — chubby rounded loaf
-  panda: [1.06, 1.06, 1.04, 1.05, 1.08, 1.1, 1.04, 1.0],
+  // panda — rounded and huggable, not top-heavy
+  panda: [1.02, 1.03, 1.01, 1.03, 1.06, 1.08, 1.02, 1.0],
 
   // grim — narrow reaper taper
   grim: [0.92, 0.94, 0.95, 0.98, 1.02, 1.04, 1.02, 1.0],

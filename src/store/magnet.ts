@@ -19,6 +19,8 @@ import {
   awardDailyTaskCompletion,
   awardBlueprint,
   awardWeeklyWarrior,
+  awardTaskStreak,
+  awardHabitStreak,
   checkInactivityPenalty,
   recordActivity,
 } from '../lib/xpEngine'
@@ -38,6 +40,20 @@ function nowIso(): string {
 function todayKey(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function todayKeyFor(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+/** Consecutive check-in days for a habit (freeze days keep the streak alive). */
+function habitStreakDays(habit: Habit, now: Date): number {
+  const covered = new Set([...habit.history, ...habit.freezeDays])
+  let streak = 0
+  let cursor = covered.has(todayKeyFor(now)) ? now : new Date(now.getTime() - 86400000)
+  while (covered.has(todayKeyFor(cursor))) {
+    streak += 1
+    cursor = new Date(cursor.getTime() - 86400000)
+  }
+  return streak
 }
 
 function maxOrder(tasks: Task[]): number {
@@ -484,25 +500,54 @@ export const useMagnet = create<MagnetState>((set, get) => {
           tasks = [next, ...tasks]
         }
 
-        // Daily task completion bonus: check if all due-today tasks are now done
+        // Daily task completion bonus: fires when every open task is done —
+        // tasks due today AND undated open work. (The old check only counted
+        // tasks due today, so a completed undated task dropped out of the set
+        // and the bonus never fired — see `n` above. Now any clean slate pays.)
+        // Anti-spam: engine pays at most once per day, ever.
         if (nowDone) {
           const today = todayKey()
-          const dueToday = tasks.filter((t) => t.due === today || (!t.due && !t.done))
-          const allDailyDone = dueToday.length > 0 && dueToday.every((t) => t.done)
+          const openWork = tasks.filter((t) => !t.done && (t.due === today || !t.due))
+          const allDailyDone = tasks.length > 0 && openWork.length === 0
           if (allDailyDone) {
             const p = useProfile.getState()
             const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
             const currentRank = rankForTotalXp(rankBase)
             const result = awardDailyTaskCompletion(p.xp, p.premiumXp, currentRank.id, rankBase)
             if (result.leaves > 0) {
-              const balance = p.applyXp({ leaves: result.leaves })
+              const balance = p.applyXp({ leaves: result.leaves, rankXp: result.leaves })
               const updated = { ...d, tasks, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
+              set({ toast: { title: 'Day cleared', body: `+${result.leaves} leaves`, icon: 'leaf' } })
+              return updated
+            }
+          }
+
+          // Task streak: count consecutive days with >=1 completed task (ends
+          // today or yesterday). Awarded ONLY at the exact 7 / 30 milestone day,
+          // once per streak run (engine keys the payout to the anchor day).
+          const days = new Set<string>()
+          for (const t of tasks) if (t.done && t.completedAt) days.add(todayKeyFor(new Date(t.completedAt)))
+          let streak = 0
+          let cursor = days.has(today) ? new Date() : new Date(Date.now() - 86400000)
+          while (days.has(todayKeyFor(cursor))) {
+            streak += 1
+            cursor = new Date(cursor.getTime() - 86400000)
+          }
+          if (streak === 7 || streak === 30) {
+            const p = useProfile.getState()
+            const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
+            const currentRank = rankForTotalXp(rankBase)
+            const result = awardTaskStreak(p.xp, p.premiumXp, currentRank.id, streak, rankBase)
+            if (result.leaves > 0) {
+              const balance = p.applyXp({ leaves: result.leaves, rankXp: result.leaves })
+              const updated = { ...d, tasks, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
+              set({ toast: { title: `${streak}-day streak!`, body: `+${result.leaves} leaves`, icon: 'fire' } })
               return updated
             }
           }
         }
 
-        // Tasks give no leaves — only study time earns currency.
+        // Tasks give no leaves — only study time + milestone streaks earn currency.
         return { ...d, tasks }
       })
     },
@@ -722,7 +767,27 @@ export const useMagnet = create<MagnetState>((set, get) => {
         const has = habit.history.includes(key)
         const history = has ? habit.history.filter((x) => x !== key) : [...habit.history, key]
         const habits = d.habits.map((h) => (h.id === id ? { ...h, history } : h))
-        // Habits give no leaves — only study time earns currency.
+
+        // Habit streak: award ONLY on a fresh check-in that lands the habit on
+        // the exact 7 / 30 milestone day, once per streak run. Un-checking and
+        // re-checking the same day can never re-award (engine keys by day).
+        if (!has) {
+          const streak = habitStreakDays(habits.find((h) => h.id === id)!, new Date())
+          if (streak === 7 || streak === 30) {
+            const p = useProfile.getState()
+            const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
+            const currentRank = rankForTotalXp(rankBase)
+            const result = awardHabitStreak(p.xp, p.premiumXp, currentRank.id, id, streak, rankBase)
+            if (result.leaves > 0) {
+              const balance = p.applyXp({ leaves: result.leaves, rankXp: result.leaves })
+              const updated = { ...d, habits, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
+              set({ toast: { title: `${streak}-day habit streak!`, body: `+${result.leaves} leaves`, icon: 'fire' } })
+              return updated
+            }
+          }
+        }
+
+        // Habits give no leaves — only milestone streaks earn currency.
         return { ...d, habits }
       }),
 

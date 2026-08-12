@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import { WebCustomizationContent } from './WebCustomization'
-import { Toggle } from './controls'
+import { Toggle, Section } from './controls'
 import { useSettings } from '../../store/settings'
 import './LobbySettings.css'
 
 export function LobbySettings({ onClose }: { onClose: () => void }) {
   useTranslation()
   const waitForLobby = useSettings((s) => s.waitForLobbyReady)
+  const adaptiveResolution = useSettings((s) => s.adaptiveResolution)
   const setSetting = useSettings((s) => s.set)
 
   return (
@@ -27,6 +28,14 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
               onChange={(v) => setSetting('waitForLobbyReady', v)}
             />
           </div>
+
+          <Section title="Performance">
+            <Toggle
+              label="Adaptive Resolution (auto scale to hold FPS)"
+              value={adaptiveResolution}
+              onChange={(v) => setSetting('adaptiveResolution', v)}
+            />
+          </Section>
 
           <WebCustomizationContent showAppearance />
         </div>

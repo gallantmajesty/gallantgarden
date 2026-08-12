@@ -5,10 +5,10 @@
 // ad-free, no account) plus always-on internet radio stations. Everything is
 // streamed from the web in real time; nothing is bundled with the app.
 //
-//   * Radio   — public Icecast streams (SomaFM), no key required. Always live.
 //   * Tracks  — Jamendo search when `VITE_JAMENDO_CLIENT_ID` is set (get a free
 //               client id at developer.jamendo.com). Without a key the player
-//               falls back to a small built-in stream set so it still works.
+//               falls back to the built-in curated catalog (presets + local
+//               files) so it still works.
 //
 // The Jamendo key is optional; without it the app simply shows fewer results.
 
@@ -28,46 +28,6 @@ export interface LiveTrack {
   url: string
   kind: 'track' | 'radio'
 }
-
-export type MusicGenre =
-  | 'lofi'
-  | 'focus'
-  | 'piano'
-  | 'ambient'
-  | 'jazz'
-  | 'classical'
-  | 'chill'
-  | 'rain'
-
-export const GENRES: { id: MusicGenre; label: string }[] = [
-  { id: 'lofi', label: 'Lofi' },
-  { id: 'focus', label: 'Focus' },
-  { id: 'piano', label: 'Piano' },
-  { id: 'ambient', label: 'Ambient' },
-  { id: 'jazz', label: 'Jazz' },
-  { id: 'classical', label: 'Classical' },
-  { id: 'chill', label: 'Chill' },
-  { id: 'rain', label: 'Rain' },
-]
-
-// ---- Internet radio (always available, no key) ------------------------------
-
-const RADIO: Array<[string, string, string]> = [
-  ['Lofi Study Beats', 'Groove Salad · SomaFM', 'https://ice1.somafm.com/groovesalad-256-mp3'],
-  ['Chillout Lounge', 'Lush · SomaFM', 'https://ice1.somafm.com/lush-256-mp3'],
-  ['Deep Focus Drone', 'Drone Zone · SomaFM', 'https://ice1.somafm.com/dronezone-256-mp3'],
-  ['Downtempo', 'Beat Blender · SomaFM', 'https://ice1.somafm.com/beatblender-256-mp3'],
-  ['Electronic Space', 'Space Station · SomaFM', 'https://ice1.somafm.com/spacestation-256-mp3'],
-  ['Ambient Fluid', 'Fluid · SomaFM', 'https://ice1.somafm.com/fluid-256-mp3'],
-]
-
-export const RADIO_STATIONS: LiveTrack[] = RADIO.map(([title, artist, url], i) => ({
-  id: `radio-${i}`,
-  title,
-  artist,
-  url,
-  kind: 'radio',
-}))
 
 // ---- Built-in fallback streams (used only when no Jamendo key is set) -------
 
@@ -99,7 +59,11 @@ function fallbackTracks(): LiveTrack[] {
   return out
 }
 
-// ---- Jamendo API ------------------------------------------------------------
+/** The full built-in track catalog (curated presets + your local files), used
+ *  as the default TRACKS list so the player isn't empty until a search/genre. */
+export function defaultLiveTracks(): LiveTrack[] {
+  return fallbackTracks()
+}
 
 export function jamendoConfigured(): boolean {
   const key = import.meta.env.VITE_JAMENDO_CLIENT_ID as string | undefined
@@ -156,22 +120,6 @@ export async function searchLiveTracks(
     if (!kw) return true
     return t.title.toLowerCase().includes(kw) || t.artist.toLowerCase().includes(kw)
   })
-}
-
-/** Browse a genre of live tracks. */
-export async function genreLiveTracks(
-  genre: MusicGenre,
-  offset = 0,
-): Promise<LiveTrack[]> {
-  if (jamendoConfigured()) {
-    try {
-      return await fetchJamendo({ tags: genre, offset: String(offset), order: 'popularity_week' })
-    } catch {
-      /* fall through to the built-in set */
-    }
-  }
-  const kw = genre === 'rain' ? /rain|storm/i : new RegExp(genre, 'i')
-  return fallbackTracks().filter((t) => kw.test(t.title) || kw.test(t.artist))
 }
 
 // ---- Conversion helpers -----------------------------------------------------

@@ -9,10 +9,9 @@ import {
   type RangeKey,
 } from '../../../lib/magnet/insights'
 import { AREA_META, type LifeArea } from '../../../lib/magnet/types'
-import { SectionHead, Panel, MgModal, Field, MiniBars, EmptyState } from '../ui'
+import { SectionHead, Panel, MgModal, Field, EmptyState } from '../ui'
 import { Icon } from '../Icon'
 import {
-  Sparkline,
   Heatmap,
   buildHeatmap,
   AICard,
@@ -25,6 +24,7 @@ import {
   type HeatCell,
 } from '../premium'
 import '../premium.css'
+import { useNow } from '../useNow'
 
 const TONE_ICON: Record<string, string> = { good: 'star', watch: 'fire', tip: 'bulb' }
 
@@ -38,7 +38,9 @@ export function AnalyticsView() {
   const [focusMin, setFocusMin] = useState(25)
   const [focusSubject, setFocusSubject] = useState('')
 
-  const now = useMemo(() => new Date(), [])
+  // Live clock — refreshes every 30s so every window (today / streak / weekly)
+  // stays real-time and rolls over at midnight while the view is open.
+  const now = useNow()
   const days = RANGES.find((r) => r.key === range)?.days ?? 30
 
   const stats = useMemo(() => computeStats(data, now, days), [data, now, days])
@@ -51,20 +53,20 @@ export function AnalyticsView() {
   const score = useMemo(() => focusScore(data, now), [data, now])
   const burnout = useMemo(() => burnoutRisk(data, now), [data, now])
 
-  // condense the daily series for the bar charts (max ~14 columns)
+  // condense the daily series for the focus chart (max ~14 columns)
   const bars = useMemo(() => {
     const d = stats.daily
+    const tk = dayKeySafe(now.toISOString())
     const step = Math.ceil(d.length / 14) || 1
-    const out: { label: string; tasks: number; minutes: number }[] = []
+    const out: { label: string; minutes: number; today: boolean }[] = []
     for (let i = 0; i < d.length; i += step) {
       const slice = d.slice(i, i + step)
-      const tasks = slice.reduce((s, x) => s + x.tasks, 0)
       const minutes = slice.reduce((s, x) => s + x.minutes, 0)
       const day = slice[slice.length - 1].day.slice(5)
-      out.push({ label: day, tasks, minutes })
+      out.push({ label: day, minutes, today: slice.some((x) => x.day === tk) })
     }
     return out
-  }, [stats.daily])
+  }, [stats.daily, now])
 
   const totalDeep = Math.round((stats.deepWorkMinutes / 60) * 10) / 10
   const totalFocus = Math.round((stats.focusMinutes / 60) * 10) / 10
@@ -176,10 +178,7 @@ export function AnalyticsView() {
                 <h3><Icon name="clock" size={18} />{t('growth.focusTime')}</h3>
                 <span className="mg-muted" style={{ fontSize: 12 }}>{t('growth.perDay')}</span>
               </div>
-              <Sparkline data={stats.daily.map((d) => d.minutes)} height={120} />
-              <div style={{ marginTop: 14 }}>
-                <MiniBars data={bars.map((b) => ({ label: b.label, value: b.minutes }))} color="var(--mg-accent2)" height={96} />
-              </div>
+              <FocusChart bars={bars} />
             </Panel>
             <div className="mg-ai-stack">
               <div className="mg-why">
@@ -252,7 +251,7 @@ export function AnalyticsView() {
               <h3><Icon name="grid" size={18} />{t('growth.studyMap')}</h3>
               <span className="mg-muted" style={{ fontSize: 12 }}>18 weeks</span>
             </div>
-            <Heatmap cells={heat} />
+            <Heatmap cells={heat} today={dayKeySafe(now.toISOString())} />
             <div className="mg-heat-legend">
               <span>Less</span>
               {[0, 1, 2, 3, 4].map((l) => (
@@ -371,6 +370,28 @@ export function AnalyticsView() {
 }
 
 // inlined streak (mirrors insights.computeStreak) to avoid an extra import path
+// One clean daily-focus chart: bars with rounded caps, hairline grid, hover
+// value tooltip, and the live "today" bar picked out in the primary accent.
+function FocusChart({ bars }: { bars: { label: string; minutes: number; today: boolean }[] }) {
+  const max = Math.max(1, ...bars.map((b) => b.minutes))
+  return (
+    <div className="mg-fchart">
+      <div className="mg-fchart-grid">
+        {bars.map((b, i) => (
+          <div key={i} className={`mg-fcol${b.today ? ' today' : ''}`} title={`${b.label}: ${b.minutes}m`}>
+            <div className="mg-fbar-track">
+              <div className="mg-fbar-fill" style={{ height: `${(b.minutes / max) * 100}%` }}>
+                {b.minutes > 0 && <span className="mg-fbar-val">{b.minutes}</span>}
+              </div>
+            </div>
+            <span className="mg-fbar-label">{b.today ? 'Today' : b.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function computeStreakSafe(data: Parameters<typeof computeStats>[0], now: Date): number {
   const active = new Set<string>()
   for (const t of data.tasks) if (t.done && t.completedAt) active.add(dayKeySafe(t.completedAt))

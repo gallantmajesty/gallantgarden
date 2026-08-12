@@ -303,7 +303,7 @@ export function AvatarRig({
     pandaCheek.roughness = 0.6
   }
   const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elNavy : isMonkey ? monkeyFur : isPanda ? pandaWhite : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienSkin : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : isPanda ? pandaBlack : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : isPanda ? pandaBlack : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
   const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : isMonkey ? monkeyDark : isPanda ? pandaBlack : sharedMaterial(config.shoeColor ?? shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
   const nailM = sharedMaterial(config.nailColor ?? '#e8b4b8', 0.42, 0.12)
@@ -399,17 +399,16 @@ export function AvatarRig({
               { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.2, hd: P.torsoD * 0.55 },
             ])} material={topM} castShadow />
           ) : isPanda ? (
-            /* Panda: round plump torso so the body reads as a soft fur coat —
-               extra wide hips/waist/chest for a chunky toy-like silhouette */
+            /* Panda: round plump torso — soft fur coat silhouette, balanced */
             <mesh geometry={torsoGeo([
-              { y: -0.07, hw: P.hipBoneW * 1.24, hd: P.torsoD * 1.0 },
-              { y: -0.02, hw: P.hipBoneW * 1.16, hd: P.torsoD * 0.96 },
-              { y: P.spineLen * 0.5, hw: P.waistW * 1.18, hd: P.torsoD * 1.0 },
-              { y: P.spineLen, hw: P.chestW * 1.18, hd: P.torsoD * 1.06 },
-              { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW * 1.26, hd: P.torsoD * 1.24 },
-              { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.3, hd: P.torsoD * 1.18 },
-              { y: P.spineLen + P.chestLen, hw: P.shoulderW * 1.04, hd: P.torsoD * 0.98 },
-              { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.4, hd: P.torsoD * 0.62 },
+              { y: -0.07, hw: P.hipBoneW * 1.2, hd: P.torsoD * 1.0 },
+              { y: -0.02, hw: P.hipBoneW * 1.14, hd: P.torsoD * 0.96 },
+              { y: P.spineLen * 0.5, hw: P.waistW * 1.12, hd: P.torsoD * 1.0 },
+              { y: P.spineLen, hw: P.chestW * 1.12, hd: P.torsoD * 1.06 },
+              { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW * 1.18, hd: P.torsoD * 1.18 },
+              { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.2, hd: P.torsoD * 1.12 },
+              { y: P.spineLen + P.chestLen, hw: P.shoulderW * 1.0, hd: P.torsoD * 0.98 },
+              { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.3, hd: P.torsoD * 0.62 },
             ])} material={topM} castShadow />
           ) : (
             /* Generic torso — built from THIS character's own silhouette
@@ -786,14 +785,15 @@ export function AvatarRig({
               })}
               <mesh geometry={sphereGeo(1)} material={sfBrown} scale={[P.waistW * 0.08, P.waistW * 0.08, P.torsoD * 0.02]} />
             </group>
-            {/* Flared A-line skirt — fitted at body hips, gentle flare to below knees */}
+            {/* Petal A-line dress — fitted at the waist, sweeping flare down to
+                the mid-thigh so it reads as a real dress over the yellow legs */}
             <mesh geometry={latheGeo([
-              [P.hipBoneW * 1.1, -P.upperLeg * 0.04],
-              [P.hipBoneW * 1.16, -P.upperLeg * 0.15],
-              [P.hipBoneW * 1.26, -P.upperLeg * 0.35],
-              [P.hipBoneW * 1.34, -P.upperLeg * 0.55],
-              [P.hipBoneW * 1.4, -P.upperLeg * 0.75],
-              [P.hipBoneW * 1.38, -P.upperLeg * 0.9],
+              [P.hipBoneW * 1.12, -P.upperLeg * 0.02],
+              [P.hipBoneW * 1.2, -P.upperLeg * 0.28],
+              [P.hipBoneW * 1.34, -P.upperLeg * 0.6],
+              [P.hipBoneW * 1.46, -P.upperLeg * 0.95],
+              [P.hipBoneW * 1.52, -P.upperLeg * 1.3],
+              [P.hipBoneW * 1.5, -P.upperLeg * 1.55],
             ])} material={sfSkirt} castShadow />
             {/* Brown seed necklace at the neckline */}
             <mesh geometry={torusGeo(P.chestW * 0.35, P.chestW * 0.035, 8, 20)} material={sfBrown}
@@ -808,13 +808,13 @@ export function AvatarRig({
                 position={[Math.sin(a) * P.hipBoneW * 1.16, -P.upperLeg * 0.06, Math.cos(a) * P.hipBoneW * 1.16]}
                 rotation={[0.35, 0, Math.cos(a) * 0.8]} />
             ))}
-            {/* vertical pleat shadows — fold lines down the mid-skirt */}
+            {/* vertical pleat shadows — fold lines running to the dress hem */}
             {Array.from({ length: 14 }, (_, i) => {
               const a = (i / 14) * Math.PI * 2 + 0.12
               return (
-                <mesh key={'pl' + i} geometry={taperGeo(P.hipBoneW * 0.016, P.hipBoneW * 0.008, P.hipBoneW * 0.34)} material={sfYellowDark}
+                <mesh key={'pl' + i} geometry={taperGeo(P.hipBoneW * 0.016, P.hipBoneW * 0.008, P.hipBoneW * 0.5)} material={sfYellowDark}
                   scale={[0.3, 1, 1]}
-                  position={[Math.sin(a) * P.hipBoneW * 1.33, -P.upperLeg * 0.42, Math.cos(a) * P.hipBoneW * 1.33]} />
+                  position={[Math.sin(a) * P.hipBoneW * 1.48, -P.upperLeg * 1.25, Math.cos(a) * P.hipBoneW * 1.48]} />
               )
             })}
             {/* thin gold band mid-skirt */}
@@ -1553,6 +1553,7 @@ function PigHead({ P, main, belly, nose, dark }: { P: Proportions; main: Mat; be
   const cy = r * 0.92
   const black = sharedMaterial('#3a2f33', 0.25, 0.2)
   const white = sharedMaterial('#ffffff', 0.3)
+  const rim = sharedMaterial('#c05080', 0.55)
 
   return (
     <group position={[0, cy, 0]}>
@@ -1570,20 +1571,29 @@ function PigHead({ P, main, belly, nose, dark }: { P: Proportions; main: Mat; be
         </group>
       ))}
 
-      {/* flat disc snout — the signature pig nose, pulled back to sit on the face surface */}
-      <mesh geometry={sphereGeo(1)} material={nose} scale={[r * 0.5, r * 0.38, r * 0.32]} position={[0, -r * 0.24, r * 0.82]} castShadow />
-      {/* nostrils — two oval slits on the snout face */}
-      <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.07, r * 0.11, r * 0.04]} position={[-r * 0.16, -r * 0.24, r * 1.02]} />
-      <mesh geometry={sphereGeo(1)} material={black} scale={[r * 0.07, r * 0.11, r * 0.04]} position={[r * 0.16, -r * 0.24, r * 1.02]} />
+      {/* Snout — the signature pig nose: a raised rounded pad with a deeper
+          rimmed edge, classic angled oval nostril slits and freckles. */}
+      <group position={[0, -r * 0.24, r * 0.8]}>
+        {/* pad — squashed oval dome that protrudes off the face */}
+        <mesh geometry={sphereGeo(1)} material={nose} scale={[r * 0.52, r * 0.4, r * 0.38]} castShadow />
+        {/* rim — deeper ring hugging the pad edge so it reads as a raised nose */}
+        <mesh geometry={torusGeo(r * 0.26, r * 0.05, 8, 24)} material={rim}
+          scale={[2.0, 1.0, 1.0]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, r * 0.36]} />
+        {/* nostrils — two oval slits angled outward like a real pig snout */}
+        {[-1, 1].map((sx) => (
+          <mesh key={'ns' + sx} geometry={sphereGeo(1)} material={black}
+            scale={[r * 0.06, r * 0.12, r * 0.05]}
+            position={[sx * r * 0.17, 0, r * 0.4]} rotation={[0, 0, sx * 0.55]} />
+        ))}
+        {/* freckles scattered across the snout face */}
+        {[[-0.3, 0.1], [0.0, 0.17], [0.3, 0.1], [-0.18, -0.12], [0.18, -0.12]].map(([dx, dy], i) => (
+          <mesh key={`fr${i}`} geometry={sphereGeo(1)} material={dark} scale={[r * 0.035, r * 0.035, r * 0.02]} position={[dx * r, dy * r, r * 0.4]} />
+        ))}
+      </group>
 
-      {/* freckles scattered across the snout */}
-      {[[-0.3, 0.05], [0.0, 0.12], [0.3, 0.05], [-0.18, -0.1], [0.18, -0.1]].map(([dx, dy], i) => (
-        <mesh key={`fr${i}`} geometry={sphereGeo(1)} material={dark} scale={[r * 0.035, r * 0.035, r * 0.02]} position={[dx * r, -r * 0.18 + dy * r, r * 1.06]} />
-      ))}
-
-      {/* wide happy smile under the snout */}
-      <mesh geometry={torusGeo(r * 0.34, r * 0.035, 8, 20)} material={black}
-        position={[0, -r * 0.46, r * 0.82]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.6, 1]} />
+      {/* wide happy smile — tucked below the snout so it stays visible on the chin */}
+      <mesh geometry={torusGeo(r * 0.3, r * 0.032, 8, 20)} material={black}
+        position={[0, -r * 0.58, r * 0.66]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.6, 1]} />
 
       {/* little curly tuft of hair on top */}
       <mesh geometry={torusGeo(r * 0.12, r * 0.04, 6, 12)} material={dark}
@@ -2539,9 +2549,9 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
   const eArmShoulderR = isElephant ? P.shoulderR * 1.45 : P.shoulderR
   const eArmTopR = isElephant ? P.shoulderR * 1.7 : P.shoulderR
   const eArmY = isElephant ? ELEPHANT_ARM_Y : 1
-  // Panda arms — shorter, plumper stubs for a chibi toy-like silhouette
-const pArmY = isPanda ? 0.85 : 1
-   const pArmW = isPanda ? 1.35 : 1
+  // Panda arms — gently rounded, not stub-mutant (kept in proportion)
+const pArmY = isPanda ? 0.95 : 1
+   const pArmW = isPanda ? 1.15 : 1
 
   return (
     <group ref={bind(upper)} position={[sign * P.shoulderW, 0.04 + P.spineLen + P.chestLen * 0.65, 0]}>
@@ -2648,7 +2658,7 @@ const pArmY = isPanda ? 0.85 : 1
 <group position={[0, -P.lowerArm * (isPanda ? pArmY : eArmY) - P.wristR * 0.2, P.wristR * 0.3]}>
            {/* exposed wrist cuff between the sleeve end and the palm (gloved for hacker) */}
            <mesh geometry={taperGeo(P.wristR * 1.12, P.wristR * 0.92, P.wristR * 1.35)} material={gloveM} position={[0, P.wristR * 0.55, 0]} castShadow />
-           <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 1.8 : isPanda ? 1.7 : isSunflower ? 1.6 : 1.3), P.handLen * (isElephant ? 0.55 : isSunflower ? 0.52 : 0.48), P.wristR * (isElephant ? 1.5 : isPanda ? 1.5 : isSunflower ? 1.4 : 1.1)]} position={[0, -P.handLen * 0.3, 0]} castShadow />
+           <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 1.8 : isPanda ? 1.45 : isSunflower ? 1.6 : 1.3), P.handLen * (isElephant ? 0.55 : isSunflower ? 0.52 : 0.48), P.wristR * (isElephant ? 1.5 : isPanda ? 1.4 : isSunflower ? 1.4 : 1.1)]} position={[0, -P.handLen * 0.3, 0]} castShadow />
           {/* Sunflower: leafy wrist cuff + a tiny green leaf bud */}
           {isSunflower && (
             <>
@@ -2757,9 +2767,9 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
    const eKneeR = isElephant ? P.kneeR * 1.5 : 0
    const eAnkleR = isElephant ? P.ankleR * 1.35 : 0
    const eLegY = isElephant ? ELEPHANT_LEG_Y : 1
-   // Panda legs — shorter, plumper for chibi toy look
-   const pLegY = isPanda ? 0.88 : 1
-   const pLegW = isPanda ? 1.4 : 1
+   // Panda legs — chunky but normal-length, so they read as a plush toy
+   const pLegY = isPanda ? 0.95 : 1
+   const pLegW = isPanda ? 1.2 : 1
 
   return (
     <>
@@ -2783,10 +2793,10 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
            <mesh geometry={latheGeo([
              [P.kneeR * eM, -P.upperLeg],
              [P.kneeR * 1.05 * eM, -P.upperLeg * 0.88],
-             [P.thighR * 1.0 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.6],
-             [P.thighR * 1.12 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.35],
-             [P.thighR * 1.18 * eM * (isMonkey ? 0.8 : 1), -P.upperLeg * 0.15],
-             [P.thighR * 1.05 * eM * (isMonkey ? 0.8 : 1), 0],
+             [P.thighR * 1.0 * eM * (isMonkey ? 0.9 : 1), -P.upperLeg * 0.6],
+             [P.thighR * 1.12 * eM * (isMonkey ? 0.9 : 1), -P.upperLeg * 0.35],
+             [P.thighR * 1.18 * eM * (isMonkey ? 0.9 : 1), -P.upperLeg * 0.15],
+             [P.thighR * 1.05 * eM * (isMonkey ? 0.9 : 1), 0],
            ])} material={isRobot ? robotDark : legMat} castShadow />
 </>
         )}

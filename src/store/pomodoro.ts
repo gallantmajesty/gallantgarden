@@ -23,6 +23,9 @@ import { create } from 'zustand'
 import { useSettings } from './settings'
 import { getAmbient } from '../audio/ambient'
 import { useHardcore, rateForMode, EASY_RATE, MEDIUM_RATE, type FocusMode } from './hardcore'
+import { useProfile } from './profile'
+import { awardFocusLeaves } from '../lib/xpEngine'
+import { rankForTotalXp } from '../lib/ranks'
 
 // ---- Types ----
 
@@ -166,6 +169,8 @@ interface PomodoroState {
   addToHistory: (entry: Omit<SessionHistoryEntry, 'id'>) => void
   clearHistory: () => void
   getSessionSummary: () => SessionSummary
+  /** Settle a session that ran to completion while the app was closed. */
+  settleAwaySession: (s: ActiveSessionSnapshot) => void
 
   // Auto-start
   setAutoStartNext: (v: boolean) => void
@@ -192,6 +197,8 @@ export interface FocusSinkOpts {
   log?: boolean
   /** per-minute rate override (Medium 2.2 / Easy 0.51). Default = Easy. */
   ratePerMin?: number
+  /** tab stayed visible for the whole segment → credit the +30% deep-work bonus. */
+  tabVisible?: boolean
 }
 
 type FocusSink = (minutes: number, subject: string, opts?: FocusSinkOpts) => void
@@ -299,6 +306,8 @@ interface ActiveSessionSnapshot {
   pendingRewards: SegmentReward[]
   tabAlwaysVisible: boolean
   savedAt: number
+  /** set by loadActiveSession when the session finished while the app was closed. */
+  settleAway?: boolean
 }
 
 function saveActiveSession(s: ActiveSessionSnapshot | null) {
@@ -310,7 +319,16 @@ function saveActiveSession(s: ActiveSessionSnapshot | null) {
 
 /** Restore an in-progress session after a page reload. Recomputes `remaining`
  *  from wall-clock so time kept passing while the page was closed. Returns null
- *  when there is nothing worth restoring. */
+ *  when there is nothing worth restoring.
+ *
+ *  Two important behaviors:
+ *  - A session that was PAUSED (or an Easy session paused by a hidden tab) is
+ *    frozen: it restores exactly where it stopped, losing no time to drift.
+ *  - A session that was genuinely RUNNING and finished its remaining time while
+ *    the app was closed is not silently dropped — it restores as `finished` and
+ *    is settled (award + history + lifetime stats) by `settleAwaySession`.
+ *    Hardcore is the exception: presence is required (leave = fail), so it pays
+ *    nothing and is dropped. */
 function loadActiveSession(): ActiveSessionSnapshot | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
@@ -318,7 +336,8 @@ function loadActiveSession(): ActiveSessionSnapshot | null {
     const s = JSON.parse(raw) as ActiveSessionSnapshot
     if (!s || (s.phase !== 'running' && s.phase !== 'break' && s.phase !== 'paused')) return null
 
-    if (s.phase === 'paused') {
+    // Paused (or tab-hidden) → time is frozen; restore as-is.
+    if (s.phase === 'paused' || !s.running) {
       return { ...s, running: false }
     }
 
@@ -326,7 +345,15 @@ function loadActiveSession(): ActiveSessionSnapshot | null {
     const remaining = s.remaining - awaySec
     const totalElapsed = s.phase === 'running' ? s.totalElapsed + awaySec : s.totalElapsed
     if (remaining <= 0) {
-      return null
+      if (s.phase !== 'running' || s.focusMode === 'hardcore') return null
+      return {
+        ...s,
+        phase: 'finished',
+        remaining: 0,
+        totalElapsed,
+        running: false,
+        settleAway: true,
+      }
     }
     return { ...s, remaining, totalElapsed, running: true }
   } catch { return null }
@@ -388,11 +415,22 @@ export function liveFocusLeaves(s: Pick<PomodoroState, 'phase' | 'remaining' | '
   return live
 }
 
+/** Format live leaves for compact counters: "3" when whole, "3.4" while the
+ *  current segment is still accruing fractions — so the mini counter visibly
+ *  ticks up in points instead of sitting at a rounded whole number. */
+export function formatLiveLeaves(v: number): string {
+  const tenth = Math.round(v * 10) / 10
+  return Number.isInteger(tenth) ? String(tenth) : tenth.toFixed(1)
+}
+
 // ---- Store ----
 
-export const usePomodoro = create<PomodoroState>((set, get) => {
+// Restore an in-progress session — may flag an away-completed session for
+// settlement (see settleAwaySession below). Hoisted outside the store so the
+// deferred settlement can reference the store after creation.
+const restored = loadActiveSession()
 
-  const restored = loadActiveSession()
+export const usePomodoro = create<PomodoroState>((set, get) => {
 
   function awardSegment(state: PomodoroState): PomodoroState {
     const segMin = computeSegments(state.sessionMinutes, state.breakCount, state.breakDurations)
@@ -417,6 +455,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     focusSink?.(minutes, state.subject, {
       award: awardNow,
       ratePerMin: awardNow ? EASY_RATE : mode === 'medium' ? MEDIUM_RATE : undefined,
+      tabVisible: state.tabAlwaysVisible,
     })
 
     return {
@@ -504,7 +543,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 
     toggle: () => {
       const s = get()
-      if (s.phase === 'idle') {
+      if (s.phase === 'idle' || s.phase === 'finished') {
         const segments = computeSegments(s.sessionMinutes, s.breakCount, s.breakDurations)
         const firstSegMin = segments[0]
         set({
@@ -545,7 +584,9 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       // those minutes genuinely happened). Leaf payouts differ by tier:
       // Easy already banked its split leaves per segment (kept on forfeit);
       // Medium/Hardcore grant rewards only at the end, so a forfeit awards nothing.
-      if (s.totalElapsed >= MINIMUM_SESSION_SEC) {
+      // Finished sessions already recorded their minutes at completion, so they
+      // must not be double-counted when the ceremony is dismissed.
+      if (s.phase !== 'finished' && s.totalElapsed >= MINIMUM_SESSION_SEC) {
         const totalMin = s.totalElapsed / 60
         const existingMin = loadNum(MIN_KEY)
         saveNum(MIN_KEY, existingMin + Math.round(totalMin))
@@ -618,7 +659,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
           // Medium end-credit: the whole session's leaves are granted once here.
           // (Per-segment calls already logged analytics — skip re-logging.)
           if (state.focusMode === 'medium') {
-            focusSink?.(totalMin, state.subject, { award: true, log: false, ratePerMin: MEDIUM_RATE })
+            focusSink?.(totalMin, state.subject, { award: true, log: false, ratePerMin: MEDIUM_RATE, tabVisible: state.tabAlwaysVisible })
           }
           // Hardcore: win() (from FocusDomain) credits wager + scaled earnings.
 
@@ -840,8 +881,82 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     setAutoStartNext: (v) => {
       useSettings.getState().setPomo({ autoStart: v })
     },
+
+    // A session that ran to completion while the app was closed (restored with
+    // `settleAway`). Credit the finished segments' leaves and record history +
+    // lifetime stats exactly like the live finish path would have.
+    settleAwaySession: (s) => {
+      const segments = computeSegments(s.sessionMinutes, s.breakCount, s.breakDurations)
+      const remainingSegs = segments.slice(s.segmentIndex)
+      const unbankedMin = remainingSegs.reduce((a, m) => a + m, 0)
+      const mode = s.focusMode
+      const awardNow = mode === 'easy'
+      const hadSubject = s.subject.length > 0
+
+      // Award leaves — same engine the live sink uses (best-effort). Easy banks
+      // the unbanked segments; Medium credits the whole session at the end.
+      try {
+        const { xp, premiumXp, rankXp } = useProfile.getState()
+        const rankBase = rankXp > 0 ? rankXp : xp + premiumXp
+        const result = awardFocusLeaves({
+          currentLeaves: xp,
+          currentGoldenLeaves: premiumXp,
+          durationMin: awardNow ? unbankedMin : s.sessionMinutes,
+          currentRankId: rankForTotalXp(rankBase).id,
+          rankXp: rankBase,
+          hasSubject: hadSubject,
+          ratePerMin: mode === 'easy' ? EASY_RATE : MEDIUM_RATE,
+          tabAlwaysVisible: s.tabAlwaysVisible,
+        })
+        if (result.leaves > 0) useProfile.getState().applyXp({ leaves: result.leaves })
+      } catch { /* award is best-effort */ }
+
+      // Lifetime stats — recorded once here; the finished phase never re-adds.
+      saveNum(MIN_KEY, loadNum(MIN_KEY) + s.sessionMinutes)
+      saveNum(DONE_KEY, loadNum(DONE_KEY) + 1)
+
+      // Session history, mirroring the live completion entry.
+      const segmentLeaves = awardNow
+        ? remainingSegs.reduce((a, m) => a + calcSegmentXP(m, s.tabAlwaysVisible, hadSubject, mode, s.sessionMinutes), 0)
+        : 0
+      get().addToHistory({
+        date: new Date().toISOString(),
+        timerType: s.timerType,
+        focusMode: mode,
+        sessionMinutes: s.sessionMinutes,
+        breakCount: s.breakCount,
+        breakDurations: s.breakDurations,
+        completed: true,
+        totalFocusMinutes: s.sessionMinutes,
+        leavesEarned: s.totalSessionLeaves + segmentLeaves,
+        subject: s.subject,
+        segmentRewards: s.pendingRewards,
+      })
+
+      // Clear the persisted snapshot and present the completion ceremony with
+      // the full session totals (dismissing it won't re-record minutes).
+      saveActiveSession(null)
+      set({
+        phase: 'finished',
+        remaining: 0,
+        totalElapsed: s.sessionMinutes * 60,
+        running: false,
+        segmentIndex: s.segmentIndex + remainingSegs.length,
+        segmentsCompleted: s.segmentsCompleted + remainingSegs.length,
+        totalSessionLeaves: s.totalSessionLeaves + segmentLeaves,
+        pendingRewards: [],
+        lastReward: null,
+      })
+    },
   }
 })
+
+// Settle a session that ran to completion while the app was closed: award the
+// finished segments' leaves and record history + lifetime stats, exactly like
+// the live finish path. Deferred until the profile/XP stores are ready.
+if (restored?.settleAway) {
+  setTimeout(() => usePomodoro.getState().settleAwaySession(restored), 0)
+}
 
 // ---- Active-session persistence subscriber ----
 let lastSessionSave = 0

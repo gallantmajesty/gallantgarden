@@ -15,7 +15,7 @@ import {
   parseProfilePublic,
   type ProfilePublic,
 } from '../lib/types'
-import { checkDailyLogin, syncXpToDb } from '../lib/xpEngine'
+import { checkDailyLogin, claimDailyFocus, syncXpToDb } from '../lib/xpEngine'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { isNameValid } from '../lib/displayName'
 
@@ -83,6 +83,8 @@ interface ProfileState {
   applyXp: (patch: { leaves?: number; golden?: number; rankXp?: number }) => { xp: number; premiumXp: number; rankXp: number }
   /** Update study goals (editable after onboarding). */
   setStudyGoals: (goals: string[]) => Promise<boolean>
+  /** Claim today's daily focus bonus (25+ focus min, once/day, RPC-gated). */
+  claimDailyFocus: () => Promise<{ claimed: boolean; leaves: number }>
   /** Reset to empty on sign-out. */
   reset: () => void
 }
@@ -380,6 +382,27 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const ok = await patchProfileSettings(userId, { onboarding: newOnboarding })
     if (ok) set((state) => ({ data: { ...state.data, studyGoals: goals } }))
     return ok
+  },
+
+  claimDailyFocus: async () => {
+    const userId = get().userId
+    const { xp, premiumXp, rankXp } = get()
+    const rankId = get().data.rank || 'bronze-1'
+    if (!userId) return { claimed: false, leaves: 0 }
+    const result = claimDailyFocus(xp, premiumXp, rankId)
+    if (result.leaves <= 0) return { claimed: false, leaves: 0 }
+    // Server-side one-per-day gate (mirrors claim_daily_login). Falls back to
+    // the local gate if the function isn't deployed yet.
+    let allow = true
+    try {
+      const { data: serverOk, error } = await supabase.rpc('claim_daily_focus')
+      if (!error) allow = !!serverOk
+    } catch {
+      /* RPC not deployed yet — local gate is the fallback */
+    }
+    if (!allow) return { claimed: false, leaves: 0 }
+    get().applyXp({ leaves: result.leaves })
+    return { claimed: true, leaves: result.leaves }
   },
 
   reset: () =>

@@ -92,12 +92,14 @@ export function buildHeatmap(data: MagnetData, now: Date, weeks = 18): HeatCell[
   for (const h of data.habits) for (const d of h.history) score.set(d, (score.get(d) ?? 0) + 0.6)
 
   const out: HeatCell[] = []
-  const start = addDays(now, -(weeks * 7) + 1)
-  // align to Sunday
-  const dow = start.getDay()
-  const aligned = addDays(start, -dow)
+  // Anchor the grid to the Sunday of the current week, then back up (weeks-1)
+  // full weeks — so the last column is always the live week and today gets a
+  // real cell (previously the grid stopped at last Sunday and today never
+  // rendered).
+  const anchor = addDays(now, -now.getDay())
+  const first = addDays(anchor, -(weeks - 1) * 7)
   for (let i = 0; i < weeks * 7; i++) {
-    const d = addDays(aligned, i)
+    const d = addDays(first, i)
     const k = dayKey(d)
     if (d > now) {
       out.push({ date: k, value: 0, level: 0 })
@@ -118,34 +120,63 @@ export function Heatmap({
   cells,
   color = 'var(--mg-accent)',
   weeks = 18,
+  today,
 }: {
   cells: HeatCell[]
   color?: string
   weeks?: number
+  today?: string
 }) {
   const columns: HeatCell[][] = []
   for (let i = 0; i < cells.length; i += 7) columns.push(cells.slice(i, i + 7))
   const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun']
+
+  // Month labels, GitHub-style: label the week that contains the 1st or 15th.
+  const monthAt = (c: HeatCell): string | null => {
+    const d = new Date(c.date + 'T00:00:00')
+    if (Number.isNaN(d.getTime())) return null
+    const dom = d.getDate()
+    if (dom === 1 || dom === 15)
+      return new Intl.DateTimeFormat(undefined, { month: 'short' }).format(d)
+    return null
+  }
+  const monthLabels = columns.map((col) => {
+    for (const c of col) {
+      const m = monthAt(c)
+      if (m) return m
+    }
+    return ''
+  })
+
   return (
     <div className="mg-heat">
-      <div className="mg-heat-days">
-        {dayLabels.map((d, i) => (
-          <span key={i}>{d}</span>
-        ))}
-      </div>
-      <div className="mg-heat-grid">
-        {columns.map((col, ci) => (
-          <div className="mg-heat-col" key={ci}>
-            {col.map((c, ri) => (
-              <span
-                key={ri}
-                className={`mg-heat-cell lvl-${c.level}`}
-                title={`${c.date}${c.value ? ` · ${c.value} pts` : ''}`}
-                style={c.level > 0 ? ({ ['--cell' as string]: color } as React.CSSProperties) : undefined}
-              />
+      <div className="mg-heat-body">
+        <div className="mg-heat-days">
+          {dayLabels.map((d, i) => (
+            <span key={i}>{d}</span>
+          ))}
+        </div>
+        <div className="mg-heat-plot">
+          <div className="mg-heat-months">
+            {monthLabels.map((m, i) => (
+              <span key={i} className="mg-heat-month">{m}</span>
             ))}
           </div>
-        ))}
+          <div className="mg-heat-grid">
+            {columns.map((col, ci) => (
+              <div className="mg-heat-col" key={ci}>
+                {col.map((c, ri) => (
+                  <span
+                    key={ri}
+                    className={`mg-heat-cell lvl-${c.level}${c.date === today ? ' is-today' : ''}`}
+                    title={`${c.date}${c.value ? ` · ${c.value} pts` : ''}`}
+                    style={c.level > 0 ? ({ ['--cell' as string]: color } as React.CSSProperties) : undefined}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

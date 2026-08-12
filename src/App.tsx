@@ -18,6 +18,7 @@ import GlobalClickSpark from './components/GlobalClickSpark'
 import './screens/Explore.css'
 import { AuthScreen } from './screens/AuthScreen'
 import { GuestMode } from './screens/GuestMode'
+import { ShotHarness } from './screens/ShotHarness'
 import { Onboarding } from './screens/Onboarding'
 import { Landing } from './screens/public/Landing'
 const ComingSoon = lazy(() => import('./screens/ComingSoon').then(m => ({ default: m.ComingSoon })))
@@ -30,6 +31,7 @@ const Explore = lazy(() => import('./screens/Explore').then(m => ({ default: m.E
 const StudyRoom = lazy(() => import('./screens/StudyRoom').then(m => ({ default: m.StudyRoom })))
 const About = lazy(() => import('./screens/About').then(m => ({ default: m.About })))
 const Realm = lazy(() => import('./screens/Realm').then(m => ({ default: m.Realm })))
+const TaskMagnet = lazy(() => import('./screens/TaskMagnet').then(m => ({ default: m.TaskMagnet })))
 const RealmInvite = lazy(() => import('./screens/RealmInvite').then(m => ({ default: m.RealmInvite })))
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })))
 const AvatarCreator = lazy(() => import('./screens/AvatarCreator').then(m => ({ default: m.AvatarCreator })))
@@ -78,7 +80,7 @@ export default function App() {
     }
   }, [])
 
-  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo'])
+  const PUBLIC_PATHS = new Set(['/', '/about', '/guest', '/login', '/login/github', '/login/perinfo', '/__shot'])
   const isPublic = PUBLIC_PATHS.has(location.pathname)
 
   // Public marketing pages render without WebBackground/IntroVeil
@@ -90,6 +92,7 @@ export default function App() {
       <ErrorBoundary resetKeys={[location.pathname]}>
         <Suspense fallback={null}>
            <Routes>
+            <Route path="/__shot" element={<ShotHarness />} />
             <Route path="/guest" element={<GuestMode />} />
             <Route path="/" element={<Landing />} />
             <Route path="/about" element={<About />} />
@@ -175,7 +178,7 @@ const appContent = (
             <Route path="/room" element={<Navigate to="/lobby" replace />} />
             <Route path="/rooms" element={<Navigate to="/lobby" replace />} />
             <Route path="/room/:id" element={<StudyRoom />} />
-            <Route path="/magnet" element={<IndividualComingSoon featureId="magnet" />} />
+            <Route path="/magnet" element={<TaskMagnet />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:playerId" element={<Profile />} />
             <Route path="/avatar" element={<AvatarCreator />} />

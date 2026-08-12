@@ -181,32 +181,32 @@ export function Shop() {
   const equippedChar = avatarConfig.characterId || 'james'
   const equippedAcc = avatarConfig.accessories?.[0] ?? null
 
-  // Launch catalog: only items flagged visible:true appear (hidden ones stay
-  // fully functional everywhere else and come back to the shop later).
-  const characters = useMemo(() => effectiveCharacters().filter((c) => c.visible !== false), [])
-  const banners = useMemo(() => effectiveBanners().filter((b) => b.visible !== false), [])
-  const logos = useMemo(() => effectiveLogos().filter((l) => l.visible !== false), [])
-  const accessories = useMemo(() => ACCESSORIES.filter((a) => a.id !== 'laptop' && a.visible !== false), [])
+  // Full catalog: every banner, logo, character and accessory is on display —
+  // owned items carry an "Owned" badge and stay equippable, free starters show
+  // as "Free", and the hidden/visible flag is ignored so nothing is withheld.
+  const characters = useMemo(() => effectiveCharacters(), [])
+  const banners = useMemo(() => effectiveBanners(), [])
+  const logos = useMemo(() => effectiveLogos(), [])
+  const accessories = useMemo(() => ACCESSORIES.filter((a) => a.id !== 'laptop'), [])
 
   const filtered = useMemo(() => {
-    const hideOwned = <T extends { id: string }>(list: T[]) => list.filter((x) => !ownedItems.includes(x.id))
     if (tab === 'characters') {
-      if (sub === 'starter') return hideOwned(characters.filter((c) => (c.price ?? 0) === 0))
-      if (sub === 'epic' || sub === 'legendary') return hideOwned(characters.filter((c) => (c.rarity ?? '').toLowerCase() === sub))
-      return hideOwned(characters)
+      if (sub === 'starter') return characters.filter((c) => (c.price ?? 0) === 0)
+      if (sub === 'epic' || sub === 'legendary') return characters.filter((c) => (c.rarity ?? '').toLowerCase() === sub)
+      return characters
     }
     if (tab === 'banners') {
-      if (sub === 'default' || sub === 'gradient' || sub === 'others') return hideOwned(banners.filter((b) => b.category === sub))
-      return hideOwned(banners)
+      if (sub === 'default' || sub === 'gradient' || sub === 'others') return banners.filter((b) => b.category === sub)
+      return banners
     }
     if (tab === 'logos') {
-      if (sub === 'default' || sub === 'others') return hideOwned(logos.filter((l) => l.category === sub))
-      return hideOwned(logos)
+      if (sub === 'default' || sub === 'others') return logos.filter((l) => l.category === sub)
+      return logos
     }
-    if (sub === 'green') return hideOwned(accessories.filter((a) => a.currency !== 'gold'))
-    if (sub === 'gold') return hideOwned(accessories.filter((a) => a.currency === 'gold'))
-    return hideOwned(accessories)
-  }, [tab, sub, characters, banners, logos, accessories, ownedItems])
+    if (sub === 'green') return accessories.filter((a) => a.currency !== 'gold')
+    if (sub === 'gold') return accessories.filter((a) => a.currency === 'gold')
+    return accessories
+  }, [tab, sub, characters, banners, logos, accessories])
 
   // Switching tabs resets the sub-filter and picks a first item.
   useEffect(() => {
@@ -386,7 +386,7 @@ export function Shop() {
                         </span>
                       ) : tab === 'banners' ? (
                         (item as Banner).image ? (
-                          <div className="card-banner" style={{ backgroundImage: `url(${thumb((item as Banner).image)})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                          <div className="card-banner" style={{ backgroundImage: `url("${thumb((item as Banner).image)}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                         ) : (
                           <div className="card-banner" style={{ background: (item as Banner).css || '#333' }} />
                         )
@@ -439,7 +439,7 @@ export function Shop() {
               <div
                 className="pv-banner"
                 style={(meta as Banner).image
-                  ? { backgroundImage: `url(${thumb((meta as Banner).image)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  ? { backgroundImage: `url("${thumb((meta as Banner).image)}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   : { background: (meta as Banner).css || '#222' }
                 }
               />
