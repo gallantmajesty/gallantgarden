@@ -1,25 +1,31 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth, type OAuthProvider } from '../store/auth'
 import { useLocation } from 'react-router-dom'
 import './AuthScreen.css'
 
-type EmailTab = 'signin' | 'signup'
-
 export function AuthScreen() {
   const { t } = useTranslation()
-  const { signIn, signUp, signInWithProvider, signInAsGuest } = useAuth()
+  const { signInWithProvider, signInAsGuest } = useAuth()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<OAuthProvider | 'guest' | null>(null)
 
-  const [emailMode, setEmailMode] = useState(false)
-  const [emailTab, setEmailTab] = useState<EmailTab>('signin')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [authBusy, setAuthBusy] = useState(false)
-  const [confirmSent, setConfirmSent] = useState(false)
+  // Hidden guest entry: tapping the FocusLily logo ten times quickly opens a
+  // guest account without any visible guest button.
+  const guestTaps = useRef(0)
+  const guestTapReset = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tapLogoForGuest = () => {
+    guestTaps.current += 1
+    if (guestTapReset.current) clearTimeout(guestTapReset.current)
+    guestTapReset.current = setTimeout(() => { guestTaps.current = 0 }, 2500)
+    if (guestTaps.current >= 10) {
+      guestTaps.current = 0
+      setError(null)
+      setPending('guest')
+      void signInAsGuest()
+    }
+  }
 
   useEffect(() => { setPending(null) }, [])
 
@@ -53,26 +59,6 @@ export function AuthScreen() {
         setPending(current => current === provider ? null : current)
       }, 4000)
     }
-  }
-
-  async function submitEmail(e: FormEvent) {
-    e.preventDefault()
-    setAuthBusy(true)
-    setError(null)
-    setConfirmSent(false)
-    const err =
-      emailTab === 'signin'
-        ? await signIn(email, password)
-        : await signUp(email, password, name.trim() || email.split('@')[0])
-    if (err === 'confirm-email') setConfirmSent(true)
-    else if (err) setError(err)
-    setAuthBusy(false)
-  }
-
-  function toggleEmail() {
-    setEmailMode((v) => !v)
-    setError(null)
-    setConfirmSent(false)
   }
 
   return (
@@ -127,14 +113,14 @@ export function AuthScreen() {
         </svg>
       </div>
       <div className="auth-card sf-panel">
-        <div className="auth-crest">
+        <button type="button" className="auth-crest" onClick={tapLogoForGuest} aria-label={t('common.appName')}>
           <span className="auth-sparkle auth-sparkle--1"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="2" fill="#d4af37"/></svg></span>
           <span className="auth-sparkle auth-sparkle--2"><svg width="7" height="7" viewBox="0 0 7 7" fill="none"><circle cx="3.5" cy="3.5" r="1.5" fill="#f6e8c8"/></svg></span>
           <span className="auth-sparkle auth-sparkle--3"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="1.8" fill="#d4af37"/></svg></span>
           <span className="auth-sparkle auth-sparkle--4"><svg width="6" height="6" viewBox="0 0 6 6" fill="none"><circle cx="3" cy="3" r="1.2" fill="#f6e8c8"/></svg></span>
           <span className="auth-sparkle auth-sparkle--5"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><circle cx="4" cy="4" r="1.5" fill="#d4af37"/></svg></span>
-          <img className="auth-crest-glyph" src="/icons/focus-lily-logo.png" alt={t('common.appName')} />
-        </div>
+          <img className="auth-crest-glyph" src="/icons/focus-lily-logo.png" alt="" />
+        </button>
         <h1 className="auth-title">{t('common.appName')}</h1>
         <p className="auth-sub">
           {t('auth.subtitle')}
@@ -156,98 +142,6 @@ export function AuthScreen() {
           ))}
         </div>
 
-        <button type="button" className="auth-email-toggle" onClick={toggleEmail}>
-          {emailMode ? t('auth.hideEmail') : t('auth.orContinueEmail')}
-        </button>
-
-        {emailMode && (
-          <>
-            <div className="auth-tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={emailTab === 'signin'}
-                className={`auth-tab ${emailTab === 'signin' ? 'active' : ''}`}
-                onClick={() => setEmailTab('signin')}
-              >
-                {t('auth.signIn')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={emailTab === 'signup'}
-                className={`auth-tab ${emailTab === 'signup' ? 'active' : ''}`}
-                onClick={() => setEmailTab('signup')}
-              >
-                {t('auth.createAccount')}
-              </button>
-            </div>
-
-            <form className="auth-form" onSubmit={submitEmail}>
-              {emailTab === 'signup' && (
-                <label className="auth-field">
-                  <span>{t('auth.explorerName')}</span>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t('auth.namePlaceholder')}
-                    maxLength={20}
-                    autoComplete="nickname"
-                  />
-                </label>
-              )}
-              <label className="auth-field">
-                <span>{t('auth.email')}</span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('auth.emailPlaceholder')}
-                  autoComplete={emailTab === 'signin' ? 'email' : 'email'}
-                />
-              </label>
-              <label className="auth-field">
-                <span>{t('auth.password')}</span>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('auth.passwordPlaceholder')}
-                  autoComplete={emailTab === 'signin' ? 'current-password' : 'new-password'}
-                />
-              </label>
-              <button type="submit" className="auth-submit" disabled={authBusy || !!pending}>
-                {authBusy ? t('auth.openingGate') : emailTab === 'signin' ? t('auth.signIn') : t('auth.createAccount')}
-              </button>
-            </form>
-          </>
-        )}
-
-        <div className="auth-divider">
-          <span>or</span>
-        </div>
-
-        <button
-          type="button"
-          className="auth-guest-btn"
-          disabled={!!pending}
-          onClick={async () => {
-            setError(null)
-            setPending('guest')
-            await signInAsGuest()
-          }}
-        >
-          {pending === 'guest' ? t('auth.enterGuest') : t('auth.continueGuest')}
-        </button>
-        <p className="auth-guest-hint">
-          {t('auth.guestHint')}
-        </p>
-
-        {confirmSent && <div className="auth-confirm">{t('auth.confirmEmail')}</div>}
         {error && <div className="auth-error">{error}</div>}
       </div>
     </div>

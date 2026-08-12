@@ -223,10 +223,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInAsGuest = useCallback(async () => {
     const guestNetId = networkId()
+    // No name label for guests — they're just anonymous explorers.
     const guestUser: AuthUser = {
       id: guestNetId,
       email: '',
-      profile: { name: 'Guest' },
+      profile: {},
       isGuest: true,
     }
     localStorage.setItem('sf.guest', JSON.stringify(guestUser))

@@ -158,7 +158,9 @@ export const useProfile = create<ProfileState>((set, get) => ({
   hydrate: async (userId, fallbackName, isGuest = false) => {
     // Guests have no real Supabase session — skip all DB reads.
     if (isGuest) {
-      const guestName = fallbackName || 'Guest'
+      // Guests have no account name — they fall back to the neutral explorer
+      // label, and keep whatever display name they picked locally (if any).
+      const guestName = fallbackName || 'Explorer'
       const saved = loadGuest(userId)
       set({
         userId,
