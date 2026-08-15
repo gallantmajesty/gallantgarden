@@ -89,6 +89,7 @@ export function Lobby() {
   const unreadCount = useChat((s) => s.summaries.filter((s) => s.unread).length)
   const isDesktop = useIsDesktop()
   const [mobileNav, setMobileNav] = useState<'home' | 'realm' | 'tasks' | 'games' | 'profile'>('home')
+  const [guestBannerHidden, setGuestBannerHidden] = useState(false)
   const [showQuests, setShowQuests] = useState(false)
   const [soonFeature, setSoonFeature] = useState<FeatureData | null>(null)
 
@@ -174,6 +175,14 @@ useEffect(() => {
   }
 }, [user])
 
+  // Guest banner: visible for 3s, then fades out (never comes back until reload).
+  useEffect(() => {
+    if (!user?.isGuest || guestBannerHidden) return
+    const t = setTimeout(() => setGuestBannerHidden(true), 3000)
+    timersRef.current.push(t)
+    return () => clearTimeout(t)
+  }, [user?.isGuest, guestBannerHidden])
+
   const pickProfile = useCallback((e: React.MouseEvent) => {
     if (transition?.active || rankTransition?.active) return
     const rect = e.currentTarget.getBoundingClientRect()
@@ -244,7 +253,7 @@ useEffect(() => {
     return (
       <div className="lobby-root">
         {user?.isGuest && (
-          <div className="lobby-guest-banner">
+          <div className={`lobby-guest-banner${guestBannerHidden ? ' lobby-guest-banner--hidden' : ''}`}>
             <span>You're browsing as a guest — your progress saves on this device only.</span>
             <button className="sf-btn water" onClick={() => navigate('/guest')}>Guest Info</button>
           </div>
@@ -444,7 +453,7 @@ useEffect(() => {
       </div>
 
         {user?.isGuest && (
-          <div className="lobby-guest-banner">
+          <div className={`lobby-guest-banner${guestBannerHidden ? ' lobby-guest-banner--hidden' : ''}`}>
             <span>You're browsing as a guest</span>
             <button className="sf-btn water" onClick={() => navigate('/guest')}>Guest Info</button>
           </div>

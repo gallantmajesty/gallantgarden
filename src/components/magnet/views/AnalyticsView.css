@@ -1,0 +1,358 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Task Magnet · Analytics — Professional instrument redesign
+   Scoped under `.an` so it only restyles the Analytics view and never leaks
+   into Dashboard / Goals / Habits / Store. The aim: a calm, data-first
+   dashboard — flat hairline cards, tabular figures, restrained accent, and
+   clear section structure. No gradients-on-text, no bouncy glow, no glass.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.an {
+  --an-line: color-mix(in srgb, var(--mg-border) 72%, transparent);
+  --an-soft: var(--mg-panel-soft);
+  --an-muted: var(--pr-muted);
+  --an-shadow: 0 1px 1px rgba(0, 0, 0, 0.14), 0 6px 18px -16px rgba(0, 0, 0, 0.5);
+  --an-radius: 12px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.an .mg-studio-hero {
+  align-items: center;
+  gap: 20px;
+}
+.an .mg-studio-hero h2 {
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.022em;
+  margin: 6px 0 0;
+}
+.an .mg-studio-hero p {
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 52ch;
+}
+.an .mg-kicker {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+.an .mg-btn.primary {
+  box-shadow: none;
+}
+
+/* range selector — quiet segmented pill */
+.an .mg-rangebar2 {
+  margin: 2px 0 4px;
+}
+.an .mg-rangebar2 button {
+  padding: 6px 14px;
+}
+.an .mg-rangebar2 button.active {
+  background: var(--mg-accent);
+  color: #fff;
+}
+
+/* ── KPI cards ──────────────────────────────────────────────────────────── */
+.an .mg-kpis {
+  gap: 12px;
+}
+.an .mg-kpi {
+  border-radius: var(--an-radius);
+  padding: 15px 17px;
+  gap: 7px;
+  box-shadow: var(--an-shadow);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.an .mg-kpi:hover {
+  transform: none;
+  box-shadow: var(--an-shadow);
+  border-color: color-mix(in srgb, var(--mg-accent) 40%, transparent);
+}
+.an .mg-kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--an-muted);
+}
+.an .mg-kpi-val {
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.an .mg-kpi-val small {
+  font-size: 13px;
+  font-weight: 700;
+}
+.an .mg-kpi-foot {
+  font-size: 11.5px;
+  color: var(--an-muted);
+}
+.an .mg-kpi-foot .mg-trend {
+  margin-left: 0;
+}
+
+/* ── generic section cards (Panel + premium .mg-pr) ─────────────────────── */
+.an .mg-panel,
+.an .mg-pr {
+  border-radius: var(--an-radius);
+  border: 1px solid var(--an-line);
+  box-shadow: var(--an-shadow);
+  padding: 18px;
+}
+.an .mg-pr::after {
+  display: none;
+}
+.an .mg-pr.pad-sm {
+  padding: 14px;
+}
+
+/* section titles — small, calm, single accent tick */
+.an .mg-pr-head {
+  margin-bottom: 14px;
+}
+.an .mg-pr-head h3 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--mg-text);
+}
+.an .mg-pr-head h3 .mg-icon {
+  width: 16px;
+  height: 16px;
+  padding: 4px;
+  box-sizing: content-box;
+}
+.an .mg-pr-head h4 {
+  font-size: 12.5px;
+}
+
+/* ── two / three column groupings ───────────────────────────────────────── */
+.an .mg-duo {
+  gap: 14px;
+  align-items: stretch;
+}
+.an .mg-trio {
+  gap: 14px;
+}
+
+/* ── "why" explanation + AI cards ───────────────────────────────────────── */
+.an .mg-ai-stack {
+  gap: 12px;
+}
+.an .mg-why {
+  padding: 11px 13px;
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--mg-accent) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 22%, transparent);
+}
+.an .mg-ai {
+  border-radius: 10px;
+  background: var(--an-soft);
+  border: 1px solid var(--an-line);
+}
+.an .mg-ai::before {
+  top: 12px;
+  bottom: 12px;
+}
+
+/* ── meters (subject / life balance) ────────────────────────────────────── */
+.an .mg-meterlist {
+  gap: 14px;
+}
+.an .mg-meterlist li {
+  font-size: 13px;
+}
+.an .mg-meterlist .mg-msub {
+  height: 7px;
+  background: color-mix(in srgb, var(--mg-text) 8%, transparent);
+}
+.an .mg-meterlist .mg-msub > i {
+  background: var(--mg-accent);
+}
+
+/* ── pills (habit chips) ────────────────────────────────────────────────── */
+.an .mg-pillrow {
+  gap: 8px;
+}
+.an .mg-pill {
+  padding: 6px 11px;
+  font-size: 12px;
+  background: var(--an-soft);
+  border: 1px solid var(--an-line);
+}
+
+/* ── forecast ───────────────────────────────────────────────────────────── */
+.an .mg-forecast {
+  gap: 8px;
+}
+.an .mg-forecast-big {
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.an .mg-forecast-big small {
+  font-size: 14px;
+}
+
+/* ── performance intelligence grid ──────────────────────────────────────── */
+.an .mg-insightgrid {
+  gap: 12px;
+}
+.an .mg-insight {
+  border-radius: 10px;
+  padding: 13px;
+  background: var(--an-soft);
+  border: 1px solid var(--an-line);
+  border-left: 3px solid var(--mg-accent);
+}
+.an .mg-insight.tone-good { border-left-color: #46d6a0; }
+.an .mg-insight.tone-watch { border-left-color: #ffb454; }
+.an .mg-insight.tone-tip { border-left-color: var(--mg-accent); }
+.an .mg-insight-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mg-accent) 12%, transparent);
+  color: var(--mg-accent);
+}
+.an .mg-insight.tone-good .mg-insight-icon { background: rgba(70, 214, 160, 0.16); color: #2bbf7d; }
+.an .mg-insight.tone-watch .mg-insight-icon { background: rgba(255, 180, 84, 0.18); color: #e89c2f; }
+
+/* ── heatmap (GitHub-style stays; just tidy the legend) ─────────────────── */
+.an .mg-heat-legend {
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+/* ============================================================================
+   FOCUS AREA CHART — replaces the rounded-cap bar chart with a clean,
+   readable area+line chart: hairline grid, axis ticks, hover guide + tooltip.
+   ============================================================================ */
+.an-areachart {
+  position: relative;
+  width: 100%;
+}
+.an-areachart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.an-grid {
+  stroke: var(--an-line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.an-axis {
+  fill: var(--an-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--sans, system-ui, sans-serif);
+}
+.an-line {
+  stroke: var(--mg-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.an-dot {
+  fill: var(--mg-panel);
+  stroke: var(--mg-accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.an-dot.today {
+  fill: var(--mg-accent);
+}
+.an-guide {
+  stroke: color-mix(in srgb, var(--mg-accent) 60%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.an-xlabel {
+  fill: var(--an-muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-anchor: middle;
+  font-family: var(--sans, system-ui, sans-serif);
+}
+.an-xlabel.today {
+  fill: var(--mg-accent);
+  font-weight: 700;
+}
+.an-tip {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: var(--mg-panel);
+  border: 1px solid var(--an-line);
+  border-radius: 9px;
+  padding: 6px 10px;
+  box-shadow: var(--an-shadow);
+  white-space: nowrap;
+  z-index: 3;
+}
+.an-tip-val {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--mg-text);
+}
+.an-tip-day {
+  display: block;
+  font-size: 10.5px;
+  color: var(--an-muted);
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+/* ── keep numerals from crowding letters / overflowing ──────────────────── */
+.an .mg-kpi-val {
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.an .mg-kpi-val small {
+  display: inline-block;
+  margin-left: 4px;
+  letter-spacing: 0;
+}
+.an .mg-forecast-big {
+  white-space: nowrap;
+}
+.an .mg-forecast-big small {
+  display: inline-block;
+  margin-left: 4px;
+}
+
+/* meter lists: long names truncate, the value never wraps into the bar */
+.an .mg-meterlist li {
+  align-items: center;
+}
+.an .mg-meterlist li > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.an .mg-meterlist li > span:nth-child(2) {
+  white-space: nowrap;
+}
+
+/* deep / habit / burnout big figures: keep the "/ 100" clear of the number */
+.an .mg-trio strong {
+  white-space: nowrap;
+}
+
+/* ── responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 920px) {
+  .an .mg-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .an .mg-kpis { grid-template-columns: 1fr; }
+}

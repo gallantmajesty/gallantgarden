@@ -157,11 +157,14 @@ export function scenePreset(axes: QualityAxes, perfMode: boolean, ultra = false)
     // atmosphere without dominating fill-rate.
     dust: Math.round(16 * detail),
     particles: post !== 'off' && detail > 0,
+    // PERF (exterior-only, interior look identical): rain, pines, peaks and
+    // clouds are all BEHIND the glazing — visible only through the windows — so
+    // their counts are trimmed without touching anything inside the hall.
     rainScale: 0.3 + 0.7 * vd,
-    rainDrops: Math.round(50 + 150 * vd),
-    forest: Math.round(35 + 165 * vd),
-    mountains: Math.round(18 + 22 * vd),
-    clouds: Math.round(4 + 5 * vd),
+    rainDrops: Math.round(40 + 110 * vd),
+    forest: Math.round(35 + 120 * vd),
+    mountains: Math.round(18 + 16 * vd),
+    clouds: Math.round(4 + 4 * vd),
     // PERF: real point-lights are the dominant forward-render cost. The grand
     // lanterns and desk lamps glow via emissive + bloom and read identically, so
     // none of them cast a real light — only the 3 hero lights remain.

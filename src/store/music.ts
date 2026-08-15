@@ -37,10 +37,19 @@ interface MusicStore {
   shuffle: boolean
   repeat: RepeatMode
 
+  // Scoping — the library music player only works inside the library. When the
+  // user leaves the library the player pauses and remembers (`pausedForScope`);
+  // returning to the library restores playback. Outside the library nothing
+  // resumes, even on a gesture.
+  scopeInside: boolean
+  pausedForScope: boolean
+
   // Actions
   search: (q: string) => void
   playTrack: (t: LiveTrack) => void
   toggle: () => void
+  /** Enter/leave the library — pauses on the way out, restores on the way back. */
+  setLibraryScope: (inside: boolean) => void
   next: () => void
   prev: () => void
   seekTo: (seconds: number) => void
@@ -157,6 +166,8 @@ export const useMusic = create<MusicStore>((set, get) => {
     queue: init.queue,
     qIndex: init.qIndex,
     playing: init.playing,
+    scopeInside: false,
+    pausedForScope: false,
     query: '',
     results: defaultLiveTracks(),
     browsing: false,
@@ -174,7 +185,31 @@ export const useMusic = create<MusicStore>((set, get) => {
       set({ results: tracks, browsing: false })
     },
 
+    setLibraryScope: (inside) => {
+      const s = get()
+      if (inside === s.scopeInside) return
+      if (inside) {
+        // Returning to the library — restore playback if we paused on the way out.
+        if (s.pausedForScope && s.current) {
+          const eng = getMusic()
+          eng.load(trackToPreset(s.current))
+          eng.play()
+          set({ scopeInside: true, playing: true, pausedForScope: false })
+          persist()
+        } else {
+          set({ scopeInside: true })
+        }
+      } else {
+        // Leaving the library — the player must not keep playing outside it.
+        const wasPlaying = s.playing
+        getMusic().pause()
+        set({ scopeInside: false, playing: false, pausedForScope: wasPlaying })
+        persist()
+      }
+    },
+
     playTrack: (t) => {
+      if (!get().scopeInside) return // music is library-only
       const { queue } = get()
       const nextQueue = queue.filter((x) => x.id !== t.id)
       nextQueue.push(t)
@@ -183,6 +218,7 @@ export const useMusic = create<MusicStore>((set, get) => {
     },
 
     toggle: () => {
+      if (!get().scopeInside) return // music is library-only
       const eng = getMusic()
       if (get().playing) {
         eng.pause()
@@ -272,8 +308,8 @@ export const useMusic = create<MusicStore>((set, get) => {
     },
 
     resumeFromGesture: () => {
-      const { playing, current } = get()
-      if (!playing || !current) return
+      const { playing, current, scopeInside } = get()
+      if (!playing || !current || !scopeInside) return
       const eng = getMusic()
       eng.load(trackToPreset(current))
       eng.play()

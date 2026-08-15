@@ -16,7 +16,7 @@ import { loadStudyCounts, levelProgress, formatLikes, type StudyCounts } from '.
 import { effectiveBanners, getEffectiveBanner, effectiveLogos, logoFilter } from '../lib/banners'
 import type { ProfilePublic, PublicProfile } from '../lib/types'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
-import { getRank, rankForLifetime, rankForTotalXp, rankProgress, RANKS } from '../lib/ranks'
+import { getRank, rankForLifetime, rankForTotalXp, rankProgress, RANKS, type Rank } from '../lib/ranks'
 import { computeStreak } from '../lib/magnet/insights'
 import { generatePlayerId } from '../lib/playerId'
 import { checkDisplayName } from '../lib/displayName'
@@ -145,8 +145,8 @@ export function Profile() {
 
 function TopBar({ onBack, right }: { onBack: () => void; right?: React.ReactNode }) {
   const { signOut } = useAuth()
-  const xp = useMagnet((s) => s.data.xp)
-  const goldenXp = useMagnet((s) => s.data.premiumXp)
+  const xp = useProfile((s) => s.xp)
+  const goldenXp = useProfile((s) => s.premiumXp)
 
   return (
     <div className="pf-topbar">
@@ -185,9 +185,9 @@ function ProfileBody({
   const { signOut, user } = useAuth()
   const ownPlayerId = useProfile((s) => s.playerId)
   const onboardingGoals = useProfile((s) => s.data.studyGoals)
-  const xp = useMagnet((s) => s.data.xp)
-  const goldenXp = useMagnet((s) => s.data.premiumXp)
-  const rankXp = useMagnet((s) => s.data.rankXp)
+  const xp = useProfile((s) => s.xp)
+  const goldenXp = useProfile((s) => s.premiumXp)
+  const rankXp = useProfile((s) => s.rankXp)
   const totalXp = xp + goldenXp
   const lifetimeXp = rankXp > 0 ? rankXp : totalXp
   const focusSessions = usePomodoro((s) => s.completed)
@@ -511,6 +511,23 @@ function ProfileBody({
         {isOwn && (
           <div className="pf-danger-section">
             <div className="pf-section-title">Account</div>
+
+            {/* Signed-in account — shows the connected GitHub account and lets
+                the user sign out to switch to another one, like a normal app. */}
+            {user && !user.isGuest && (
+              <div className="pf-account-row">
+                {user.profile?.avatar_url && (
+                  <img className="pf-account-avatar" src={user.profile.avatar_url} alt="" />
+                )}
+                <div className="pf-account-info">
+                  <div className="pf-account-name">{user.profile?.name || 'GitHub user'}</div>
+                  <div className="pf-account-email">{user.email}</div>
+                  <div className="pf-account-provider">Connected with GitHub</div>
+                </div>
+                <button className="pf-account-btn" onClick={signOut}>Sign Out</button>
+              </div>
+            )}
+
             <div className="pf-danger-row">
               <div>
                 <div className="pf-danger-title">Delete my account</div>
@@ -585,7 +602,7 @@ function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDel
     setBusy(true)
     setError(null)
     try {
-      if (user) {
+      if (user && !user.isGuest) {
         const { error: rpcError } = await supabase.rpc('delete_my_account')
         if (rpcError) {
           setError('Deletion failed — please try again or email support.')
@@ -654,6 +671,37 @@ function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDel
 
 /* ----------------------------------------------------------- rank roadmap */
 
+// Group the flat ladder into tier bands (Bronze … Focuster) for the winding-path
+// layout. Tier key is the first segment of the rank id ("bronze-1" → "bronze",
+// "focuster" → "focuster"); no new data needed — it's derived from RANKS.
+const ROADMAP_TIERS: { key: string; label: string; color: string; ranks: Rank[] }[] = (() => {
+  const order: string[] = []
+  const byTier: Record<string, Rank[]> = {}
+  for (const r of RANKS) {
+    const key = r.id.includes('-') ? r.id.split('-')[0] : r.id
+    if (!byTier[key]) {
+      byTier[key] = []
+      order.push(key)
+    }
+    byTier[key].push(r)
+  }
+  const labels: Record<string, string> = {
+    bronze: 'Bronze',
+    silver: 'Silver',
+    gold: 'Gold',
+    platinum: 'Platinum',
+    diamond: 'Diamond',
+    crystal: 'Crystal',
+    focuster: 'Focuster',
+  }
+  return order.map((key) => ({
+    key,
+    label: labels[key] ?? key,
+    color: byTier[key][0].accent,
+    ranks: byTier[key],
+  }))
+})()
+
 function RankRoadmap({ totalXp, onClose }: { totalXp: number; onClose: () => void }) {
   const { rank, nextRank, pct } = rankProgress(totalXp)
   const currentIdx = RANKS.findIndex((r) => r.id === rank.id)
@@ -689,27 +737,39 @@ function RankRoadmap({ totalXp, onClose }: { totalXp: number; onClose: () => voi
         )}
 
         <div className="pf-roadmap-list">
-          {RANKS.map((r, i) => {
-            const reached = i <= currentIdx
-            const isCurrent = i === currentIdx
-            return (
-              <div
-                key={r.id}
-                className={`pf-roadmap-node ${reached ? 'reached' : ''} ${isCurrent ? 'current' : ''}`}
-                style={{ ['--rank' as string]: r.accent }}
-              >
-                <img src={r.badge} alt="" className="pf-roadmap-badge" />
-                <div className="pf-roadmap-node-main">
-                  <div className="pf-roadmap-node-name">{r.name}</div>
-                  <div className="pf-roadmap-node-th">
-                    {r.threshold === 0 ? 'Start' : `${r.threshold.toLocaleString()} XP`}
-                  </div>
-                </div>
-                {isCurrent && <span className="pf-roadmap-you">YOU</span>}
-                {reached && !isCurrent && <span className="pf-roadmap-check">✓</span>}
+          {ROADMAP_TIERS.map((tier) => (
+            <div className="pf-rd-tier" key={tier.key} style={{ ['--tier' as string]: tier.color }}>
+              <div className="pf-rd-tier-head">{tier.label} Tier</div>
+              <div className="pf-rd-path">
+                {tier.ranks.map((r) => {
+                  const idx = RANKS.indexOf(r)
+                  const reached = idx <= currentIdx
+                  const isCurrent = idx === currentIdx
+                  const side = idx % 2 === 0 ? 'left' : 'right'
+                  return (
+                    <div
+                      key={r.id}
+                      className={`pf-rd-node ${side} ${reached ? 'reached' : ''} ${isCurrent ? 'current' : ''}`}
+                      style={{ ['--rank' as string]: r.accent }}
+                    >
+                      <span className="pf-rd-dot" />
+                      <div className="pf-rd-card">
+                        <img src={r.badge} alt="" className="pf-rd-badge" />
+                        <div className="pf-rd-main">
+                          <div className="pf-rd-name">{r.name}</div>
+                          <div className="pf-rd-th">
+                            {r.threshold === 0 ? 'Start' : `${r.threshold.toLocaleString()} XP`}
+                          </div>
+                        </div>
+                        {isCurrent && <span className="pf-rd-you">YOU</span>}
+                        {reached && !isCurrent && <span className="pf-rd-check">✓</span>}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </div>

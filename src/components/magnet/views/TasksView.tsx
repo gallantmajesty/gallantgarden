@@ -12,6 +12,8 @@ import {
 } from '../../../lib/magnet/types'
 import { SectionHead, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
+import { taskPower, subtaskPower } from '../../../lib/magnet/score'
+import { useMxpFloat } from '../MxpFeedback'
 
 type StatusFilter = 'open' | 'done' | 'all'
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'urgent']
@@ -99,6 +101,12 @@ export function TasksView({
 
   const [doneAnim, setDoneAnim] = useState<string | null>(null)
   const dragId = useRef<string | null>(null)
+  const float = useMxpFloat()
+
+  function todayKey(): string {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
 
   // When the calendar (or another view) asks to create a task on a specific
   // date, open the editor prefilled with that due date.
@@ -172,10 +180,13 @@ export function TasksView({
     setModalOpen(false)
   }
 
-  function onCheck(tk: Task) {
+  function onCheck(tk: Task, e: { clientX: number; clientY: number }) {
     if (!tk.done) {
       setDoneAnim(tk.id)
       setTimeout(() => setDoneAnim((cur) => (cur === tk.id ? null : cur)), 850)
+      // Mirror the store's award condition exactly: tasks pay only when due
+      // today or undated (future-due incl. spawned repeats pay nothing).
+      if (tk.due ? tk.due === todayKey() : true) float.push(e, taskPower(tk))
     }
     toggleTask(tk.id)
   }
@@ -349,7 +360,7 @@ export function TasksView({
                   )}
                   <button
                     className="mg-check"
-                    onClick={() => onCheck(task)}
+                    onClick={(e) => onCheck(task, e)}
                     aria-label="Complete"
                     style={{ ['--mg-check-tone' as string]: PRIORITY_META[task.priority].color }}
                   >
@@ -459,7 +470,12 @@ export function TasksView({
                         <li key={s.id}>
                           <button
                             className={`mg-subcheck ${s.done ? 'done' : ''}`}
-                            onClick={() => toggleSubtask(task.id, s.id)}
+                            onClick={(e) => {
+                              // Mirror the store: subtasks pay only while the
+                              // parent task is open.
+                              if (!task.done && !s.done) float.push(e, subtaskPower())
+                              toggleSubtask(task.id, s.id)
+                            }}
                           >
                             <Icon name="check" size={11} />
                           </button>
@@ -664,6 +680,8 @@ export function TasksView({
           </div>
         </form>
       </MgModal>
+
+      {float.node}
     </div>
   )
 }

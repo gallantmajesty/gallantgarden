@@ -27,6 +27,8 @@ import { awardWeeklyWarrior } from '../../../lib/xpEngine'
 import { rankForTotalXp } from '../../../lib/ranks'
 import { useProfile } from '../../../store/profile'
 import { useNow } from '../useNow'
+import { taskPower, habitPower } from '../../../lib/magnet/score'
+import { useMxpFloat } from '../MxpFeedback'
 
 // The emotional "home" of the world — redone in the calm, story-telling Korean
 // minimal style: a big hero that answers "how is my life today?", a performance
@@ -63,6 +65,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
 
   const [quick, setQuick] = useState('')
   const [reviewOpen, setReviewOpen] = useState(false)
+  const float = useMxpFloat()
 
   // Auto-suggest a weekly review on Sunday evenings (a natural reflection point).
   useEffect(() => {
@@ -144,6 +147,8 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
   const focusM = today.focusMinutes % 60
   const weekH = Math.round((s7.focusMinutes / 60) * 10) / 10
   const velocity = Math.round((s7.completed / 7) * 10) / 10
+  // Magnet Power earned today (local-only progression currency).
+  const todayPower = data.mxpDay.date === tk ? data.mxpDay.value : 0
 
   return (
     <div className="mg-today">
@@ -170,7 +175,6 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
         <>
           {reviewOpen && <WeeklyReview onClose={() => setReviewOpen(false)} />}
 
-        <>
           {/* ═══ HERO ═══ */}
           <section className="mg-pr">
             <div className="mg-hero2">
@@ -211,6 +215,11 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
                     <b>{data.goals.filter((g) => g.progress < 100).length}</b>
                     <span>{t('dashboard.activeGoals')}</span>
                   </div>
+                  <div className="mg-chip" title={t('dashboard.powerHint')}>
+                    <span className="mg-chip-ico"><Icon name="spark" size={18} /></span>
+                    <b>{todayPower}</b>
+                    <span>{t('dashboard.powerToday')}</span>
+                  </div>
                   <button className="mg-chip mg-chip-cta" onClick={() => onNavigate('tasks')} title={nextSession ? nextSession.title : ''}>
                     <span className="mg-chip-ico"><Icon name="play" size={18} /></span>
                     <b>{nextSession ? `${nextSession.estimateMin > 0 ? nextSession.estimateMin : 25}m` : '—'}</b>
@@ -247,29 +256,23 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
               tone={AREA_META.creative.color}
               spark={spark14}
             />
-            <StatTile
-              icon="spark"
-              label={t('dashboard.consistency')}
-              value={`${Math.round(s30.habitConsistency * 100)}%`}
-              trend={trends.consistency}
-              tone={AREA_META.social.color}
-              spark={s7.daily.map((d) => d.minutes > 0 || d.tasks > 0 ? 1 : 0)}
-            />
-            <StatTile
-              icon="rocket"
-              label={t('dashboard.velocity')}
-              value={velocity}
-              sub={t('dashboard.perWeek')}
-              tone={AREA_META.career.color}
-              trend={trends.tasks}
-            />
-            <StatTile
-              icon="bulb"
-              label={t('dashboard.burnoutRisk')}
-              value={`${burnout}`}
-              tone={burnout >= 60 ? '#ff5d6c' : burnout >= 35 ? '#ffb454' : '#46d6a0'}
-              sub={burnout >= 60 ? t('dashboard.highLoad') : burnout >= 35 ? t('dashboard.watchLoad') : t('dashboard.healthyLoad')}
-            />
+            <div className="mg-contextline">
+              <span className="mg-ctx">
+                <span className="mg-ctx-dot" style={{ background: AREA_META.social.color }} />
+                {t('dashboard.consistency')} <b>{Math.round(s30.habitConsistency * 100)}%</b>
+              </span>
+              <span className="mg-ctx">
+                <span className="mg-ctx-dot" style={{ background: AREA_META.career.color }} />
+                {t('dashboard.velocity')} <b>{velocity}</b> {t('dashboard.perWeek')}
+              </span>
+              <span className="mg-ctx">
+                <span
+                  className="mg-ctx-dot"
+                  style={{ background: burnout >= 60 ? '#ff5d6c' : burnout >= 35 ? '#ffb454' : '#46d6a0' }}
+                />
+                {t('dashboard.burnoutRisk')} <b>{burnout}%</b>
+              </span>
+            </div>
           </section>
 
           {/* ═══ MISSION + AI ═══ */}
@@ -289,7 +292,11 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
                       <div key={task.id} className="mg-mission-item">
                         <button
                           className={`mg-check2 ${task.done ? 'done' : ''}`}
-                          onClick={() => toggleTask(task.id)}
+                          onClick={(e) => {
+                            toggleTask(task.id)
+                            const eligible = !task.due || task.due === tk
+                            if (!task.done && eligible) float.push(e, taskPower(task))
+                          }}
                           aria-label="Complete"
                           style={{ ['--mg-accent' as string]: PRIORITY_META[task.priority].color }}
                         >
@@ -322,7 +329,10 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
                     {data.habits.slice(0, 6).map((h) => {
                       const done = h.history.includes(tk)
                       return (
-                        <button key={h.id} className={`mg-habit-chip ${done ? 'done' : ''}`} onClick={() => toggleHabitToday(h.id)} style={{ ['--mg-tag' as string]: h.color }}>
+                        <button key={h.id} className={`mg-habit-chip ${done ? 'done' : ''}`} onClick={(e) => {
+                          toggleHabitToday(h.id)
+                          if (!done) float.push(e, habitPower())
+                        }} style={{ ['--mg-tag' as string]: h.color }}>
                           <Icon name={done ? 'check' : h.icon} size={14} /> {h.title}
                         </button>
                       )
@@ -410,12 +420,12 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
                 <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.03em' }}>{data.achievements.length}</span>
                 <span className="mg-muted" style={{ fontSize: 13 }}>{t('dashboard.earned')}</span>
               </div>
-              <button className="mg-link" style={{ marginTop: 8 }} onClick={() => onNavigate('sanctuary')}>{t('dashboard.viewSanctuary')} <Icon name="chevron" size={14} /></button>
             </Panel>
           </section>
         </>
-        </>
       )}
+
+      {float.node}
     </div>
   )
 }

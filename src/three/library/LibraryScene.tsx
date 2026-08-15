@@ -34,9 +34,9 @@ import { DayNightWeather } from './DayNightWeather'
 import { PlayerController } from './PlayerController'
 import { avatarRoots } from '../../avatar/CharacterAvatar'
 import { RemotePlayers } from './RemotePlayers'
-import { NpcPlayers } from './NpcPlayers'
 import { SeasonalOverlay } from './SeasonalOverlay'
 import { TableAccessories } from './TableAccessories'
+import { ImpostorBakeStage, setBakeGate } from './ImpostorSprites'
 
 class SoftBoundary extends Component<{ children: ReactNode }, { failed: boolean; msg: string }> {
   state = { failed: false, msg: '' }
@@ -126,6 +126,9 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
   // The post-processing axis tiers the heavy Ultra effects: N8AO is cut below
   // medium, GodRays only survives on high. Bloom/Vignette are unaffected.
   const postTier = useSettings((s) => s.postProcessing)
+  // Billboards for far players/NPCs (Settings → Players & Performance). The
+  // bake stage stays mounted while ON so distant rigs can swap to 1-draw sprites.
+  const impostorSprites = useSettings((s) => s.impostorSprites)
 
   // During seat selection the 2D overlay covers the scene — skip heavy
   // subsystems (post-processing, shadows, exterior, particles) so the GPU
@@ -200,6 +203,9 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
   // until the next 1 s heartbeat tick.
 
   const handleReady = () => {
+    // Open the impostor bake gate only after the loading veil lifts — the
+    // entry window must never absorb the ~30 full-rig bake renders+readbacks.
+    setBakeGate(true)
     onReady?.()
   }
 
@@ -439,12 +445,14 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
       <PlayerController />
        <ToggleGroup group="remotePlayers">
          <RemotePlayers />
-         <NpcPlayers roomId={roomId} />
        </ToggleGroup>
+      {/* Offscreen impostor baker — only mounted while the sprite setting is on;
+          distant players/NPCs swap to its billboards past the sprite distance. */}
+      {impostorSprites && <ImpostorBakeStage />}
       {/* PerfLogger is a DEV-only audit tool — its scene-graph traversals and
           console reports are dead weight in production builds. */}
-      {import.meta.env.DEV && <PerfLogger />}
-      <RenderHeartbeat />
+       {import.meta.env.DEV && <PerfLogger />}
+       <RenderHeartbeat />
       <DisableFrustumCulling />
       <SunTracker sunRef={sunRef} onVisible={setSunVisible} />
 
@@ -473,24 +481,12 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
 function usePostToggleState() {
   const [s, setS] = useState({ ..._postToggles })
   useEffect(() => {
-    // Poll the debug kill-switch globals, but ONLY re-render when a value has
-    // actually changed. Previously this pushed a fresh object every 100ms, which
-    // re-rendered PostEffects 10x/sec and — because the composer's passes were
-    // rebuilt as new element objects each render — forced EffectComposer to tear
-    // down and reallocate its GPU render targets 10x/sec (the cinematic hang).
-    const iv = setInterval(() => {
-      setS((prev) => {
-        if (
-          prev.vignette === _postToggles.vignette &&
-          prev.godrays === _postToggles.godrays &&
-          prev.n8ao === _postToggles.n8ao
-        ) {
-          return prev // no change → same reference → no re-render
-        }
-        return { ..._postToggles }
-      })
-    }, 100)
-    return () => clearInterval(iv)
+    // P1 (FPS): replaced the 100 ms poll with a push subscription. PostEffects
+    // only re-renders when a kill-switch actually flips (key press) — no constant
+    // reconciliation of the composer.
+    const h = () => setS({ ..._postToggles })
+    _postListeners.add(h)
+    return () => { _postListeners.delete(h) }
   }, [])
   return s
 }
@@ -524,7 +520,10 @@ function PostEffects({
   const ultraPasses = useMemo(() => {
     return [
       pt.n8ao && postTier !== 'off' ? <N8AO key="ao" aoRadius={1.2} distanceFalloff={1} intensity={1.8} quality="low" halfRes /> : null,
-      sunReady && sunVisible && pt.godrays && postTier === 'high' ? (
+      // GodRays is now on for everyone with post-processing enabled (any tier
+      // except 'off'), not just the 'high' tier — it only renders while the sun
+      // disc is on-screen, so it costs nothing at night (sun hidden) or indoors.
+      sunReady && sunVisible && pt.godrays && postTier !== 'off' ? (
         <GodRays key="god" sun={sunRef as unknown as RefObject<Mesh>} samples={30} density={0.9} decay={0.9} weight={0.35} exposure={0.45} clampMax={1} />
       ) : null,
       pt.vignette ? <Vignette key="vig" eskil={false} offset={0.16} darkness={0.8} /> : null,
@@ -587,10 +586,15 @@ function PostEffects({
  */
 function ShadowManager({ enabled, cinematic, refreshInterval = 300 }: { enabled: boolean; cinematic: boolean; refreshInterval?: number }) {
   const gl = useThree((s) => s.gl)
-  const camera = useThree((s) => s.camera)
   const frame = useRef(0)
-  const lastCam = useRef(new Vector3())
   const prevShould = useRef<boolean | null>(null)
+  // P0 (FPS): the sun is a directional light whose shadow camera is fixed in world
+  // space, so moving the *player* camera never changes the shadow map. We refresh
+  // only when an animated caster (an avatar root) actually moves, plus a 250 ms cap
+  // to coalesce bursts — not on every camera-frame. A static hall re-renders its
+  // shadow map ~zero times while idle, instead of every walking frame.
+  const avatarPrev = useRef(new Map<Object3D, Vector3>())
+  const lastRefresh = useRef(-1e9)
   // During the Cinematic Tour the camera flies constantly, which would force a
   // full ~48-caster shadow-map rebuild every frame — a major, sustained stall.
   // The tour is a soft, moving "shot", so frozen shadows are imperceptible; we
@@ -629,25 +633,35 @@ function ShadowManager({ enabled, cinematic, refreshInterval = 300 }: { enabled:
     }
     prevShould.current = shouldRender
 
-    if (!shouldRender) return
+    if (!shouldRender || freeze) return
 
-    // Only refresh the (very expensive — 48 shadow casters) maps when the
-    // camera has actually moved. While idle/sitting still the camera is
-    // stationary, so the maps freeze after the first render and we never pay
-    // the periodic multi-frame GPU stall that showed the near-black background
-    // as a "whole-screen blink". A rare safety refresh keeps things correct
-    // if something animated ever changes the lighting.
-    const moved = lastCam.current.distanceToSquared(camera.position) > 1e-4
-    if (moved && !freeze) {
-      gl.shadowMap.needsUpdate = true
-      lastCam.current.copy(camera.position)
+    // P0 (FPS): the directional shadow camera is fixed in world space, so the
+    // player camera's position never changes what the shadow map contains — only
+    // moving casters (avatars) do. Refresh the (expensive ~48-caster) map only
+    // when an avatar root actually moved, capped at 250 ms to coalesce bursts of
+    // motion. A static/idle hall re-renders its shadow map ~never, instead of on
+    // every walking frame — the single biggest GPU saving while moving with
+    // shadows on, with no visible change (the hall is static; scholars' shadows
+    // update at 4 Hz, imperceptible).
+    let moved = false
+    for (const root of avatarRoots) {
+      let p = avatarPrev.current.get(root)
+      if (!p) {
+        p = new Vector3()
+        avatarPrev.current.set(root, p)
+        moved = true
+        continue
+      }
+      if (p.distanceToSquared(root.position) > 1e-3) {
+        moved = true
+        p.copy(root.position)
+      }
     }
-    // NOTE: we do NOT refresh on a fixed timer while idle. The old code did
-    // `needsUpdate = true` every `refreshInterval` frames even when the camera
-    // was perfectly still — that periodic shadow-map re-render of ~48 casters is
-    // a multi-frame GPU stall that dropped a frame and showed the near-black
-    // background as a "whole-screen blink". The library/sun are static, so once
-    // the camera stops moving the maps stay frozen and the stall is gone.
+    const now = performance.now()
+    if (moved || now - lastRefresh.current > 250) {
+      gl.shadowMap.needsUpdate = true
+      lastRefresh.current = now
+    }
   })
 
   return null
@@ -718,6 +732,16 @@ const _postToggles: Record<string, boolean> = {
 }
 if (typeof window !== 'undefined' && import.meta.env.DEV) (window as any).__postToggles = _postToggles
 
+// P1 (FPS): the ToggleGroup / useSystemToggle / usePostToggleState hooks used to
+// poll these globals every 100 ms, re-rendering the whole top scene graph ~10×/sec
+// for no state change. These tiny listener sets make the flips (which only happen
+// on key press) push updates instead — each group re-renders only when its own
+// toggle actually changes. No more constant React reconciliation churn.
+const _sysListeners = new Set<() => void>()
+const _postListeners = new Set<() => void>()
+const notifySysToggles = () => { _sysListeners.forEach((f) => f()) }
+const notifyPostToggles = () => { _postListeners.forEach((f) => f()) }
+
 function SystemToggles() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -726,6 +750,7 @@ function SystemToggles() {
       if (e.ctrlKey && e.shiftKey && e.key === 'R') {
         Object.keys(_sysToggles).forEach(k => _sysToggles[k] = true)
         _postToggles.vignette = _postToggles.godrays = _postToggles.n8ao = true
+        notifySysToggles(); notifyPostToggles()
         return
       }
       // Debug subsystem toggles require Alt so they don't fire on the
@@ -742,9 +767,9 @@ function SystemToggles() {
       const key = map[e.key] ?? postMap[e.key.toLowerCase()]
       if (key) {
         if (_sysToggles[key] !== undefined) {
-          _sysToggles[key] = !_sysToggles[key]
+          _sysToggles[key] = !_sysToggles[key]; notifySysToggles()
         } else if (_postToggles[key] !== undefined) {
-          _postToggles[key] = !_postToggles[key]
+          _postToggles[key] = !_postToggles[key]; notifyPostToggles()
         }
       }
     }
@@ -758,8 +783,9 @@ function SystemToggles() {
 function ToggleGroup({ group, children }: { group: string; children: ReactNode }) {
   const [enabled, setEnabled] = useState(_sysToggles[group] ?? true)
   useEffect(() => {
-    const iv = setInterval(() => setEnabled(_sysToggles[group] ?? true), 100)
-    return () => clearInterval(iv)
+    const h = () => setEnabled(_sysToggles[group] ?? true)
+    _sysListeners.add(h)
+    return () => { _sysListeners.delete(h) }
   }, [group])
   if (!enabled) return null
   return <>{children}</>
@@ -769,11 +795,9 @@ function ToggleGroup({ group, children }: { group: string; children: ReactNode }
 export function useSystemToggle(key: string): boolean {
   const [enabled, setEnabled] = useState(_sysToggles[key] ?? true)
   useEffect(() => {
-    const iv = setInterval(() => {
-      const cur = _sysToggles[key] ?? true
-      setEnabled(prev => prev === cur ? prev : cur)
-    }, 100)
-    return () => clearInterval(iv)
+    const h = () => setEnabled(_sysToggles[key] ?? true)
+    _sysListeners.add(h)
+    return () => { _sysListeners.delete(h) }
   }, [key])
   return enabled
 }
@@ -786,6 +810,7 @@ export function useSystemToggle(key: string): boolean {
 // Internal freeze-detector state — module-scoped so no window global leaks into
 // production. The window mirror below exists only in development for profiling.
 let libFrameTs = -1
+
 function RenderHeartbeat() {
   const invalidate = useThree((s) => s.invalidate)
   const frameloop = useThree((s) => s.frameloop)

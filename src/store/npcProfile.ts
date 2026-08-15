@@ -12,6 +12,8 @@ export interface NpcProfileData {
   bio?: string
   joinDate?: string
   status: 'studying' | 'on-break' | 'offline'
+  /** What this scholar actually is — grad student, researcher, tutor… */
+  role?: string
   /** banner id (lib/banners) shown on the compact card strip */
   banner?: string
   /** logo id (lib/banners) shown on the compact card */

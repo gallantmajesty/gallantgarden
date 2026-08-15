@@ -33,12 +33,12 @@
 }
 .sh-overlay-card.theme-aurora,
 .sh-dock.theme-aurora {
-  --sh-accent: #5ec6e6;
+  --sh-accent: #6db8e8;
   --sh-accent-2: #b98cff;
-  --sh-accent-soft: rgba(94, 198, 230, 0.16);
+  --sh-accent-soft: rgba(94, 180, 230, 0.16);
   --sh-bg: rgba(16, 24, 30, 0.97);
   --sh-bg-2: rgba(24, 34, 42, 0.9);
-  --sh-bubble-mine: linear-gradient(180deg, #5ec6e6, #3aa6c8);
+  --sh-bubble-mine: linear-gradient(180deg, #2f6fb0, #25568f);
   --sh-bubble-theirs: rgba(255, 255, 255, 0.07);
 }
 
@@ -120,22 +120,16 @@
 /* ------------------------------------------------------------- full screen */
 .sh-overlay {
   position: fixed; inset: 0; z-index: 60;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(3px);
+  display: flex; align-items: stretch; justify-content: stretch;
+  background: #14100c;
 }
 .sh-overlay-card {
-  width: min(460px, 100%);
-  height: min(760px, 92vh);
+  width: 100%;
+  height: 100vh;
   display: flex; flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(24, 19, 14, 0.98), rgba(16, 12, 8, 0.98));
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.3),
-    0 4px 16px rgba(0, 0, 0, 0.3),
-    0 24px 70px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(24, 19, 14, 0.99), rgba(16, 12, 8, 0.99));
   overflow: hidden;
   position: relative;
 }
@@ -247,9 +241,14 @@
   display: flex; flex-direction: column; gap: 4px;
   background-image: var(--sh-wallpaper);
 }
+/* ChatThread wraps every message in a plain <div key>; make it transparent to
+   flex so .sh-msg.mine's align-self: flex-end actually right-aligns. */
+.sh-msgs > div { display: contents; }
 .sh-msgs[data-wall="forest"] { --sh-wallpaper: radial-gradient(circle at 20% 10%, rgba(60,120,70,.12), transparent 40%), radial-gradient(circle at 80% 80%, rgba(40,90,60,.12), transparent 45%); }
 .sh-msgs[data-wall="dusk"] { --sh-wallpaper: radial-gradient(circle at 70% 20%, rgba(150,90,200,.14), transparent 45%); }
 .sh-msgs[data-wall="stars"] { --sh-wallpaper: radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.5), transparent), radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,.4), transparent), radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.35), transparent); }
+.sh-msgs[data-wall="sunset"] { --sh-wallpaper: radial-gradient(circle at 80% 15%, rgba(255,140,80,.16), transparent 45%), radial-gradient(circle at 15% 85%, rgba(200,90,160,.12), transparent 45%); }
+.sh-msgs[data-wall="paper"] { --sh-wallpaper: radial-gradient(circle at 12% 20%, rgba(202,168,74,.10), transparent 30%), radial-gradient(circle at 88% 70%, rgba(140,120,90,.08), transparent 35%); }
 
 .sh-loadmore { text-align: center; font-size: 0.72rem; color: var(--sh-muted); padding: 4px; }
 .sh-day { text-align: center; margin: 10px 0 6px; }
@@ -272,8 +271,28 @@
   padding: 8px 12px; border-radius: 14px; font-size: var(--sh-font, 15px); line-height: 1.4;
   word-break: break-word; white-space: pre-wrap; position: relative;
 }
-.sh-msg.mine .sh-bubble { background: var(--sh-bubble-mine); color: #1a120a; border-bottom-right-radius: 4px; }
+.sh-msg.mine .sh-bubble { background: var(--sh-chat-color, var(--sh-bubble-mine)); color: var(--sh-chat-text, #1a120a); border-bottom-right-radius: 4px; }
 .sh-msg.theirs .sh-bubble { background: var(--sh-bubble-theirs); color: var(--sh-text); border-bottom-left-radius: 4px; }
+/* deep-blue mine bubbles (aurora) need light text for readable contrast */
+.theme-aurora .sh-msg.mine .sh-bubble { color: #f4f8ff; }
+/* image messages: no bubble — the photo floats bare, Instagram-style.
+   The message row shrink-wraps to the image so it hugs the correct side of
+   the thread: right for mine, left for theirs (no stretched-column gap). */
+.sh-msg--img { width: fit-content; max-width: 82%; }
+.sh-msg--img .sh-msg-col { align-items: flex-end; }
+.sh-msg--img.theirs .sh-msg-col { align-items: flex-start; }
+.sh-bubble--image {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 14px;
+  width: auto;
+  max-width: 260px;
+}
+.sh-bubble--image .sh-img-btn2 {
+  background: transparent;
+  width: 100%;
+  max-width: none;
+}
 .sh-msg.grp-next { margin-top: -2px; }
 .sh-msg.grp-next .sh-bubble { border-top-left-radius: 6px; }
 
@@ -285,8 +304,10 @@
 .sh-msg-foot { display: flex; align-items: center; gap: 6px; margin-top: 1px; }
 .sh-msg.mine .sh-msg-foot { justify-content: flex-end; }
 .sh-msg-time { font-size: 0.62rem; color: #7d735d; }
-.sh-msg-edit { background: none; border: none; color: #7d735d; font-size: 0.62rem; cursor: pointer; padding: 0; }
-.sh-msg-edit:hover { color: var(--sh-accent); }
+/* WhatsApp-style read ticks: white/grey when delivered, green when seen. */
+.sh-tick { display: inline-flex; align-items: center; margin-left: 3px; }
+.sh-tick svg { width: 15px; height: 10px; color: rgba(255, 255, 255, 0.75); display: block; }
+.sh-tick.seen svg { color: #7ee2a8; }
 .sh-edited { font-size: 0.6rem; color: #7d735d; font-style: italic; margin-left: 4px; }
 
 .sh-reply-chip {
@@ -324,7 +345,37 @@
 .sh-typing-dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes sh-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
 
+/* WhatsApp-style chat colour swatches (settings panel) */
+.sh-settings-colors { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sh-chat-color {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s; padding: 0; position: relative;
+}
+.sh-chat-color:hover { transform: scale(1.12); }
+.sh-chat-color.on { box-shadow: 0 0 0 2px var(--sh-bg-2), 0 0 0 4px var(--sh-accent); transform: scale(1.08); }
+.sh-chat-color-auto { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #caa84a, #b8932f); color: #1a120a; font-weight: 800; font-size: 0.8rem; }
+
 /* image + sticker messages */
+.sh-sticker-img { width: 150px; max-width: 200px; border-radius: 12px; display: block; background: transparent; }
+
+/* online GIF sticker picker */
+.sh-gif-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 2px; }
+.sh-gif {
+  border: none; padding: 0; background: var(--sh-surface); border-radius: 10px; overflow: hidden;
+  cursor: pointer; aspect-ratio: 1; width: 100%; transition: transform 0.12s, box-shadow 0.12s;
+}
+.sh-gif:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+.sh-gif img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* group member role badges (admin system) */
+.sh-role-badge {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 0.62rem; font-weight: 700;
+  padding: 1px 7px; border-radius: 999px; border: 1px solid var(--sh-border);
+  color: var(--sh-muted); background: var(--sh-surface); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.sh-role-badge.owner { color: #caa84a; border-color: rgba(202, 168, 74, 0.4); background: rgba(202, 168, 74, 0.1); }
+.sh-role-badge.admin { color: #7fb0ff; border-color: rgba(127, 176, 255, 0.4); background: rgba(127, 176, 255, 0.08); }
+.sh-role-badge svg { width: 10px; height: 10px; }
 .sh-img-btn2 {
   display: block; border: none; padding: 0; background: var(--sh-surface); border-radius: 12px;
   overflow: hidden; cursor: pointer; width: 220px; max-width: 70%; position: relative;
@@ -429,8 +480,36 @@
 
 .sh-group-av {
   display: inline-flex; align-items: center; justify-content: center; border-radius: 12px;
-  background: linear-gradient(135deg, var(--sh-accent), var(--sh-accent-2)); color: #1a120a;
+  /* Fixed brand gradient — NOT theme-linked, so switching chat themes never
+     recolors the group logo (user request). */
+  background: linear-gradient(135deg, #caa84a, #8a6b2f);
+  color: #1a120a;
 }
+.sh-group-logo { display: inline-flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.95); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+
+/* ------------------------------------------------------- customize panel */
+.sh-customize { display: flex; flex-direction: column; height: 100%; padding: 14px; gap: 10px; overflow-y: auto; }
+.sh-customize-head { display: flex; align-items: center; justify-content: space-between; }
+.sh-customize-title { font-size: 0.95rem; font-weight: 700; }
+.sh-customize-preview { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--sh-surface); border: 1px solid var(--sh-border); border-radius: 14px; }
+.sh-customize-preview-name { font-size: 0.9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-customize-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sh-muted); margin: 6px 0 0; }
+.sh-logo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sh-logo-tile {
+  aspect-ratio: 1; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: 1px solid var(--sh-border); background: var(--sh-surface);
+  color: var(--sh-muted); cursor: pointer; padding: 0; transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.sh-logo-tile span { width: 22px; height: 22px; display: inline-flex; }
+.sh-logo-tile:hover { border-color: var(--sh-accent); color: var(--sh-text); }
+.sh-logo-tile.on { border-color: var(--sh-accent); background: var(--sh-accent-soft); color: var(--sh-accent); transform: translateY(-1px); }
+.sh-color-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sh-color-dot {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s; padding: 0;
+}
+.sh-color-dot:hover { transform: scale(1.12); }
+.sh-color-dot.on { box-shadow: 0 0 0 2px var(--sh-bg-2), 0 0 0 4px var(--sh-accent); transform: scale(1.1); }
 
 /* members panel */
 .sh-members-panel { display: flex; flex-direction: column; height: 100%; }
@@ -487,7 +566,6 @@
 /* mobile */
 @media (max-width: 560px) {
   .sh-dock { left: 8px; right: 8px; width: auto; height: 64vh; bottom: 8px; }
-  .sh-overlay-card { width: 100%; height: 100vh; border-radius: 0; }
   .sh-launcher { bottom: 76px; }
   .sh-ov-side { width: 100%; border-left: none; }
 }

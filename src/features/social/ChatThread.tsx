@@ -15,6 +15,28 @@ export interface ReplyTarget {
   text: string
 }
 
+/* WhatsApp-style read receipt: white double-tick when delivered, green when seen.
+   The "Seen by …" names ride along as a hover tooltip. */
+function ReadTicks({ seen, seenByNames }: { seen: boolean; seenByNames?: string }) {
+  return (
+    <span className={`sh-tick ${seen ? 'seen' : ''}`} title={seenByNames ? `Seen by ${seenByNames}` : 'Read receipts'}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 12l4 4L17 5" />
+        <path d="M10.5 13.5L13 16l7-8" />
+      </svg>
+    </span>
+  )
+}
+
+/* Small stroke icon for the hover action bar (no emojis). */
+function ToolIcon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  )
+}
+
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
   return (
     <div className="sh-lightbox" onClick={onClose}>
@@ -37,6 +59,8 @@ export function ChatThread({
   const reactions = useChat((s) => s.reactions)
   const typing = useChat((s) => s.typing)
   const groupMembers = useChat((s) => s.groupMembers)
+  const seenBy = useChat((s) => s.seenBy)
+  const activeConvId = useChat((s) => s.activeGroupId ?? s.activeConversationId)
   const toggleReaction = useChat((s) => s.toggleReaction)
   const editMine = useChat((s) => s.editMine)
   const deleteMine = useChat((s) => s.deleteMine)
@@ -44,6 +68,15 @@ export function ChatThread({
   const loadingOlder = useChat((s) => s.loadingOlder)
   const hasMore = useChat((s) => s.hasMore)
   const wallpaper = useChatSettings((s) => s.wallpaper)
+  const chatColor = useChatSettings((s) => s.chatColor)
+
+  // WhatsApp-style chat colour: overrides the theme accent on my bubbles.
+  // The swatches are mid-tone, so text flips to white — except the gold
+  // default, which keeps the warm dark text.
+  const chatText = chatColor === '#caa84a' ? '#1a120a' : '#ffffff'
+  const chatStyle = chatColor
+    ? { '--sh-chat-color': chatColor, '--sh-chat-text': chatText } as React.CSSProperties
+    : undefined
 
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [reactFor, setReactFor] = useState<string | null>(null)
@@ -90,9 +123,18 @@ export function ChatThread({
     .map((id) => senderMap.get(id)?.name ?? 'Someone')
     .filter(Boolean)
 
+  // index of MY latest message — "Seen by …" receipts hang under it, so they
+  // stay visible even after the group has sent newer messages.
+  const lastMineIdx = useMemo(() => {
+    for (let j = messages.length - 1; j >= 0; j--) {
+      if (messages[j].sender_id === (meId ?? user?.id)) return j
+    }
+    return -1
+  }, [messages, meId, user?.id])
+
   return (
     <div className="sh-thread">
-      <div className="sh-msgs" ref={scrollRef} onScroll={onScroll} data-no-hotkeys data-wall={wallpaper}>
+      <div className="sh-msgs" ref={scrollRef} onScroll={onScroll} data-no-hotkeys data-wall={wallpaper} style={chatStyle}>
         {hasMore && <div className="sh-loadmore">{loadingOlder ? 'Loading…' : 'Scroll up for older messages'}</div>}
         {messages.map((m, i) => {
           if (m.kind === 'system' && !m.body) return null
@@ -113,11 +155,12 @@ export function ChatThread({
 
           const groups = reactions[m.id] ?? []
           const replyMsg = m.reply_to ? messages.find((x) => x.id === m.reply_to) : null
+          const isMyLast = mine && i === lastMineIdx
 
           return (
             <div key={m.id}>
               {showDay && <div className="sh-day"><span>{dayLabel(m.created_at)}</span></div>}
-              <div className={`sh-msg ${mine ? 'mine' : 'theirs'} ${isGroup ? 'grp' : ''} ${grouped ? 'grp-next' : ''}`}>
+              <div className={`sh-msg ${mine ? 'mine' : 'theirs'} ${isGroup ? 'grp' : ''} ${grouped ? 'grp-next' : ''} ${m.kind === 'image' && m.attachment_url ? 'sh-msg--img' : ''}`}>
                 {isGroup && !mine && !grouped && (
                   <span className="sh-msg-av">
                     <ProfileAvatar name={sender?.name ?? 'U'} avatarUrl={sender?.avatar_url} rankId={sender?.rank} size={30} />
@@ -132,7 +175,7 @@ export function ChatThread({
                       <span>{previewText(replyMsg)}</span>
                     </div>
                   )}
-                  <div className="sh-bubble" onDoubleClick={() => onReply({ id: m.id, name: sender?.name ?? 'User', text: previewText(m) })}>
+                  <div className={`sh-bubble${m.kind === 'image' && m.attachment_url ? ' sh-bubble--image' : ''}`} onDoubleClick={() => onReply({ id: m.id, name: sender?.name ?? 'User', text: previewText(m) })}>
                     {editing === m.id ? (
                       <textarea
                         className="sh-edit-input"
@@ -155,8 +198,7 @@ export function ChatThread({
 
                   <div className="sh-msg-foot">
                     <span className="sh-msg-time">{fmtTime(m.created_at)}</span>
-                    {mine && <button className="sh-msg-edit" type="button" onClick={() => { setEditing(m.id); setEditText(m.body) }}>edit</button>}
-                    {mine && <button className="sh-msg-edit" type="button" onClick={() => void deleteMine(m.id)}>delete</button>}
+                    {mine && isMyLast && <ReadTicks seen={isGroup && activeConvId ? (seenBy[activeConvId]?.length ?? 0) > 0 : false} seenByNames={isGroup && activeConvId && seenBy[activeConvId]?.length ? seenBy[activeConvId].map((uid) => senderMap.get(uid)?.name).filter(Boolean).join(', ') : undefined} />}
                   </div>
 
                   {groups.length > 0 && (
@@ -176,10 +218,14 @@ export function ChatThread({
                   )}
 
                   <div className="sh-msg-tools">
-                    <button type="button" title="Reply" onClick={() => onReply({ id: m.id, name: sender?.name ?? 'User', text: previewText(m) })}>↩</button>
-                    <button type="button" title="React" onClick={() => setReactFor(m.id)}>🙂</button>
-                    {mine && <button type="button" title="Edit" onClick={() => { setEditing(m.id); setEditText(m.body) }}>✎</button>}
-                    {mine && <button type="button" title="Delete" onClick={() => void deleteMine(m.id)}>🗑</button>}
+                    <button type="button" title="Reply" onClick={() => onReply({ id: m.id, name: sender?.name ?? 'User', text: previewText(m) })} aria-label="Reply">
+                      <ToolIcon d="M3 10a6 6 0 0 1 6-6h6a6 6 0 0 1 0 12h-3l-6 5v-5a6 6 0 0 1-3-6z" />
+                    </button>
+                    <button type="button" title="React" onClick={() => setReactFor(m.id)} aria-label="React">
+                      <ToolIcon d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
+                    </button>
+                    {mine && <button type="button" title="Edit" onClick={() => { setEditing(m.id); setEditText(m.body) }} aria-label="Edit"><ToolIcon d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></button>}
+                    {mine && <button type="button" title="Delete" onClick={() => void deleteMine(m.id)} aria-label="Delete"><ToolIcon d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" /></button>}
                   </div>
                 </div>
               </div>
@@ -225,6 +271,9 @@ function renderBody(m: Message, onImage: () => void) {
     )
   }
   if (m.kind === 'sticker') {
+    if (m.attachment_url) {
+      return <img className="sh-sticker-img" src={m.attachment_url} alt="Sticker" loading="lazy" />
+    }
     const st = getSticker(m.meta?.sticker)
     return <span className="sh-sticker-msg" title={st?.label}>{st?.emoji ?? '📦'}</span>
   }

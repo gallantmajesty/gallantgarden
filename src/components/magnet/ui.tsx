@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from './Icon'
 
 // Small shared building blocks used across every Task Magnet view. They lean on
@@ -49,12 +49,14 @@ export function Panel({
   children,
   className = '',
   pad = true,
+  style,
 }: {
   children: ReactNode
   className?: string
   pad?: boolean
+  style?: CSSProperties
 }) {
-  return <div className={`mg-panel ${pad ? 'pad' : ''} ${className}`}>{children}</div>
+  return <div className={`mg-panel ${pad ? 'pad' : ''} ${className}`} style={style}>{children}</div>
 }
 
 export function SectionHead({

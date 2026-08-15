@@ -28,7 +28,8 @@ export function useAudio() {
       const s = useSettings.getState()
       eng.apply({ master: s.master, ambientVol: s.ambientVol, rainVol: s.rainVol, ambientOn: s.ambientOn, rainOn: s.rainOn })
       // First gesture also grants the music engine its autoplay licence — if the
-      // player had music running when they left, it resumes now.
+      // player had music running when they left, it resumes now (only resumes
+      // inside the library — the music store's resumeFromGesture is scoped).
       useMusic.getState().resumeFromGesture()
       detach()
     }
@@ -43,5 +44,12 @@ export function useAudio() {
       getAmbient().apply({ master, ambientVol, rainVol, ambientOn: false, rainOn: false })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // The library music player is scoped to this screen: mark the library as
+  // active on entry and pause the player the moment the user leaves it.
+  useEffect(() => {
+    useMusic.getState().setLibraryScope(true)
+    return () => useMusic.getState().setLibraryScope(false)
   }, [])
 }

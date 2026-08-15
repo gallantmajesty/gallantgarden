@@ -153,7 +153,25 @@ export interface MagnetData {
    *  saving up a wallet. Backfilled from xp+premiumXp on first load. */
   rankXp: number
 
-  // personalization
+  // Magnet Power (MXP) — Task-Magnet-ONLY progression currency. Earned by
+  // completing tasks, subtasks, habits and milestones inside the magnet. It is
+  // NEVER spendable outside the magnet and NEVER feeds the global
+  // leaves/golden/rank economy — a student could farm it all day without
+  // touching Focus Lily's wallet. It drives the magnet's own level bar AND
+  // buys themes in the magnet's own store, so every magnet action feels earned.
+  mxp: number
+  // Lifetime Magnet Power ever earned (monotonic — never lowered by spending
+  // or refunds). Drives the level bar so buying themes never de-levels you.
+  mxpTotal: number
+  // Magnet Power spent in the magnet store (info; balance = mxpTotal - mxpSpent).
+  mxpSpent: number
+  // Today's earned power (used by the "today" meter). Rolls at midnight.
+  mxpDay: { date: string; value: number }
+
+  // personalization — magnet-local theme store
+  theme: string // applied theme id (from lib/magnet/themes)
+  unlockedThemes: string[] // themes owned (bought or starter-free)
+
   font: string
 
   lastVisit: string | null // ISO timestamp of previous visit
@@ -181,10 +199,8 @@ export const PRIORITY_META: Record<Priority, { label: string; color: string; wei
 
 // ---- XP / level curve -------------------------------------------------------
 // Gentle quadratic-ish curve: every level costs a little more than the last.
-export const XP_PER_TASK = 12
-export const XP_PER_FOCUS_MIN = 1
-export const XP_PER_HABIT = 8
-export const XP_PER_MILESTONE = 25
+// The same curve drives both the global level (rankXp) and the magnet-local
+// Magnet Power level — each has its own counter so they never mix.
 
 export function levelForXp(xp: number): number {
   return Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1

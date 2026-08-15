@@ -11,21 +11,22 @@ import { createNullSafeEvents } from '../three/safeEvents'
 import { characterById } from '../avatar/characters'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
-import { LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES } from '../lib/realm'
+import { CHINESE_CAFE_ROOMS, LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES, chineseCafeEnabled } from '../lib/realm'
+import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
-import { npcOnlineCount } from '../lib/npcSystem'
 import { roomTheme } from '../lib/roomThemes'
 import { createRealm, getRealmByCode, searchPublicRealms, inviteLink, type Realm as DbRealm } from '../lib/realms'
 
 import './Realm.css'
 
-type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'public' | 'custom'
+type Mode = 'choose' | 'private' | 'library' | 'train' | 'uk-cafe' | 'chinese-cafe' | 'public' | 'custom'
 
 function modeFromPath(pathname: string): Mode {
   if (pathname.includes('/custom/') && pathname.split('/custom/')[1].split('/')[0]) return 'custom'
   if (pathname.endsWith('/custom')) return 'custom'
   if (pathname.endsWith('/private')) return 'private'
   if (pathname.endsWith('/public')) return 'public'
+  if (pathname.endsWith('/chinese-cafe')) return 'chinese-cafe'
   if (pathname.endsWith('/uk-cafe')) return 'uk-cafe'
   if (pathname.endsWith('/train')) return 'train'
   if (pathname.endsWith('/library')) return 'library'
@@ -40,6 +41,7 @@ function pathForMode(mode: Mode, code?: string): string {
     case 'library': return '/lobby/realm/library'
     case 'train': return '/lobby/realm/train'
     case 'uk-cafe': return '/lobby/realm/uk-cafe'
+    case 'chinese-cafe': return '/lobby/realm/chinese-cafe'
     case 'public': return '/lobby/realm/public'
     case 'custom': return code ? `/lobby/realm/custom/${code}` : '/lobby/realm/custom'
     default: return '/lobby/realm/choose'
@@ -65,6 +67,7 @@ export function Realm() {
         {mode === 'library' && <LibraryRealm />}
         {mode === 'train' && <TrainRealm />}
         {mode === 'uk-cafe' && <UkCafeRealm />}
+        {mode === 'chinese-cafe' && (chineseCafeEnabled() ? <ChineseCafeRealm /> : <FlagshipUnavailable name="Jade Lantern Café" />)}
         {mode === 'public' && <PrivateChoose onPick={(m) => navigate(pathForMode(m))} />}
         {mode === 'custom' && <PublicRealm />}
 </div>
@@ -210,6 +213,27 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           <p>A cozy Edinburgh-style cafe with exposed brick, warm lighting, and fresh pastries.</p>
           <span className="realm-card-cta">{t('common.soon')}</span>
         </button>
+
+        <button
+          className="realm-card water-glass realm-card--soon"
+          disabled
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
+            e.currentTarget.style.setProperty('--glow-y', `${((e.clientY - r.top) / r.height) * 100}%`)
+          }}
+          onPointerLeave={(e) => {
+            e.currentTarget.style.removeProperty('--glow-x')
+            e.currentTarget.style.removeProperty('--glow-y')
+          }}
+        >
+          <div className="realm-card-orb">
+            <PngIcon name="study-rooms" size={88} alt="Jade Lantern Chinese Cafe" />
+          </div>
+          <h2>🏮 Jade Lantern Café</h2>
+          <p>Study beside a moon-gate koi courtyard, quiet lattice booths, and rain-washed windows.</p>
+          <span className="realm-card-cta">{t('common.soon')}</span>
+        </button>
       </div>
     </>
   )
@@ -303,15 +327,11 @@ function LibraryRealm() {
         {LIBRARY_ROOMS.map((r, roomIdx) => {
           const rows = occ[r.id] ?? []
           const theme = roomTheme(r.id)
-          // Each room hosts its own small cast of ambient scholars (max 30,
-          // different headcount per hall) — always present, so every room shows
-          // its own live number.
-          const npc = npcOnlineCount(roomIdx, Date.now())
-          const here = totalOccupants(rows) + npc
+          const here = totalOccupants(rows)
           const instances = rows.length
-          const lead = (rows.find((x) => x.instance === 1)?.count ?? 0) + npc
-          const full = instances > 0 && rows.every((x) => x.count + npc >= REALM_CAPACITY)
-          // Live mood of the room, from the scholars actually there right now.
+          const lead = rows.find((x) => x.instance === 1)?.count ?? 0
+          const full = instances > 0 && rows.every((x) => x.count >= REALM_CAPACITY)
+          // Live mood of the room, from the people actually there right now.
           const mood = here < 6 ? { label: 'Quiet', cls: 'muted' } : here < 15 ? { label: 'Focused', cls: '' } : { label: 'Lively', cls: 'hot' }
           return (
 <div key={r.id} className="realm-room water-glass" style={{ '--room-accent': theme.accent, '--room-accent-soft': theme.accentSoft } as CSSProperties}>
@@ -401,6 +421,74 @@ function UkCafeRealm() {
                 <p>{r.blurb}</p>
               </div>
               <button className="sf-btn water realm-join" onClick={() => join(r.id, r.name)}>
+                {full ? 'Enter new room' : 'Enter'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function ChineseCafeRealm() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const enterGlobal = useRealm((s) => s.enterGlobal)
+  const [occ, setOcc] = useState<Record<string, InstanceOccupancy[]>>({})
+
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      const entries = await Promise.all(
+        CHINESE_CAFE_ROOMS.map(async (r) => [r.id, await occupancy(`chinese-cafe:${r.id}`)] as const),
+      )
+      if (alive) setOcc(Object.fromEntries(entries))
+    }
+    void load()
+    const timer = window.setInterval(load, 15_000)
+    return () => { alive = false; window.clearInterval(timer) }
+  }, [])
+
+  function join(roomId: string, name: string) {
+    if (!user) {
+      navigate('/')
+      return
+    }
+    enterGlobal(roomId, name)
+    navigate('/lobby/explore?world=chinese-cafe')
+  }
+
+  return (
+    <>
+      <header className="realm-head">
+        <span className="sf-pill">Chinese Café</span>
+        <h1>Jade Lantern Study House</h1>
+        <p>A smaller 30-seat realm built for focused tea-house study.</p>
+      </header>
+      <div className="realm-rooms">
+        {CHINESE_CAFE_ROOMS.map((room) => {
+          const rows = occ[room.id] ?? []
+          const capacity = ROOM_CAPACITIES[room.id] ?? 26
+          const here = totalOccupants(rows)
+          const instances = rows.length
+          const lead = rows.find((row) => row.instance === 1)?.count ?? 0
+          const full = instances > 0 && rows.every((row) => row.count >= capacity)
+          return (
+            <div key={room.id} className="realm-room water-glass" style={{ '--room-accent': '#38a27f', '--room-accent-soft': 'rgba(56,162,127,0.22)' } as CSSProperties}>
+              <div className="realm-room-icon"><PngIcon name="study-rooms" size={48} alt="" /></div>
+              <div className="realm-room-body">
+                <div className="roomlet-room-top">
+                  <strong>{room.name}</strong>
+                  <span className="realm-room-count" title={`${here} studying now`}>
+                    <span className="roomlet-room-dot" />
+                    {Math.min(lead, capacity)}/{capacity}
+                    {instances > 1 && <span className="realm-room-inst"> · {instances} rooms · {here} total</span>}
+                  </span>
+                </div>
+                <p>{room.blurb}</p>
+              </div>
+              <button className="sf-btn water realm-join" onClick={() => join(room.id, room.name)}>
                 {full ? 'Enter new room' : 'Enter'}
               </button>
             </div>

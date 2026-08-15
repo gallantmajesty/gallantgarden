@@ -4,12 +4,15 @@ import { useMagnet } from '../../../store/magnet'
 import type { Goal, GoalKind, Project } from '../../../lib/magnet/types'
 import { SectionHead, Panel, ProgressRing, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
+import { milestonePower, goalCompletePower } from '../../../lib/magnet/score'
+import { useMxpFloat } from '../MxpFeedback'
+import './GoalsView.css'
 
-const KINDS: { key: GoalKind; labelKey: string; icon: string; blurbKey: string }[] = [
-  { key: 'short', labelKey: 'goals.kindShort', icon: 'flag', blurbKey: 'goals.blurbShort' },
-  { key: 'long', labelKey: 'goals.kindLong', icon: 'target', blurbKey: 'goals.blurbLong' },
-  { key: 'life', labelKey: 'goals.kindLife', icon: 'star', blurbKey: 'goals.blurbLife' },
-  { key: 'dream', labelKey: 'goals.kindDream', icon: 'rocket', blurbKey: 'goals.blurbDream' },
+const KINDS: { key: GoalKind; labelKey: string; icon: string; blurbKey: string; color: string }[] = [
+  { key: 'short', labelKey: 'goals.kindShort', icon: 'flag', blurbKey: 'goals.blurbShort', color: '#ffb454' },
+  { key: 'long', labelKey: 'goals.kindLong', icon: 'target', blurbKey: 'goals.blurbLong', color: '#9a6cff' },
+  { key: 'life', labelKey: 'goals.kindLife', icon: 'star', blurbKey: 'goals.blurbLife', color: '#46d6a0' },
+  { key: 'dream', labelKey: 'goals.kindDream', icon: 'rocket', blurbKey: 'goals.blurbDream', color: '#ff6f9c' },
 ]
 const GOAL_COLORS = ['#9a6cff', '#ff6f9c', '#46d6a0', '#ffb454', '#4fd1e0', '#b76cff', '#ff5d6c']
 const PROJECT_ICONS = ['flag', 'rocket', 'book', 'brain', 'star', 'bulb', 'heart', 'fire']
@@ -52,6 +55,7 @@ export function GoalsView() {
   const [projTitle, setProjTitle] = useState('')
   const [projIcon, setProjIcon] = useState(PROJECT_ICONS[0])
   const [projColor, setProjColor] = useState(GOAL_COLORS[0])
+  const float = useMxpFloat()
 
   function save(e: React.FormEvent) {
     e.preventDefault()
@@ -150,7 +154,7 @@ export function GoalsView() {
           if (goals.length === 0) return null
           return (
             <div key={k.key} className="mg-goalgroup">
-              <h3 className="mg-goalgroup-head">
+              <h3 className="mg-goalgroup-head" style={{ ['--mg-goalgroup' as string]: k.color }}>
                 <Icon name={k.icon} size={17} /> {t(k.labelKey)}
                 <span className="mg-muted">{t(k.blurbKey)}</span>
               </h3>
@@ -170,7 +174,15 @@ export function GoalsView() {
                       addMilestone(g.id, v)
                       setMsInput((m) => ({ ...m, [g.id]: '' }))
                     }}
-                    onToggleMs={(id) => toggleMilestone(g.id, id)}
+                    onToggleMs={(id, e) => {
+                      const m = g.milestones.find((x) => x.id === id)
+                      if (m && !m.done) float.push(e, milestonePower())
+                      // Also celebrate a goal crossing 100% (matches the store).
+                      const doneAfter = g.milestones.filter((x) => x.id !== id ? x.done : !x.done).length
+                      const afterPct = g.milestones.length ? Math.round((doneAfter / g.milestones.length) * 100) : g.progress
+                      if (afterPct >= 100 && g.progress < 100) float.push(e, goalCompletePower())
+                      toggleMilestone(g.id, id)
+                    }}
                     onProgress={(p) => updateGoal(g.id, { progress: p })}
                     onDelete={() => deleteGoal(g.id)}
                     onLinkProject={(projId) => (projId ? linkProjectGoal(projId, g.id) : unlinkProjectGoal(g.id))}
@@ -253,6 +265,8 @@ export function GoalsView() {
           </div>
         </form>
       </MgModal>
+
+      {float.node}
     </div>
   )
 }
@@ -277,19 +291,25 @@ function GoalCard({
   msInput: string
   onMsInput: (v: string) => void
   onAddMs: () => void
-  onToggleMs: (id: string) => void
+  onToggleMs: (id: string, e: { clientX: number; clientY: number }) => void
   onProgress: (p: number) => void
   onDelete: () => void
   onLinkProject: (projectId: string | null) => void
 }) {
   const { t } = useTranslation()
   const hasMs = goal.milestones.length > 0
+  const complete = goal.progress >= 100 || (hasMs && goal.milestones.every((m) => m.done))
+  const kindMeta = KINDS.find((x) => x.key === goal.kind)
   return (
-    <Panel className="mg-goalcard">
-      <div className="mg-goalcard-top" style={{ ['--mg-goal' as string]: goal.color }}>
+    <Panel
+      className={`mg-goalcard ${goal.kind === 'dream' ? 'is-dream' : ''} ${complete ? 'is-complete' : ''}`}
+      style={{ ['--mg-goal' as string]: goal.color }}
+    >
+      <div className="mg-goalcard-top">
         <ProgressRing pct={goal.progress / 100} size={62} label={`${goal.progress}%`} />
         <div className="mg-goalcard-head">
           <h4>{goal.title}</h4>
+          {kindMeta && <span className="mg-goal-kind">{t(kindMeta.labelKey)}</span>}
           {goal.target && (
             <span className="mg-goal-target">
               <Icon name="calendar" size={12} /> {goal.target}
@@ -338,7 +358,7 @@ function GoalCard({
       <ul className="mg-mslist">
         {goal.milestones.map((m) => (
           <li key={m.id}>
-            <button className={`mg-subcheck ${m.done ? 'done' : ''}`} onClick={() => onToggleMs(m.id)}>
+            <button className={`mg-subcheck ${m.done ? 'done' : ''}`} onClick={(e) => onToggleMs(m.id, e)}>
               <Icon name="check" size={11} />
             </button>
             <span className={m.done ? 'done' : ''}>{m.title}</span>

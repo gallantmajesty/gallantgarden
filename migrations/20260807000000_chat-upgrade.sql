@@ -433,29 +433,29 @@ DECLARE
 BEGIN
   RETURN QUERY
   WITH mine AS (
-    SELECT conversation_id, last_read_at
-    FROM conversation_members WHERE user_id = me
+    SELECT cm.conversation_id, cm.last_read_at
+    FROM conversation_members cm WHERE cm.user_id = me
   ),
   members AS (
-    SELECT conversation_id, count(*)::int AS mcount
-    FROM conversation_members
-    WHERE conversation_id IN (SELECT conversation_id FROM mine)
-    GROUP BY conversation_id
+    SELECT cm.conversation_id, count(*)::int AS mcount
+    FROM conversation_members cm
+    WHERE cm.conversation_id IN (SELECT mm.conversation_id FROM mine mm)
+    GROUP BY cm.conversation_id
   ),
   others AS (
-    SELECT DISTINCT ON (conversation_id) conversation_id, user_id
-    FROM conversation_members
-    WHERE conversation_id IN (SELECT conversation_id FROM mine)
-      AND user_id <> me
-    ORDER BY conversation_id, user_id
+    SELECT DISTINCT ON (cm.conversation_id) cm.conversation_id, cm.user_id
+    FROM conversation_members cm
+    WHERE cm.conversation_id IN (SELECT mm.conversation_id FROM mine mm)
+      AND cm.user_id <> me
+    ORDER BY cm.conversation_id, cm.user_id
   ),
   latest AS (
-    SELECT DISTINCT ON (conversation_id)
-      conversation_id, id, sender_id, body, kind, attachment_url, created_at
-    FROM messages
-    WHERE conversation_id IN (SELECT conversation_id FROM mine)
-      AND deleted_at IS NULL
-    ORDER BY conversation_id, created_at DESC
+    SELECT DISTINCT ON (m.conversation_id)
+      m.conversation_id, m.id, m.sender_id, m.body, m.kind, m.attachment_url, m.created_at
+    FROM messages m
+    WHERE m.conversation_id IN (SELECT mm.conversation_id FROM mine mm)
+      AND m.deleted_at IS NULL
+    ORDER BY m.conversation_id, m.created_at DESC
   ),
   unread AS (
     SELECT m.conversation_id, count(*)::int AS ucount
@@ -470,7 +470,7 @@ BEGIN
     SELECT c.id AS conversation_id, greatest(c.updated_at, COALESCE(max(m.created_at), c.created_at)) AS act
     FROM conversations c
     LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL
-    WHERE c.id IN (SELECT conversation_id FROM mine)
+    WHERE c.id IN (SELECT mm.conversation_id FROM mine mm)
     GROUP BY c.id, c.updated_at
   )
   SELECT

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LibraryScene } from '../three/library/LibraryScene'
 import { TrainStationScene } from '../three/train/TrainStationScene'
+import { ChineseCafeScene } from '../three/chinese-cafe/ChineseCafeScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
 import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
@@ -32,11 +33,10 @@ import { useRealm, type ActiveRealm } from '../store/realm'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useAvatar } from '../avatar/store'
-import { trainStationEnabled, ukCafeEnabled } from '../lib/realm'
+import { ROOM_CAPACITIES, trainStationEnabled, ukCafeEnabled, chineseCafeEnabled } from '../lib/realm'
 import { roomTheme } from '../lib/roomThemes'
 import { useRealmNet, joinRealm, leaveRealm, updateIdentity, networkId } from '../multiplayer/net'
 import { assignInstance, startHeartbeat, leavePresence, REALM_CAPACITY } from '../lib/realmPresence'
-import { npcOnlineInRoom, assignNpcSeats, libraryRoomIndex } from '../lib/npcSystem'
 import { PublicPlayerTag, type PublicPlayer } from '../components/PublicPlayerTag'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { RankBadge } from '../components/RankBadge'
@@ -52,6 +52,7 @@ import { FocusDomain } from '../components/FocusDomain'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
+import { ChineseCafeSeatSelectionOverlay } from '../three/chinese-cafe/ChineseCafeSeatSelectionOverlay'
 import { NpcProfileCard } from '../components/NpcProfileCard'
 import { useNpcProfile } from '../store/npcProfile'
 import { useSeatFlow } from '../store/seatFlow'
@@ -60,7 +61,7 @@ import './Explore.css'
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
 export interface ExploreProps {
-  defaultWorld?: 'library' | 'train-station' | 'uk-cafe'
+  defaultWorld?: 'library' | 'train-station' | 'uk-cafe' | 'chinese-cafe'
 }
 
 export function Explore({ defaultWorld }: ExploreProps) {
@@ -69,7 +70,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   
   // Read world from URL query parameter, or fall back to defaultWorld prop
   const searchParams = new URLSearchParams(location.search)
-  const worldFromUrl = (searchParams.get('world') as 'library' | 'train-station' | 'uk-cafe') || defaultWorld
+  const worldFromUrl = (searchParams.get('world') as 'library' | 'train-station' | 'uk-cafe' | 'chinese-cafe') || defaultWorld
 
   const realm = useRealm((s) => s.active)
   const [ready, setReady] = useState(false)
@@ -88,6 +89,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   // Determine which world to render: use worldFromUrl if available, otherwise use defaultWorld prop, otherwise use realm.world
   const isTrain = worldFromUrl === 'train-station' || defaultWorld === 'train-station' || realm?.world === 'train-station'
   const isUkCafe = worldFromUrl === 'uk-cafe' || defaultWorld === 'uk-cafe' || realm?.world === 'uk-cafe'
+  const isChineseCafe = worldFromUrl === 'chinese-cafe' || defaultWorld === 'chinese-cafe' || realm?.world === 'chinese-cafe'
 
   // Auto-collapse the desk whenever the player sits down, so the seated avatar (and
   // its sitting animation) stays visible behind a small header rather than the full
@@ -208,26 +210,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
     const sync = () => {
       const remote = getRemoteOccupied()
       const occupied = { ...remote }
-      // NPC scholars sitting at their permanent desks show up as occupants too,
-      // so the seat picker never offers a seat an online NPC owns — and the
-      // NPCs never move because of a player.
-      const roomIdx = libraryRoomIndex(useRealm.getState().active?.roomId)
-      if (roomIdx >= 0) {
-        const seats = useSeatFlow.getState().seats
-        const mySeat = useWorld.getState().seat
-        const npcs = npcOnlineInRoom(roomIdx, Date.now())
-        const takenByUser = new Set<number>(Object.keys(remote).map(Number))
-        if (mySeat != null) takenByUser.add(mySeat)
-        const assignments = assignNpcSeats(
-          npcs.map((n) => n.idx),
-          seats,
-          takenByUser,
-        )
-        for (const npc of npcs) {
-          const seat = assignments.get(npc.idx)
-          if (seat && !occupied[seat.id]) occupied[seat.id] = npc.name
-        }
-      }
       useSeatFlow.getState().setOccupied(occupied)
     }
     sync()
@@ -280,6 +262,9 @@ export function Explore({ defaultWorld }: ExploreProps) {
   if (isUkCafe && !ukCafeEnabled()) {
     return <FlagshipUnavailable name="UK Cafe Realm" />
   }
+  if (isChineseCafe && !chineseCafeEnabled()) {
+    return <FlagshipUnavailable name="Jade Lantern Café" />
+  }
 
   return (
     <div className="explore-root">
@@ -300,14 +285,16 @@ export function Explore({ defaultWorld }: ExploreProps) {
           compile stalls across frames instead. */}
       <RoomLoader
         ready={ready}
-        roomName={realm?.name ?? (isTrain ? 'Train Station' : isUkCafe ? 'UK Café' : 'The Great Library')}
-        accent={isUkCafe || isTrain ? undefined : roomTheme(realm?.roomId).accent}
+        roomName={realm?.name ?? (isTrain ? 'Train Station' : isChineseCafe ? 'Jade Lantern Study House' : isUkCafe ? 'UK Café' : 'The Great Library')}
+        accent={isChineseCafe ? '#38a27f' : isUkCafe || isTrain ? undefined : roomTheme(realm?.roomId).accent}
         minDuration={6000}
         show={seatFlowStage !== 'selecting'}
       >
         {isTrain || (sceneMounted && seatFlowStage !== 'selecting') ? (
           isTrain ? (
             <TrainStationScene onReady={() => setReady(true)} />
+          ) : isChineseCafe ? (
+            <ChineseCafeScene onReady={() => setReady(true)} />
           ) : isUkCafe ? (
             <LibraryScene
               onReady={() => setReady(true)}
@@ -330,10 +317,12 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
       {/* Library seat-selection overlay — shown before the player commits to a seat.
           Once a seat is chosen we fall through to the normal in-world HUD. */}
-      {!isTrain && seatFlowStage === 'selecting' && <SeatSelectionOverlay />}
+      {!isTrain && seatFlowStage === 'selecting' && (
+        isChineseCafe ? <ChineseCafeSeatSelectionOverlay /> : <SeatSelectionOverlay />
+      )}
 
       {/* Cinematic entrance — "Entering the Great Hall..." title card + fade */}
-      {!isTrain && <CinematicEntry />}
+      {!isTrain && !isChineseCafe && <CinematicEntry />}
 
       {/* Cinematic Tour (key 9) runs full-screen with no letterbox bars, so the
           web viewport keeps its full height/width while the camera glides. */}
@@ -536,6 +525,7 @@ function useExploreShortcuts() {
  *  auto-instancing then splits a busy key across `#1`, `#2`, … channels. */
 function roomKeyOf(a: ActiveRealm): string {
   if (a.kind === 'custom') return `custom:${a.roomId ?? a.name}`
+  if (a.roomId && a.world === 'chinese-cafe') return `chinese-cafe:${a.roomId}`
   if (a.roomId) return `lib:${a.roomId}`
   return `flag:${a.world}`
 }
@@ -587,7 +577,8 @@ function RealmConnection() {
     let stopHeartbeat: (() => void) | null = null
 
     void (async () => {
-      const instance = await assignInstance(roomKey, REALM_CAPACITY)
+      const capacity = active.roomId ? (ROOM_CAPACITIES[active.roomId] ?? REALM_CAPACITY) : REALM_CAPACITY
+      const instance = await assignInstance(roomKey, capacity)
       if (cancelled) {
         void leavePresence() // we were unmounted mid-assign; release the claimed slot
         return

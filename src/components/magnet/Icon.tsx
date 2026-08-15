@@ -46,6 +46,8 @@ const PATHS: Record<string, string> = {
   link: 'M9 15l6-6 M10 7l1-1a4 4 0 016 6l-1 1 M14 17l-1 1a4 4 0 01-6-6l1-1',
   download: 'M12 3v12 M7 11l5 5 5-5 M5 21h14',
   upload: 'M12 21V9 M7 13l5-5 5 5 M5 3h14',
+  store: 'M3 9l1.5-5h15L21 9 M3 9h18v11H3z M3 9l1 3h16l1-3 M9 20v-5h6v5',
+  bag: 'M6 8l1-4h10l1 4 M6 8h12v13H6z M9 11V8 M15 11V8',
 }
 
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {

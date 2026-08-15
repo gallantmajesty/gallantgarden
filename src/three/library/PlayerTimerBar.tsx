@@ -8,44 +8,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Html } from '@react-three/drei'
 import { getTarget, useRealmNet } from '../../multiplayer/net'
 import { usePomodoro, liveFocusLeaves, formatLiveLeaves } from '../../store/pomodoro'
-import { GREEN_LEAF_ICON } from '../../lib/leafIcons'
-
-/** How long (ms) a completion burst stays visible above a player. */
-const CELEBRATE_MS = 4000
-
-/** Power of a completion burst, 0..1 — scales with the finished session's
- *  length so longer / more powerful timers get a bigger overhead celebration. */
-function burstPower(minutes: number): number {
-  return Math.min(1, Math.max(0, minutes / 150))
-}
-
-/** Short leaf burst shown above a player right after they finish a session.
- *  `power` (0..1) scales the number/size/spread of the leaves. The burst fades
- *  out and UNMOUNTS itself after CELEBRATE_MS so it never lingers overhead. */
-function CelebrateBurst({ label, power = 1 }: { label?: string; power?: number }) {
-  const [gone, setGone] = useState(false)
-  useEffect(() => {
-    const t = window.setTimeout(() => setGone(true), CELEBRATE_MS)
-    return () => window.clearTimeout(t)
-  }, [])
-  if (gone) return null
-  const count = 8 + Math.round(power * 14) // 8..22 leaves
-  return (
-    <div className="ptb-celebrate" style={{ ['--power' as string]: power }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <img
-          key={i}
-          className="ptb-leaf"
-          src={GREEN_LEAF_ICON}
-          alt=""
-          draggable={false}
-          style={{ ['--i' as string]: i }}
-        />
-      ))}
-      <span className="ptb-done">{label ?? 'Done'}</span>
-    </div>
-  )
-}
+import { CelebrateBurst, CELEBRATE_MS } from './CelebrateBurst'
 
 interface Props {
   /** Remote player id — omit and pass `self` to render the local player's timer. */
@@ -73,7 +36,7 @@ export function PlayerTimerBar({ playerId, headY = 2.9, self = false }: Props) {
     if (pomo.phase === 'finished') {
       return (
         <Html position={[0, headY + 1.15, 0]} center distanceFactor={10} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
-          <CelebrateBurst power={burstPower(pomo.sessionMinutes || 60)} />
+          <CelebrateBurst minutes={pomo.sessionMinutes || 60} />
         </Html>
       )
     }
@@ -132,7 +95,7 @@ export function PlayerTimerBar({ playerId, headY = 2.9, self = false }: Props) {
       <Html position={[0, headY + 1.15, 0]} center distanceFactor={10} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
         <CelebrateBurst
           label={useRealmNet.getState().roster[playerId]?.name ? `${useRealmNet.getState().roster[playerId]!.name} finished` : 'finished'}
-          power={burstPower(timerDurationMs / 60000)}
+          minutes={timerDurationMs / 60000}
         />
       </Html>
     )

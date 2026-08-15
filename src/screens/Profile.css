@@ -1486,44 +1486,141 @@
   font-weight: 700;
   color: var(--pf-gold);
 }
-.pf-roadmap-list { display: flex; flex-direction: column; gap: 8px; }
-.pf-roadmap-node {
+/* --- winding path layout --- */
+.pf-roadmap-list { display: flex; flex-direction: column; gap: 4px; }
+.pf-rd-tier { padding: 2px 0; }
+.pf-rd-tier-head {
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 20px 0 10px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--tier) 75%, #fff),
+    var(--tier),
+    color-mix(in srgb, var(--tier) 65%, #000));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--tier) 35%, transparent));
+}
+.pf-rd-path {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+/* central glowing spine */
+.pf-rd-path::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.04),
+    color-mix(in srgb, var(--tier) 55%, transparent) 50%,
+    rgba(255,255,255,0.04));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tier) 25%, transparent);
+}
+.pf-rd-node {
+  box-sizing: border-box;
+  width: 50%;
+  position: relative;
+  padding: 9px 30px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: var(--pf-surface);
+}
+.pf-rd-node.left { align-self: flex-start; justify-content: flex-end; text-align: right; }
+.pf-rd-node.right { align-self: flex-end; justify-content: flex-start; text-align: left; }
+
+/* node marker on the spine */
+.pf-rd-dot {
+  position: absolute;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.10);
+  border: 2px solid rgba(255,255,255,0.22);
+  transition: all 0.25s;
+  z-index: 2;
+}
+.pf-rd-node.left .pf-rd-dot { right: -7.5px; }
+.pf-rd-node.right .pf-rd-dot { left: -7.5px; }
+.pf-rd-node.reached .pf-rd-dot {
+  background: var(--rank);
+  border-color: color-mix(in srgb, var(--rank) 60%, #fff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--rank) 70%, transparent);
+}
+.pf-rd-node.current .pf-rd-dot { animation: pfRdDot 1.8s ease-in-out infinite; }
+@keyframes pfRdDot {
+  0%, 100% { box-shadow: 0 0 10px color-mix(in srgb, var(--rank) 60%, transparent); }
+  50% { box-shadow: 0 0 22px color-mix(in srgb, var(--rank) 95%, transparent); }
+}
+
+/* node card */
+.pf-rd-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 220px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(40,26,16,0.92), rgba(20,12,7,0.92));
   border: 1px solid var(--pf-border);
-  opacity: 0.5;
+  opacity: 0.45;
   transition: all 0.2s;
 }
-.pf-roadmap-node.reached { opacity: 1; }
-.pf-roadmap-node.current {
-  border-color: var(--rank);
-  box-shadow: 0 0 0 1px var(--rank), 0 0 16px color-mix(in srgb, var(--rank) 30%, transparent);
+.pf-rd-node.left .pf-rd-card { flex-direction: row-reverse; text-align: right; }
+.pf-rd-node.reached .pf-rd-card {
   opacity: 1;
+  border-color: color-mix(in srgb, var(--rank) 45%, var(--pf-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rank) 18%, transparent),
+    0 0 16px color-mix(in srgb, var(--rank) 12%, transparent);
 }
-.pf-roadmap-badge {
-  width: 38px;
-  height: 38px;
+.pf-rd-node.current .pf-rd-card {
+  opacity: 1;
+  border-color: var(--rank);
+  animation: pfRdPulse 1.8s ease-in-out infinite;
+}
+@keyframes pfRdPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 1px var(--rank), 0 0 18px color-mix(in srgb, var(--rank) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--rank), 0 0 32px color-mix(in srgb, var(--rank) 75%, transparent);
+  }
+}
+.pf-rd-badge {
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--rank);
+  flex: none;
 }
-.pf-roadmap-node-main { flex: 1; min-width: 0; }
-.pf-roadmap-node-name { font-size: 16px; font-weight: 800; color: var(--pf-text); }
-.pf-roadmap-node-th { font-size: 12px; color: var(--pf-text-soft); }
-.pf-roadmap-you {
-  font-size: 10px;
+.pf-rd-main { min-width: 0; flex: 1; }
+.pf-rd-name { font-size: 15px; font-weight: 800; color: var(--pf-text); line-height: 1.2; }
+.pf-rd-th { font-size: 11px; color: var(--pf-text-soft); margin-top: 2px; }
+.pf-rd-you {
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #fff;
+  color: #1a1008;
   background: var(--rank);
-  padding: 3px 10px;
+  padding: 3px 8px;
   border-radius: 4px;
+  flex: none;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--rank) 60%, transparent);
 }
-.pf-roadmap-check { color: var(--pf-gold); font-weight: 800; font-size: 16px; }
+.pf-rd-check { color: var(--pf-gold); font-weight: 800; font-size: 15px; flex: none; }
 
 /* ============================================================
    LOADING / NOT FOUND
@@ -1562,3 +1659,65 @@
 }
 
 .pf-widget { display: none; }
+
+/* Signed-in GitHub account row */
+.pf-account-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(120, 200, 150, 0.28);
+  border-radius: 12px;
+  background: rgba(70, 214, 160, 0.06);
+}
+.pf-account-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(70, 214, 160, 0.5);
+  flex-shrink: 0;
+}
+.pf-account-info {
+  flex: 1;
+  min-width: 0;
+}
+.pf-account-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--pf-text, #f4e8c8);
+}
+.pf-account-email {
+  font-size: 12.5px;
+  color: var(--pf-text-soft, #b8a88a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-account-provider {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #46d6a0;
+  margin-top: 2px;
+}
+.pf-account-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(70, 214, 160, 0.45);
+  border-radius: 10px;
+  background: rgba(70, 214, 160, 0.1);
+  color: #46d6a0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pf-account-btn:hover {
+  background: rgba(70, 214, 160, 0.22);
+  border-color: #46d6a0;
+}

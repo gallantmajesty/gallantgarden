@@ -739,3 +739,25 @@ export function getTheme(id: string): MagnetTheme {
   const effective = effectiveThemes()
   return effective.find((t) => t.id === id) ?? effective.find((t) => t.id === DEFAULT_THEME_ID) ?? effective[0]
 }
+
+// ────────────────────────────────────────────────────────────
+// Magnet-local store pricing — themes are bought with Magnet
+// Power (MXP) inside the Task Magnet, never with global leaves.
+// ────────────────────────────────────────────────────────────
+
+/** Cost in Magnet Power. leafPrice 0 => free starter theme. */
+export function mxpPrice(theme: MagnetTheme): number {
+  return theme.leafPrice * 3
+}
+
+/** Theme applied for every account on first run (keeps the classic coffee look). */
+export const MAGNET_DEFAULT_THEME_ID = 'coffee-house'
+
+/** Themes every account owns from the start. */
+export function starterThemeIds(): string[] {
+  const ids = effectiveThemes()
+    .filter((t) => mxpPrice(t) === 0)
+    .map((t) => t.id)
+  if (!ids.includes(MAGNET_DEFAULT_THEME_ID)) ids.push(MAGNET_DEFAULT_THEME_ID)
+  return ids
+}

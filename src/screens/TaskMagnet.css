@@ -524,6 +524,33 @@
 .mg-levelbar { height: 6px; border-radius: 999px; background: var(--mg-border); overflow: hidden; }
 .mg-levelbar-fill { height: 100%; border-radius: 999px; background: var(--mg-accent); transition: width 0.5s ease; }
 .mg-levelcard small { display: block; margin-top: 6px; font-size: 11px; color: var(--mg-text-soft); }
+.mg-leveltoday {
+  color: color-mix(in srgb, var(--mg-accent) 70%, var(--mg-text));
+  font-weight: 600;
+}
+
+/* floating power chips */
+.mg-floatxp {
+  position: fixed;
+  z-index: 1999;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--mg-accent);
+  background: color-mix(in srgb, var(--mg-bg) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 45%, var(--mg-border));
+  border-radius: 999px;
+  padding: 3px 10px;
+  animation: mg-float-up 0.95s ease-out forwards;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+@keyframes mg-float-up {
+  0%   { opacity: 0; translate: 0 8px; scale: 0.8; }
+  18%  { opacity: 1; scale: 1.05; }
+  30%  { scale: 1; }
+  100% { opacity: 0; translate: 0 -34px; scale: 0.95; }
+}
 
 /* ---------- main column ---------- */
 .mg-main {
@@ -635,8 +662,10 @@
   color: var(--mg-accent);
   background: color-mix(in srgb, var(--mg-accent) 13%, transparent);
   border: 1px solid color-mix(in srgb, var(--mg-accent) 22%, var(--mg-border));
+  transition: transform 0.2s var(--pr-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
-.mg-sectionhead h2 { font-size: 22px; font-weight: 800; }
+.mg-sectionhead:hover .mg-sectionhead-icon { transform: scale(1.04) rotate(-2deg); }
+.mg-sectionhead h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
 .mg-sectionhead p { color: var(--mg-text-soft); font-size: 13px; margin-top: 2px; }
 .mg-sectionhead-action { margin-left: auto; }
 
@@ -1187,25 +1216,112 @@
 /* ============================================================================
    HABITS
    ============================================================================ */
-.mg-habitlist { display: flex; flex-direction: column; gap: 12px; }
-.mg-habitrow-inner { --mg-tag: var(--mg-accent); display: flex; align-items: center; gap: 16px; padding: 14px 16px; }
-.mg-habitrow-left { display: flex; align-items: center; gap: 12px; width: 220px; flex-shrink: 0; }
-.mg-habit-toggle {
-  display: grid; place-items: center;
-  width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0;
-  border: 2px solid var(--mg-tag); background: transparent; color: var(--mg-tag);
-  cursor: pointer; transition: background 0.15s, color 0.15s;
+.mg-habitlist { display: flex; flex-direction: column; gap: 14px; }
+
+/* each habit is a glowing, colour-tinted card keyed to the habit's own colour */
+.mg-habitrow {
+  --mg-tag: var(--mg-accent);
+  position: relative;
+  border-radius: var(--mg-radius);
+  background: color-mix(in srgb, var(--mg-tag) 7%, var(--mg-panel));
+  border: 1px solid color-mix(in srgb, var(--mg-tag) 26%, var(--mg-border));
+  box-shadow: 0 10px 26px -16px var(--mg-shadow);
+  overflow: hidden;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s, box-shadow 0.18s;
 }
-.mg-habit-toggle.done { color: #fff; background: var(--mg-tag); }
-.mg-habitrow-text strong { display: block; font-size: 15px; font-weight: 700; }
+.mg-habitrow::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--mg-tag), color-mix(in srgb, var(--mg-tag) 50%, transparent));
+  opacity: 0.9;
+}
+.mg-habitrow:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--mg-tag) 52%, var(--mg-border));
+  box-shadow: 0 16px 34px -18px var(--mg-shadow), 0 0 28px -10px color-mix(in srgb, var(--mg-tag) 45%, transparent);
+}
+.mg-habitrow-inner { display: flex; align-items: center; gap: 16px; padding: 16px 18px; }
+
+.mg-habitrow-left { display: flex; align-items: center; gap: 12px; width: 270px; flex-shrink: 0; }
+
+/* identity chip — the habit's icon in its own colour */
+.mg-habit-ico {
+  flex-shrink: 0; display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 13px;
+  color: var(--mg-tag);
+  background: color-mix(in srgb, var(--mg-tag) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-tag) 32%, var(--mg-border));
+  box-shadow: 0 0 16px -4px color-mix(in srgb, var(--mg-tag) 55%, transparent);
+}
+
+/* big, satisfying circular done-toggle */
+.mg-habit-toggle {
+  flex-shrink: 0; display: grid; place-items: center;
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 2px solid var(--mg-tag);
+  background: transparent; color: var(--mg-tag);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.mg-habit-toggle:hover { transform: scale(1.06); }
+.mg-habit-toggle:active { transform: scale(0.92); }
+.mg-habit-toggle.done {
+  color: #fff; background: var(--mg-tag); border-color: transparent;
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--mg-tag) 65%, transparent);
+  animation: mg-habit-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes mg-habit-pop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+.mg-habitrow-text { min-width: 0; }
+.mg-habitrow-text strong { display: block; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.mg-habit-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.mg-habit-streak {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 800;
+  color: var(--mg-tag);
+  background: color-mix(in srgb, var(--mg-tag) 18%, transparent);
+}
 .mg-habitrow-text small { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--mg-text-soft); }
-.mg-habitgrid { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
-.mg-habitcell { width: 16px; height: 16px; border-radius: 5px; background: var(--mg-panel-soft); border: 1px solid var(--mg-border); }
-.mg-habitcell.filled { background: var(--mg-tag); border-color: transparent; }
-.mg-habitcell.frozen { background: repeating-linear-gradient(45deg, var(--mg-tag), var(--mg-tag) 3px, transparent 3px, transparent 6px); opacity: 0.6; }
-.mg-habitcell.today { box-shadow: 0 0 0 2px var(--mg-accent); }
+
+/* heatmap grid */
+.mg-habitgrid { display: flex; gap: 5px; flex: 1; flex-wrap: wrap; align-items: center; }
+.mg-habitcell {
+  width: 17px; height: 17px; border-radius: 6px;
+  background: var(--mg-panel-soft);
+  border: 1px solid var(--mg-border);
+  transition: transform 0.15s, background 0.2s, box-shadow 0.2s;
+}
+.mg-habitcell:hover { transform: scale(1.18); }
+.mg-habitcell.filled {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--mg-tag) 86%, #fff 14%), var(--mg-tag));
+  border-color: transparent;
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--mg-tag) 60%, transparent);
+  animation: mg-cell-in 0.32s ease both;
+}
+@keyframes mg-cell-in { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.mg-habitcell.frozen {
+  background: repeating-linear-gradient(45deg, var(--mg-tag), var(--mg-tag) 3px, transparent 3px, transparent 6px);
+  border-color: transparent; opacity: 0.55;
+}
+.mg-habitcell.today { box-shadow: 0 0 0 2px var(--mg-accent), 0 0 12px -2px var(--mg-accent); }
+
+/* right cluster: completion meter + actions */
+.mg-habitrow-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.mg-habit-meter { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 48px; }
+.mg-habit-meter-track { width: 100%; height: 6px; border-radius: 999px; background: var(--mg-panel-soft); overflow: hidden; }
+.mg-habit-meter-fill { height: 100%; border-radius: 999px; background: var(--mg-tag); transition: width 0.5s ease; }
+.mg-habit-meter small { font-size: 10px; font-weight: 800; color: var(--mg-text-soft); }
 .mg-habitrow-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .mg-iconbtn.active { color: var(--mg-accent); border-color: var(--mg-accent); }
+
+/* live preview inside the new-habit modal */
+.mg-habit-preview {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--mg-radius-sm);
+  background: color-mix(in srgb, var(--mg-tag) 9%, var(--mg-panel-soft));
+  border: 1px solid color-mix(in srgb, var(--mg-tag) 24%, var(--mg-border));
+}
+.mg-habit-preview-name { font-size: 14px; font-weight: 700; color: var(--mg-text); }
 
 /* help / keyboard shortcuts */
 .mg-help { display: flex; flex-direction: column; gap: 12px; }
@@ -1683,3 +1799,437 @@
   border: 1px solid var(--mg-border); background: var(--mg-panel); color: var(--mg-text); font-size: 13px;
 }
 .mg-goal-project-info { font-size: 12px; color: var(--mg-text-soft); font-weight: 600; }
+
+/* ════════════════ INSTRUMENT POLISH — flat, warm, no boxes ════════════════
+   This file is imported last, so these rules win the cascade. */
+
+/* accessible focus everywhere inside the magnet */
+.mg-root :is(button, input, textarea, select):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--mg-accent) 65%, transparent);
+  outline-offset: 1px;
+}
+
+/* nav rail — quiet flat rows with a hairline marker instead of boxed items */
+.mg-navitem {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 8px;
+  position: relative;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.mg-navitem:hover {
+  background: color-mix(in srgb, var(--mg-accent) 7%, transparent) !important;
+  transform: translateX(1px);
+}
+.mg-navitem.active {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--mg-accent) 10%, transparent) !important;
+}
+.mg-navitem.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--mg-accent);
+}
+.mg-navtile,
+.mg-navpng {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.mg-navitem.active .mg-navpng {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-radius: 7px;
+  padding: 1px !important;
+}
+
+/* topbar — airy, hairline only */
+.mg-topbar-title {
+  letter-spacing: -0.02em;
+}
+
+/* task list — rows with hairlines, not cards with boxes */
+.mg-tasklist { gap: 2px; }
+.mg-taskcard {
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.mg-taskcard::before {
+  width: 2px;
+  border-radius: 2px;
+}
+.mg-taskcard:hover {
+  background: color-mix(in srgb, var(--mg-panel-soft) 55%, transparent);
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.mg-taskcard.blocked { border-color: color-mix(in srgb, var(--mg-accent) 30%, transparent); }
+
+/* check buttons — spring feel, warm fill on done */
+.mg-check {
+  border-radius: 9px;
+  transition: background 0.12s, color 0.12s, transform 0.12s, border-color 0.12s;
+}
+.mg-check:hover {
+  transform: scale(1.08);
+  background: color-mix(in srgb, var(--mg-check-tone) 14%, transparent);
+}
+.mg-check:active { transform: scale(0.82); }
+.mg-check:focus-visible {
+  outline: 2px solid var(--mg-check-tone);
+  outline-offset: 2px;
+}
+
+/* buttons — warm press feel, quiet secondary */
+.mg-btn.primary {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--mg-accent) 90%, #fff 10%),
+    var(--mg-accent)
+  );
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.mg-btn.primary:active { transform: scale(0.96); }
+
+/* panel section heads — accent marker + small caps, consistent instrument */
+.mg-panel-head h3 {
+  position: relative;
+  padding-left: 11px;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mg-text);
+}
+.mg-panel-head h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--mg-accent);
+}
+.mg-panel-head .mg-panel-head-icon,
+.mg-panel-head h3 .mg-icon {
+  color: var(--mg-accent);
+}
+
+/* ════════════════ THEME STORE + LIVING WORLD ════════════════ */
+
+/* glass over the living backdrop: panels stay translucent so the ambient
+   scenes / particles bleed through the whole world */
+.mg-sidebar,
+.mg-topbar {
+  background: var(--mg-panel);
+  backdrop-filter: blur(16px) saturate(1.15);
+}
+
+/* level card — Lv chip + store shortcut */
+.mg-levellv {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--mg-accent);
+}
+.mg-levellv .mg-icon { color: var(--mg-accent); }
+.mg-storebtn {
+  margin-top: 10px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 40%, var(--mg-border));
+  background: color-mix(in srgb, var(--mg-accent) 14%, transparent);
+  color: var(--mg-accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.mg-storebtn:hover {
+  background: color-mix(in srgb, var(--mg-accent) 24%, transparent);
+  transform: translateY(-1px);
+}
+.mg-storebtn:active { transform: scale(0.97); }
+
+/* ---- store view ---- */
+.mg-store-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mg-accent) 14%, var(--mg-panel));
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 35%, var(--mg-border));
+  color: var(--mg-accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+.mg-store-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--mg-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 20%, var(--mg-border));
+  font-size: 12.5px;
+  color: var(--mg-text-soft);
+  line-height: 1.5;
+}
+.mg-store-note .mg-icon { color: var(--mg-accent); flex: none; }
+.mg-store-cat { display: flex; flex-direction: column; gap: 10px; }
+.mg-store-cat-head {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mg-text-soft);
+}
+.mg-store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.mg-themecard {
+  border-radius: var(--mg-radius-sm);
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-border);
+  overflow: hidden;
+  padding-bottom: 12px;
+  transition: transform 0.22s var(--pr-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color 0.22s, box-shadow 0.22s;
+}
+.mg-themecard:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--mg-accent) 50%, var(--mg-border));
+}
+.mg-themecard.active {
+  border-color: var(--mg-accent);
+  box-shadow: 0 0 0 1px var(--mg-accent), 0 10px 26px -12px var(--mg-shadow);
+}
+.mg-themecard-preview {
+  position: relative;
+  height: 92px;
+  overflow: hidden;
+}
+.mg-cv-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 80% at 20% 10%, var(--cv-accent) 55, transparent 70%),
+    radial-gradient(70% 80% at 85% 90%, var(--cv-accent2) 44, transparent 70%);
+}
+.mg-cv-sun {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cv-accent);
+  opacity: 0.9;
+  right: 18px;
+  top: 16px;
+  box-shadow: 0 0 22px 2px var(--cv-accent);
+}
+.mg-cv-orb {
+  position: absolute;
+  left: 16px;
+  bottom: -14px;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: var(--cv-panel);
+  border: 1px solid color-mix(in srgb, var(--cv-accent) 30%, transparent);
+}
+.mg-themecard-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 11px 12px 0;
+  text-align: left;
+}
+.mg-themecard-name { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+.mg-themecard-mood {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--mg-text-soft);
+  line-height: 1.45;
+  min-height: 33px;
+}
+.mg-themecard-spec { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; }
+.mg-themecard .mg-btn { justify-content: center; margin-top: 3px; }
+.mg-themecard .mg-btn:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  transform: none;
+}
+.mg-themecard .mg-btn.glass:disabled {
+  color: var(--mg-text-soft);
+  background: var(--mg-panel-soft);
+}
+.mg-store-foot { text-align: center; font-size: 12px; margin-top: 8px; }
+
+/* louder glow accent layer for applied theme */
+.mg-theme-active .mg-backdrop { opacity: 1; }
+@media (max-width: 560px) {
+  .mg-store-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ════════════════ SKIN PASS — theme-aware layering ════════════════
+   Adds depth/light to every instrument surface, driven purely by the
+   applied theme's --mg-* vars. No markup changes needed here. */
+
+/* panels: top light hairline + ambient glow edge, so tiles sit in the world */
+.mg-panel,
+.mg-pr {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent),
+    0 1px 1px rgba(0, 0, 0, 0.14), 0 8px 22px -18px rgba(0, 0, 0, 0.5);
+}
+.mg-panel:hover { border-color: color-mix(in srgb, var(--mg-accent) 22%, var(--mg-border)); }
+
+/* analytics KPI cards — themed glass + gradient numerals */
+.mg-kpi {
+  background: color-mix(in srgb, var(--mg-panel) 88%, transparent);
+  border-color: var(--mg-border);
+  position: relative;
+}
+.mg-kpi::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  border-radius: var(--pr-radius) var(--pr-radius) 0 0;
+  background: linear-gradient(90deg, var(--mg-accent), var(--mg-accent2));
+  opacity: 0.55;
+}
+.mg-kpi:hover { box-shadow: 0 14px 30px -14px var(--mg-shadow); }
+.mg-kpi .mg-kpi-label { color: var(--mg-text-soft); }
+.mg-kpi .mg-kpi-val {
+  color: var(--mg-text);
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--mg-text), color-mix(in srgb, var(--mg-accent) 55%, var(--mg-text)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px color-mix(in srgb, var(--mg-accent) 22%, transparent));
+}
+.mg-kpi .mg-kpi-val small { -webkit-text-fill-color: currentColor; color: var(--mg-text-soft); }
+.mg-kpi .mg-kpi-foot { color: var(--mg-text-soft); }
+
+/* meters + bars — gradient fills with a glowing head */
+.mg-meterlist .mg-msub i {
+  background: linear-gradient(90deg, var(--mg-accent), var(--mg-accent2)) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mg-accent) 40%, transparent);
+}
+.mg-fbar-fill {
+  background: linear-gradient(180deg, var(--mg-accent2), var(--mg-accent)) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--mg-accent) 35%, transparent);
+  border-radius: 6px;
+}
+.mg-fbar-val {
+  background: color-mix(in srgb, var(--mg-panel-soft) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 30%, var(--mg-border));
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+/* insight / why cards — soft accent2 tint so the "AI layer" reads apart */
+.mg-why,
+.mg-ai-stack,
+.mg-insightgrid {
+  background: color-mix(in srgb, var(--mg-accent2) 5%, var(--mg-panel));
+  border: 1px solid color-mix(in srgb, var(--mg-accent2) 18%, var(--mg-border));
+  border-radius: var(--mg-radius-sm);
+}
+.mg-insight-icon {
+  color: var(--mg-accent2);
+  background: color-mix(in srgb, var(--mg-accent2) 12%, transparent);
+  border-color: color-mix(in srgb, var(--mg-accent2) 22%, transparent) !important;
+}
+
+/* habit rows — today's column glows, cells breathe on hover */
+.mg-habitcell { transition: transform 0.14s; }
+.mg-habitcell:hover { transform: scale(1.2); }
+.mg-habitcell.today { box-shadow: 0 0 0 2px var(--mg-accent2); }
+
+/* forecast + peak ring */
+.mg-forecast-big { color: var(--mg-text); }
+.mg-miniring { filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--mg-accent) 30%, transparent)); }
+
+/* sheet — instrument-grade table: sticky instrument header, accent rowhead */
+.mg-sheet-toolbar {
+  border-bottom: 1px solid var(--mg-border);
+  background: color-mix(in srgb, var(--mg-panel) 90%, transparent);
+}
+.mg-sheet thead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.mg-sheet thead th {
+  background: color-mix(in srgb, var(--mg-panel-soft) 92%, transparent);
+  backdrop-filter: blur(10px);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mg-text-soft);
+}
+.mg-sheet thead th.cell-rowhead,
+.mg-sheet tbody td.cell-row { color: var(--mg-accent); font-weight: 700; }
+.mg-sheet tbody td {
+  background: transparent;
+  transition: background 0.15s;
+}
+.mg-sheet tbody tr:hover td { background: color-mix(in srgb, var(--mg-panel-soft) 55%, transparent); }
+.mg-sheet-scroll { scrollbar-color: var(--mg-accent) transparent; }
+.mg-sheet-fx { color: var(--mg-accent2); }
+
+/* pills + tags — soft theme chips */
+.mg-pill,
+.mg-tag.soft {
+  background: color-mix(in srgb, var(--mg-accent) 10%, var(--mg-panel-soft));
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 22%, var(--mg-border));
+}
+
+/* timeline dots glow, achievements spark with accent2 */
+.mg-heat-legend { color: var(--mg-text-soft); }
+
+/* generate mood-light: quote card gets a left accent2 rail */
+.mg-quote {
+  position: relative;
+  overflow: hidden;
+}
+.mg-quote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--mg-accent), var(--mg-accent2));
+}
+
+/* daily Magnet Power cap reached — the "today" meter shifts to the secondary
+   accent so the player can see the anti-farm limit is in effect */
+.mg-leveltoday.capped {
+  color: var(--mg-accent2);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}

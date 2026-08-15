@@ -404,6 +404,34 @@
   margin-top: 2px;
 }
 
+/* context line under stat tiles */
+.mg-contextline {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--pr-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.mg-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--pr-muted);
+}
+.mg-ctx b {
+  color: var(--pr-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.mg-ctx-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: none;
+}
+
 /* trend chip */
 .mg-trend {
   margin-left: auto;

@@ -25,11 +25,16 @@ import {
   recordActivity,
 } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
+import { levelForXp } from '../lib/magnet/types'
+import { taskPower, subtaskPower, habitPower, milestonePower, goalCompletePower, MXP_DAILY_EARN_CAP, mxpDailyRoom } from '../lib/magnet/score'
 import { pushMagnet, pullMagnet } from '../lib/magnet/sync'
 import { useProfile } from './profile'
+import { MAGNET_DEFAULT_THEME_ID, starterThemeIds, getTheme, mxpPrice } from '../lib/magnet/themes'
 
 // ---- id + time helpers ------------------------------------------------------
 let counter = 0
+// Guards the once-per-day "daily Power cap reached" toast so it can't spam.
+let mxpCapToastDay = ''
 function uid(prefix = 'm'): string {
   counter += 1
   return `${prefix}_${Date.now().toString(36)}_${counter.toString(36)}`
@@ -93,6 +98,12 @@ function emptyData(): MagnetData {
     xp: 0,
     premiumXp: 0,
     rankXp: 0,
+    mxp: 0,
+    mxpTotal: 0,
+    mxpSpent: 0,
+    mxpDay: { date: todayKey(), value: 0 },
+    theme: MAGNET_DEFAULT_THEME_ID,
+    unlockedThemes: starterThemeIds(),
     font: 'Inter',
     lastVisit: null,
     pomoBackfilled: false,
@@ -137,27 +148,41 @@ function backfillTasks(tasks: Task[]): Task[] {
   }))
 }
 
+/** Backfill newer fields onto any parsed MagnetData (local or cloud copy) so
+ *  accounts saved before a field existed still read + write the full shape. */
+function migrateData(data: MagnetData): MagnetData {
+  const merged: MagnetData = { ...emptyData(), ...data }
+  // Personal Diary was removed for privacy: purge any previously-stored
+  // journal entries so sensitive content never lingers in local storage.
+  delete (merged as unknown as Record<string, unknown>).journal
+  // backfill new per-task fields
+  merged.tasks = backfillTasks(merged.tasks ?? [])
+  merged.templates = merged.templates ?? []
+  merged.habits = (merged.habits ?? []).map((h) => ({ ...h, freezeDays: h.freezeDays ?? [] }))
+  merged.projects = (merged.projects ?? []).map((p) => ({ ...p, goalId: p.goalId ?? null }))
+  merged.goals = (merged.goals ?? []).map((g) => ({ ...g, projectId: g.projectId ?? null }))
+  // Backfill lifetime rank XP from the wallet total for accounts created
+  // before rankXp existed (rank never dips again when they spend leaves).
+  merged.rankXp = typeof merged.rankXp === 'number' ? merged.rankXp : (merged.xp ?? 0) + (merged.premiumXp ?? 0)
+  // Backfill Magnet Power (magnet-local progression + theme currency).
+  merged.mxp = typeof merged.mxp === 'number' ? merged.mxp : 0
+  merged.mxpTotal = typeof merged.mxpTotal === 'number' ? merged.mxpTotal : Math.max(merged.mxp, 0)
+  merged.mxpSpent = typeof merged.mxpSpent === 'number' ? merged.mxpSpent : 0
+  merged.mxpDay = merged.mxpDay && typeof merged.mxpDay.value === 'number'
+    ? merged.mxpDay
+    : { date: todayKey(), value: 0 }
+  merged.unlockedThemes = Array.isArray(merged.unlockedThemes)
+    ? merged.unlockedThemes
+    : starterThemeIds()
+  merged.theme = typeof merged.theme === 'string' && merged.theme ? merged.theme : MAGNET_DEFAULT_THEME_ID
+  return merged
+}
+
 function load(userId: string): MagnetData {
   try {
     const raw = localStorage.getItem(storageKey(userId))
     if (!raw) return emptyData()
-    const parsed = JSON.parse(raw) as Partial<MagnetData>
-    // merge over defaults so new fields added later are always present
-    const base = emptyData()
-    const merged: MagnetData = { ...base, ...parsed }
-    // Personal Diary was removed for privacy: purge any previously-stored
-    // journal entries so sensitive content never lingers in local storage.
-    delete (merged as unknown as Record<string, unknown>).journal
-    // backfill new per-task fields
-    merged.tasks = backfillTasks(merged.tasks ?? [])
-    merged.templates = merged.templates ?? []
-    merged.habits = (merged.habits ?? []).map((h) => ({ ...h, freezeDays: h.freezeDays ?? [] }))
-    merged.projects = (merged.projects ?? []).map((p) => ({ ...p, goalId: p.goalId ?? null }))
-    merged.goals = (merged.goals ?? []).map((g) => ({ ...g, projectId: g.projectId ?? null }))
-    // Backfill lifetime rank XP from the wallet total for accounts created
-    // before rankXp existed (rank never dips again when they spend leaves).
-    merged.rankXp = typeof merged.rankXp === 'number' ? merged.rankXp : (merged.xp ?? 0) + (merged.premiumXp ?? 0)
-    return merged
+    return migrateData(JSON.parse(raw) as MagnetData)
   } catch {
     return emptyData()
   }
@@ -172,6 +197,10 @@ interface MagnetState {
 
   hydrate: (userId: string) => void
   clearToast: () => void
+
+  // theme store — themes live inside the magnet, bought with Magnet Power
+  purchaseTheme: (id: string) => void
+  applyTheme: (id: string) => void
 
   // tasks
   addTask: (partial: Partial<Task> & { title: string }) => void
@@ -284,7 +313,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
     if (result.onCooldown || (result.leaves === 0 && result.goldenLeaves === 0)) return d
 
-    let leafDelta = result.leaves
+    const leafDelta = result.leaves
     let goldenDelta = result.goldenLeaves
     let rankDelta = Math.max(0, result.leaves) + result.goldenLeaves
     let achievements = d.achievements
@@ -336,6 +365,63 @@ export const useMagnet = create<MagnetState>((set, get) => {
 
     const updated = { ...d, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp, achievements }
     return updated
+  }
+
+  // ---- Magnet Power (MXP) — magnet-local progression + theme store ----
+  // Apply a signed MXP delta to the snapshot, keep the per-day meter honest
+  // (resets at midnight via the date check) and celebrate level crossings.
+  // Un-checking refunds the exact same amount, so toggling can never farm.
+  // MXP never touches the global wallet / rank — it only levels the magnet
+  // and buys themes in the magnet store. Buying themes withdraws the balance
+  // (mxp) but never the lifetime total (mxpTotal), so levels never drop.
+  // Anti-farm: earning is capped per calendar day (MXP_DAILY_EARN_CAP) so the
+  // economy can't be flooded by creating + completing trivial tasks or by fast
+  // toggling. Refunds always pass through (bounded by the balance), so a real
+  // un-check never costs a user power they already spent.
+  function awardMxp(d: MagnetData, delta: number): MagnetData {
+    if (!delta) return d
+    const total = d.mxpTotal ?? d.mxp
+    const prevLevel = levelForXp(total)
+    const today = todayKey()
+    const day = d.mxpDay.date === today ? d.mxpDay : { date: today, value: 0 }
+
+    let mxp = d.mxp
+    let mxpTotal = total
+    let dayValue = day.value
+    let gained = 0
+
+    if (delta > 0) {
+      const room = mxpDailyRoom(day, today)
+      gained = Math.min(delta, room)
+      mxp = Math.max(0, mxp + gained)
+      mxpTotal += gained
+      dayValue = day.value + gained
+      if (room > 0 && dayValue >= MXP_DAILY_EARN_CAP && mxpCapToastDay !== today) {
+        mxpCapToastDay = today
+        set({
+          toast: {
+            title: 'Daily Power cap reached',
+            body: "You've banked the day's max Magnet Power. More powers up at midnight.",
+            icon: 'spark',
+          },
+        })
+      }
+    } else {
+      mxp = Math.max(0, mxp + delta)
+      dayValue = Math.max(0, day.value + delta)
+    }
+
+    const nextLevel = levelForXp(mxpTotal)
+    if (nextLevel > prevLevel) {
+      set({
+        toast: {
+          title: `Magnet Level ${nextLevel}`,
+          body: `+${gained} Magnet Power`,
+          icon: 'spark',
+        },
+      })
+    }
+    return { ...d, mxp, mxpTotal, mxpDay: { date: today, value: dayValue } }
   }
 
   return {
@@ -408,18 +494,55 @@ export const useMagnet = create<MagnetState>((set, get) => {
          data.goals.length === 0 &&
          data.habits.length === 0 &&
          data.templates.length === 0
-       if (isEmpty) {
-         void pullMagnet(userId).then((remote) => {
-           if (remote && get().userId === userId) {
-             const merged = { ...backfillPomodoro(remote), lastVisit: nowIso() }
-             persist(merged)
-             set({ data: merged })
-           }
-         })
-       }
+if (isEmpty) {
+          void pullMagnet(userId).then((remote) => {
+            if (remote && get().userId === userId) {
+              const merged = migrateData({ ...backfillPomodoro(remote), lastVisit: nowIso() })
+              persist(merged)
+              set({ data: merged })
+            }
+          })
+        }
      },
 
     clearToast: () => set({ toast: null }),
+
+    // ---------- theme store ----------
+    purchaseTheme: (id) => {
+      const d = get().data
+      const owner = new Set(d.unlockedThemes)
+      if (owner.has(id)) return
+      const theme = getTheme(id)
+      const price = mxpPrice(theme)
+      if (d.mxp < price) {
+        set({
+          toast: {
+            title: 'Not enough Magnet Power',
+            body: `${theme.name} costs ${price} Power — finish tasks, habits and milestones to earn more.`,
+            icon: 'spark',
+          },
+        })
+        return
+      }
+      set({
+        toast: {
+          title: `${theme.name} unlocked`,
+          body: `Spent ${price} Magnet Power. Open it in the store to apply.`,
+          icon: 'store',
+        },
+      })
+      commit((d) => ({
+        ...d,
+        mxp: d.mxp - price,
+        mxpSpent: d.mxpSpent + price,
+        unlockedThemes: [...owner, id],
+      }))
+    },
+    applyTheme: (id) => {
+      const d = get().data
+      if (!d.unlockedThemes.includes(id)) return
+      commit((d) => ({ ...d, theme: id }))
+    },
 
     // ---------- tasks ----------
     addTask: (partial) => {
@@ -479,6 +602,19 @@ export const useMagnet = create<MagnetState>((set, get) => {
       }
       commit((d) => {
         const nowDone = !task.done
+        // Magnet Power: a task pays ONLY when it's due today or undated — a
+        // future-due task (including the recurring ones spawned for later
+        // days) pays nothing, so repeats can't be farmed within one day.
+        // Un-checking refunds the exact amount.
+        const today = todayKey()
+        const eligible = task.due ? task.due === today : true
+        const powerDelta = nowDone
+          ? eligible
+            ? taskPower(task)
+            : 0
+          : eligible && task.done
+            ? -taskPower(task)
+            : 0
         let tasks = d.tasks.map((t) =>
           t.id === id ? { ...t, done: nowDone, completedAt: nowDone ? nowIso() : null } : t,
         )
@@ -506,7 +642,6 @@ export const useMagnet = create<MagnetState>((set, get) => {
         // and the bonus never fired — see `n` above. Now any clean slate pays.)
         // Anti-spam: engine pays at most once per day, ever.
         if (nowDone) {
-          const today = todayKey()
           const openWork = tasks.filter((t) => !t.done && (t.due === today || !t.due))
           const allDailyDone = tasks.length > 0 && openWork.length === 0
           if (allDailyDone) {
@@ -518,7 +653,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
               const balance = p.applyXp({ leaves: result.leaves, rankXp: result.leaves })
               const updated = { ...d, tasks, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
               set({ toast: { title: 'Day cleared', body: `+${result.leaves} leaves`, icon: 'leaf' } })
-              return updated
+              return awardMxp(updated, powerDelta)
             }
           }
 
@@ -542,13 +677,14 @@ export const useMagnet = create<MagnetState>((set, get) => {
               const balance = p.applyXp({ leaves: result.leaves, rankXp: result.leaves })
               const updated = { ...d, tasks, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
               set({ toast: { title: `${streak}-day streak!`, body: `+${result.leaves} leaves`, icon: 'fire' } })
-              return updated
+              return awardMxp(updated, powerDelta)
             }
           }
         }
 
-        // Tasks give no leaves — only study time + milestone streaks earn currency.
-        return { ...d, tasks }
+        // Tasks give no leaves — only study time + milestone streaks earn
+        // currency. But every completion pays Magnet Power (magnet-local).
+        return awardMxp({ ...d, tasks }, powerDelta)
       })
     },
 
@@ -565,17 +701,22 @@ export const useMagnet = create<MagnetState>((set, get) => {
       })),
 
     toggleSubtask: (taskId, subId) =>
-      commit((d) => ({
-        ...d,
-        tasks: d.tasks.map((t) =>
+      commit((d) => {
+        // Subtask power: pay only while the parent is still open (a done
+        // parent's sub-checkboxes are housekeeping), refund exactly on un-check.
+        const parent = d.tasks.find((t) => t.id === taskId)
+        const sub = parent?.subtasks.find((s) => s.id === subId)
+        let powerDelta = 0
+        if (parent && sub && !parent.done) {
+          powerDelta = sub.done ? -subtaskPower() : subtaskPower()
+        }
+        const tasks = d.tasks.map((t) =>
           t.id === taskId
-            ? {
-                ...t,
-                subtasks: t.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done } : s)),
-              }
+            ? { ...t, subtasks: t.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done } : s)) }
             : t,
-        ),
-      })),
+        )
+        return awardMxp({ ...d, tasks }, powerDelta)
+      }),
 
     removeSubtask: (taskId, subId) =>
       commit((d) => ({
@@ -740,14 +881,20 @@ export const useMagnet = create<MagnetState>((set, get) => {
       commit((d) => {
         const goal = d.goals.find((g) => g.id === goalId)
         if (!goal) return d
-        const ms = goal.milestones.find((m) => m.id === mId)
-        void ms
+        const target = goal.milestones.find((m) => m.id === mId)
+        if (!target) return d
         const milestones = goal.milestones.map((m) => (m.id === mId ? { ...m, done: !m.done } : m))
         const doneCount = milestones.filter((m) => m.done).length
         const progress = milestones.length ? Math.round((doneCount / milestones.length) * 100) : goal.progress
         const goals = d.goals.map((g) => (g.id === goalId ? { ...g, milestones, progress } : g))
-        // Milestones give no leaves — only study time earns currency.
-        return { ...d, goals }
+
+        // Magnet Power: each milestone pays while flipping done, plus the
+        // one-time goal-complete payout on first crossing 100% (refunded if
+        // the goal falls back below 100%). Milestones still give no leaves.
+        let powerDelta = target.done ? -milestonePower() : milestonePower()
+        if (progress >= 100 && goal.progress < 100) powerDelta += goalCompletePower()
+        if (progress < 100 && goal.progress >= 100) powerDelta -= goalCompletePower()
+        return awardMxp({ ...d, goals }, powerDelta)
       }),
 
     // ---------- habits ----------
@@ -771,6 +918,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
         // Habit streak: award ONLY on a fresh check-in that lands the habit on
         // the exact 7 / 30 milestone day, once per streak run. Un-checking and
         // re-checking the same day can never re-award (engine keys by day).
+        let powerDelta = has ? -habitPower() : habitPower()
         if (!has) {
           const streak = habitStreakDays(habits.find((h) => h.id === id)!, new Date())
           if (streak === 7 || streak === 30) {
@@ -782,13 +930,14 @@ export const useMagnet = create<MagnetState>((set, get) => {
               const balance = p.applyXp({ leaves: result.leaves, rankXp: result.leaves })
               const updated = { ...d, habits, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp }
               set({ toast: { title: `${streak}-day habit streak!`, body: `+${result.leaves} leaves`, icon: 'fire' } })
-              return updated
+              return awardMxp(updated, powerDelta)
             }
           }
         }
 
-        // Habits give no leaves — only milestone streaks earn currency.
-        return { ...d, habits }
+        // Habits give no leaves — only milestone streaks earn currency. Every
+        // check-in pays Magnet Power (magnet-local).
+        return awardMxp({ ...d, habits }, powerDelta)
       }),
 
     // Rest day: mark/unmark a date as an intentional skip so the streak survives
@@ -895,6 +1044,15 @@ export const useMagnet = create<MagnetState>((set, get) => {
           xp: merged.xp ?? 0,
           premiumXp: merged.premiumXp ?? 0,
           rankXp: typeof merged.rankXp === 'number' ? merged.rankXp : (merged.xp ?? 0) + (merged.premiumXp ?? 0),
+          mxp: typeof merged.mxp === 'number' ? merged.mxp : 0,
+          mxpTotal: typeof merged.mxpTotal === 'number' ? merged.mxpTotal : Math.max(merged.mxp ?? 0, 0),
+          mxpSpent: typeof merged.mxpSpent === 'number' ? merged.mxpSpent : 0,
+          mxpDay:
+            merged.mxpDay && typeof merged.mxpDay.value === 'number'
+              ? merged.mxpDay
+              : { date: todayKey(), value: 0 },
+          theme: typeof merged.theme === 'string' && merged.theme ? merged.theme : MAGNET_DEFAULT_THEME_ID,
+          unlockedThemes: Array.isArray(merged.unlockedThemes) ? merged.unlockedThemes : starterThemeIds(),
         }
       }),
     setFont: (font) => commit((d) => ({ ...d, font })),

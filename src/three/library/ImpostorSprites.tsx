@@ -360,17 +360,44 @@ export function ImpostorBakeStage() {
  */
 type Variant = 'left' | 'center' | 'right' | 'back'
 
-export function ImpostorSprite({ entries, onRef, facing }: { entries: Record<Variant, ImpostorEntry | null>; onRef: RefObject<boolean>; facing?: RefObject<number> | number }) {
+/** Resolve the entries map — supports both a plain record and a live RefObject
+ *  (consumers that switch poses per-frame pass a ref they update in useFrame so
+ *  the sprite never needs a React re-render to change pose). A plain record has
+ *  no `.current`; a RefObject's `.current` is the record itself. */
+function resolveEntries(entries: Record<Variant, ImpostorEntry | null> | RefObject<Record<Variant, ImpostorEntry | null>>): Record<Variant, ImpostorEntry | null> {
+  const r = entries as RefObject<Record<Variant, ImpostorEntry | null>> & Record<Variant, ImpostorEntry | null>
+  const live = r.current
+  if (live && typeof live === 'object') return live
+  return r
+}
+
+export function ImpostorSprite({
+  entries,
+  onRef,
+  facing,
+  onActive,
+}: {
+  entries: Record<Variant, ImpostorEntry | null> | RefObject<Record<Variant, ImpostorEntry | null>>
+  onRef: RefObject<boolean>
+  facing?: RefObject<number> | number
+  /** Fired when the sprite's fade fully completes in either direction — lets
+   *  the parent hide/show the real 3D body exactly when the billboard takes
+   *  over (or hands back), so nothing ever shows two avatars at once. */
+  onActive?: (shown: boolean) => void
+}) {
   const mat = useRef<SpriteMaterial>(null)
   const spr = useRef<THREE.Sprite>(null)
   const state = useRef(false)
   const current = useRef<ImpostorEntry | null>(null)
   const zone = useRef<Variant>('center')
+  const onActiveRef = useRef(onActive)
+  onActiveRef.current = onActive
 
   useFrame(({ camera }, dt) => {
     const m = mat.current
     const spr0 = spr.current
     if (!m || !spr0) return
+    const map = resolveEntries(entries)
 
     // Desk-facing view pick — runs every frame (independent of the fade) so the
     // view tracks the camera even after the sprite is fully up.
@@ -407,7 +434,7 @@ export function ImpostorSprite({ entries, onRef, facing }: { entries: Record<Var
       zone.current = 'center'
     }
 
-    let entry = entries[pick] ?? entries.center ?? entries.left ?? entries.right ?? entries.back
+    let entry = map[pick] ?? map.center ?? map.left ?? map.right ?? map.back
     if (entry !== current.current) {
       current.current = entry
       if (entry) {
@@ -426,13 +453,16 @@ export function ImpostorSprite({ entries, onRef, facing }: { entries: Record<Var
     if (want && m.opacity > 0.98) {
       m.opacity = 1
       state.current = true
+      onActiveRef.current?.(true)
     } else if (!want && m.opacity < 0.02) {
       m.opacity = 0
       state.current = false
+      onActiveRef.current?.(false)
     }
   })
 
-  const entry = entries.left ?? entries.center ?? entries.right ?? entries.back ?? current.current
+  const map = resolveEntries(entries)
+  const entry = map.left ?? map.center ?? map.right ?? map.back ?? current.current
   if (!entry) return null
 
   return (

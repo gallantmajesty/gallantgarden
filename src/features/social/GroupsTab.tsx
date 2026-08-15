@@ -14,6 +14,8 @@ export function GroupsTab() {
   const joinByCode = useChat((s) => s.joinByCode)
   const openGroup = useSocialOverlay((s) => s.openGroup)
 
+  const groupCustom = useChat((s) => s.groupCustom)
+
   const groups = summaries.filter((s) => s.kind === 'group')
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
@@ -109,18 +111,22 @@ export function GroupsTab() {
       <p className="sh-section">Your groups ({groups.length})</p>
       <div className="sh-list">
         {groups.length === 0 && <p className="sh-empty">No groups yet. Create one or join with a Group ID.</p>}
-        {groups.map((g) => (
-          <button key={g.conversation.id} type="button" className="sh-row" onClick={() => openGroup(g.conversation.id, true)}>
-            <span className="sh-av">
-              <GroupAvatar title={g.title ?? 'Group'} />
-            </span>
-            <span className="sh-row-text">
-              <span className="sh-row-name">{g.title ?? 'Group'}</span>
-              <span className="sh-row-sub">{g.memberCount} members</span>
-            </span>
-            {g.unreadCount > 0 && <span className="sh-row-unread" />}
-          </button>
-        ))}
+        {groups.map((g) => {
+          const c = groupCustom[g.conversation.id]
+          const name = c?.name ?? g.title ?? 'Group'
+          return (
+            <button key={g.conversation.id} type="button" className="sh-row" onClick={() => openGroup(g.conversation.id, true)}>
+              <span className="sh-av">
+                <GroupAvatar title={name} logo={c?.logo} color={c?.color} />
+              </span>
+              <span className="sh-row-text">
+                <span className="sh-row-name">{name}</span>
+                <span className="sh-row-sub">{g.memberCount} members</span>
+              </span>
+              {g.unreadCount > 0 && <span className="sh-row-unread" />}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

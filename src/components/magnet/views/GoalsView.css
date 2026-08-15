@@ -1,0 +1,329 @@
+/* ============================================================
+   GOALS & DREAMS — enhanced visual pass
+   Scoped under .mg-view so these win over the base magnet styles
+   without touching any shared component.
+   ============================================================ */
+
+/* ---- goal groups (Short / Long / Life / Dream) ---- */
+.mg-view .mg-goalgroup { margin-bottom: 6px; }
+.mg-view .mg-goalgroup-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mg-text);
+  padding: 12px 2px 13px;
+  position: relative;
+}
+.mg-view .mg-goalgroup-head .mg-icon { color: var(--mg-goalgroup); }
+.mg-view .mg-goalgroup-head .mg-muted {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 12px;
+}
+.mg-view .mg-goalgroup-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--mg-goalgroup), transparent);
+  opacity: 0.55;
+}
+
+/* ---- goal grid + cards ---- */
+.mg-view .mg-goalgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(282px, 1fr));
+  gap: 16px;
+}
+.mg-view .mg-goalcard {
+  --mg-goal: var(--mg-accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-radius: var(--mg-radius, 14px);
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--mg-goal) 14%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--mg-panel) 92%, var(--mg-goal) 6%), var(--mg-panel));
+  border: 1px solid color-mix(in srgb, var(--mg-goal) 32%, var(--mg-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 1px 1px rgba(0, 0, 0, 0.14),
+    0 12px 28px -18px color-mix(in srgb, var(--mg-goal) 70%, transparent);
+  transition: transform 0.18s var(--pr-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow 0.2s, border-color 0.2s;
+  overflow: hidden;
+}
+.mg-view .mg-goalcard::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--mg-goal), color-mix(in srgb, var(--mg-goal) 28%, transparent));
+  opacity: 0.9;
+}
+.mg-view .mg-goalcard:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--mg-goal) 55%, var(--mg-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 36px -16px color-mix(in srgb, var(--mg-goal) 82%, transparent);
+}
+
+/* completion glow */
+.mg-view .mg-goalcard.is-complete {
+  border-color: color-mix(in srgb, var(--mg-goal) 68%, var(--mg-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 28px -6px color-mix(in srgb, var(--mg-goal) 70%, transparent);
+}
+
+/* dream cards — cosmic, glowing, alive */
+.mg-view .mg-goalcard.is-dream {
+  background:
+    radial-gradient(130% 90% at 100% 0%, rgba(255, 111, 156, 0.20), transparent 60%),
+    radial-gradient(120% 90% at 0% 100%, rgba(154, 108, 255, 0.18), transparent 55%),
+    linear-gradient(180deg, #1b1430, #140f24);
+  border-color: color-mix(in srgb, #ff6f9c 42%, var(--mg-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 30px -6px rgba(255, 111, 156, 0.38),
+    0 12px 32px -18px rgba(154, 108, 255, 0.6);
+  animation: mg-dream-pulse 5s ease-in-out infinite;
+}
+.mg-view .mg-goalcard.is-dream::before {
+  background: linear-gradient(90deg, #ff6f9c, #9a6cff, #4fd1e0);
+  background-size: 200% 100%;
+  animation: mg-dream-slide 6s linear infinite;
+}
+.mg-view .mg-goalcard.is-dream::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20% 28%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1.5px 1.5px at 72% 18%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1px 1px at 42% 68%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 86% 62%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 58% 86%, rgba(255, 255, 255, 0.5), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: mg-dream-twinkle 4s ease-in-out infinite;
+}
+@keyframes mg-dream-pulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 28px -8px rgba(255, 111, 156, 0.30), 0 12px 32px -18px rgba(154, 108, 255, 0.55); }
+  50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 44px -4px rgba(255, 111, 156, 0.52), 0 14px 36px -16px rgba(154, 108, 255, 0.82); }
+}
+@keyframes mg-dream-slide { to { background-position: 200% 0; } }
+@keyframes mg-dream-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.72; } }
+
+/* ---- goal card header ---- */
+.mg-view .mg-goalcard-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mg-view .mg-goalcard .mg-ring-fill {
+  stroke: var(--mg-goal, var(--mg-accent));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--mg-goal, var(--mg-accent)) 50%, transparent));
+}
+.mg-view .mg-goalcard-head { flex: 1; min-width: 0; }
+.mg-view .mg-goalcard-titlerow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mg-view .mg-goalcard-head h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--mg-text);
+  line-height: 1.25;
+}
+.mg-view .mg-goal-kind {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--mg-goal);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mg-goal) 50%, transparent);
+}
+.mg-view .mg-goal-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--mg-goal) 72%, var(--mg-text-soft));
+}
+.mg-view .mg-goal-detail {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mg-text-soft);
+}
+
+/* ---- linked project chip ---- */
+.mg-view .mg-goal-project {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mg-panel-soft) 82%, transparent);
+  border: 1px solid var(--mg-border);
+}
+.mg-view .mg-goal-project-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mg-text-soft);
+}
+.mg-view .mg-goal-project-select {
+  flex: 1;
+  min-width: 120px;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-border);
+  color: var(--mg-text);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.mg-view .mg-goal-project-info { font-size: 11px; color: var(--mg-text-soft); }
+
+/* ---- progress slider (no milestones) ---- */
+.mg-view .mg-goal-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--mg-text-soft);
+  font-weight: 600;
+}
+.mg-view .mg-goal-slider input[type='range'] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mg-goal), color-mix(in srgb, var(--mg-goal) 30%, var(--mg-border)));
+  outline: none;
+}
+.mg-view .mg-goal-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--mg-goal);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mg-goal) 60%, transparent);
+  cursor: pointer;
+}
+.mg-view .mg-goal-slider input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--mg-goal);
+  cursor: pointer;
+}
+
+/* ---- milestones ---- */
+.mg-view .mg-mslist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mg-view .mg-mslist li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mg-text); }
+.mg-view .mg-mslist li span { transition: opacity 0.2s, color 0.2s; }
+.mg-view .mg-mslist li span.done { opacity: 0.5; text-decoration: line-through; color: var(--mg-text-soft); }
+.mg-view .mg-subcheck.done {
+  background: var(--mg-goal, var(--mg-accent));
+  border-color: var(--mg-goal, var(--mg-accent));
+}
+
+/* ---- add milestone ---- */
+.mg-view .mg-subadd { display: flex; gap: 8px; }
+.mg-view .mg-subadd input {
+  flex: 1;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-border);
+  color: var(--mg-text);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+.mg-view .mg-subadd button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--mg-goal) 40%, var(--mg-border));
+  background: color-mix(in srgb, var(--mg-goal) 14%, transparent);
+  color: var(--mg-goal);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mg-view .mg-subadd button:hover { background: color-mix(in srgb, var(--mg-goal) 26%, transparent); }
+
+/* ---- projects ---- */
+.mg-view .mg-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.mg-view .mg-project-card {
+  --mg-tag: var(--mg-accent);
+  padding: 14px;
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--mg-tag) 16%, transparent), transparent 60%),
+    var(--mg-panel);
+  border: 1px solid color-mix(in srgb, var(--mg-tag) 30%, var(--mg-border));
+  box-shadow: 0 8px 22px -18px color-mix(in srgb, var(--mg-tag) 80%, transparent);
+  transition: transform 0.18s var(--pr-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow 0.2s;
+}
+.mg-view .mg-project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--mg-tag) 90%, transparent);
+}
+.mg-view .mg-project-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mg-view .mg-project-ico {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mg-tag) 16%, transparent);
+  color: var(--mg-tag);
+}
+.mg-view .mg-project-top strong { flex: 1; font-size: 14px; }
+.mg-view .mg-project-bar {
+  height: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--mg-tag) 14%, var(--mg-panel-soft));
+}
+.mg-view .mg-project-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mg-tag) 50%, transparent);
+}
+.mg-view .mg-project-goal { color: var(--mg-tag); font-weight: 700; }

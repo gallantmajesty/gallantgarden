@@ -9,17 +9,25 @@
 // study schedule (2.5–3.5 h study, 13–15 h rest, staggered per NPC so they
 // never come and go in a wave). NPCs are PERMANENT: NPC_ALWAYS_ONLINE keeps
 // every scholar present in their room around the clock — the schedule remains
-// only as deterministic flavor (tags/profile), it no longer drives presence.
+// only as deterministic flavor (tags/profile) for the study timer + completion
+// celebration, it no longer drives presence.
 //
-// Everything is derived from the NPC's index alone (mulberry32 PRNG), so any
-// browser, any reload, renders the exact same NPCs and schedules. Seats are
-// assigned per room via a seeded shuffle, so scholars scatter across the hall
-// instead of filing into consecutive desk rows.
+// Desk rotation: NPCs are NOT glued to one chair. Time is cut into global swap
+// windows (NPC_SWAP_PERIOD_MS); inside each window a room's chair pool per
+// floor is reshuffled by a seeded PRNG and the scholars take the shuffled
+// chairs, so every scholar lands on a fresh desk every window and visibly
+// WALKS the hall all day. Their personal walk phase staggers the traffic so
+// someone is always mid-walk and nobody swaps in lockstep.
+//
+// Everything is derived from the NPC's index + the wall clock (mulberry32
+// PRNG), so any browser, any reload, renders the exact same NPCs, schedules
+// and desk rotations.
 
 import { characterById } from '../avatar/characters'
 import { RANKS } from './ranks'
 import { LIBRARY_ROOMS } from './realm'
 import type { Seat } from '../three/library/furniture'
+import { npcSeats } from '../three/library/furniture'
 
 export const NPC_ROOMS = 10
 
@@ -45,6 +53,18 @@ export const NPC_MAX_PER_ROOM = Math.max(...NPC_ROOM_CAPS)
 // session schedule survives only as deterministic flavor. With at most 30 NPCs
 // and 128 seats per room, most of the hall always stays free for real players.
 export const NPC_ALWAYS_ONLINE = true
+
+// Desk-swap rotation. Time is cut into global SWAP windows; inside each window
+// every scholar walks to a NEW desk (seeded reshuffle, so no two windows look
+// alike and no two NPCs ever fight over one chair). Each NPC has a seeded phase
+// inside the window, so the hall is never in lockstep — someone is always up,
+// walking, at any given minute.
+export const NPC_SWAP_PERIOD_MS = 12 * 60_000
+
+/** The current desk-swap window index for wall-clock `now`. */
+export function npcSwapWindow(now: number): number {
+  return Math.floor((now - EPOCH_MS) / NPC_SWAP_PERIOD_MS)
+}
 
 // Study session: 2.5–3.5 h. Rest between sessions: 13–15 h.
 const SESSION_MIN_MS = 2.5 * 3600_000
@@ -182,6 +202,15 @@ const JOIN_DATES = [
   'Jun 2026', 'Jul 2026', 'Aug 2026',
 ]
 
+// What scholars actually ARE in the library — shown as their role chip under
+// the name tag so the hall reads as a mix of real roles, not just bodies.
+const NPC_ROLES = [
+  'grad student', 'researcher', 'teaching assistant', 'tutor',
+  'undergrad', 'phd candidate', 'language learner', 'exam crammer',
+  'postdoc fellow', 'thesis writer', 'med student', 'law student',
+  'data analyst', 'freelance writer', 'college freshman', 'project lead',
+]
+
 const NPC_BANNER_IDS = [
   'default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn',
   'tide', 'mystic', 'neon_glitch', 'crimson_flame',
@@ -256,7 +285,18 @@ export interface NpcProfile {
   sessionsCompleted: number
   streak: number
   status: 'studying' | 'on-break' | 'offline'
+  /** What this scholar actually is — researcher, TA, tutor… */
+  role: string
+  /** Which floor they live on — they only ever swap desks on that floor. */
+  floorPref: 'ground' | 'upper'
+  /** Personal walk speed (units/s) when switching desks. */
+  walkSpeed: number
+  /** Preferred zone — kept as flavour (profile), no longer drives presence. */
   preferredZone: number
+  /** Offset (0..swap period) inside each swap window — when THIS scholar gets
+   *  up and walks to their next desk. Staggers the hall so someone is always
+   *  mid-walk instead of everyone swapping in lockstep. */
+  swapPhaseMs: number
   /** Personal study schedule (ms, anchored at EPOCH_MS). */
   sessionDurationMs: number
   sessionGapMs: number
@@ -340,7 +380,11 @@ export function npcProfile(idx: number): NpcProfile {
     sessionsCompleted: Math.floor(r() * 200) + 10,
     streak: Math.floor(r() * 60) + 1,
     status: r() < 0.8 ? 'studying' : 'on-break',
+    role: pick(r, NPC_ROLES),
+    floorPref: r() < 0.28 ? 'upper' : 'ground',
+    walkSpeed: 2.2 + r() * 1.1,
     preferredZone: pickZoneIdx(r),
+    swapPhaseMs: r() * NPC_SWAP_PERIOD_MS,
     sessionDurationMs,
     sessionGapMs,
     sessionPhaseMs: r() * cycle,
@@ -405,68 +449,65 @@ export function npcOnlineInRoom(roomIdx: number, now: number): NpcProfile[] {
 
 /* ------------------------------------------------ seat assignment */
 
-// NPCs get PERMANENT seats: seat id = (npcIdx * STEP) % seatCount. STEP is
-// coprime with any plausible seat count, so every NPC in a room owns a unique
-// seat forever. The seat depends ONLY on the NPC's own index — no user input,
-// no session state — so no player can ever change an NPC's spot. (NPCs sit
-// scattered across the hall because 37 strides through the seat list.)
-const NPC_SEAT_STEP = 37
+// NPCs swap desks every swap window (see npcSwapWindow). Inside a window the
+// room's chair pool for each floor is reshuffled — seeded by (room, window,
+// floor) so every browser agrees everywhere — and the room's scholars on that
+// floor take the shuffled chairs in index order. Each scholar therefore lands
+// on a FRESH chair every window, no two NPCs ever share one, and the hall
+// visibly changes all day long. A real player sitting in a chair (takenByUser)
+// is avoided as a last resort by sliding to the next free chair in the same
+// shuffled order (still deterministic).
 
-/** The seat id an NPC permanently owns. Deterministic, immutable. */
-export function npcSeatId(idx: number, seatCount: number): number {
-  if (seatCount <= 0) return -1
-  return (idx * NPC_SEAT_STEP) % seatCount
+function shuffleSeed(roomIdx: number, window: number, floorSalt: number): number {
+  return hash(roomIdx * 104729 + window * 7919 + floorSalt, 0x51ab)
 }
 
-/** True if a present NPC in the room permanently owns this seat right now. */
-export function npcSeatOccupied(
-  roomIdx: number,
-  seatId: number,
-  now: number,
-  seatCount: number
-): boolean {
-  for (const i of roomNpcIndices(roomIdx)) {
-    if (npcSession(i, now).online && npcSeatId(i, seatCount) === seatId) return true
+function shuffled<T>(arr: T[], seed: number): T[] {
+  const out = arr.slice()
+  const r = mulberry32(seed)
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1))
+    const tmp = out[i]; out[i] = out[j]; out[j] = tmp
   }
-  return false
+  return out
 }
 
 /**
- * Map NPC indices to their permanent seats. `takenByUser` (local player's AND
- * remote players' seats) is the ONLY user input and is consulted as a last
- * resort: if a player is physically sitting in an NPC's permanent seat — only
- * possible if they took it while the NPC was offline — the NPC claims their
- * next permanent slot instead, skipping seats other NPCs own. If every
- * alternative is taken the NPC is unmapped (`undefined`) rather than stacking
- * on top of a player. Everyone else keeps their own seat, always.
+ * Map NPC indices to their CURRENT swap-window desks. `takenByUser` (the local
+ * AND remote players' seats) slides a scholar along the shuffled pool — never
+ * on top of a real player. NPCs NEVER change their desk because of a player;
+ * they only move on their own swap schedule.
  */
 export function assignNpcSeats(
   indices: number[],
   seats: Seat[],
-  takenByUser?: ReadonlySet<number>
+  takenByUser?: ReadonlySet<number>,
+  now: number = Date.now(),
 ): Map<number, Seat | undefined> {
   const out = new Map<number, Seat | undefined>()
-  const n = seats.length
-  if (n === 0) return out
-  const permanent = new Set<number>(indices.map((i) => npcSeatId(i, n)))
-  for (const idx of indices) {
-    let k = 0
-    if (takenByUser?.has(seats[npcSeatId(idx, n)].id)) {
-      let found = false
-      while (k < n) {
-        const cid = npcSeatId(idx + k, n)
-        if (cid !== npcSeatId(idx, n) && !permanent.has(cid) && !takenByUser.has(seats[cid].id)) {
-          found = true
-          break
+  if (indices.length === 0 || seats.length === 0) return out
+  const roomIdx = npcRoom(indices[0])
+  const window = npcSwapWindow(now)
+  const pool = npcSeats()
+  const floors = [['ground', pool.ground], ['upper', pool.upper]] as const
+  for (const [floor, poolSeats] of floors) {
+    const members = indices.filter((i) => npcProfile(i).floorPref === floor)
+    if (members.length === 0) continue
+    const chairPool = poolSeats.filter((s) => s.id < seats.length)
+    if (chairPool.length === 0) continue
+    const order = shuffled(chairPool, shuffleSeed(roomIdx, window, floor === 'ground' ? 11 : 29))
+    members.forEach((idx, k) => {
+      let seatPick: Seat | undefined = order[k % order.length]
+      if (takenByUser?.has(seatPick.id)) {
+        let next: Seat | undefined
+        for (let j = 1; j <= order.length && !next; j++) {
+          const c = order[(k + j) % order.length]
+          if (!takenByUser.has(c.id)) next = c
         }
-        k++
+        seatPick = next
       }
-      if (!found) {
-        out.set(idx, undefined)
-        continue
-      }
-    }
-    out.set(idx, seats[npcSeatId(idx + k, n)])
+      out.set(idx, seatPick)
+    })
   }
   return out
 }

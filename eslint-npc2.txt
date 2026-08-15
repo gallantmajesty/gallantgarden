@@ -1,0 +1,120 @@
+
+C:\Users\taksh\studyforest\src\lib\npcSystem.ts
+   84:11  error  The value assigned to 'h' is not used in subsequent statements  no-useless-assignment
+  166:7   error  'COUNTRY_WEIGHT_TOTAL' is assigned a value but never used       @typescript-eslint/no-unused-vars
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx
+   21:10  error  'tick' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   49:7   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:49:7
+  47 |     let pct: number
+  48 |     if (focus) {
+> 49 |       breakAnchor.current = null
+     |       ^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  50 |       pct = Math.min(1, Math.max(0, 1 - pomo.remaining / (pomo.sessionMinutes * 60)))
+  51 |     } else {
+  52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }                                                                                                                                                                                                                    react-hooks/refs
+   52:12  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:52:12
+  50 |       pct = Math.min(1, Math.max(0, 1 - pomo.remaining / (pomo.sessionMinutes * 60)))
+  51 |     } else {
+> 52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }
+     |            ^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |       const { at, total } = breakAnchor.current
+  54 |       pct = total > 0 ? Math.min(1, Math.max(0, (Date.now() - at) / (total * 1000))) : 0
+  55 |     }
+
+To initialize a ref only once, check that the ref is null with the pattern `if (ref.current == null) { ref.current = ... }`  react-hooks/refs
+   52:61  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:52:61
+  50 |       pct = Math.min(1, Math.max(0, 1 - pomo.remaining / (pomo.sessionMinutes * 60)))
+  51 |     } else {
+> 52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }
+     |                                                             ^^^^^^^^^^ Cannot call impure function
+  53 |       const { at, total } = breakAnchor.current
+  54 |       pct = total > 0 ? Math.min(1, Math.max(0, (Date.now() - at) / (total * 1000))) : 0
+  55 |     }                                                                                                                       react-hooks/purity
+   54:13  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:54:13
+  52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }
+  53 |       const { at, total } = breakAnchor.current
+> 54 |       pct = total > 0 ? Math.min(1, Math.max(0, (Date.now() - at) / (total * 1000))) : 0
+     |             ^^^^^ Cannot access ref value during render
+  55 |     }
+  56 |
+  57 |     const mm = String(Math.floor(pomo.remaining / 60)).padStart(2, '0')                                                                                                                                                                       react-hooks/refs
+   54:50  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:54:50
+  52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }
+  53 |       const { at, total } = breakAnchor.current
+> 54 |       pct = total > 0 ? Math.min(1, Math.max(0, (Date.now() - at) / (total * 1000))) : 0
+     |                                                  ^^^^^^^^^^ Cannot call impure function
+  55 |     }
+  56 |
+  57 |     const mm = String(Math.floor(pomo.remaining / 60)).padStart(2, '0')                                                                                                                                                             react-hooks/purity
+   54:63  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:54:63
+  52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }
+  53 |       const { at, total } = breakAnchor.current
+> 54 |       pct = total > 0 ? Math.min(1, Math.max(0, (Date.now() - at) / (total * 1000))) : 0
+     |                                                               ^^ Cannot access ref value during render
+  55 |     }
+  56 |
+  57 |     const mm = String(Math.floor(pomo.remaining / 60)).padStart(2, '0')                                                                                                                        react-hooks/refs
+   54:70  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:54:70
+  52 |       if (!breakAnchor.current) breakAnchor.current = { at: Date.now(), total: pomo.remaining }
+  53 |       const { at, total } = breakAnchor.current
+> 54 |       pct = total > 0 ? Math.min(1, Math.max(0, (Date.now() - at) / (total * 1000))) : 0
+     |                                                                      ^^^^^ Cannot access ref value during render
+  55 |     }
+  56 |
+  57 |     const mm = String(Math.floor(pomo.remaining / 60)).padStart(2, '0')                                                                                                              react-hooks/refs
+   93:22  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:93:22
+  91 |   const celebrateAt = target.timerCelebrateAt ?? 0
+  92 |   const timerDurationMs = target.timerDurationMs || 0
+> 93 |   if (celebrateAt && Date.now() - celebrateAt < CELEBRATE_MS) {
+     |                      ^^^^^^^^^^ Cannot call impure function
+  94 |     return (
+  95 |       <Html position={[0, headY + 1.15, 0]} center distanceFactor={10} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
+  96 |         <CelebrateBurst                                                                                                                                                                  react-hooks/purity
+  107:15  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\taksh\studyforest\src\three\library\PlayerTimerBar.tsx:107:15
+  105 |   if (!timerStartedAt || !timerDurationMs) return null
+  106 |
+> 107 |   const now = Date.now()
+      |               ^^^^^^^^^^ Cannot call impure function
+  108 |   const elapsed = now - timerStartedAt
+  109 |   if (elapsed < 0) return null
+  110 |                                                                                                                                                                                                                                                                                                                                                         react-hooks/purity
+
+✖ 12 problems (12 errors, 0 warnings)
+

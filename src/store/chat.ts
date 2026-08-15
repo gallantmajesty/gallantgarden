@@ -28,6 +28,7 @@ import { uploadChatImage } from '../lib/chatMedia'
 import type { Message, MessageKind, MessageMeta, MessageReaction, ReactionGroup, GroupMember, GroupRole } from '../lib/types'
 import { setStudyStatus } from '../lib/presence'
 import { supabase } from '../lib/supabase'
+import { playIncomingSound } from '../features/social/chatSettings'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 // Chat runtime state for the social hub. v3 adds group chat, rich messages
@@ -53,6 +54,18 @@ interface ChatState {
   typing: string[] // user ids currently typing (excludes me)
   reactions: Record<string, ReactionGroup[]> // messageId -> groups
   groupMembers: GroupMember[] // roster of the open group
+
+  /** group member display names by conversation (cached when a group opens,
+   *  so headers/lists can show the last sender's name without a refetch). */
+  memberNames: Record<string, Record<string, string>>
+  /** conversationId -> other users who have seen the latest message (read receipts). */
+  seenBy: Record<string, string[]>
+  markSeen: (conversationId: string) => void
+
+  /** per-group customizations (name / logo / color), persisted locally so a
+   *  group keeps its look even before the server supports metadata. */
+  groupCustom: Record<string, { name?: string; logo?: string; color?: string }>
+  customizeGroup: (conversationId: string, patch: { name?: string; logo?: string; color?: string }) => void
 
   focusSilent: boolean
   myStatus: import('../lib/types').StudyStatus
@@ -113,7 +126,10 @@ function subscribeToChat(conversationId: string, onMessage: (msg: Message) => vo
       .on('broadcast', { event: 'chat_message' }, (payload) => {
         const msg = payload.payload as Message
         const meId = useChat.getState().meId
-        if (msg.sender_id !== meId) onMessage(msg)
+        if (msg.sender_id !== meId) {
+          playIncomingSound()
+          onMessage(msg)
+        }
       })
       .subscribe()
   } catch {
@@ -147,6 +163,29 @@ function stopFallbackPoll() {
   }
 }
 
+const GROUP_CUSTOM_KEY = 'fl-group-custom'
+
+type GroupCustomMap = Record<string, { name?: string; logo?: string; color?: string }>
+
+function loadGroupCustom(): GroupCustomMap {
+  try {
+    const raw = localStorage.getItem(GROUP_CUSTOM_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as GroupCustomMap
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveGroupCustom(map: GroupCustomMap) {
+  try {
+    localStorage.setItem(GROUP_CUSTOM_KEY, JSON.stringify(map))
+  } catch {
+    /* storage unavailable — customization stays session-only */
+  }
+}
+
 function attachReactions(msgs: Message[], meId: string | null): Record<string, ReactionGroup[]> {
   const out: Record<string, ReactionGroup[]> = {}
   for (const m of msgs) {
@@ -169,6 +208,9 @@ export const useChat = create<ChatState>((set, get) => ({
   typing: [],
   reactions: {},
   groupMembers: [],
+  memberNames: {},
+  seenBy: {},
+  groupCustom: loadGroupCustom(),
   focusSilent: false,
   myStatus: 'available',
 
@@ -241,13 +283,17 @@ export const useChat = create<ChatState>((set, get) => ({
     const messages = await getMessagesWithReactions(conversationId)
     await markRead(conversationId, meId)
     const members = await getGroupMembers(conversationId)
+    const names: Record<string, string> = {}
+    for (const m of members) if (m.profile?.display_name) names[m.user_id] = m.profile.display_name
     set({
       messages,
       reactions: attachReactions(messages, meId),
       hasMore: messages.length >= MESSAGE_PAGE,
       opening: false,
       groupMembers: members,
+      memberNames: { ...get().memberNames, [conversationId]: names },
     })
+    get().markSeen(conversationId)
     void get().refreshSummaries()
     startTypingPoll()
     subscribeToChat(conversationId, (msg) => {
@@ -256,6 +302,7 @@ export const useChat = create<ChatState>((set, get) => ({
       if (!state.messages.some((m) => m.id === msg.id)) {
         set((s) => ({ messages: [...s.messages, msg] }))
         void markRead(conversationId, meId)
+        get().markSeen(conversationId)
         void get().refreshSummaries()
       }
     })
@@ -292,6 +339,22 @@ export const useChat = create<ChatState>((set, get) => ({
     if (!id) return
     set({ groupMembers: await getGroupMembers(id) })
   },
+
+  customizeGroup: (conversationId, patch) => {
+    const next = { ...get().groupCustom, [conversationId]: { ...get().groupCustom[conversationId], ...patch } }
+    if (!next[conversationId].name && !next[conversationId].logo && !next[conversationId].color) delete next[conversationId]
+    saveGroupCustom(next)
+    set({ groupCustom: next })
+  },
+
+  markSeen: (conversationId) => {
+    const meId = get().meId
+    if (!meId) return
+    const cur = get().seenBy[conversationId] ?? []
+    if (cur.includes(meId)) return
+    set({ seenBy: { ...get().seenBy, [conversationId]: [...cur, meId] } })
+  },
+
 
   send: async (body, opts) => {
     const { activeId, meId } = get()
@@ -377,6 +440,7 @@ export const useChat = create<ChatState>((set, get) => ({
         reactions: { ...s.reactions, ...attachReactions(fresh, meId) },
       }))
       await markRead(id, meId)
+      if (fresh.some((m) => m.sender_id !== meId)) playIncomingSound()
     }
     await get().refreshReactions()
     void get().refreshSummaries()
@@ -459,6 +523,8 @@ export const useChat = create<ChatState>((set, get) => ({
       typing: [],
       reactions: {},
       groupMembers: [],
+      memberNames: {},
+      seenBy: {},
       focusSilent: false,
       myStatus: 'available',
     })

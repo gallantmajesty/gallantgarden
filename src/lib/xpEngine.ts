@@ -171,6 +171,8 @@ interface DailyRecord {
   activeMinToday: number
   /** whether today's daily focus claim has been taken */
   focusClaimed: boolean
+  /** leaves lost to the inactivity penalty today (drives ScorePanel "Lost") */
+  penaltyLostToday: number
 }
 
 const DAILY_KEY = 'sf.xp.daily'
@@ -205,6 +207,7 @@ function loadDaily(): DailyRecord {
   penaltyPanelShown: (parsed.penaltyPanelShown as boolean) || false,
   activeMinToday: (parsed.activeMinToday as number) || 0,
   focusClaimed: (parsed.focusClaimed as boolean) || false,
+  penaltyLostToday: (parsed.penaltyLostToday as number) || 0,
     }
   } catch {
     return freshDaily()
@@ -229,6 +232,7 @@ function freshDaily(): DailyRecord {
   penaltyPanelShown: false,
   activeMinToday: 0,
   focusClaimed: false,
+  penaltyLostToday: 0,
   }
 }
 
@@ -307,6 +311,9 @@ export function checkInactivityPenalty(
   const newRankTotal = rankBase - penalty
   const newRank = rankForTotalXp(newRankTotal)
   const rankChanged = newRank.id !== rankForTotalXp(rankBase).id
+
+  daily.penaltyLostToday = (daily.penaltyLostToday ?? 0) + Math.min(currentLeaves, penalty)
+  saveDaily(daily)
 
   return {
     leaves: -Math.min(currentLeaves, penalty),
@@ -827,6 +834,7 @@ export function getDailyEngagement() {
     focusClaimed: daily.focusClaimed,
     focusClaimMin: DAILY_FOCUS_CLAIM_MIN_MINUTES,
     focusClaimLeaves: XP_VALUES.dailyFocusClaim,
+    penaltyLostToday: daily.penaltyLostToday ?? 0,
   }
 }
 

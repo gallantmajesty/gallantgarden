@@ -15,6 +15,20 @@ const WALLS: { id: ChatWallpaper; label: string }[] = [
   { id: 'forest', label: 'Forest' },
   { id: 'dusk', label: 'Dusk' },
   { id: 'stars', label: 'Stars' },
+  { id: 'sunset', label: 'Sunset' },
+  { id: 'paper', label: 'Paper' },
+]
+
+/* WhatsApp-style chat colours — a small set of soft accents for my bubbles. */
+const CHAT_COLORS = [
+  { id: '#caa84a', label: 'Gold' },
+  { id: '#5cb87a', label: 'Green' },
+  { id: '#3fb0c2', label: 'Teal' },
+  { id: '#5b88d8', label: 'Blue' },
+  { id: '#9373d6', label: 'Violet' },
+  { id: '#dd7498', label: 'Rose' },
+  { id: '#e8864a', label: 'Orange' },
+  { id: '#7b8494', label: 'Slate' },
 ]
 
 export function ChatSettingsPanel({ onClose }: { onClose: () => void }) {
@@ -54,6 +68,23 @@ export function ChatSettingsPanel({ onClose }: { onClose: () => void }) {
             <button key={w.id} type="button" className={`sh-seg-btn ${s.wallpaper === w.id ? 'on' : ''}`} onClick={() => s.set({ wallpaper: w.id })}>
               {w.label}
             </button>
+          ))}
+        </div>
+
+        <p className="sh-section">Chat colour</p>
+        <div className="sh-color-row sh-settings-colors">
+          <button type="button" className={`sh-chat-color ${!s.chatColor ? 'on' : ''}`} title="Default" onClick={() => s.set({ chatColor: null })}>
+            <span className="sh-chat-color-auto">A</span>
+          </button>
+          {CHAT_COLORS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`sh-chat-color ${s.chatColor === c.id ? 'on' : ''}`}
+              title={c.label}
+              style={{ background: c.id }}
+              onClick={() => s.set({ chatColor: c.id })}
+            />
           ))}
         </div>
 

@@ -224,8 +224,8 @@ export function Store() {
           <div>
             <h2>Golden Leaves</h2>
             <p className="store-hint">
-              The only currency you can buy with real money — spend it on legendary items.
-              Buying a pack keeps Focus Lily running.
+              Golden leaves are coming soon — purchasing will be enabled in a future update.
+              They'll be the premium currency for legendary items and help keep Focus Lily running.
             </p>
           </div>
           <span className="store-secure">🔒 Secure checkout</span>
@@ -272,8 +272,8 @@ export function Store() {
                 {p.bonus && <span className="store-pack-total">+{p.bonus.slice(1)}</span>}
               </div>
               <div className="store-pack-per">≈ {p.total.toLocaleString()} golden total</div>
-              <button className="store-buy" disabled={!!buying || isGuest || !adultConfirmed} onClick={() => buy(p)}>
-                {buying === p.id && provider === 'razorpay' ? 'Opening…' : p.label}
+              <button className="store-buy" disabled onClick={() => buy(p)}>
+                {buying === p.id ? 'Opening…' : 'Coming Soon'}
               </button>
             </div>
           ))}

@@ -21,7 +21,7 @@ export const ROOM_CAPACITY = 100
 export type RealmKind = 'global' | 'custom'
 
 /** Which flagship world a global room renders. */
-export type GlobalRoomWorld = 'library' | 'train-station' | 'uk-cafe'
+export type GlobalRoomWorld = 'library' | 'train-station' | 'uk-cafe' | 'chinese-cafe'
 
 export interface GlobalRoom {
   id: string
@@ -61,6 +61,7 @@ export const ROOM_CAPACITIES: Record<string, number> = {
   'platform-2': 100,
   'platform-3': 100,
   'main-cafe': 100,
+  'jade-lantern': 30,
 }
 
 // Train Station global rooms — the station concourse and platforms as shared study spaces.
@@ -76,8 +77,13 @@ export const UK_CAFE_ROOMS: GlobalRoom[] = [
   { id: 'main-cafe', name: 'The Great Hall Café', blurb: 'A cozy Edinburgh-style café — sizzling pans, warm lamps, and the aroma of fresh pastries.', world: 'uk-cafe' },
 ]
 
+// Chinese Café global rooms — a smaller, premium 30-seat study house.
+export const CHINESE_CAFE_ROOMS: GlobalRoom[] = [
+  { id: 'jade-lantern', name: 'Jade Lantern Study House', blurb: 'A rain-lit Jiangnan café with lattice booths, a koi courtyard, and quiet tea study.', world: 'chinese-cafe' },
+]
+
 // Combined list for backward compatibility (legacy code paths).
-export const GLOBAL_ROOMS: GlobalRoom[] = [...LIBRARY_ROOMS, ...TRAIN_ROOMS, ...UK_CAFE_ROOMS]
+export const GLOBAL_ROOMS: GlobalRoom[] = [...LIBRARY_ROOMS, ...TRAIN_ROOMS, ...UK_CAFE_ROOMS, ...CHINESE_CAFE_ROOMS]
 
 /** Realm multiplayer presence is live (see multiplayer/net.ts). Retained as a
  *  single kill-switch in case presence needs to be disabled in an incident. */
@@ -110,6 +116,11 @@ export const ENABLE_TRAIN_STATION_REALM = false
  *  all of its code, routes and scenes intact (developers still reach it via `?dev=1`). */
 export const ENABLE_UK_CAFE_REALM = false
 
+/** The Jade Lantern Chinese Café is parked until further notice — the team is
+ *  focusing on the Library. The scene, routes and seats stay intact; only the
+ *  public card is hidden (developers still reach it via `?dev=1`). */
+export const ENABLE_CHINESE_CAFE_REALM = false
+
 /** Whether the Train Station Realm may be shown and entered right now. Every
  *  place that exposes the card or guards the route reads this one helper. */
 export function trainStationEnabled(): boolean {
@@ -120,4 +131,8 @@ export function trainStationEnabled(): boolean {
  *  place that exposes the card or guards the route reads this one helper. */
 export function ukCafeEnabled(): boolean {
   return ENABLE_UK_CAFE_REALM || isDevAccess()
+}
+
+export function chineseCafeEnabled(): boolean {
+  return ENABLE_CHINESE_CAFE_REALM || isDevAccess()
 }

@@ -46,6 +46,38 @@ export function seatAnchors(): Seat[] {
   return out
 }
 
+/**
+ * NPC seat pool — the four NAVE-FACING chairs of every table (ground + upper),
+ * as `Seat` entries with the SAME ids `seatAnchors()` gives them.
+ *
+ * NPCs only ever roam these chairs, so a seat swap is a straight walk across
+ * open hall floor that can never clip through a table. (Inner rows only: the
+ * outer rows sit against walls/columns and no NPC ever crosses a desk.)
+ */
+export function npcSeats(): { ground: Seat[]; upper: Seat[] } {
+  const ground: Seat[] = []
+  const upper: Seat[] = []
+  const collect = (tables: Placement[], out: Seat[], baseIdx: number) => {
+    for (let t = 0; t < tables.length; t++) {
+      const tx = tables[t].pos[0]
+      // inner side faces the nave (toward x = 0)
+      const innerSx = tx < 0 ? 1 : -1
+      for (let ci = 0; ci < 4; ci++) {
+        // ids follow seatAnchors(): per table, sx=-1 chairs (0..3) then sx=1 (4..7)
+        const seatId = baseIdx + t * 8 + (innerSx === 1 ? 4 + ci : ci)
+        out.push({
+          id: seatId,
+          pos: [tx + innerSx * (TABLE.w / 2 + 0.5), tables[t].pos[1], tables[t].pos[2] + CHAIR_CZ[ci]],
+          yaw: innerSx === 1 ? Math.PI / 2 : -Math.PI / 2,
+        })
+      }
+    }
+  }
+  collect(groundTables(), ground, 0)
+  collect(upperTables(), upper, 80)
+  return { ground, upper }
+}
+
 /** Ground-floor reading tables (~80 seats). */
 export function groundTables(): Placement[] {
   const out: Placement[] = []

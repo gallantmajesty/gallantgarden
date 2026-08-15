@@ -6,7 +6,7 @@ import { persist } from 'zustand/middleware'
 
 export type ChatTheme = 'gold' | 'midnight' | 'aurora'
 export type BubbleStyle = 'rounded' | 'compact' | 'bubbly'
-export type ChatWallpaper = 'none' | 'forest' | 'dusk' | 'stars'
+export type ChatWallpaper = 'none' | 'forest' | 'dusk' | 'stars' | 'sunset' | 'paper'
 
 export interface ChatSettings {
   theme: ChatTheme
@@ -20,6 +20,8 @@ export interface ChatSettings {
   autoplayGif: boolean
   wallpaper: ChatWallpaper
   compactList: boolean
+  /** WhatsApp-style chat colour — overrides the theme accent on my bubbles. */
+  chatColor: string | null
   set: (patch: Partial<ChatSettings>) => void
 }
 
@@ -35,6 +37,7 @@ const DEFAULTS: Omit<ChatSettings, 'set'> = {
   autoplayGif: false,
   wallpaper: 'none',
   compactList: false,
+  chatColor: null,
 }
 
 export const useChatSettings = create<ChatSettings>()(
@@ -67,6 +70,37 @@ export function playSendSound() {
     o.stop(ctx.currentTime + 0.12)
   } catch {
     void BLIP
+  }
+}
+
+/** Incoming-message notification chime. Soft two-note "pop" — synthesized via
+ *  WebAudio, no asset file. Gated by BOTH the master sound toggle and the
+ *  notifications toggle. */
+let notifTimer: ReturnType<typeof setTimeout> | null = null
+export function playIncomingSound() {
+  try {
+    const s = useChatSettings.getState()
+    if (!s.sound || !s.notifications) return
+    if (notifTimer) return // never pile up — one chime per burst
+    notifTimer = setTimeout(() => { notifTimer = null }, 350)
+    ctx = ctx ?? new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    const now = ctx.currentTime
+    const notes = [880, 1175]
+    for (let i = 0; i < notes.length; i++) {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'sine'
+      o.frequency.value = notes[i]
+      g.gain.setValueAtTime(0, now + i * 0.09)
+      g.gain.linearRampToValueAtTime(0.05, now + i * 0.09 + 0.012)
+      g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.09 + 0.3)
+      o.connect(g)
+      g.connect(ctx.destination)
+      o.start(now + i * 0.09)
+      o.stop(now + i * 0.09 + 0.32)
+    }
+  } catch {
+    /* ignore */
   }
 }
 

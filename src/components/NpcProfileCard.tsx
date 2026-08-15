@@ -17,6 +17,8 @@ export interface NpcProfileData {
   bio?: string
   joinDate?: string
   status: 'studying' | 'on-break' | 'offline'
+  /** What this scholar actually is — grad student, researcher, tutor… */
+  role?: string
   /** banner id (lib/banners) shown on the compact card strip */
   banner?: string
   /** logo id (lib/banners) shown on the compact card */
@@ -143,6 +145,13 @@ export function NpcProfileCard({ profile, onClose, onMoreInfo }: Props) {
               <div className="npc-profile-topic">
                 <span className="npc-profile-topic-label">Studying</span>
                 <span className="npc-profile-topic-value">{profile.studyTopic}</span>
+              </div>
+            )}
+
+            {profile.role && (
+              <div className="npc-profile-topic">
+                <span className="npc-profile-topic-label">Role</span>
+                <span className="npc-profile-topic-value">🎓 {profile.role}</span>
               </div>
             )}
 

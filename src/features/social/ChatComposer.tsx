@@ -4,7 +4,6 @@ import { useChatSettings, playSendSound } from './chatSettings'
 import { startTypingBeat } from '../../store/chat'
 import { transformOutgoing } from './moderation'
 import { buildLinkPreview, extractUrls } from './linkPreview'
-import { getSticker } from './stickers'
 import { EmojiPicker } from './EmojiPicker'
 import { StickerPicker } from './StickerPicker'
 import { clamp } from './chatUtil'
@@ -133,11 +132,10 @@ export function ChatComposer({ reply, onClearReply }: { reply: ReplyTarget | nul
     }
   }
 
-  const sendSticker = async (id: string, emoji: string) => {
+  const sendSticker = async (id: string, url: string) => {
     setStickerOpen(false)
-    await send('', { kind: 'sticker', meta: { sticker: id } })
+    await send('', { kind: 'sticker', attachmentUrl: url, meta: { sticker: id } })
     playSendSound()
-    void emoji
   }
 
   useEffect(() => {

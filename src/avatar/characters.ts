@@ -115,7 +115,7 @@ export const CHARACTERS: Character[] = [
       top: 'blazer', bottom: 'leggings', shoes: 'boots',
     }),
     description: 'Bright scholar with long auburn hair and a smart blazer',
-    icon: '/icons/characters/mia.svg',
+    icon: '/icons/characters/mia.webp',
     rarity: 'Common',
     color: '#8a8a8a',
     bg: '#fff0e0',

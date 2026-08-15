@@ -3,36 +3,24 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
-import { RankBadge } from '../components/RankBadge'
-import { getRank, rankForTotalXp } from '../lib/ranks'
 import { useMagnet } from '../store/magnet'
 import { levelProgress } from '../lib/magnet/types'
+import { getTheme } from '../lib/magnet/themes'
+import { MXP_DAILY_EARN_CAP } from '../lib/magnet/score'
 import { Icon } from '../components/magnet/Icon'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
+import { ThemeBackdrop } from '../components/magnet/ThemeBackdrop'
 import { Dashboard } from '../components/magnet/views/Dashboard'
 import { TasksView } from '../components/magnet/views/TasksView'
 import { AnalyticsView } from '../components/magnet/views/AnalyticsView'
 import { GoalsView } from '../components/magnet/views/GoalsView'
 import { HabitsView } from '../components/magnet/views/HabitsView'
-import { SanctuaryView } from '../components/magnet/views/SanctuaryView'
+import { StoreView } from '../components/magnet/views/StoreView'
 import { SheetView } from '../components/magnet/views/SheetView'
 import { CalendarView } from '../components/magnet/views/CalendarView'
+import { usePendingClaims } from '../components/pending/usePendingClaims'
 
 import './TaskMagnet.css'
-
-// Single, fixed professional palette: coffee brown surfaces, yellow primary
-// accent and purple secondary accent. No per-user theming.
-const MG_PALETTE = {
-  bg: '#1c1611',
-  panel: '#271f17',
-  panelSoft: '#322619',
-  border: 'rgba(255, 240, 220, 0.10)',
-  text: '#f4ece1',
-  textSoft: '#b6a48d',
-  accent: '#d8a657',
-  accent2: '#9b6dff',
-  shadow: 'rgba(0, 0, 0, 0.35)',
-}
 
 export type MagnetView =
   | 'dashboard'
@@ -41,8 +29,8 @@ export type MagnetView =
   | 'analytics'
   | 'goals'
   | 'habits'
-  | 'sanctuary'
   | 'calendar'
+  | 'store'
 
 export function TaskMagnet() {
   const { t } = useTranslation()
@@ -51,6 +39,9 @@ export function TaskMagnet() {
   const hydrate = useMagnet((s) => s.hydrate)
   const ready = useMagnet((s) => s.ready)
   const data = useMagnet((s) => s.data)
+  // Green "you have an update" dot — only lights for real, unseen updates
+  // (unclaimed achievements, unread News, incoming friend requests).
+  const pendingClaims = usePendingClaims()
   const toast = useMagnet((s) => s.toast)
   const clearToast = useMagnet((s) => s.clearToast)
 
@@ -94,11 +85,15 @@ export function TaskMagnet() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Fixed professional palette — no per-user theming.
+  // The applied magnet theme owns the whole world: replace the fixed coffee
+  // palette with the active theme's vars (gradients, particles and the scene
+  // layer render through ThemeBackdrop behind the translucent panels).
   const rootStyle = useMemo(() => {
-    const v = MG_PALETTE
+    const v = getTheme(data.theme).vars
     return {
       ['--mg-bg' as string]: v.bg,
+      ['--mg-glow-a']: v.glowA,
+      ['--mg-glow-b']: v.glowB,
       ['--mg-panel']: v.panel,
       ['--mg-panel-soft']: v.panelSoft,
       ['--mg-border']: v.border,
@@ -111,7 +106,9 @@ export function TaskMagnet() {
       ['--accent2' as string]: v.accent2,
       fontFamily: data.font === 'Inter' ? 'var(--sans)' : `${data.font}, var(--sans)`,
     } as React.CSSProperties
-  }, [data.font])
+  }, [data.theme, data.font])
+
+  const activeTheme = useMemo(() => getTheme(data.theme), [data.theme])
 
   const NAV: { key: MagnetView; label: string; icon: string; png?: PngIconName }[] = [
     { key: 'dashboard', label: t('taskMagnet.navDashboard'), icon: 'home' },
@@ -119,9 +116,9 @@ export function TaskMagnet() {
     { key: 'analytics', label: t('taskMagnet.navAnalytics'), icon: 'chart', png: 'analytics' },
     { key: 'goals', label: t('taskMagnet.navGoals'), icon: 'target', png: 'goals' },
     { key: 'habits', label: t('taskMagnet.navHabits'), icon: 'fire', png: 'habits' },
-    { key: 'sanctuary', label: t('taskMagnet.navSanctuary'), icon: 'vault', png: 'achievements' },
     { key: 'calendar', label: t('taskMagnet.navCalendar'), icon: 'calendar' },
     { key: 'sheet', label: t('taskMagnet.navSheet'), icon: 'grid' },
+    { key: 'store', label: t('taskMagnet.navStore'), icon: 'store' },
   ]
 
   const profileName = useProfile((s) => s.displayName)
@@ -130,10 +127,15 @@ export function TaskMagnet() {
     user?.profile?.name ||
     user?.email?.split('@')[0] ||
     t('auth.defaultName')
-  const lp = levelProgress(data.xp)
-  // Rank is driven by lifetime rankXp (monotonic) — the rail chip shows the
-  // live rank so the magnet's streak/daily awards visibly feed it.
-  const rankId = rankForTotalXp(data.rankXp || data.xp).id
+  // Magnet Power drives the magnet's own level bar + theme store: the bar uses
+  // the LIFETIME total (never lowered by spending), the chip shows the balance.
+  const mp = levelProgress(data.mxpTotal ?? data.mxp)
+  const todayKey = (): string => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const powerToday = data.mxpDay.date === todayKey() ? data.mxpDay.value : 0
+  const powerCapped = powerToday >= MXP_DAILY_EARN_CAP
 
   if (!ready) {
     return (
@@ -144,7 +146,8 @@ export function TaskMagnet() {
   }
 
   return (
-    <div className="mg-root dark" style={rootStyle}>
+    <div className={`mg-root dark mg-theme-${activeTheme.id}`} style={rootStyle}>
+      <ThemeBackdrop theme={activeTheme} density={0.7} accent={activeTheme.vars.accent2} />
 
       <aside className={`mg-sidebar ${navOpen ? 'open' : ''}`}>
         <button className="mg-back" onClick={() => navigate(-1)}>
@@ -185,19 +188,31 @@ export function TaskMagnet() {
 
         <div className="mg-levelcard">
           <div className="mg-levelcard-top">
-            <span className="mg-rankchip" style={{ ['--rank' as string]: getRank(rankId).accent }}>
-              <RankBadge rankId={rankId} size={22} />
-              <span>{getRank(rankId).name}</span>
+            <span className="mg-levellv">
+              <Icon name="spark" size={13} />
+              {t('taskMagnet.level', { level: mp.level })}
             </span>
-            <span className="mg-levelxp">
-              <Icon name="leaf" size={13} />
-              {t('taskMagnet.xpValue', { xp: data.xp })}
+            <span className="mg-levelxp" title={t('taskMagnet.powerHint')}>
+              <Icon name="bag" size={13} />
+              {t('taskMagnet.powerValue', { xp: data.mxp })}
             </span>
           </div>
           <div className="mg-levelbar">
-            <div className="mg-levelbar-fill" style={{ width: `${lp.pct * 100}%` }} />
+            <div className="mg-levelbar-fill" style={{ width: `${mp.pct * 100}%` }} />
           </div>
-          <small>{t('taskMagnet.xpToLevel', { xp: lp.span - lp.into, nextLevel: lp.level + 1 })}</small>
+          <small className="mg-leveltop">{t('taskMagnet.powerToLevel', { xp: mp.span - mp.into, nextLevel: mp.level + 1 })}</small>
+          <small
+            className={`mg-leveltoday ${powerCapped ? 'capped' : ''}`}
+            title={powerCapped ? t('taskMagnet.powerCapHint') : t('taskMagnet.powerHint')}
+          >
+            <Icon name="leaf" size={11} />
+            {powerCapped
+              ? t('taskMagnet.powerCap', { xp: powerToday, cap: MXP_DAILY_EARN_CAP })
+              : t('taskMagnet.powerToday', { xp: powerToday })}
+          </small>
+          <button className="mg-storebtn" onClick={() => { setView('store'); setNavOpen(false) }}>
+            <Icon name="store" size={14} /> {t('taskMagnet.openStore')}
+          </button>
         </div>
       </aside>
 
@@ -211,7 +226,7 @@ export function TaskMagnet() {
           </div>
           <div className="mg-topbar-user">
             <span className="mg-topbar-name">{displayName}</span>
-            <span className="mg-topbar-dot" />
+            {pendingClaims > 0 && <span className="mg-topbar-dot" />}
           </div>
         </header>
 
@@ -224,7 +239,7 @@ export function TaskMagnet() {
           {view === 'analytics' && <AnalyticsView />}
           {view === 'goals' && <GoalsView />}
           {view === 'habits' && <HabitsView />}
-          {view === 'sanctuary' && <SanctuaryView />}
+          {view === 'store' && <StoreView />}
           {view === 'calendar' && <CalendarView />}
         </div>
       </main>

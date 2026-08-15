@@ -27,7 +27,7 @@ export const DEFAULT_UPDATES: UpdateEntry[] = [
     id: 'u1',
     version: 'v1.0',
     title: 'FocusLily launches',
-    date: new Date().toISOString().slice(0, 10),
+    date: '2025-01-01',
     notes: ['Welcome to FocusLily!', 'Train, focus, and grow your forest.'],
     active: true,
   },
@@ -39,7 +39,7 @@ export const DEFAULT_NEWS: NewsEntry[] = [
     title: 'Welcome to FocusLily!',
     body: 'Start your first focus session on the train, collect leaves, and unlock your dream avatar.',
     tag: 'WELCOME',
-    date: new Date().toISOString().slice(0, 10),
+    date: '2025-01-01',
     active: true,
   },
 ]

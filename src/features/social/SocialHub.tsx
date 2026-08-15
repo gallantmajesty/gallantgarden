@@ -16,6 +16,7 @@ import { ChatComposer } from './ChatComposer'
 import { GroupsTab } from './GroupsTab'
 import { GroupMembersSide } from './GroupMembersSide'
 import { ChatSettingsPanel } from './ChatSettingsPanel'
+import { GroupCustomize } from './GroupCustomize'
 import { GroupAvatar } from './GroupAvatar'
 import { useChatCompact, useChatThemeName, useChatSettings } from './chatSettings'
 import './social.css'
@@ -91,6 +92,9 @@ function LauncherBar() {
 function ChatList({ onPick }: { onPick: (id: string, isGroup: boolean) => void }) {
   const summaries = useChat((s) => s.summaries)
   const friends = useFriends((s) => s.friends)
+  const groupCustom = useChat((s) => s.groupCustom)
+  const memberNames = useChat((s) => s.memberNames)
+  const meId = useChat((s) => s.meId)
   const compact = useChatCompact()
   const byId = useMemo(() => new Map(friends.map((f) => [f.id, f])), [friends])
 
@@ -99,7 +103,8 @@ function ChatList({ onPick }: { onPick: (id: string, isGroup: boolean) => void }
       summaries
         .map((s) => {
           if (s.kind === 'group') {
-            return { id: s.conversation.id, isGroup: true, name: s.title ?? 'Group', avatarUrl: null, rank: null, country: null, status: 'available' as const, unread: s.unreadCount, last: lastText(s), time: s.lastActivity }
+            const c = groupCustom[s.conversation.id]
+            return { id: s.conversation.id, isGroup: true, name: c?.name ?? s.title ?? 'Group', avatarUrl: null, rank: null, country: null, status: 'available' as const, unread: s.unreadCount, last: groupLastLine(s, memberNames, meId), time: s.lastActivity }
           }
           const fid = s.otherUserId
           if (!fid) return null
@@ -118,7 +123,7 @@ function ChatList({ onPick }: { onPick: (id: string, isGroup: boolean) => void }
           }
         })
         .filter(Boolean) as Array<{ id: string; isGroup: boolean; name: string; avatarUrl: string | null; rank: string | null; country: string | null; status: keyof typeof STATUS_COLOR; unread: number; last: string; time: string }>,
-    [summaries, byId],
+    [summaries, byId, groupCustom, memberNames, meId],
   )
 
   if (rows.length === 0) return <p className="sh-empty">No chats yet. Use Explore to add friends, or create a group.</p>
@@ -129,7 +134,7 @@ function ChatList({ onPick }: { onPick: (id: string, isGroup: boolean) => void }
         <button key={r.id} className="sh-row" onClick={() => onPick(r.id, r.isGroup)} type="button">
           <span className="sh-av">
             {r.isGroup ? (
-              <GroupAvatar title={r.name} size={40} />
+              <GroupAvatar title={r.name} size={40} logo={groupCustom[r.id]?.logo} color={groupCustom[r.id]?.color} />
             ) : (
               <>
                 <ProfileAvatar name={r.name} avatarUrl={r.avatarUrl} rankId={r.rank} size={40} />
@@ -159,6 +164,18 @@ function lastText(s: import('../../lib/chat').ConversationSummary): string {
   if (lm.kind === 'link') return '🔗 Link'
   return lm.body || 'Message'
 }
+
+/** Group row sub-line: the latest message's sender name (not the text). */
+function groupLastLine(
+  s: import('../../lib/chat').ConversationSummary,
+  memberNames: Record<string, Record<string, string>>,
+  meId: string | null,
+): string {
+  const lm = s.lastMessage
+  if (!lm) return 'No messages yet'
+  if (lm.senderId === meId) return 'You'
+  return memberNames[s.conversation.id]?.[lm.senderId] ?? lastText(s)
+}
 function fmtShort(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
@@ -172,6 +189,7 @@ function fmtShort(iso: string): string {
 /* ----------------------------------------------------------- conversation */
 
 function ConversationView({ onBack }: { onBack: () => void }) {
+  const { user } = useAuth()
   const activeGroupId = useSocialOverlay((s) => s.activeGroupId)
   const activeConversationId = useSocialOverlay((s) => s.activeConversationId)
   const setPanel = useSocialOverlay((s) => s.setPanel)
@@ -179,6 +197,8 @@ function ConversationView({ onBack }: { onBack: () => void }) {
   const friends = useFriends((s) => s.friends)
   const summaries = useChat((s) => s.summaries)
   const meId = useChat((s) => s.meId)
+  const groupCustom = useChat((s) => s.groupCustom)
+  const memberNames = useChat((s) => s.memberNames)
   const openDm = useChat((s) => s.openDm)
   const openGroup = useChat((s) => s.openGroup)
   const [reply, setReply] = useState<ReplyTarget | null>(null)
@@ -197,14 +217,31 @@ function ConversationView({ onBack }: { onBack: () => void }) {
 
   const summary = summaries.find((s) => s.conversation.id === id)
   const friend = isGroup ? null : friends.find((f) => f.id === summary?.otherUserId) ?? null
+  const custom = isGroup ? groupCustom[summary?.conversation.id ?? ''] : undefined
+  const groupTitle = custom?.name ?? summary?.title ?? 'Group'
+  // Header sub-line: the last sender's name (never the member count).
+  let groupSub = 'No messages yet'
+  const lm = summary?.lastMessage
+  if (lm) {
+    const sender = lm.senderId === meId ? (user?.profile?.name ?? 'You') : memberNames[summary?.conversation.id ?? '']?.[lm.senderId]
+    groupSub = sender ?? 'Someone'
+  }
 
   const header = isGroup ? (
     <>
-      <span className="sh-av"><GroupAvatar title={summary?.title ?? 'Group'} size={36} /></span>
+      <span className="sh-av"><GroupAvatar title={groupTitle} size={36} logo={custom?.logo} color={custom?.color} /></span>
       <span className="sh-conv-name">
-        {summary?.title ?? 'Group'}
-        <span className="sh-conv-sub">{summary?.memberCount ?? 0} members</span>
+        {groupTitle}
+        <span className="sh-conv-sub">{groupSub}</span>
       </span>
+      <button className="sh-icon" type="button" title="Customize group" onClick={() => setPanel(panel === 'customize' ? 'none' : 'customize')}>
+        <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 19l7-7 3 3-7 7-3-3z" />
+          <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+          <path d="M2 2l7.586 7.586" />
+          <circle cx="11" cy="11" r="2" />
+        </svg>
+      </button>
       <button className="sh-icon" type="button" title="Members" onClick={() => setPanel(panel === 'members' ? 'none' : 'members')}>👥</button>
     </>
   ) : (
@@ -386,7 +423,8 @@ function ExploreOverlay() {
         <div className="sh-ov-body">
           {tab === 'chats' && (activeConversationId || activeGroupId ? <ConversationView onBack={activeGroupId ? clearGroup : clearConversation} /> : <ChatList onPick={pick} />)}
           {tab === 'explore' && <ExploreTab />}
-          {tab === 'groups' && <GroupsTab />}
+          {/* From the Groups tab, tapping a group opens its thread; back returns to the list. */}
+          {tab === 'groups' && (activeGroupId ? <ConversationView onBack={clearGroup} /> : <GroupsTab />)}
           {panel === 'settings' && (
             <div className="sh-ov-side">
               <ChatSettingsPanel onClose={() => setPanel('none')} />
@@ -395,6 +433,11 @@ function ExploreOverlay() {
           {panel === 'members' && activeGroupId && (
             <div className="sh-ov-side">
               <GroupMembersSide onClose={() => setPanel('none')} />
+            </div>
+          )}
+          {panel === 'customize' && activeGroupId && (
+            <div className="sh-ov-side">
+              <GroupCustomize conversationId={activeGroupId} onClose={() => setPanel('none')} />
             </div>
           )}
         </div>

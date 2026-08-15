@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import type { Habit } from '../../../lib/magnet/types'
 import { dayKey, addDays } from '../../../lib/magnet/insights'
-import { SectionHead, Panel, EmptyState, MgModal, Field } from '../ui'
+import { SectionHead, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
 import { useNow } from '../useNow'
+import { habitPower } from '../../../lib/magnet/score'
+import { useMxpFloat } from '../MxpFeedback'
 
 const HABIT_ICONS = ['fire', 'book', 'brain', 'leaf', 'heart', 'spark', 'sun', 'moon', 'rocket', 'star']
 const HABIT_COLORS = ['#ff7a3d', '#46d6a0', '#6c8cff', '#ff6f9c', '#b76cff', '#4fd1e0', '#ffb454']
@@ -36,6 +38,7 @@ export function HabitsView() {
   const [title, setTitle] = useState('')
   const [icon, setIcon] = useState(HABIT_ICONS[0])
   const [color, setColor] = useState(HABIT_COLORS[0])
+  const float = useMxpFloat()
 
   const now = useNow()
   const tk = dayKey(now)
@@ -84,7 +87,11 @@ export function HabitsView() {
               gridDays={gridDays}
               today={tk}
               streak={habitStreak(h.history, h.freezeDays, now)}
-              onToggleToday={() => toggleHabitToday(h.id)}
+              onToggleToday={(e) => {
+                const doneToday = h.history.includes(tk)
+                if (!doneToday) float.push(e, habitPower())
+                toggleHabitToday(h.id)
+              }}
               onFreeze={() => toggleHabitFreeze(h.id)}
               onDelete={() => deleteHabit(h.id)}
             />
@@ -124,6 +131,13 @@ export function HabitsView() {
               ))}
             </div>
           </Field>
+          <div className="mg-habit-preview" style={{ ['--mg-tag' as string]: color }}>
+            <span className="mg-habit-ico">
+              <Icon name={icon} size={18} />
+            </span>
+            <span className="mg-habit-preview-name">{title.trim() || t('habits.habitPlaceholder')}</span>
+          </div>
+
           <div className="mg-form-actions">
             <button type="button" className="mg-btn glass" onClick={() => setModalOpen(false)}>
               Cancel
@@ -134,6 +148,8 @@ export function HabitsView() {
           </div>
         </form>
       </MgModal>
+
+      {float.node}
     </div>
   )
 }
@@ -151,7 +167,7 @@ function HabitRow({
   gridDays: string[]
   today: string
   streak: number
-  onToggleToday: () => void
+  onToggleToday: (e: { clientX: number; clientY: number }) => void
   onFreeze: () => void
   onDelete: () => void
 }) {
@@ -159,22 +175,29 @@ function HabitRow({
   const set = useMemo(() => new Set(habit.history), [habit.history])
   const frozenToday = habit.freezeDays.includes(today)
   const doneToday = set.has(today)
+  const pct = Math.round((gridDays.filter((d) => set.has(d)).length / gridDays.length) * 100)
   return (
-    <Panel className="mg-habitrow" pad={false}>
-      <div className="mg-habitrow-inner" style={{ ['--mg-tag' as string]: habit.color }}>
+    <div className="mg-panel mg-habitrow" style={{ ['--mg-tag' as string]: habit.color }}>
+      <div className="mg-habitrow-inner">
         <div className="mg-habitrow-left">
+          <span className="mg-habit-ico">
+            <Icon name={habit.icon} size={18} />
+          </span>
           <button
             className={`mg-habit-toggle ${doneToday ? 'done' : ''}`}
             onClick={onToggleToday}
             aria-label={t('habits.toggleToday')}
           >
-            <Icon name={doneToday ? 'check' : habit.icon} size={18} />
+            <Icon name={doneToday ? 'check' : 'plus'} size={18} />
           </button>
           <div className="mg-habitrow-text">
             <strong>{habit.title}</strong>
-            <small>
-              <Icon name="fire" size={12} /> {streak} day{streak !== 1 ? 's' : ''} · {habit.history.length} total
-            </small>
+            <div className="mg-habit-meta">
+              <span className="mg-habit-streak">
+                <Icon name="fire" size={11} /> {streak}
+              </span>
+              <small>{habit.history.length} total</small>
+            </div>
           </div>
         </div>
         <div className="mg-habitgrid">
@@ -186,20 +209,28 @@ function HabitRow({
             />
           ))}
         </div>
-        <div className="mg-habitrow-actions">
-          <button
-            className={`mg-iconbtn ${frozenToday ? 'active' : ''}`}
-            onClick={onFreeze}
-            aria-label={t('habits.freezeDay')}
-            title={t('habits.freezeHint')}
-          >
-            <Icon name={frozenToday ? 'moon' : 'sun'} size={15} />
-          </button>
-          <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('habits.deleteHabit')}>
-            <Icon name="trash" size={15} />
-          </button>
+        <div className="mg-habitrow-right">
+          <div className="mg-habit-meter" title={`${pct}% done in the last ${gridDays.length} days`}>
+            <div className="mg-habit-meter-track">
+              <div className="mg-habit-meter-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <small>{pct}%</small>
+          </div>
+          <div className="mg-habitrow-actions">
+            <button
+              className={`mg-iconbtn ${frozenToday ? 'active' : ''}`}
+              onClick={onFreeze}
+              aria-label={t('habits.freezeDay')}
+              title={t('habits.freezeHint')}
+            >
+              <Icon name={frozenToday ? 'moon' : 'sun'} size={15} />
+            </button>
+            <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('habits.deleteHabit')}>
+              <Icon name="trash" size={15} />
+            </button>
+          </div>
         </div>
       </div>
-    </Panel>
+    </div>
   )
 }

@@ -14,7 +14,6 @@ import { Icon } from '../Icon'
 import {
   Heatmap,
   buildHeatmap,
-  AICard,
   Trend,
   windowTrends,
   forecastFocus,
@@ -24,6 +23,7 @@ import {
   type HeatCell,
 } from '../premium'
 import '../premium.css'
+import './AnalyticsView.css'
 import { useNow } from '../useNow'
 
 const TONE_ICON: Record<string, string> = { good: 'star', watch: 'fire', tip: 'bulb' }
@@ -109,7 +109,7 @@ export function AnalyticsView() {
   }
 
   return (
-    <div className="mg-studio">
+    <div className="mg-studio an">
       <div className="mg-studio-hero">
         <div>
           <span className="mg-kicker"><Icon name="chart" size={13} />{t('growth.kicker')}</span>
@@ -178,14 +178,13 @@ export function AnalyticsView() {
                 <h3><Icon name="clock" size={18} />{t('growth.focusTime')}</h3>
                 <span className="mg-muted" style={{ fontSize: 12 }}>{t('growth.perDay')}</span>
               </div>
-              <FocusChart bars={bars} />
+              <FocusAreaChart bars={bars} />
             </Panel>
             <div className="mg-ai-stack">
               <div className="mg-why">
                 <Icon name="bulb" size={18} />
                 <span>{whyFocus()}</span>
               </div>
-              <AICard title={insights[0]?.title ?? t('growth.aiTitle')} body={insights[0]?.body ?? t('growth.aiBody')} tone={insights[0]?.tone ?? 'tip'} />
               <Panel className="pad-sm">
                 <div className="mg-pr-head tight" style={{ marginBottom: 10 }}>
                   <h4><Icon name="sun" size={15} />{t('growth.peakDay')}</h4>
@@ -308,7 +307,6 @@ export function AnalyticsView() {
                 </p>
               </div>
               <div className="mg-ai-stack">
-                <AICard title={t('growth.forecastAiTitle')} body={t('growth.forecastAiBody', { conf: forecast.confidence })} tone="good" />
                 <div className="mg-why">
                   <Icon name="target" size={18} />
                   <span>{t('growth.focusScoreNote', { score })}</span>
@@ -370,24 +368,103 @@ export function AnalyticsView() {
 }
 
 // inlined streak (mirrors insights.computeStreak) to avoid an extra import path
-// One clean daily-focus chart: bars with rounded caps, hairline grid, hover
-// value tooltip, and the live "today" bar picked out in the primary accent.
-function FocusChart({ bars }: { bars: { label: string; minutes: number; today: boolean }[] }) {
-  const max = Math.max(1, ...bars.map((b) => b.minutes))
+// A clean, readable focus-time chart: a single area+line over a hairline grid,
+// axis ticks, and a hover guide + tooltip. The live "today" point is filled.
+function FocusAreaChart({ bars }: { bars: { label: string; minutes: number; today: boolean }[] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const W = 760
+  const H = 240
+  const padL = 48
+  const padR = 12
+  const padT = 16
+  const padB = 28
+  const innerW = W - padL - padR
+  const innerH = H - padT - padB
+
+  const maxRaw = Math.max(1, ...bars.map((b) => b.minutes))
+  const max = Math.max(60, Math.ceil(maxRaw / 60) * 60)
+  const n = bars.length
+  const xAt = (i: number) => (n <= 1 ? padL + innerW / 2 : padL + (innerW * i) / (n - 1))
+  const yAt = (v: number) => padT + innerH * (1 - v / max)
+
+  const pts = bars.map((b, i) => ({ x: xAt(i), y: yAt(b.minutes), ...b }))
+  const linePath = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const areaPath = `M${padL} ${padT + innerH} ${pts
+    .map((p) => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(' ')} L${(padL + innerW).toFixed(1)} ${padT + innerH} Z`
+
+  const gridVals = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    y: padT + innerH * f,
+    v: Math.round(max * (1 - f)),
+  }))
+  const labelStep = Math.max(1, Math.ceil(n / 7))
+  const colW = n <= 1 ? innerW : innerW / (n - 1)
+  const active = hover != null ? pts[hover] : null
+
   return (
-    <div className="mg-fchart">
-      <div className="mg-fchart-grid">
-        {bars.map((b, i) => (
-          <div key={i} className={`mg-fcol${b.today ? ' today' : ''}`} title={`${b.label}: ${b.minutes}m`}>
-            <div className="mg-fbar-track">
-              <div className="mg-fbar-fill" style={{ height: `${(b.minutes / max) * 100}%` }}>
-                {b.minutes > 0 && <span className="mg-fbar-val">{b.minutes}</span>}
-              </div>
-            </div>
-            <span className="mg-fbar-label">{b.today ? 'Today' : b.label}</span>
-          </div>
+    <div className="an-areachart">
+      <svg viewBox={`0 0 ${W} ${H}`} onMouseLeave={() => setHover(null)} role="img" aria-label="Daily focus minutes">
+        <defs>
+          <linearGradient id="anFocusFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--mg-accent)" stopOpacity={0.26} />
+            <stop offset="100%" stopColor="var(--mg-accent)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
+        {gridVals.map((g, i) => (
+          <g key={i}>
+            <line className="an-grid" x1={padL} x2={padL + innerW} y1={g.y} y2={g.y} />
+            <text className="an-axis" x={padL - 8} y={g.y + 3} textAnchor="end">
+              {g.v}m
+            </text>
+          </g>
         ))}
-      </div>
+
+        <path d={areaPath} fill="url(#anFocusFill)" />
+        <path className="an-line" d={linePath} />
+
+        {pts.map((p, i) =>
+          i % labelStep === 0 || p.today ? (
+            <text
+              key={`x${i}`}
+              className={`an-xlabel${p.today ? ' today' : ''}`}
+              x={p.x}
+              y={H - 9}
+            >
+              {p.today ? 'Today' : p.label}
+            </text>
+          ) : null,
+        )}
+
+        {active && (
+          <line className="an-guide" x1={active.x} x2={active.x} y1={padT} y2={padT + innerH} />
+        )}
+        {pts.map((p, i) => (
+          <circle key={`d${i}`} className={`an-dot${p.today ? ' today' : ''}`} cx={p.x} cy={p.y} r={p.today ? 4 : 2.6} />
+        ))}
+
+        {/* invisible hover targets spanning each column */}
+        {pts.map((p, i) => (
+          <rect
+            key={`h${i}`}
+            x={p.x - colW / 2}
+            y={padT}
+            width={colW}
+            height={innerH}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+          />
+        ))}
+      </svg>
+
+      {active && (
+        <div className="an-tip" style={{ left: `${(active.x / W) * 100}%` }}>
+          <span className="an-tip-day">{active.today ? 'Today' : active.label}</span>
+          <span className="an-tip-val">
+            {active.minutes}m{active.minutes >= 60 ? ` · ${(active.minutes / 60).toFixed(1)}h` : ''}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

@@ -128,8 +128,8 @@ const CHARACTER_PROPORTIONS: Record<string, Partial<Proportions>> = {
   // mia — slim athletic scholar
   mia: { shoulderW: 0.145, hipW: 0.1, chestW: 0.125, waistW: 0.09, hipBoneW: 0.13, torsoD: 0.09, thighR: 0.058, kneeR: 0.042 },
 
-  // ruslan — dainty fair scholar with a small neat head
-  ruslan: { headR: 0.11, neckR: 0.048, shoulderW: 0.138, hipW: 0.1, chestW: 0.118, waistW: 0.092, hipBoneW: 0.13, torsoD: 0.088, thighR: 0.056, footLen: 0.15 },
+  // ruslan — dainty fair scholar with a neat (no longer tiny) head
+  ruslan: { headR: 0.155, neckR: 0.05, shoulderW: 0.138, hipW: 0.1, chestW: 0.118, waistW: 0.092, hipBoneW: 0.13, torsoD: 0.088, thighR: 0.056, footLen: 0.15 },
 
   // dino — chunky green mascot: big head, barrel chest, thick limbs
   dino: { headR: 0.19, shoulderW: 0.19, hipW: 0.095, chestW: 0.155, waistW: 0.13, hipBoneW: 0.14, torsoD: 0.115, shoulderR: 0.06, thighR: 0.075, kneeR: 0.052, ankleR: 0.042, handLen: 0.11, footLen: 0.2 },

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import { AREA_META, PRIORITY_META, type LifeArea, type Priority, type Task, type FocusSession, type Goal } from '../../../lib/magnet/types'
@@ -62,12 +62,16 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
   const data = useMagnet((s) => s.data)
   const addTask = useMagnet((s) => s.addTask)
   const updateTask = useMagnet((s) => s.updateTask)
+  const toggleTask = useMagnet((s) => s.toggleTask)
   const deleteTask = useMagnet((s) => s.deleteTask)
 
   const [mode, setMode] = useState<Mode>('month')
   const [cursor, setCursor] = useState<Date>(() => new Date())
   const [selected, setSelected] = useState<string | null>(null)
   const [edit, setEdit] = useState<EditState | null>(null)
+  // Drag-and-drop: which task is being dragged, and which day it's hovering over.
+  const dragId = useRef<string | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
 
   function openCreate(due: string) {
     setEdit({ title: '', notes: '', priority: 'medium', subject: '', area: 'academic', due })
@@ -148,6 +152,24 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
     return list
   }, [mode, cursor, todayKey])
 
+  // Roll-up stats for the visible period (month = current month only).
+  const stats = useMemo(() => {
+    const keys = mode === 'week' ? cells.map((c) => c.key) : cells.filter((c) => c.inMonth).map((c) => c.key)
+    let tasks = 0
+    let done = 0
+    let focusMin = 0
+    let goals = 0
+    for (const k of keys) {
+      const items = byDate.get(k)
+      if (!items) continue
+      tasks += items.tasks.length
+      done += items.tasks.filter((x) => x.done).length
+      focusMin += items.focus.reduce((s, f) => s + f.minutes, 0)
+      goals += items.goals.length
+    }
+    return { tasks, done, focusMin, goals }
+  }, [mode, cells, byDate])
+
   const weekdayLabels = useMemo(() => {
     const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' })
     const monday = startOfWeek(new Date())
@@ -177,6 +199,12 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
 
   const selectedItems = selected ? byDate.get(selected) : undefined
   const hasAnyEvents = byDate.size > 0
+
+  // Move a dragged task to the hovered day.
+  function moveTaskTo(id: string, due: string) {
+    if (!id || !due) return
+    updateTask(id, { due })
+  }
 
   return (
     <div className="mg-view mg-cal">
@@ -223,6 +251,29 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
         </button>
       </div>
 
+      {/* Live roll-up for the visible period */}
+      <div className="mg-cal-stats">
+        <span className="mg-cal-stat">
+          <Icon name="calendar" size={13} />
+          <b>{stats.tasks}</b> {t('calendar.due')}
+        </span>
+        <span className="mg-cal-stat ok">
+          <Icon name="check" size={13} />
+          <b>{stats.done}</b> {t('calendar.done')}
+        </span>
+        <span className="mg-cal-stat">
+          <Icon name="clock" size={13} />
+          <b>{stats.focusMin}m</b> {t('calendar.focus')}
+        </span>
+        <span className="mg-cal-stat">
+          <Icon name="target" size={13} />
+          <b>{stats.goals}</b> {t('calendar.goals')}
+        </span>
+        <span className="mg-cal-dragtip" title={t('calendar.moveTask')}>
+          <Icon name="grip" size={12} /> {t('calendar.moveTask')}
+        </span>
+      </div>
+
       <div className={`mg-cal-grid ${mode}`}>
         {weekdayLabels.map((w) => (
           <div key={w} className="mg-cal-wd">
@@ -235,10 +286,29 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             cell={cell}
             items={byDate.get(cell.key)}
             selected={selected === cell.key}
+            cap={mode === 'week' ? 7 : 3}
+            dragOver={dragOver === cell.key}
             addLabel={t('calendar.addOnDate', { date: cell.key })}
+            moveLabel={t('calendar.moveTask')}
             onSelect={() => setSelected(cell.key)}
             onAdd={() => openCreate(cell.key)}
             onEditTask={openEdit}
+            onToggleDone={toggleTask}
+            onDragStart={(id) => {
+              dragId.current = id
+            }}
+            onDragEnd={() => {
+              dragId.current = null
+              setDragOver(null)
+            }}
+            onDragOver={() => setDragOver(cell.key)}
+            onDragLeave={() => setDragOver((k) => (k === cell.key ? null : k))}
+            onDrop={() => {
+              const id = dragId.current
+              dragId.current = null
+              setDragOver(null)
+              if (id) moveTaskTo(id, cell.key)
+            }}
           />
         ))}
       </div>
@@ -265,10 +335,17 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
                 <ul className="mg-cal-list">
                   {selectedItems.tasks.map((task) => (
                     <li key={task.id} style={{ ['--mg-c' as string]: PRIORITY_META[task.priority].color }}>
-                      <button className="mg-cal-task" onClick={() => openEdit(task)}>
+                      <button
+                        className={`mg-cal-task ${task.done ? 'done' : ''}`}
+                        onClick={() => toggleTask(task.id)}
+                        title={task.done ? t('calendar.undone') : t('calendar.done')}
+                      >
                         <span className="mg-cal-dot" />
                         <span className={task.done ? 'mg-cal-done' : ''}>{task.title}</span>
                         {task.done && <Icon name="check" size={13} />}
+                      </button>
+                      <button className="mg-cal-task-edit" onClick={() => openEdit(task)} aria-label={t('tasks.editTask')}>
+                        <Icon name="edit" size={13} />
                       </button>
                     </li>
                   ))}
@@ -387,31 +464,60 @@ function DayCellView({
   cell,
   items,
   selected,
+  cap,
+  dragOver,
   addLabel,
+  moveLabel,
   onSelect,
   onAdd,
   onEditTask,
+  onToggleDone,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: {
   cell: DayCell
   items: DayItems | undefined
   selected: boolean
+  cap: number
+  dragOver: boolean
   addLabel: string
+  moveLabel: string
   onSelect: () => void
   onAdd: (date: string) => void
   onEditTask: (task: Task) => void
+  onToggleDone: (id: string) => void
+  onDragStart: (id: string) => void
+  onDragEnd: () => void
+  onDragOver: () => void
+  onDragLeave: () => void
+  onDrop: () => void
 }) {
   const { t } = useTranslation()
   const tasks = items?.tasks ?? []
   const focus = items?.focus ?? []
   const goals = items?.goals ?? []
   const focusMin = focus.reduce((sum, f) => sum + f.minutes, 0)
-  const shownTasks = tasks.slice(0, 3)
+  const shownTasks = tasks.slice(0, cap)
   const extra = tasks.length - shownTasks.length
 
   return (
     <div
-      className={`mg-cal-cell${cell.inMonth ? '' : ' out'}${cell.isToday ? ' today' : ''}${selected ? ' selected' : ''}`}
+      className={`mg-cal-cell${cell.inMonth ? '' : ' out'}${cell.isToday ? ' today' : ''}${selected ? ' selected' : ''}${
+        dragOver ? ' drag-over' : ''
+      }`}
       onClick={onSelect}
+      onDragOver={(e) => {
+        e.preventDefault()
+        onDragOver()
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => {
+        e.preventDefault()
+        onDrop()
+      }}
     >
       <div className="mg-cal-cell-top">
         <span className="mg-cal-num">{cell.date.getDate()}</span>
@@ -429,19 +535,36 @@ function DayCellView({
       </div>
       <div className="mg-cal-chips">
         {shownTasks.map((task) => (
-          <button
+          <div
             key={task.id}
             className={`mg-cal-chip task${task.done ? ' done' : ''}`}
             style={{ ['--mg-c' as string]: PRIORITY_META[task.priority].color }}
-            title={`${t('calendar.tasks')}: ${task.title}`}
+            title={moveLabel}
+            draggable
             onClick={(e) => {
               e.stopPropagation()
               onEditTask(task)
             }}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', task.id)
+              e.dataTransfer.effectAllowed = 'move'
+              onDragStart(task.id)
+            }}
+            onDragEnd={onDragEnd}
           >
-            {task.done && <Icon name="check" size={10} />}
-            <span className="mg-cal-chip-txt">{task.title}</span>
-          </button>
+            <button
+              className="mg-cal-chip-done"
+              title={task.done ? t('calendar.undone') : t('calendar.done')}
+              aria-label={task.done ? t('calendar.undone') : t('calendar.done')}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleDone(task.id)
+              }}
+            >
+              {task.done ? <Icon name="check" size={10} /> : <span className="mg-cal-ring" />}
+            </button>
+            <span className={`mg-cal-chip-txt${task.done ? ' done' : ''}`}>{task.title}</span>
+          </div>
         ))}
         {extra > 0 && <span className="mg-cal-more">+{extra}</span>}
         {focusMin > 0 && (
