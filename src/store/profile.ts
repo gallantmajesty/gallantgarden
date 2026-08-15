@@ -270,10 +270,14 @@ export const useProfile = create<ProfileState>((set, get) => ({
       if (data.country) row.country = data.country
       if (data.rank) row.rank = data.rank
       await supabase.from('profiles').upsert([row], { onConflict: 'id' })
-    } catch {
+    } catch (e) {
+      console.error('[profile] complete - column upsert failed:', e)
       /* column missing / offline — jsonb copy still has it */
     }
 
+    if (!ok) {
+      console.error('[profile] complete - patchProfileSettings returned false')
+    }
     if (ok) set({ data, onboarded: true })
     return ok
   },
@@ -285,7 +289,10 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
-    if (error) return false
+    if (error) {
+      console.error('[profile] setPlayerId failed:', { userId, error: error.message, code: error.code, details: error.details, hint: error.hint })
+      return false
+    }
     set({ playerId })
     return true
   },
@@ -304,7 +311,10 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const { error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
-    if (error) return false
+    if (error) {
+      console.error('[profile] setDisplayName failed:', { userId, error: error.message, code: error.code, details: error.details, hint: error.hint })
+      return false
+    }
     set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false })
     return true
   },

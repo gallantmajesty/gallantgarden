@@ -69,11 +69,13 @@ export async function patchProfileSettings(
     .from('profiles')
     .upsert([{ id: userId, settings: next }], { onConflict: 'id' })
 
-  if (!error) {
-    cache = next
-    cacheUser = userId
+  if (error) {
+    console.error('[profileStore] patchProfileSettings failed:', { userId, error: error.message, code: error.code, details: error.details, hint: error.hint })
+    return false
   }
-  return !error
+  cache = next
+  cacheUser = userId
+  return true
 }
 
 /** Drop the cache (call on sign-out so the next user starts clean). */
