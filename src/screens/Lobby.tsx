@@ -81,6 +81,7 @@ export function Lobby() {
   const [showLoginPanel, setShowLoginPanel] = useState(false)
   const [showWheel, setShowWheel] = useState(false)
   const [showNews, setShowNews] = useState(false)
+  const [showSupport, setShowSupport] = useState(false)
   const userXp = useProfile((s) => s.xp)
   const userPremiumXp = useProfile((s) => s.premiumXp)
   const userRankXp = useProfile((s) => s.rankXp)
@@ -313,7 +314,7 @@ useEffect(() => {
                     <span>Friend Requests</span>
                     {incomingCount > 0 && <span className="lobby-inbox-count">{incomingCount}</span>}
                   </button>
-                  <button className="lobby-inbox-item" onClick={() => setPanel(null)}>
+                  <button className="lobby-inbox-item" onClick={() => { setPanel(null); setShowSupport(true); }}>
                     <Glyph name="life-buoy" className="lobby-inbox-icon" />
                     <span>Team Support</span>
                   </button>
@@ -498,7 +499,7 @@ useEffect(() => {
                 <span>Friend Requests</span>
                 {incomingCount > 0 && <span className="lm-inbox-count">{incomingCount}</span>}
               </button>
-              <button className="lm-inbox-item" onClick={() => setPanel(null)}>
+              <button className="lm-inbox-item" onClick={() => { setPanel(null); setShowSupport(true); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 <span>Team Support</span>
               </button>
@@ -700,6 +701,7 @@ useEffect(() => {
       {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
       <LuckyWheelModal open={showWheel} onClose={() => setShowWheel(false)} />
       <NewsModal open={showNews} onClose={() => setShowNews(false)} />
+      <SupportModal open={showSupport} onClose={() => setShowSupport(false)} />
       <ComingSoonModal
         open={!!soonFeature}
         title={soonFeature?.title ?? ''}
@@ -711,6 +713,52 @@ useEffect(() => {
       <SocialHub />
       <MusicWidget />
     </div>
+  )
+}
+
+function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null
+  return (
+    <Modal onClose={onClose} className="support-modal">
+      <div style={{ padding: 24, maxWidth: 420, textAlign: 'center' }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🌿</div>
+        <h2 style={{ margin: '0 0 8px', fontSize: 22, color: '#e8efe6' }}>Team Support</h2>
+        <p style={{ margin: '0 0 20px', color: 'rgba(232,239,230,0.7)', lineHeight: 1.6 }}>
+          We're a small team building Focus Lily. For account help, bugs, or feedback:
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
+          <a
+            href="mailto:focus@focuslily.com"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 16px', background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+              color: '#e8efe6', textDecoration: 'none', fontSize: 15
+            }}
+            target="_blank" rel="noopener noreferrer"
+          >
+            <span style={{ fontSize: 20 }}>📧</span>
+            <span>focus@focuslily.com</span>
+          </a>
+          <a
+            href="https://instagram.com/focuslily"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 16px', background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+              color: '#e8efe6', textDecoration: 'none', fontSize: 15
+            }}
+            target="_blank" rel="noopener noreferrer"
+          >
+            <span style={{ fontSize: 20 }}>📷</span>
+            <span>@focuslily on Instagram</span>
+          </a>
+        </div>
+        <p style={{ margin: '20px 0 0', fontSize: 12, color: 'rgba(232,239,230,0.5)' }}>
+          We read every message. Response time is usually within 24–48 hours.
+        </p>
+      </div>
+    </Modal>
   )
 }
 

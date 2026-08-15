@@ -603,9 +603,25 @@ function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDel
     setError(null)
     try {
       if (user && !user.isGuest) {
-        const { error: rpcError } = await supabase.rpc('delete_my_account')
-        if (rpcError) {
-          setError('Deletion failed — please try again or email support.')
+        const session = await supabase.auth.getSession()
+        const accessToken = session.data.session?.access_token
+        if (!accessToken) {
+          setError('Session expired — please sign in again and try.')
+          setBusy(false)
+          return
+        }
+        const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`
+        const res = await fetch(fnUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) {
+          console.error('delete-account function error:', data)
+          setError(data.error || 'Deletion failed — please try again or email support.')
           setBusy(false)
           return
         }
@@ -614,6 +630,7 @@ function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDel
       await signOut()
       onDeleted()
     } catch (e) {
+      console.error('doDelete error:', e)
       setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
       setBusy(false)
