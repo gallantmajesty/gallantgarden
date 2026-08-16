@@ -7,7 +7,7 @@ import './LobbySettings.css'
 export function LobbySettings({ onClose }: { onClose: () => void }) {
   useTranslation()
   const waitForLobby = useSettings((s) => s.waitForLobbyReady)
-  const adaptiveResolution = useSettings((s) => s.adaptiveResolution)
+  const autoQuality = useSettings((s) => s.autoQuality)
   const setSetting = useSettings((s) => s.set)
 
   return (
@@ -31,9 +31,9 @@ export function LobbySettings({ onClose }: { onClose: () => void }) {
 
           <Section title="Performance">
             <Toggle
-              label="Adaptive Resolution (auto scale to hold FPS)"
-              value={adaptiveResolution}
-              onChange={(v) => setSetting('adaptiveResolution', v)}
+              label="Auto quality (realm starts low, steps up to fit your device)"
+              value={autoQuality ?? true}
+              onChange={(v) => setSetting('autoQuality', v)}
             />
           </Section>
 

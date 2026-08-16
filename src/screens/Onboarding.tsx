@@ -179,7 +179,13 @@ export function Onboarding() {
       }
     }
     // Save the full name as the display name.
-    await useProfile.getState().setDisplayName(fullName.trim())
+    const nameOk = await useProfile.getState().setDisplayName(fullName.trim())
+    if (!nameOk) {
+      console.error('[Onboarding] setDisplayName failed')
+      setSaving(false)
+      setError(t('onboarding.saveError'))
+      return
+    }
 
     // Apply chosen character + skin to the avatar store.
     const charFallback = (await import('../avatar/characters')).characterById(characterId).fallback
@@ -195,7 +201,10 @@ export function Onboarding() {
       rank: DEFAULT_RANK_ID,
     })
     setSaving(false)
-    if (!ok) setError(t('onboarding.saveError'))
+    if (!ok) {
+      console.error('[Onboarding] complete returned false')
+      setError(t('onboarding.saveError'))
+    }
     // On success, useProfile.onboarded flips true and App swaps to the lobby.
   }
 

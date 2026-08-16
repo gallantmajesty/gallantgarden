@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { ContactShadows } from '@react-three/drei'
 import { useSearchParams } from 'react-router-dom'
+import { createNullSafeEvents } from '../three/safeEvents'
 import { AvatarRig, type AvatarRigHandle } from '../avatar/AvatarRig'
 import { AvatarAnimator, type PreviewState } from '../avatar/AvatarAnimator'
 import { BASE_BODY } from '../avatar/baseBody'
@@ -82,6 +83,7 @@ export function ShotHarness() {
   return (
     <div style={{ position: 'fixed', inset: 0, background: params.get('bg') === 'warm' ? warmBg : '#1a1430' }}>
       <Canvas
+        events={createNullSafeEvents}
         shadows={false}
         dpr={[1, 1.5]}
         camera={{ position: CAM[view], fov: 38, near: 0.1, far: 50 }}
@@ -98,7 +100,9 @@ export function ShotHarness() {
           <Suspense fallback={null}>
             <Avatar config={config} emote={emote} />
           </Suspense>
-          <ContactShadows position={[0, 0.002, 0]} opacity={0.4} scale={3} blur={2.4} far={2} resolution={256} color="#1a1430" />
+          {params.get('bg') !== 'warm' && (
+            <ContactShadows position={[0, 0.002, 0]} opacity={0.4} scale={3} blur={2.4} far={2} resolution={256} color="#1a1430" />
+          )}
         </group>
 
         <CameraRig view={view} />

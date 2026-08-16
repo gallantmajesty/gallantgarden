@@ -499,13 +499,15 @@ export function makeFlameTexture(seed = 3): CanvasTexture {
   // transparent base
   ctx.clearRect(0, 0, W, H)
 
-  // Helper: draw a single flame tongue at given x center, with given width/height
-  const drawTongue = (cx: number, baseY: number, width: number, height: number, phase: number) => {
+  // Helper: draw a single flame tongue at given x center, with given width/height.
+  // Each tongue gets its own `rand` sequence so they never share the same noise.
+  const drawTongue = (cx: number, baseY: number, width: number, height: number, phase: number, rand: () => number) => {
     const tipY = baseY - height
     const left = cx - width / 2
     const right = cx + width / 2
     // Build a noise-distorted flame shape
     const segments = 16
+    ctx.save() // isolate the clip so later draws (embers, other tongues) aren't clipped
     ctx.beginPath()
     ctx.moveTo(left, baseY)
     for (let i = 0; i <= segments; i++) {
@@ -570,12 +572,7 @@ export function makeFlameTexture(seed = 3): CanvasTexture {
 
   centers.forEach((t, i) => {
     // Each tongue gets its own rand sequence by re-seeding
-    const tongueRand = rng(seed + i * 137)
-    // swap rng temporarily
-    const savedRand = ctx.rand
-    ctx.rand = tongueRand
-    drawTongue(t.x, t.baseY, t.w, t.h, i)
-    ctx.rand = savedRand
+    drawTongue(t.x, t.baseY, t.w, t.h, i, rng(seed + i * 137))
   })
 
   // Add subtle glowing ember particles at the base

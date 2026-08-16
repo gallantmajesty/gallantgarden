@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { createNullSafeEvents } from '../../three/safeEvents'
 import { LibraryShell } from '../../three/library/LibraryShell'
 import { Bookshelves } from '../../three/library/Bookshelf'
 import { StudyTables } from '../../three/library/StudyTable'
@@ -63,6 +64,7 @@ export function HeroLibrary() {
       }}
     >
       <Canvas
+        events={createNullSafeEvents}
         frameloop={reduced.current ? 'demand' : 'always'}
         dpr={[1, 1.25]}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}

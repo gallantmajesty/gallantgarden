@@ -181,10 +181,12 @@ export function Shop() {
   const equippedChar = avatarConfig.characterId || 'james'
   const equippedAcc = avatarConfig.accessories?.[0] ?? null
 
-  // Full catalog: every banner, logo, character and accessory is on display —
-  // owned items carry an "Owned" badge and stay equippable, free starters show
-  // as "Free", and the hidden/visible flag is ignored so nothing is withheld.
-  const characters = useMemo(() => effectiveCharacters(), [])
+  // Full catalog: every banner, logo and accessory is on display — owned items
+  // carry an "Owned" badge and stay equippable, free starters show as "Free".
+  // Only the animal characters awaiting polish are withheld from players
+  // (owner releases them from the Owner panel → Pricing tab).
+  const HELD_CHARACTER_IDS = new Set(['monkey', 'panda', 'elephant', 'sunflower'])
+  const characters = useMemo(() => effectiveCharacters().filter((c) => !HELD_CHARACTER_IDS.has(c.id)), [])
   const banners = useMemo(() => effectiveBanners(), [])
   const logos = useMemo(() => effectiveLogos(), [])
   const accessories = useMemo(() => ACCESSORIES.filter((a) => a.id !== 'laptop'), [])

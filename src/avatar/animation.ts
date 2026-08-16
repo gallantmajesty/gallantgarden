@@ -44,7 +44,7 @@ export function activityOfAccessories(accessories?: string[] | null): 'laptop' |
   if (!a) return 'idle'
   if (a === 'phone') return 'phone'
   if (a === 'book') return 'book'
-  if (a === 'laptop' || a === 'gaming_laptop' || a === 'trading_laptop' || a === 'trading_desktop_3side') return 'laptop'
+  if (a === 'laptop' || a === 'gaming_laptop' || a === 'trading_laptop') return 'laptop'
   return 'idle'
 }
 

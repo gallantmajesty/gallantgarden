@@ -261,6 +261,10 @@ export const useProfile = create<ProfileState>((set, get) => ({
 
     // 1. canonical app-side document in settings jsonb
     const ok = await patchProfileSettings(userId, { onboarding: data })
+    if (!ok) {
+      console.error('[profile] complete - patchProfileSettings returned false for user:', userId)
+      return false
+    }
 
     // 2. mirror the public onboarding fields to first-class columns (best-effort;
     //    the jsonb copy is authoritative, so a column failure must not block
@@ -269,17 +273,16 @@ export const useProfile = create<ProfileState>((set, get) => ({
       const row: Record<string, unknown> = { id: userId }
       if (data.country) row.country = data.country
       if (data.rank) row.rank = data.rank
-      await supabase.from('profiles').upsert([row], { onConflict: 'id' })
+      const { error: colError } = await supabase.from('profiles').upsert([row], { onConflict: 'id' })
+      if (colError) {
+        console.error('[profile] complete - column upsert failed:', { userId, error: colError.message, code: colError.code, details: colError.details, hint: colError.hint })
+      }
     } catch (e) {
-      console.error('[profile] complete - column upsert failed:', e)
-      /* column missing / offline — jsonb copy still has it */
+      console.error('[profile] complete - column upsert exception:', e)
     }
 
-    if (!ok) {
-      console.error('[profile] complete - patchProfileSettings returned false')
-    }
-    if (ok) set({ data, onboarded: true })
-    return ok
+    set({ data, onboarded: true })
+    return true
   },
 
   setPlayerId: async (playerId) => {

@@ -202,7 +202,6 @@ export type AccessoryId =
   | 'book_stack'
   | 'do_not_disturb_poster'
   | 'trading_laptop'
-  | 'trading_desktop_3side'
   | 'piano'
   | 'mug'
   | 'flower_pot'
@@ -245,9 +244,8 @@ export const ACCESSORIES: AccessoryDef[] = [
   { id: 'book_stack', visible: true, name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower', price: 450 },
   { id: 'do_not_disturb_poster', visible: true, name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active', price: 400 },
   { id: 'trading_laptop', visible: true, name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts', price: 200, currency: 'gold' },
-  { id: 'trading_desktop_3side', visible: false, name: 'Tri-Monitor Trading Desk', icon: '🖥️', color: '#1a1a2e', blurb: '3-screen endpoint', price: 250, currency: 'gold' },
   { id: 'mug', visible: true, name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip', price: 200 },
-  { id: 'piano', visible: false, name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Keys to relax', price: 800 },
+  { id: 'piano', visible: true, name: 'Mini Piano', icon: '🎹', color: '#c9a17a', blurb: 'Studio-tuned upright — keys to relax', price: 800 },
   { id: 'flower_pot', visible: true, name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life', price: 350 },
   { id: 'chair_balloon', visible: false, name: 'Floating Balloon', icon: '🎈', color: '#e85d75', blurb: 'Gentle swaying joy', price: 700 },
   { id: 'bento_box', visible: false, name: 'Cozy Bento Box', icon: '🍱', color: '#8c4a32', blurb: 'Tasty study snack', price: 500 },

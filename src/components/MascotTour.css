@@ -1,0 +1,113 @@
+/* Max's guided tour spotlight — dims the whole screen except the highlighted
+   target, rings it with a golden glow, and floats Max beside it. */
+
+.mt-root {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none; /* the dim must never block the click through to the target */
+}
+
+.mt-dim {
+  position: absolute;
+  background: rgba(8, 6, 18, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: mt-fade-in 0.35s ease-out both;
+}
+
+@keyframes mt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Golden spotlight ring around the element to click — crisp border, soft
+   halo OUTSIDE the target only (no inset glow that would haze the card). */
+.mt-ring {
+  position: absolute;
+  border-radius: 20px;
+  border: 2.5px solid rgba(255, 215, 0, 0.95);
+  box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.15), 0 0 30px rgba(255, 215, 0, 0.30);
+  animation: mt-ring-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mt-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.15), 0 0 30px rgba(255, 215, 0, 0.30); }
+  50%      { box-shadow: 0 0 0 7px rgba(255, 215, 0, 0.08), 0 0 44px rgba(255, 215, 0, 0.48); }
+}
+
+/* Warm brightness wash over the target so its interior reads lit and crisp
+   against the blurred surroundings (screen blend = adds light, never dims). */
+.mt-light {
+  position: absolute;
+  border-radius: 20px;
+  background: radial-gradient(130% 130% at 50% 42%, rgba(255, 226, 138, 0.30), rgba(255, 226, 138, 0.10) 58%, transparent 78%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: mt-light-in 0.45s ease-out both;
+}
+
+@keyframes mt-light-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* The spotlighted element itself: strip its own glass blur so it reads sharp
+   against the blurred surroundings, and give it a golden edge so it's
+   unmistakably the thing to click. */
+.mt-spotlight {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.9), 0 0 26px rgba(255, 215, 0, 0.35) !important;
+  opacity: 1 !important;
+}
+
+/* Step chip ("1 of 3") top-center. */
+.mt-chip {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(20, 14, 6, 0.85);
+  border: 1px solid rgba(196, 154, 26, 0.5);
+  color: rgba(255, 235, 190, 0.95);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Skip button — the only interactive piece of the overlay. */
+.mt-skip {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  pointer-events: auto;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(20, 14, 6, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.mt-skip:hover {
+  background: rgba(40, 30, 14, 0.95);
+  border-color: rgba(255, 215, 0, 0.6);
+}
+
+/* Keep Max visible on phones during the tour (GhostMascot hides itself under
+   640px; the tour passes inline display so the sprite shows, compact via the
+   existing ≤1280px rules). */
+@media (max-width: 640px) {
+  .mt-root .gm-root {
+    width: 170px;
+  }
+  .mt-root .gm-bubble {
+    max-width: 170px;
+  }
+}

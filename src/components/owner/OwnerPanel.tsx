@@ -824,8 +824,8 @@ function AccessoryStage() {
 function StageCell({ def, position }: { def: (typeof ACCESSORIES)[number]; position: [number, number, number] }) {
   const ref = useRef<any>(null);
   const id = def.id as string;
-  const big = id === "trading_desktop_3side" || id === "trading_laptop" || id === "piano";
-  const scale = id === "trading_desktop_3side" ? 0.5 : id === "trading_laptop" ? 0.62 : big ? 0.85 : 1;
+  const big = id === "trading_laptop" || id === "piano";
+  const scale = id === "trading_laptop" ? 0.62 : big ? 0.85 : 1;
 
   // gentle per-cell spin — batched into R3F's single render loop, frame-rate
   // independent (delta-based), and auto-cleaned when the stage unmounts.

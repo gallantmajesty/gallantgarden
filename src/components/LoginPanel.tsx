@@ -18,8 +18,9 @@ useEffect(() => {
   const penaltyKey = 'sf.loginPenalty.shownToday'
   const panelShownToday = localStorage.getItem(penaltyKey) === new Date().toDateString()
   const daily = engagement
-  if (!panelShownToday && daily.penaltyApplied && daily.activeMinToday < daily.penaltyThresholdMin) {
-    setPenaltyMsg(`You only studied ${daily.activeMinToday}min today (target: ${daily.penaltyThresholdMin}min). Your inactivity penalty has been applied. Keep consistency or you'll lose XP and drop in rank!`)
+  if (!panelShownToday && daily.penaltyApplied && (daily.penaltyLostToday ?? 0) > 0) {
+    const days = daily.penaltyMissedDays ?? 1
+    setPenaltyMsg(`You were away for ${days} day${days > 1 ? 's' : ''} — ${daily.penaltyLostToday} leaves and ${XP_VALUES.inactivityPenaltyXp * days} XP deducted. Open FocusLily every day to keep your streak!`)
     setShowPenalty(true)
     localStorage.setItem(penaltyKey, new Date().toDateString())
   }
@@ -94,7 +95,7 @@ useEffect(() => {
         <div className="lp-tips">
           <h4>📖 Daily Tips</h4>
           <ul>
-            <li>Study at least <strong>{engagement.penaltyThresholdMin} minutes</strong> daily to avoid inactivity penalties</li>
+            <li>Open FocusLily <strong>every day</strong> to avoid inactivity penalties</li>
             <li>Earn up to <strong>{DAILY_CAPS.activeMinCap} min</strong> of active XP earning per day</li>
             <li>Maintain a <strong>streak</strong> for bonus golden leaves</li>
             <li>Check your <strong>Focus Score</strong> for 30-day analytics</li>

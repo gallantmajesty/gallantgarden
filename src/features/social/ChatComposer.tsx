@@ -7,6 +7,7 @@ import { buildLinkPreview, extractUrls } from './linkPreview'
 import { EmojiPicker } from './EmojiPicker'
 import { StickerPicker } from './StickerPicker'
 import { clamp } from './chatUtil'
+import { MESSAGE_MAX_WORDS, countWords, sliceToWords } from '../../lib/chat'
 
 export interface ReplyTarget {
   id: string
@@ -71,6 +72,7 @@ export function ChatComposer({ reply, onClearReply }: { reply: ReplyTarget | nul
   }, [draft])
 
   const hasText = draft.trim().length > 0
+  const words = countWords(draft)
 
   const doSend = async () => {
     if (busy) return
@@ -183,7 +185,7 @@ export function ChatComposer({ reply, onClearReply }: { reply: ReplyTarget | nul
           value={draft}
           placeholder="Message…"
           rows={1}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => setDraft(sliceToWords(e.target.value))}
           onKeyDown={onKey}
           onPaste={onPaste}
           data-no-hotkeys
@@ -193,6 +195,10 @@ export function ChatComposer({ reply, onClearReply }: { reply: ReplyTarget | nul
           <SendGlyph />
         </button>
       </div>
+
+      {words >= 300 && (
+        <div className="sh-wordcount">{words} / {MESSAGE_MAX_WORDS} words</div>
+      )}
 
       {emojiOpen && (
         <div className="sh-pop-anchor">

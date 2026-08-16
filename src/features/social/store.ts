@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type SocialTab = 'chats' | 'explore' | 'groups'
 /** Right-hand pane inside a conversation thread. */
-export type ChatPanel = 'none' | 'settings' | 'members'
+export type ChatPanel = 'none' | 'settings' | 'members' | 'customize'
 
 interface SocialOverlayState {
   /** Whether the social hub is visible at all (launcher hidden when false). */

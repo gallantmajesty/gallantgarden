@@ -162,6 +162,10 @@ const CHARACTER_TABS = [
 ] as const
 type CharTabId = (typeof CHARACTER_TABS)[number]['id']
 
+/** The four animal characters awaiting polish — not offered for purchase until
+ *  the owner releases them (Owner panel → Pricing tab). */
+const HELD_CHARACTER_IDS = new Set(['monkey', 'panda', 'elephant', 'sunflower'])
+
 function CharacterDisplayTab({
   config,
   set,
@@ -200,8 +204,10 @@ function CharacterDisplayTab({
   }
   const inTab = (ch: (typeof characters)[number]) => {
     const owned = ownedItems.includes(ch.id)
-    if (tab === 'owned') return owned
-    return !owned && (ch.rarity ?? 'Common').toLowerCase() === tab
+    if (tab === 'owned') return owned // existing owners keep their characters
+    // The four animal characters awaiting polish are not offered for purchase —
+    // they appear here only for players who already own them.
+    return !owned && !HELD_CHARACTER_IDS.has(ch.id) && (ch.rarity ?? 'Common').toLowerCase() === tab
   }
   const visible = characters.filter(inTab)
   return (

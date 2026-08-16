@@ -67,36 +67,44 @@ export function GhostMascot({
   age,
   guardianOk,
   goals,
+  mood,
+  style,
 }: {
   name: string
   hint?: string
   age?: number | null
   guardianOk?: boolean
   goals?: string[]
+  /** Explicit mood override (used when a hint is shown, e.g. the guided
+   *  tour) — otherwise the mood is derived from the step reaction. */
+  mood?: GhostMood
+  /** Optional inline positioning (e.g. the guided tour moves him next to the
+   *  highlighted element instead of his default right-center spot). */
+  style?: React.CSSProperties
 }) {
   // Priority: step hint guides a normal step; the age step reacts to the
   // typed age; the goals step cheers for the picked goal; the name step
   // reacts to what's being typed.
-  const { mood, text } = useMemo(() => {
-    if (hint) return { mood: 'happy' as GhostMood, text: hint }
+  const { mood: resMood, text } = useMemo(() => {
+    if (hint) return { mood: (mood ?? 'happy') as GhostMood, text: hint }
     if (age !== undefined) return reactAge(age, !!guardianOk)
     if (goals !== undefined) return reactGoals(goals)
     return react(name)
-  }, [name, hint, age, guardianOk, goals])
+  }, [name, hint, age, guardianOk, goals, mood])
 
   // Bounce the mascot whenever the mood changes so the reaction reads clearly.
   const [bounce, setBounce] = useState(false)
-  const prev = useRef(mood)
+  const prev = useRef(resMood)
   useEffect(() => {
-    if (prev.current === mood) return
-    prev.current = mood
+    if (prev.current === resMood) return
+    prev.current = resMood
     setBounce(true)
     const t = setTimeout(() => setBounce(false), 450)
     return () => clearTimeout(t)
-  }, [mood])
+  }, [resMood])
 
   return (
-    <div className="gm-root" aria-hidden>
+    <div className="gm-root" style={style} aria-hidden>
       <div className="gm-bubble">
         <span className="gm-text">{text}</span>
       </div>

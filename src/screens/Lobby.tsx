@@ -27,6 +27,8 @@ import { NewsModal } from '../components/focus/NewsModal'
 import { ComingSoonModal } from '../components/ComingSoonModal'
 import { featureData, type FeatureData } from './IndividualComingSoon'
 import { RankUpCelebration } from '../components/RankUpCelebration'
+import { MascotTour } from '../components/MascotTour'
+import { readTour, setTourStep as saveTourStep, completeTour as finishTour, type TourState } from '../lib/tour'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -93,6 +95,8 @@ export function Lobby() {
   const [guestBannerHidden, setGuestBannerHidden] = useState(false)
   const [showQuests, setShowQuests] = useState(false)
   const [soonFeature, setSoonFeature] = useState<FeatureData | null>(null)
+  // Max's guided tour for new players — starts on the lobby, walks into the Realm.
+  const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour())
 
   // Real stat sources: streak from magnet activity, focus from pomodoro history.
   const magnetData = useMagnet((s) => s.data)
@@ -170,7 +174,9 @@ useEffect(() => {
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
   const cooldownOk = !lastShown || (now - Number(lastShown)) > TWENTY_FOUR_HOURS
   const engagement = getDailyEngagement()
-  if (user && cooldownOk && (engagement.penaltyApplied || engagement.activeMinToday < engagement.penaltyThresholdMin)) {
+  // Only pop the welcome panel when a missed-day inactivity penalty was
+  // actually applied today — not for every fresh user with zero minutes.
+  if (user && cooldownOk && engagement.penaltyApplied) {
     setShowLoginPanel(true)
     localStorage.setItem('sf.loginPanel.lastShown', String(now))
   }
@@ -183,6 +189,18 @@ useEffect(() => {
     timersRef.current.push(t)
     return () => clearTimeout(t)
   }, [user?.isGuest, guestBannerHidden])
+
+  // Start Max's guided tour the first time a new player reaches the lobby.
+  useEffect(() => {
+    if (tourStep !== null || !user) return
+    saveTourStep('lobby-realm')
+    setTourStepState('lobby-realm')
+  }, [tourStep, user])
+
+  const skipTour = useCallback(() => {
+    finishTour()
+    setTourStepState('done')
+  }, [])
 
   const pickProfile = useCallback((e: React.MouseEvent) => {
     if (transition?.active || rankTransition?.active) return
@@ -211,6 +229,11 @@ useEffect(() => {
     }
     if (!o.route) { setPanel(null); return }
     if (transition?.active) return
+    // Max's tour: clicking the Realm card walks him into the Realm screen.
+    if (tourStep === 'lobby-realm' && o.key === 'realm') {
+      saveTourStep('realm-pick')
+      setTourStepState('realm-pick')
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     const cx = rect.left + rect.width / 2
     const cy = rect.top + rect.height / 2
@@ -226,7 +249,7 @@ useEffect(() => {
     timersRef.current.push(setTimeout(() => {
       navigate(o.route!)
     }, 1200))
-  }, [navigate, transition])
+  }, [navigate, transition, tourStep])
 
   const pickMobile = useCallback((o: LobbyObject) => {
     if (o.soon) {
@@ -235,8 +258,13 @@ useEffect(() => {
       return
     }
     if (!o.route) return
+    // Max's tour: clicking the Realm card walks him into the Realm screen.
+    if (tourStep === 'lobby-realm' && o.key === 'realm') {
+      saveTourStep('realm-pick')
+      setTourStepState('realm-pick')
+    }
     navigate(o.route)
-  }, [navigate])
+  }, [navigate, tourStep])
 
   const startSession = useCallback(() => {
     if (!user) {
@@ -370,6 +398,7 @@ useEffect(() => {
               return (
                 <button
                   key={o.key}
+                  data-tour-key={o.key}
                   className={`lobby-object water-glass ${o.soon ? 'soon' : ''} ${animClass}`}
                   style={{ animationDelay: `${i * 70}ms` }}
                   onClick={(e) => pick(o, i, e)}
@@ -397,6 +426,16 @@ useEffect(() => {
             })}
           </div>
         </div>
+        {tourStep === 'lobby-realm' && (
+          <MascotTour
+            target=".lobby-object[data-tour-key='realm']"
+            hint="yo, welcome to the forest! first stop — the Realm, where everyone studies together. tap it and let's go."
+            side="right"
+            step={1}
+            total={3}
+            onSkip={skipTour}
+          />
+        )}
         {transition?.active && (
           <div className={`lobby-transition-overlay lobby-transition--${transition.phase}`}>
             <div className="lobby-transition-logo" style={{ ['--ox' as string]: `${transition.originX}px`, ['--oy' as string]: `${transition.originY}px` }}>
@@ -434,6 +473,7 @@ useEffect(() => {
           image={soonFeature?.image ?? ''}
           onClose={() => setSoonFeature(null)}
         />
+        <SupportModal open={showSupport} onClose={() => setShowSupport(false)} />
         <ResourceBar />
         <RankUpCelebration />
         <SocialHub />
@@ -652,7 +692,7 @@ useEffect(() => {
         </div>
         <div className="lm-worlds-grid">
           {MOBILE_WORLDS.map((o) => (
-            <button key={o.key} className="lm-world-card" onClick={() => pickMobile(o)} style={{ '--card-accent': o.accent } as React.CSSProperties}>
+            <button key={o.key} data-tour-key={o.key} className="lm-world-card" onClick={() => pickMobile(o)} style={{ '--card-accent': o.accent } as React.CSSProperties}>
               <div className="lm-world-card-glow" />
               <div className="lm-world-card-icon">
                 <PngIcon name={o.png} size={56} alt={t(o.labelKey)} />
@@ -712,51 +752,169 @@ useEffect(() => {
       <RankUpCelebration />
       <SocialHub />
       <MusicWidget />
+      {tourStep === 'lobby-realm' && (
+        <MascotTour
+          target=".lm-world-card[data-tour-key='realm']"
+          hint="yo, welcome to the forest! first stop — the Realm, where everyone studies together. tap it and let's go."
+          side="top"
+          step={1}
+          total={3}
+          onSkip={skipTour}
+        />
+      )}
     </div>
   )
 }
 
+const SUPPORT_EMAIL = 'focus@focuslily.com'
+const SUPPORT_MAX = 2000 // max message chars — same budget as chat messages
+const SUPPORT_COOLDOWN_MS = 60 * 60 * 1000 // one support request per hour
+const SUPPORT_COOLDOWN_KEY = 'sf.support.lastSent'
+
+const SUPPORT_TOPICS = [
+  'General help',
+  'Bug report',
+  'Account help',
+  'Payments / Golden leaves',
+  'Feedback',
+  'Other',
+]
+
 function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [topic, setTopic] = useState(SUPPORT_TOPICS[0])
+  const [message, setMessage] = useState('')
+  const [replyEmail, setReplyEmail] = useState('')
+  // One support request per hour — timestamp when the cooldown ends.
+  const [cooldownUntil, setCooldownUntil] = useState<number>(() => {
+    const last = Number(localStorage.getItem(SUPPORT_COOLDOWN_KEY) ?? 0)
+    return last ? last + SUPPORT_COOLDOWN_MS : 0
+  })
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  // Re-read the cooldown every time the panel opens (the component stays
+  // mounted, so the initializer alone would go stale across open/close).
+  useEffect(() => {
+    if (!open) return
+    const last = Number(localStorage.getItem(SUPPORT_COOLDOWN_KEY) ?? 0)
+    setCooldownUntil(last ? last + SUPPORT_COOLDOWN_MS : 0)
+  }, [open])
   if (!open) return null
+
+  const trimmed = message.trim()
+  const ready = trimmed.length >= 10
+  const inCooldown = cooldownUntil > now
+  const remainMs = Math.max(0, cooldownUntil - now)
+  const remainLabel = `${Math.floor(remainMs / 60000)}m ${Math.floor((remainMs % 60000) / 1000)}s`
+
+  const markSent = () => {
+    localStorage.setItem(SUPPORT_COOLDOWN_KEY, String(Date.now()))
+    setCooldownUntil(Date.now() + SUPPORT_COOLDOWN_MS)
+  }
+  const subject = `[${topic}] Support request`
+  const body = `${trimmed}\n\n—\nReply to: ${replyEmail.trim() || 'not provided'}\nPlayer: ${typeof window !== 'undefined' ? window.location.host : ''}`
+  const gmailParams = new URLSearchParams({ to: SUPPORT_EMAIL, su: subject, body })
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${gmailParams.toString()}`
+  const mailtoParams = new URLSearchParams({ su: subject, body })
+  const mailtoUrl = `mailto:${SUPPORT_EMAIL}?${mailtoParams.toString()}`
+
   return (
-    <Modal onClose={onClose} className="support-modal">
-      <div style={{ padding: 24, maxWidth: 420, textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🌿</div>
-        <h2 style={{ margin: '0 0 8px', fontSize: 22, color: '#e8efe6' }}>Team Support</h2>
-        <p style={{ margin: '0 0 20px', color: 'rgba(232,239,230,0.7)', lineHeight: 1.6 }}>
-          We're a small team building Focus Lily. For account help, bugs, or feedback:
+    <Modal open={open} title="Team Support" onClose={onClose} width={460}>
+      <div className="support">
+        <p className="support-lead">
+          For account help, bugs or feedback — your message goes directly to the
+          FocusLily inbox (<span className="support-mail">{SUPPORT_EMAIL}</span>).
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
-          <a
-            href="mailto:focus@focuslily.com"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 16px', background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-              color: '#e8efe6', textDecoration: 'none', fontSize: 15
-            }}
-            target="_blank" rel="noopener noreferrer"
+
+        <div className="support-field">
+          <label className="support-label" htmlFor="support-topic">Topic</label>
+          <select
+            id="support-topic"
+            className="support-input"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
           >
-            <span style={{ fontSize: 20 }}>📧</span>
-            <span>focus@focuslily.com</span>
+            {SUPPORT_TOPICS.map((tp) => (
+              <option key={tp} value={tp}>
+                {tp}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="support-field">
+          <label className="support-label" htmlFor="support-msg">Message</label>
+          <textarea
+            id="support-msg"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Describe the issue or feedback"
+            maxLength={SUPPORT_MAX}
+            className="support-input support-input--area"
+          />
+          <span className="support-count">
+            {trimmed.length} / {SUPPORT_MAX} characters · minimum 10
+          </span>
+        </div>
+
+        <div className="support-field">
+          <label className="support-label" htmlFor="support-mail">
+            Your email <em>(so we can reply)</em>
+          </label>
+          <input
+            id="support-mail"
+            value={replyEmail}
+            onChange={(e) => setReplyEmail(e.target.value)}
+            type="email"
+            placeholder="you@example.com — optional"
+            maxLength={254}
+            className="support-input"
+          />
+        </div>
+
+        <div className="support-actions">
+          <a
+            href={ready && !inCooldown ? gmailUrl : undefined}
+            aria-disabled={!ready || inCooldown}
+            onClick={(e) => {
+              if (!ready || inCooldown) { e.preventDefault(); return }
+              markSent()
+            }}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`support-btn${ready && !inCooldown ? '' : ' is-disabled'}`}
+          >
+            {inCooldown
+              ? `You can send another request in ${remainLabel}`
+              : ready
+                ? 'Send to FocusLily inbox'
+                : `Write at least 10 characters (${trimmed.length}/10)`}
           </a>
           <a
-            href="https://instagram.com/focuslily"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 16px', background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-              color: '#e8efe6', textDecoration: 'none', fontSize: 15
+            href={ready && !inCooldown ? mailtoUrl : undefined}
+            aria-disabled={!ready || inCooldown}
+            onClick={(e) => {
+              if (!ready || inCooldown) { e.preventDefault(); return }
+              markSent()
             }}
-            target="_blank" rel="noopener noreferrer"
+            className={`support-btn support-btn--ghost${ready && !inCooldown ? '' : ' is-disabled'}`}
           >
-            <span style={{ fontSize: 20 }}>📷</span>
-            <span>@focuslily on Instagram</span>
+            {inCooldown ? `One request per hour — try again in ${remainLabel}` : 'Use my email app'}
           </a>
         </div>
-        <p style={{ margin: '20px 0 0', fontSize: 12, color: 'rgba(232,239,230,0.5)' }}>
-          We read every message. Response time is usually within 24–48 hours.
-        </p>
+
+        <div className="support-foot">
+          <a
+            href="https://www.instagram.com/thefocuslily"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Instagram · @thefocuslily
+          </a>
+          <span className="support-note">Response time 24–48h</span>
+        </div>
       </div>
     </Modal>
   )

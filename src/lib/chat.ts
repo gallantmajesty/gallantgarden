@@ -21,11 +21,27 @@ export async function getOrCreateDm(other: string): Promise<string | null> {
 /** Max characters for a *text* message body (images/links may be empty body). */
 export const MESSAGE_MAX = 2000
 
+/** Max words per message — a human-sensible budget above the char cap. */
+export const MESSAGE_MAX_WORDS = 360
+
+/** Count words in a string (whitespace-separated). */
+export function countWords(s: string): number {
+  const t = s.trim()
+  return t ? t.split(/\s+/).length : 0
+}
+
+/** Cap a string to at most `max` words, then the char cap (DB CHECK backstop). */
+export function sliceToWords(s: string, max: number = MESSAGE_MAX_WORDS): string {
+  const words = s.split(/\s+/)
+  if (words.length <= max) return s
+  return words.slice(0, max).join(' ')
+}
+
 /** Send a message. Returns the persisted row, or null if rejected (not friends,
  *  blocked, empty, over the rate limit). Body is capped at 500 chars here and
  *  by a DB CHECK; server-side send_message_limited caps 30/min. */
 export async function sendMessage(conversationId: string, body: string): Promise<Message | null> {
-  const trimmed = body.trim().slice(0, MESSAGE_MAX)
+  const trimmed = sliceToWords(body.trim()).slice(0, MESSAGE_MAX)
   if (!trimmed) return null
   if (!allow('message', RATE_LIMITS.message)) return null
   const { data, error } = await supabase.rpc('send_message_limited', {
@@ -49,7 +65,7 @@ export async function sendRichMessage(
   replyTo?: string | null,
 ): Promise<Message | null> {
   if (!allow('message', RATE_LIMITS.message)) return null
-  const cleanBody = (body ?? '').slice(0, MESSAGE_MAX)
+  const cleanBody = sliceToWords(body ?? '').slice(0, MESSAGE_MAX)
   if (kind === 'text' && !cleanBody.trim()) return null
   const { data, error } = await supabase.rpc('send_message_rich', {
     p_conversation: conversationId,
@@ -78,7 +94,7 @@ export async function setReaction(messageId: string, emoji: string): Promise<boo
 export async function editMessage(messageId: string, body: string): Promise<Message | null> {
   const { data, error } = await supabase.rpc('edit_message', {
     p_message: messageId,
-    p_body: body.slice(0, MESSAGE_MAX),
+    p_body: sliceToWords(body).slice(0, MESSAGE_MAX),
   })
   if (error || !data) return null
   const row = Array.isArray(data) ? data[0] : data

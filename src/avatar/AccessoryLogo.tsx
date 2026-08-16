@@ -114,19 +114,6 @@ const tradingLaptopArt: Art = () => (
   </g>
 )
 
-/* ------------------------------------------------- tri-monitor trading desk */
-
-const triMonitorArt: Art = () => (
-  <g>
-    <polygon points="5,13 13,11 13,23 5,25" fill="#14141f" stroke={CREAM} strokeWidth="1.5" strokeLinejoin="round" />
-    <rect x="16" y="9" width="16" height="13" rx="1.5" fill="#14141f" {...S} strokeWidth="1.6" />
-    <polygon points="43,13 35,11 35,23 43,25" fill="#14141f" stroke={CREAM} strokeWidth="1.5" strokeLinejoin="round" />
-    <path d="M19 17 L22 15 L24 16 L27 13" stroke={LEAF} strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M9 25 v4 M24 22 v4 M39 25 v4" stroke={CREAM} strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M5 29 h8 M20 29 h8 M35 29 h8" stroke={CREAM} strokeWidth="1.4" strokeLinecap="round" />
-  </g>
-)
-
 /* ---------------------------------------------------------------- piano */
 
 const pianoArt: Art = () => (
@@ -273,7 +260,6 @@ const ART: Record<string, Art> = {
   book_stack: bookStackArt,
   do_not_disturb_poster: dndArt,
   trading_laptop: tradingLaptopArt,
-  trading_desktop_3side: triMonitorArt,
   piano: pianoArt,
   mug: mugArt,
   flower_pot: flowerPotArt,

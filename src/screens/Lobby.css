@@ -2600,3 +2600,68 @@ box-shadow: 0 4px 12px rgba(255, 93, 108, 0.35);
   .lm-world-card { padding: 16px 10px 14px; }
   .lm-world-card-icon { width: 48px; height: 48px; }
 }
+
+/* ═══ Team Support modal — professional ═══ */
+.support { display: flex; flex-direction: column; gap: 14px; }
+
+.support-lead {
+  margin: 0; font-size: 13px; line-height: 1.55;
+  color: rgba(255, 255, 255, 0.62);
+}
+.support-mail { color: #d8b45e; font-weight: 600; }
+
+.support-field { display: flex; flex-direction: column; gap: 6px; }
+.support-label {
+  font-size: 12px; font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+}
+.support-label em { font-style: normal; font-weight: 400; opacity: 0.55; }
+
+.support-input {
+  width: 100%; padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff; font-size: 13.5px; font-family: inherit; outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.support-input:focus {
+  border-color: #b8933f;
+  box-shadow: 0 0 0 3px rgba(184, 147, 63, 0.16);
+}
+.support-input::placeholder { color: rgba(255, 255, 255, 0.35); }
+.support-input--area { resize: vertical; min-height: 90px; line-height: 1.5; }
+.support-count { align-self: flex-end; font-size: 11px; color: rgba(255, 255, 255, 0.4); }
+
+.support-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+.support-btn {
+  display: flex; align-items: center; justify-content: center;
+  padding: 11px 14px; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; text-decoration: none;
+  background: #b8933f; color: #191204;
+  transition: background 0.15s ease;
+}
+.support-btn:hover:not(.is-disabled) { background: #c9a54e; }
+.support-btn.is-disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+}
+.support-btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.85);
+}
+.support-btn--ghost:hover:not(.is-disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.support-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding-top: 10px; margin-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.support-foot a { font-size: 12px; color: rgba(255, 255, 255, 0.6); text-decoration: none; }
+.support-foot a:hover { color: #fff; }
+.support-note { font-size: 11.5px; color: rgba(255, 255, 255, 0.42); }

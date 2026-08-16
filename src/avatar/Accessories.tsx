@@ -716,7 +716,7 @@ function PlantFoliage() {
   )
 }
 
-// ── Trading-terminal screen UI (shared by trading_laptop + trading_desktop_3side) ──
+// ── Trading-terminal screen UI (used by trading_laptop) ──
 // TradingView-style: dark OLED panels, thin dense candlesticks with full wicks,
 // price axis on the RIGHT, time axis on the bottom, small flat volume bars,
 // one thin amber MA, BUY/SELL buttons and a thin-line order book. Screen pixels
@@ -2302,6 +2302,8 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
         <mesh geometry={boxGeo(0.68, 0.012, 0.04)} material={redFelt} position={[0, 0.085, 0.11]} />
         {/* Gold strip under keyboard */}
         <mesh geometry={boxGeo(0.66, 0.008, 0.025)} material={goldAccent} position={[0, 0.058, 0.1]} />
+        {/* Key slip — dark board under the keyboard */}
+        <mesh geometry={boxGeo(0.66, 0.02, 0.03)} material={bodyDark} position={[0, 0.043, 0.095]} />
 
         {/* Keys */}
 
@@ -2326,8 +2328,9 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
           ))}
         </group>
 
-        {/* Brand plate on front */}
+        {/* Brand plate on front — gold with a warm glow */}
         <mesh geometry={boxGeo(0.1, 0.015, 0.008)} material={goldAccent} position={[0, 0.12, 0.166]} />
+        <mesh geometry={boxGeo(0.075, 0.009, 0.004)} material={additiveGlow('#ffd98a', 0.5)} position={[0, 0.12, 0.171]} />
 
         {/* Legs */}
         {[[-0.28, -0.12], [0.28, -0.12], [-0.28, 0.1], [0.28, 0.1]].map(([fx, fz], li) => (
@@ -2343,8 +2346,16 @@ export function AccessoryModel({ id }: { id: AccessoryId }) {
           <mesh key={`foot${li}`} geometry={taperGeo(0.03, 0.04, 0.01)} material={body} position={[fx, -0.14, fz]} />
         ))}
 
-        {/* Lid prop stick */}
-        <mesh geometry={boxGeo(0.008, 0.12, 0.008)} material={bodyDark} position={[0.3, 0.12, 0.05]} rotation={[0, 0, 0.4]} />
+        {/* Gold lid prop stick holding the lid open */}
+        <mesh geometry={boxGeo(0.008, 0.13, 0.008)} material={goldAccent} position={[0.28, 0.3, 0.02]} rotation={[0, 0, -0.55]} />
+
+        {/* Hinged lid — tilted open on gold hinges, gold trim along the edge */}
+        <group position={[0, 0.43, -0.23]} rotation={[-0.5, 0, 0]}>
+          <mesh geometry={boxGeo(0.7, 0.26, 0.012)} material={body} castShadow />
+          <mesh geometry={boxGeo(0.7, 0.008, 0.016)} material={goldAccent} position={[0, 0.128, 0]} />
+          <mesh geometry={boxGeo(0.018, 0.04, 0.02)} material={goldAccent} position={[-0.3, -0.13, 0]} />
+          <mesh geometry={boxGeo(0.018, 0.04, 0.02)} material={goldAccent} position={[0.3, -0.13, 0]} />
+        </group>
       </group>
     )
   }
@@ -3123,40 +3134,6 @@ case 'book_stack': {
           <Text fontSize={0.014} color="#a02020" anchorX="center" anchorY="middle" position={[0, -0.178, 0.011]}>
             PLEASE KNOCK
           </Text>
-        </group>
-      </group>
-    )
-  }
-  case 'trading_desktop_3side': {
-    const frameMat = tm('#141820', 0.35, 0.2, 'wood')
-    const standMat = tm('#1c1c22', 0.38, 0.22, 'wood')
-    const bgMat = m('#06080c', 0.95)
-    return (
-      <group>
-        <mesh geometry={boxGeo(0.72, 0.015, 0.35)} material={standMat} position={[0, 0.007, 0]} castShadow />
-        {/* center — primary chart panel with price/time scales */}
-        <group position={[0, 0.16, 0]}>
-          <mesh geometry={boxGeo(0.02, 0.28, 0.32)} material={frameMat} position={[0, 0.14, 0]} castShadow />
-          <mesh geometry={boxGeo(0.003, 0.24, 0.28)} material={bgMat} position={[0.008, 0.14, 0]} />
-          <group position={[0.008, 0.14, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <TradingChartUI cx={0} cy={0} w={0.22} h={0.22} depth={0.002} />
-          </group>
-        </group>
-        {/* left — labeled order book */}
-        <group position={[-0.27, 0.16, 0]}>
-          <mesh geometry={boxGeo(0.02, 0.28, 0.32)} material={frameMat} position={[0, 0.14, 0]} castShadow />
-          <mesh geometry={boxGeo(0.003, 0.24, 0.28)} material={bgMat} position={[0.008, 0.14, 0]} />
-          <group position={[0.008, 0.14, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <OrderBookUI cx={0} cy={0} w={0.22} h={0.24} depth={0.002} />
-          </group>
-        </group>
-        {/* right — positions panel */}
-        <group position={[0.27, 0.16, 0]}>
-          <mesh geometry={boxGeo(0.02, 0.28, 0.32)} material={frameMat} position={[0, 0.14, 0]} castShadow />
-          <mesh geometry={boxGeo(0.003, 0.24, 0.28)} material={bgMat} position={[0.008, 0.14, 0]} />
-          <group position={[0.008, 0.14, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <PositionsUI cx={0} cy={0} w={0.22} h={0.24} depth={0.002} />
-          </group>
         </group>
       </group>
     )

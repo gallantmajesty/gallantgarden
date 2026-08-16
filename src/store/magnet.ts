@@ -452,7 +452,14 @@ export const useMagnet = create<MagnetState>((set, get) => {
          const currentRank = rankForTotalXp(rankBase)
          const penaltyResult = checkInactivityPenalty(p.xp, p.premiumXp, currentRank.id, rankBase)
          if (penaltyResult.leaves < 0 || penaltyResult.goldenLeaves > 0) {
-           const balance = p.applyXp({ leaves: penaltyResult.leaves, golden: penaltyResult.goldenLeaves, rankXp: penaltyResult.leaves })
+           // Wallet takes what it can carry (clamped at 0); lifetime rank XP
+           // always takes the FULL stacked hit per missed day — an empty
+           // wallet shouldn't dodge the rank drop.
+           const balance = p.applyXp({
+             leaves: penaltyResult.leaves,
+             golden: penaltyResult.goldenLeaves,
+             rankXp: -(penaltyResult.xpLost ?? 0),
+           })
            const newRank = rankForTotalXp(balance.rankXp)
            let achievements = data.achievements
            if (penaltyResult.rankChanged && newRank.id !== currentRank.id) {
@@ -465,7 +472,7 @@ export const useMagnet = create<MagnetState>((set, get) => {
            persist(updated)
            set({ data: updated })
    if (penaltyResult.leaves < 0) {
-     set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} XP deducted for not hitting ${XP_VALUES.inactivityThresholdMin} min focus today. Rank may drop.`, icon: 'alert-circle' } })
+     set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} leaves and -${penaltyResult.xpLost ?? 0} XP for ${penaltyResult.missedDays ?? 0} missed day${(penaltyResult.missedDays ?? 0) > 1 ? 's' : ''}. Open FocusLily daily to avoid more.`, icon: 'alert-circle' } })
            }
          }
        } catch { /* ignore — penalty is best-effort */ }

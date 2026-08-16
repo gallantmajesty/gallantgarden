@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState, useMemo, type CSSProperties } from 'react'
+import { Suspense, useEffect, useRef, useState, useMemo, useCallback, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth'
@@ -13,6 +13,8 @@ import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
 import { CHINESE_CAFE_ROOMS, LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES, chineseCafeEnabled } from '../lib/realm'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
+import { MascotTour } from '../components/MascotTour'
+import { readTour, setTourStep as saveTourStep, completeTour as finishTour, type TourState } from '../lib/tour'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
 import { roomTheme } from '../lib/roomThemes'
 import { createRealm, getRealmByCode, searchPublicRealms, inviteLink, type Realm as DbRealm } from '../lib/realms'
@@ -53,6 +55,27 @@ export function Realm() {
   const location = useLocation()
   const { user } = useAuth()
   const mode = useMemo(() => modeFromPath(location.pathname), [location.pathname])
+  // Max's guided tour — continues from the Lobby into the Realm.
+  const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour())
+
+  const skipTour = useCallback(() => {
+    finishTour()
+    setTourStepState('done')
+  }, [])
+
+  // Advance the tour as the new player picks their way into the realm, then
+  // hand off to the normal navigation.
+  const handlePick = useCallback((m: Mode) => {
+    if (m === 'public' && tourStep === 'realm-pick') {
+      saveTourStep('realm-enter')
+      setTourStepState('realm-enter')
+    } else if (m === 'library' && tourStep === 'realm-enter') {
+      finishTour()
+      setTourStepState('done')
+    }
+    navigate(pathForMode(m))
+  }, [navigate, tourStep])
+
   return (
     <div className="realm-root">
       <div className="realm-topleft">
@@ -62,15 +85,36 @@ export function Realm() {
       </div>
 
       <div className="realm-stage">
-        {mode === 'choose' && <RealmChoose onPick={(m) => navigate(pathForMode(m))} />}
+        {mode === 'choose' && <RealmChoose onPick={handlePick} />}
         {mode === 'private' && <PublicRealm />}
         {mode === 'library' && <LibraryRealm />}
         {mode === 'train' && <TrainRealm />}
         {mode === 'uk-cafe' && <UkCafeRealm />}
         {mode === 'chinese-cafe' && (chineseCafeEnabled() ? <ChineseCafeRealm /> : <FlagshipUnavailable name="Jade Lantern Café" />)}
-        {mode === 'public' && <PrivateChoose onPick={(m) => navigate(pathForMode(m))} />}
+        {mode === 'public' && <PrivateChoose onPick={handlePick} />}
         {mode === 'custom' && <PublicRealm />}
-</div>
+      </div>
+
+      {tourStep === 'realm-pick' && mode === 'choose' && (
+        <MascotTour
+          target=".realm-card[data-tour-key='public']"
+          hint="this is where the study worlds live — join the Public Realm, everyone's in there."
+          side="right"
+          step={2}
+          total={3}
+          onSkip={skipTour}
+        />
+      )}
+      {tourStep === 'realm-enter' && mode === 'public' && (
+        <MascotTour
+          target=".realm-card[data-tour-key='library']"
+          hint="the Library's the one — grand halls and the Knowledge Tree. let's go!"
+          side="right"
+          step={3}
+          total={3}
+          onSkip={skipTour}
+        />
+      )}
     </div>
   )
 }
@@ -87,11 +131,10 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
         <span className="sf-pill">Realm</span>
         <h1>Choose your study world</h1>
         <p>Join a public study hall or create a private world for your friends.</p>
-      </header>
-
-<div className="realm-cards">
+      </header>      <div className="realm-cards">
         <button
           className="realm-card water-glass"
+          data-tour-key="public"
           onClick={() => onPick('public')}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
@@ -153,6 +196,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
       <div className="realm-cards">
         <button
           className="realm-card water-glass"
+          data-tour-key="library"
           onClick={() => onPick('library')}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
