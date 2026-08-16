@@ -1,3 +1,14 @@
+# Local tooling config & debug scratch (never commit)
+opencode.json
+_backup_phase1.mjs
+_recover.js
+_recover.mjs
+node _recover.js
+docs/.freebuff/*.db
+docs/.freebuff/*.db-wal
+docs/.freebuff/*.db-shm
+docs/.freebuff/*.pid
+
 # Logs
 logs
 *.log
