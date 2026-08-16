@@ -11,6 +11,23 @@ import { SentryUserTracker } from './components/SentryUserTracker'
 import { KeepAwakeProvider } from './components/KeepAwakeProvider'
 import './i18n'
 
+// Self-heal stale bundles: after a deploy, an opened tab still references the
+// old hashed chunk names. Those 404 → "Failed to fetch dynamically imported
+// module" → a crash overlay on every navigation. Instead of showing an error,
+// reload once (the fresh index.html serves the new hashes). SessionStorage
+// guards against a reload loop if the network is actually down.
+let chunkReloaded = sessionStorage.getItem('sf.chunkReloaded')
+window.addEventListener('error', (e) => {
+  if (chunkReloaded) return
+  const msg = String(e.message || '')
+  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Importing a module script failed')) {
+    chunkReloaded = '1'
+    sessionStorage.setItem('sf.chunkReloaded', '1')
+    console.warn('[main] stale chunk detected — reloading for new bundle')
+    location.reload()
+  }
+})
+
 // Global error display — any crash now shows the message on screen instead
 // of a blank white page. Remove after the white-page issue is resolved.
 window.addEventListener('error', (e) => {
