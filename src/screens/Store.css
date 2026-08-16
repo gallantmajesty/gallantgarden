@@ -339,6 +339,57 @@
 
 .store-exchange .store-buy { width: auto; padding: 10px 16px; flex-shrink: 0; }
 
+/* Coming Soon panel — the whole store is gated behind this card. */
+.store-coming-soon {
+  margin-top: 8px;
+  border: 1px solid rgba(212, 168, 67, 0.28);
+  background: linear-gradient(180deg, #2a2018, #1c150f);
+  color: #f0e3c8;
+  border-radius: 18px;
+  padding: 52px 28px 40px;
+  text-align: center;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+.store-cs-lock {
+  font-size: 44px;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 4px 14px rgba(212, 168, 67, 0.35));
+}
+.store-cs-title {
+  margin: 0 0 4px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #ffe9a8, #d8a93f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.store-cs-sub {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(240, 227, 200, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.store-cs-desc {
+  margin: 0 auto 26px;
+  max-width: 400px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(240, 227, 200, 0.78);
+}
+.store-cs-balance {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 620px) {
   .store-topbar { flex-wrap: wrap; }
   .store-brand { order: 3; width: 100%; }

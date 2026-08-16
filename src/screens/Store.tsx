@@ -219,63 +219,20 @@ export function Store() {
 
       {isGuest && <div className="store-note">You're in guest mode — sign in to buy golden leaves.</div>}
 
-      <section className="store-section store-coming-soon">
-        <div className="store-section-head">
-          <div>
-            <h2>The Golden Store</h2>
-            <p className="store-hint">
-              Golden leaves are coming soon. The store, secure checkout (Razorpay ₹ / Stripe $) and
-              golden-to-green exchanges open in a future update — they'll be the premium currency
-              for legendary items and help keep Focus Lily running.
-            </p>
-          </div>
-          <span className="store-secure">🔒 Secure checkout</span>
-        </div>
-
-        <div className="store-grid">
-          {packs.map((p) => (
-            <div key={p.id + provider} className={`store-pack ${p.id === bestId ? 'store-pack--best' : ''}`}>
-              {p.id === bestId && <span className="store-best-tag">BEST VALUE</span>}
-              <GoldCoin size={52} />
-              <div className="store-pack-gold">
-                {p.golden.toLocaleString()}
-                {p.bonus && <span className="store-pack-total">+{p.bonus.slice(1)}</span>}
-              </div>
-              <div className="store-pack-per">≈ {p.total.toLocaleString()} golden total</div>
-              <button className="store-buy" disabled>
-                Coming Soon
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <h2>Exchange to Green Leaves</h2>
-        <p className="store-hint">
-          Convert golden leaves into green leaves at <strong>1 🌟 = {GOLD_TO_GREEN} 🍃</strong>.
-          The exchange is coming soon and will return with the golden store.
+      <div className="store-coming-soon">
+        <div className="store-cs-lock">🔒</div>
+        <h1 className="store-cs-title">Coming Soon</h1>
+        <p className="store-cs-sub">The Golden Store</p>
+        <p className="store-cs-desc">
+          Golden leaves and secure checkout (Razorpay ₹ / Stripe $) are on the way.
+          They'll be the premium currency for legendary items and help keep Focus Lily running.
+          Watch the Lobby for the grand opening.
         </p>
-        <div className="store-exchange">
-          <div className="store-exchange-input-wrap">
-            <GoldCoin size={20} />
-            <input
-              type="number"
-              min={0}
-              max={exchangeMax}
-              step={GOLD_TO_GREEN}
-              value={exchangeAmount || ''}
-              placeholder="0"
-              disabled
-              onChange={(e) => setExchangeAmount(Number(e.target.value))}
-            />
-            <span className="store-exchange-eq">→</span>
-            <LeafIcon />
-            <span className="store-exchange-out">{exchangeLeaves > 0 ? (exchangeLeaves * GOLD_TO_GREEN).toLocaleString() : '0'}</span>
-          </div>
-          <button className="store-buy" disabled>
-            Coming Soon
-          </button>
+        <div className="store-cs-balance">
+          <span className="store-pill store-pill--green"><LeafIcon />{xp.toLocaleString()}</span>
+          <span className="store-pill store-pill--gold"><GoldCoin size={18} />{premiumXp.toLocaleString()}</span>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
