@@ -266,6 +266,7 @@ export function Store() {
         <p className="store-hint">
           Convert golden leaves into green leaves at <strong>1 🌟 = {GOLD_TO_GREEN} 🍃</strong>.
           Use it to grab any green-priced cosmetic instantly.
+          The exchange is coming soon and will return with the golden store.
         </p>
         <div className="store-exchange">
           <div className="store-exchange-input-wrap">
@@ -277,14 +278,15 @@ export function Store() {
               step={GOLD_TO_GREEN}
               value={exchangeAmount || ''}
               placeholder="0"
+              disabled
               onChange={(e) => setExchangeAmount(Number(e.target.value))}
             />
             <span className="store-exchange-eq">→</span>
             <LeafIcon />
             <span className="store-exchange-out">{exchangeLeaves > 0 ? (exchangeLeaves * GOLD_TO_GREEN).toLocaleString() : '0'}</span>
           </div>
-          <button className="store-buy" disabled={exchangeLeaves <= 0} onClick={exchange}>
-            Exchange{exchangeLeaves > 0 ? ` ${exchangeLeaves * GOLD_TO_GREEN} leaves` : ''}
+          <button className="store-buy" disabled onClick={exchange}>
+            Coming Soon
           </button>
         </div>
         <div className="store-hint store-hint--end">You can exchange up to {exchangeMax.toLocaleString()} 🌟 for {(exchangeMax * GOLD_TO_GREEN).toLocaleString()} 🍃</div>
