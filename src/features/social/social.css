@@ -80,6 +80,19 @@
   border-radius: 999px; background: #f5b940; color: #1a120a;
   font-size: 0.7rem; font-weight: 700;
 }
+/* pending friend-request launcher — green dot + badge */
+.sh-launcher-reqs { bottom: 136px; border-color: rgba(74, 222, 128, 0.45); }
+.sh-launcher-reqs:hover { border-color: rgba(74, 222, 128, 0.8); }
+.sh-req-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #4ade80; box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25), 0 0 10px rgba(74, 222, 128, 0.8);
+  flex: none; animation: sh-req-pulse 1.8s ease-in-out infinite;
+}
+@keyframes sh-req-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+.sh-launcher-badge.req, .sh-row-badge.req { background: #4ade80; color: #052e12; }
 
 /* ------------------------------------------------------------------- dock */
 .sh-dock {
@@ -184,6 +197,9 @@
 }
 .sh-row-time { font-size: 0.7rem; color: var(--sh-muted); }
 .sh-row-unread { width: 9px; height: 9px; border-radius: 50%; background: #f5b940; flex: 0 0 auto; }
+.sh-row-reqs { border: 1px solid rgba(74, 222, 128, 0.35); border-radius: 10px; margin-bottom: 6px; background: rgba(74, 222, 128, 0.06); }
+.sh-row-reqs .sh-req-dot { animation: none; }
+.sh-row-reqs:hover { background: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.6); }
 .sh-empty {
   padding: 32px 20px;
   text-align: center;

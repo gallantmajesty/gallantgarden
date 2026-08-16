@@ -52,8 +52,10 @@ function LauncherBar() {
   const openHub = useSocialOverlay((s) => s.openHub)
   const summaries = useChat((s) => s.summaries)
   const friends = useFriends((s) => s.friends)
+  const incoming = useFriends((s) => s.incoming)
   const focusSilent = useChat((s) => s.focusSilent)
   const total = summaries.reduce((n, s) => n + (s.unreadCount || (s.unread ? 1 : 0)), 0)
+  const requests = incoming.length
 
   const avatars = useMemo(() => {
     return summaries
@@ -66,8 +68,9 @@ function LauncherBar() {
   }, [summaries, friends])
 
   return (
+    <>
     <button
-      className={`sh-launcher ${total > 0 && !focusSilent ? 'alert' : ''}`}
+      className={`sh-launcher ${(total > 0 || requests > 0) && !focusSilent ? 'alert' : ''}`}
       onClick={() => openHub({ fullscreen: false })}
       title="Open chat"
       type="button"
@@ -84,14 +87,28 @@ function LauncherBar() {
       )}
       {total > 0 && <span className="sh-launcher-badge">{total > 99 ? '99+' : total}</span>}
     </button>
+    {requests > 0 && (
+      <button
+        className="sh-launcher sh-launcher-reqs"
+        onClick={() => openHub({ fullscreen: true, tab: 'explore' })}
+        title={`${requests} friend request${requests > 1 ? 's' : ''}`}
+        type="button"
+      >
+        <span className="sh-req-dot" />
+        <span className="sh-launcher-label">Requests</span>
+        <span className="sh-launcher-badge req">{requests > 99 ? '99+' : requests}</span>
+      </button>
+    )}
+    </>
   )
 }
 
 /* -------------------------------------------------------------- chat list */
 
-function ChatList({ onPick }: { onPick: (id: string, isGroup: boolean) => void }) {
+function ChatList({ onPick, onGoToRequests }: { onPick: (id: string, isGroup: boolean) => void; onGoToRequests: () => void }) {
   const summaries = useChat((s) => s.summaries)
   const friends = useFriends((s) => s.friends)
+  const incoming = useFriends((s) => s.incoming)
   const groupCustom = useChat((s) => s.groupCustom)
   const memberNames = useChat((s) => s.memberNames)
   const meId = useChat((s) => s.meId)
@@ -126,10 +143,20 @@ function ChatList({ onPick }: { onPick: (id: string, isGroup: boolean) => void }
     [summaries, byId, groupCustom, memberNames, meId],
   )
 
-  if (rows.length === 0) return <p className="sh-empty">No chats yet. Use Explore to add friends, or create a group.</p>
+  if (rows.length === 0 && incoming.length === 0) return <p className="sh-empty">No chats yet. Use Explore to add friends, or create a group.</p>
 
   return (
     <div className={`sh-list ${compact ? 'compact' : ''}`}>
+      {incoming.length > 0 && (
+        <button className="sh-row sh-row-reqs" onClick={onGoToRequests} type="button">
+          <span className="sh-av"><span className="sh-req-dot" /></span>
+          <span className="sh-row-text">
+            <span className="sh-row-name">Friend requests</span>
+            <span className="sh-row-sub">Pending incoming requests — tap to review</span>
+          </span>
+          <span className="sh-row-badge req">{incoming.length > 99 ? '99+' : incoming.length}</span>
+        </button>
+      )}
       {rows.map((r) => (
         <button key={r.id} className="sh-row" onClick={() => onPick(r.id, r.isGroup)} type="button">
           <span className="sh-av">
@@ -421,7 +448,7 @@ function ExploreOverlay() {
         </header>
 
         <div className="sh-ov-body">
-          {tab === 'chats' && (activeConversationId || activeGroupId ? <ConversationView onBack={activeGroupId ? clearGroup : clearConversation} /> : <ChatList onPick={pick} />)}
+          {tab === 'chats' && (activeConversationId || activeGroupId ? <ConversationView onBack={activeGroupId ? clearGroup : clearConversation} /> : <ChatList onPick={pick} onGoToRequests={() => setTab('explore')} />)}
           {tab === 'explore' && <ExploreTab />}
           {/* From the Groups tab, tapping a group opens its thread; back returns to the list. */}
           {tab === 'groups' && (activeGroupId ? <ConversationView onBack={clearGroup} /> : <GroupsTab />)}
@@ -460,7 +487,7 @@ export function SocialHub() {
 }
 
 function MiniDock() {
-  const setFullscreen = useSocialOverlay((s) => s.setFullscreen)
+  const openHub = useSocialOverlay((s) => s.openHub)
   const close = useSocialOverlay((s) => s.close)
   const clearConversation = useSocialOverlay((s) => s.clearConversation)
   const clearGroup = useSocialOverlay((s) => s.clearGroup)
@@ -488,7 +515,7 @@ function MiniDock() {
         {activeConversationId || activeGroupId ? (
           <ConversationView onBack={activeGroupId ? clearGroup : clearConversation} />
         ) : (
-          <ChatList onPick={pick} />
+          <ChatList onPick={pick} onGoToRequests={() => openHub({ fullscreen: true, tab: 'explore' })} />
         )}
       </div>
     </div>
