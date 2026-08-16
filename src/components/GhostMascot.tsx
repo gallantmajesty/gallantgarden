@@ -110,7 +110,7 @@ export function GhostMascot({
       </div>
       <div className={`gm-floater${bounce ? ' gm-bounce' : ''}`}>
         <div className="gm-glow" />
-        <img className="gm-img" src={GHOST_MASCOT[mood]} alt="" draggable={false} />
+        <img className="gm-img" src={GHOST_MASCOT[resMood]} alt="" draggable={false} />
       </div>
     </div>
   )
