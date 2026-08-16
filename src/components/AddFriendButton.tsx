@@ -26,6 +26,22 @@ export function AddFriendButton({
 
   if (!targetId || !meId || targetId === meId || blocked) return null
 
+  // Guests have no database identity (localStorage only, id = "guest_…") — a
+  // friend request needs a real account on both sides, so there's nothing to
+  // send to. Show a disabled explainer instead of a silently-failing button.
+  if (targetId.startsWith('guest_')) {
+    return (
+      <button
+        type="button"
+        className={`sf-btn secondary friend-btn is-disabled ${className}`.trim()}
+        disabled
+        title={t('addFriend.guestUnavailable')}
+      >
+        {t('addFriend.guestUnavailable')}
+      </button>
+    )
+  }
+
   async function run(fn: () => Promise<unknown>) {
     if (busy) return
     setBusy(true)

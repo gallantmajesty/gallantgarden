@@ -726,7 +726,8 @@
     "acceptRequest": "Accept request",
     "requested": "Requested",
     "addFriend": "Add friend",
-    "friends": "Friends"
+    "friends": "Friends",
+    "guestUnavailable": "Guests can't receive friend requests"
   },
   "followButton": {
     "follow": "Follow",
