@@ -304,7 +304,7 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
       frameloop={(selecting || (pauseWhenHidden && tabHidden) || socialOpen || renderPaused) ? 'never' : frameloop}
       shadows={preset.shadows ? 'soft' : false}
       dpr={dpr}
-      gl={{ antialias: false, powerPreference: 'high-performance' }}
+      gl={{ antialias: false, powerPreference: 'default', failIfMajorPerformanceCaveat: false }}
       camera={{ position: [0, 1.7, 8], fov: 68, near: 0.08, far: preset.far }}
       onCreated={(state) => {
         const canvas = state.gl.domElement
