@@ -13,6 +13,7 @@ import OwnerAchievementsTab from "./OwnerAchievementsTab";
 import OwnerTrainTab from "./OwnerTrainTab";
 import OwnerPricingTab from "./OwnerPricingTab";
 import OwnerUsersTab from "./OwnerUsersTab";
+import OwnerGuestsTab from "./OwnerGuestsTab";
 import OwnerLuckyWheelTab from "./OwnerLuckyWheelTab";
 import OwnerAnnouncementsTab from "./OwnerAnnouncementsTab";
 import OwnerReportsTab from "./OwnerReportsTab";
@@ -40,7 +41,7 @@ export function OwnerPanel() {
   const { events, activeEvent, saveEvent, deleteEvent, toggleEventActive, balance, addLeaves } = useEventShop();
   const { items } = useInventory();
   const { bundles, saveBundle, deleteBundle } = useBundles();
-  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "wheel" | "announcements" | "reports" | "analytics" | "settings">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "events" | "items" | "bundles" | "shop" | "wallet" | "users" | "guests" | "accessories" | "data" | "rewards" | "achievements" | "train" | "pricing" | "wheel" | "announcements" | "reports" | "analytics" | "settings">("dashboard");
   const [editing, setEditing] = useState<FocusEvent | null>(null);
   const [bundleEditing, setBundleEditing] = useState<SavedBundle | null>(null);
 
@@ -113,6 +114,7 @@ export function OwnerPanel() {
       label: "PLAYERS", icon: "☀",
       tabs: [
         { id: "users", label: "Player HQ", icon: "👥" },
+        { id: "guests", label: "Guest Accounts", icon: "👻" },
         { id: "wallet", label: "Wallet & Economy", icon: "💰" },
         { id: "shop", label: "Player Inventory", icon: "🎒" },
       ],
@@ -483,6 +485,8 @@ export function OwnerPanel() {
         {/*  USERS / AUTH                                        */}
         {/* ════════════════════════════════════════════════════ */}
         {tab === "users" && <OwnerUsersTab />}
+
+        {tab === "guests" && <OwnerGuestsTab />}
 
         {tab === "wheel" && <OwnerLuckyWheelTab />}
 

@@ -268,9 +268,10 @@ export const useProfile = create<ProfileState>((set, get) => ({
 
     // 2. mirror the public onboarding fields to first-class columns (best-effort;
     //    the jsonb copy is authoritative, so a column failure must not block
-    //    entry). country + rank both feed the public_profiles view.
+    //    entry). country + rank both feed the public_profiles view. The first
+    //    name is set during onboarding, so the rename budget resets to 0.
     try {
-      const row: Record<string, unknown> = { id: userId }
+      const row: Record<string, unknown> = { id: userId, display_name_changes: 0 }
       if (data.country) row.country = data.country
       if (data.rank) row.rank = data.rank
       const { error: colError } = await supabase.from('profiles').upsert([row], { onConflict: 'id' })
@@ -281,7 +282,7 @@ export const useProfile = create<ProfileState>((set, get) => ({
       console.error('[profile] complete - column upsert exception:', e)
     }
 
-    set({ data, onboarded: true })
+    set({ data, onboarded: true, displayNameChanges: 0 })
     return true
   },
 
@@ -308,8 +309,9 @@ export const useProfile = create<ProfileState>((set, get) => ({
     if (!userId || !name) return false
     const changes = get().displayNameChanges
     const warningActive = get().nameWarning
-    // Block only if no warning AND changes used up
-    if (!warningActive && changes >= DISPLAY_NAME_CHANGES_MAX) return false
+    // Block only if no warning AND changes used up AND onboarding already done
+    // (the first name during onboarding is free — the limit guards renames).
+    if (get().onboarded && !warningActive && changes >= DISPLAY_NAME_CHANGES_MAX) return false
     if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false }); persistGuest(get()); return true }
     const { error } = await supabase
       .from('profiles')
