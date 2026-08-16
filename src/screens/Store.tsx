@@ -219,29 +219,18 @@ export function Store() {
 
       {isGuest && <div className="store-note">You're in guest mode — sign in to buy golden leaves.</div>}
 
-      <section className="store-section">
+      <section className="store-section store-coming-soon">
         <div className="store-section-head">
           <div>
-            <h2>Golden Leaves</h2>
+            <h2>The Golden Store</h2>
             <p className="store-hint">
-              Golden leaves are coming soon — purchasing will be enabled in a future update.
-              They'll be the premium currency for legendary items and help keep Focus Lily running.
+              Golden leaves are coming soon. The store, secure checkout (Razorpay ₹ / Stripe $) and
+              golden-to-green exchanges open in a future update — they'll be the premium currency
+              for legendary items and help keep Focus Lily running.
             </p>
           </div>
           <span className="store-secure">🔒 Secure checkout</span>
         </div>
-
-        <div className="store-provider">
-          <button className={provider === 'razorpay' ? 'active' : ''} onClick={() => setProvider('razorpay')}>
-            🇮🇳 Razorpay (₹)
-          </button>
-          <button className={provider === 'stripe' ? 'active' : ''} onClick={() => setProvider('stripe')}>
-            💳 Stripe ($)
-          </button>
-        </div>
-
-        {/* Purchasing is Coming Soon — the age gate (adultConfirmed) stays in
-            the buy() path so it's already enforced when payments re-enable. */}
 
         <div className="store-grid">
           {packs.map((p) => (
@@ -253,19 +242,16 @@ export function Store() {
                 {p.bonus && <span className="store-pack-total">+{p.bonus.slice(1)}</span>}
               </div>
               <div className="store-pack-per">≈ {p.total.toLocaleString()} golden total</div>
-              <button className="store-buy" disabled onClick={() => buy(p)}>
-                {buying === p.id ? 'Opening…' : 'Coming Soon'}
+              <button className="store-buy" disabled>
+                Coming Soon
               </button>
             </div>
           ))}
         </div>
-      </section>
 
-      <section className="store-section">
         <h2>Exchange to Green Leaves</h2>
         <p className="store-hint">
           Convert golden leaves into green leaves at <strong>1 🌟 = {GOLD_TO_GREEN} 🍃</strong>.
-          Use it to grab any green-priced cosmetic instantly.
           The exchange is coming soon and will return with the golden store.
         </p>
         <div className="store-exchange">
@@ -285,11 +271,10 @@ export function Store() {
             <LeafIcon />
             <span className="store-exchange-out">{exchangeLeaves > 0 ? (exchangeLeaves * GOLD_TO_GREEN).toLocaleString() : '0'}</span>
           </div>
-          <button className="store-buy" disabled onClick={exchange}>
+          <button className="store-buy" disabled>
             Coming Soon
           </button>
         </div>
-        <div className="store-hint store-hint--end">You can exchange up to {exchangeMax.toLocaleString()} 🌟 for {(exchangeMax * GOLD_TO_GREEN).toLocaleString()} 🍃</div>
       </section>
     </div>
   )
