@@ -207,6 +207,11 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
     setBakeGate(true)
     onReady?.()
   }
+  // Refs so the context-loss fallback can also lift the veil (the callback
+  // identity changes between remounts, but the closure below captures the
+  // latest one via this ref).
+  const onReadyRef = useRef(onReady)
+  onReadyRef.current = onReady
 
   // Canvas health check: monitors actual rendered frames via rAF.
   // If no frame is rendered for 10 seconds, force-remounts the Canvas once.
@@ -309,18 +314,30 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
       onCreated={(state) => {
         const canvas = state.gl.domElement
         // Track context loss/restore with a recovery fallback. If contextrestored
-        // never fires within 3 seconds, force-remount the Canvas by bumping a key.
+        // never fires within a timeout, force-remount the Canvas by bumping a key —
+        // BUT only ONCE. A second consecutive hearse-out means this GPU/driver
+        // cannot hold a context here (Windows TDR crash, remote desktop, dying
+        // adapter); remounting again would only spawn fresh contexts into the
+        // same dead driver and reburn the page. We give up on the 3D layer and
+        // fall back to the 2D room instead of looping forever.
         let restoreTimer: ReturnType<typeof setTimeout> | null = null
-        canvas.addEventListener('webglcontextlost', (e) => {
+        let contextLossRemounts = 0
+        const onLost = (e: Event) => {
           e.preventDefault()
           console.warn('[LibraryScene] WebGL context lost — will restore')
-          // If context isn't restored within 3s, force a full Canvas remount
           restoreTimer = setTimeout(() => {
-            console.warn('[LibraryScene] WebGL context NOT restored in 3s — remounting Canvas')
+            if (contextLossRemounts >= 1) {
+              console.error('[LibraryScene] WebGL context lost a second time — GPU cannot hold a context here; falling back to 2D room')
+              ;(window as any).__libCanvasError = 'WebGL context kept being lost on this device (GPU/driver hang). The 3D room was disabled — try updating your graphics driver, or toggling hardware acceleration.'
+              setTimeout(() => { onReadyRef.current?.() }, 0)
+              return
+            }
+            contextLossRemounts += 1
+            console.warn('[LibraryScene] WebGL context NOT restored in 4s — remounting Canvas once')
             setCanvasKey((k) => k + 1) // force full Canvas remount
-          }, 3000)
-        })
-        canvas.addEventListener('webglcontextrestored', () => {
+          }, 4000)
+        }
+        const onRestored = () => {
           if (restoreTimer) { clearTimeout(restoreTimer); restoreTimer = null }
           console.warn('[LibraryScene] WebGL context restored — rebuilding postprocessing')
           let frames = 0
@@ -329,7 +346,16 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
             requestAnimationFrame(rebuild)
           }
           requestAnimationFrame(rebuild)
-        })
+        }
+        const onCreateError = (e: Event) => {
+          const message = (e as WebGLContextEvent).statusMessage || 'unknown reason'
+          console.error('[LibraryScene] WebGL context creation failed:', message)
+          ;(window as any).__libCanvasError = `WebGL context creation failed: ${message}`
+          setTimeout(() => { onReadyRef.current?.() }, 0)
+        }
+        canvas.addEventListener('webglcontextlost', onLost)
+        canvas.addEventListener('webglcontextrestored', onRestored)
+        canvas.addEventListener('webglcontextcreationerror', onCreateError)
       }}
     >
       <CanvasGuard>
