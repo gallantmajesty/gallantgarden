@@ -319,6 +319,10 @@ export function Explore({ defaultWorld }: ExploreProps) {
           machine via useWorld.cineFade (0 = transparent, 1 = fully black). */}
       <div className="cine-fade" style={{ opacity: cineFade }} />
 
+      {/* Surfaces any silent LibraryScene crash as a small visible badge so
+          the player (or support) can read the error without DevTools. */}
+      <SceneErrorBadge />
+
       {/* Library seat-selection overlay — shown before the player commits to a seat.
           Once a seat is chosen we fall through to the normal in-world HUD. */}
       {!isTrain && seatFlowStage === 'selecting' && (
@@ -533,6 +537,32 @@ function roomKeyOf(a: ActiveRealm): string {
  *  same instance of the same realm computes the same channel and meets here. */
 function realmChannel(a: ActiveRealm, instance: number): string {
   return `realm:${roomKeyOf(a)}#${instance}`
+}
+
+/* Shows a red badge with the LibraryScene crash message (set by CanvasGuard)
+   so silent WebGL failures surface without DevTools. Polls the flag a couple
+   of times a second; clears once the scene stops reporting. */
+function SceneErrorBadge() {
+  const [msg, setMsg] = useState<string | null>(null)
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const cur = (window as any).__libCanvasError as string | undefined
+      setMsg((prev) => (cur ? cur : prev && !document.hidden ? prev : cur ?? null))
+      if (!cur) setMsg(null)
+    }, 700)
+    return () => window.clearInterval(t)
+  }, [])
+  if (!msg) return null
+  return (
+    <div style={{
+      position: 'fixed', bottom: 12, left: 12, zIndex: 1000,
+      background: 'rgba(60,8,8,0.92)', color: '#ffb4b0', fontSize: 12,
+      padding: '8px 12px', borderRadius: 8, maxWidth: 420,
+      fontFamily: 'monospace', whiteSpace: 'pre-wrap', lineHeight: 1.4,
+    }}>
+      Scene failed: {msg}
+    </div>
+  )
 }
 
 /**

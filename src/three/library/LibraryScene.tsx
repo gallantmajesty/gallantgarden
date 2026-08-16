@@ -83,7 +83,7 @@ class CanvasGuard extends Component<{ children: ReactNode }, { failed: boolean; 
   }
   componentDidCatch(error: Error) {
     console.error('[LibraryScene] CanvasGuard caught — preventing R3F sub-root crash:', error)
-    if (import.meta.env.DEV) ;(window as any).__libCanvasError = error.message
+    ;(window as any).__libCanvasError = error?.message ?? 'Unknown scene error'
   }
   render() {
     if (this.state.failed) return null
