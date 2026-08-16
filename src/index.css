@@ -117,11 +117,9 @@ body {
 
 /* ---------- user visual settings (applied via data-* on <html>) ---------- */
 
-/* Brightness multiplier — applied to the app root so the 3D canvas and all
-   overlays dim/brighten together. */
-#root {
-  filter: brightness(var(--app-brightness, 1));
-}
+/* Brightness multiplier — applied to the 3D realm canvas only (see
+   .explore-root > canvas in Explore.css), so the library interior dims/
+   brightens without touching the surrounding web UI. */
 
 /* Dark mode: re-map the warm parchment palette to a dark, legible one. Panels
    (.sf-panel) and ink text follow these vars, so the whole UI flips. */

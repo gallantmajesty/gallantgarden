@@ -13,42 +13,24 @@ interface TaskPanelProps {
 }
 
 const DURATION_PRESETS = [15, 25, 45, 60, 90, 120];
-const MAX_DEPTH = 4;
 
-/** Recursive subtree — the cherry-tree model: subtasks inside subtasks. */
+/** Flat subtask list (matches the Task Magnet model — one level of steps). */
 function Subtree({
-  parentId,
   subs,
-  depth,
-  inputs,
-  setInputs,
   onToggle,
-  onAdd,
 }: {
-  parentId: string;
   subs: SubTask[];
-  depth: number;
-  inputs: Record<string, string>;
-  setInputs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onToggle: (id: string) => void;
-  onAdd: (parentId: string, title: string) => void;
 }) {
-  const addAt = (parentId: string) => {
-    const title = inputs[parentId]?.trim();
-    if (!title) return;
-    onAdd(parentId, title);
-    setInputs((prev) => ({ ...prev, [parentId]: "" }));
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {subs.map((sub) => (
         <div
           key={sub.id}
           style={{
-            marginLeft: depth * 12,
-            paddingLeft: depth > 0 ? 6 : 0,
-            borderLeft: depth > 0 ? "1px solid rgba(201,168,76,0.18)" : "none",
+            marginLeft: 10,
+            paddingLeft: 6,
+            borderLeft: "1px solid rgba(201,168,76,0.18)",
           }}
         >
           <label
@@ -72,41 +54,6 @@ function Subtree({
               {sub.title}
             </span>
           </label>
-
-          {(sub.children ?? []).length > 0 && (
-            <Subtree
-              parentId={sub.id}
-              subs={sub.children}
-              depth={depth + 1}
-              inputs={inputs}
-              setInputs={setInputs}
-              onToggle={onToggle}
-              onAdd={onAdd}
-            />
-          )}
-
-          {depth < MAX_DEPTH && (
-            <div
-              style={{ display: "flex", gap: 4, marginTop: 3 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <input
-                className="genshin-input"
-                style={{ flex: 1, fontSize: "0.7rem", padding: "0.2rem 0.45rem" }}
-                placeholder="+ sub..."
-                value={inputs[sub.id] ?? ""}
-                onChange={(e) => setInputs((prev) => ({ ...prev, [sub.id]: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && addAt(sub.id)}
-              />
-              <button
-                onClick={() => addAt(sub.id)}
-                className="genshin-btn genshin-btn-secondary"
-                style={{ padding: "0.2rem 0.45rem", fontSize: "0.6rem" }}
-              >
-                +
-              </button>
-            </div>
-          )}
         </div>
       ))}
     </div>
@@ -135,6 +82,13 @@ export function TaskPanel({
     setNewDesc("");
   };
 
+  const addSubAt = (parentId: string) => {
+    const title = subTaskInputs[parentId]?.trim();
+    if (!title) return;
+    onAddSubTask(parentId, title);
+    setSubTaskInputs((prev) => ({ ...prev, [parentId]: "" }));
+  };
+
   const activeTask = tasks.find((t) => t.id === activeTaskId);
 
   return (
@@ -144,7 +98,7 @@ export function TaskPanel({
           <input
             className="genshin-input"
             style={{ flex: 1, fontSize: "0.75rem" }}
-            placeholder="New locker task..."
+            placeholder="New task (syncs to Task Magnet)..."
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
@@ -245,15 +199,7 @@ export function TaskPanel({
 
             {(task.subtasks ?? []).length > 0 && (
               <div style={{ marginTop: "0.5rem" }}>
-                <Subtree
-                  parentId={task.id}
-                  subs={task.subtasks}
-                  depth={1}
-                  inputs={subTaskInputs}
-                  setInputs={setSubTaskInputs}
-                  onToggle={onToggleSubTask}
-                  onAdd={onAddSubTask}
-                />
+                <Subtree subs={task.subtasks} onToggle={onToggleSubTask} />
               </div>
             )}
 
@@ -267,22 +213,10 @@ export function TaskPanel({
                 placeholder="+ subtask..."
                 value={subTaskInputs[task.id] ?? ""}
                 onChange={(e) => setSubTaskInputs((prev) => ({ ...prev, [task.id]: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const title = subTaskInputs[task.id]?.trim();
-                    if (!title) return;
-                    onAddSubTask(task.id, title);
-                    setSubTaskInputs((prev) => ({ ...prev, [task.id]: "" }));
-                  }
-                }}
+                onKeyDown={(e) => e.key === "Enter" && addSubAt(task.id)}
               />
               <button
-                onClick={() => {
-                  const title = subTaskInputs[task.id]?.trim();
-                  if (!title) return;
-                  onAddSubTask(task.id, title);
-                  setSubTaskInputs((prev) => ({ ...prev, [task.id]: "" }));
-                }}
+                onClick={() => addSubAt(task.id)}
                 className="genshin-btn genshin-btn-secondary"
                 style={{ padding: "0.25rem 0.5rem", fontSize: "0.6rem" }}
               >
@@ -294,9 +228,9 @@ export function TaskPanel({
 
         {tasks.length === 0 && (
           <div style={{ padding: "1.5rem", textAlign: "center", fontSize: "0.875rem", opacity: 0.5, color: "var(--color-genshin-bronze)" }}>
-            No locker tasks yet.
+            No open tasks.
             <br />
-            Create your first study goal above.
+            Add one above — it appears in your Task Magnet too.
           </div>
         )}
       </div>

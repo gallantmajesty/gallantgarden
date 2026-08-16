@@ -313,14 +313,19 @@ export function KnowledgeTree() {
         {/* canopy — big golden Ghibli dome, one instanced draw for ~340 clusters.
             Distance LOD (settings "Mesh detail · LOD bias" scales the ladder):
             full dome → ⅓-density dome → culled entirely. */}
-        <Lod distances={[0, 42, 95]} bias={preset.lodBias}>
+        {/* The tree is the hall's centerpiece — its LOD ladder must never
+            collapse at low quality. The global lodBias (1.5 at Low) would scale
+            these distances to ×0.4 and cull the canopy entirely past ~38 m.
+            Use a gentle 35% of the bias so the dome only thins far outside the
+            hall, whatever quality tier is active. */}
+        <Lod distances={[0, 42, 95]} bias={preset.lodBias * 0.35}>
           <Canopy leaves={leaves} emissive="#e09a3a" emissiveIntensity={0.3} />
           <Canopy leaves={sparseLeaves} emissive="#e09a3a" emissiveIntensity={0.22} />
           <group />
         </Lod>
 
         {/* fairy string lights threaded through the canopy */}
-        <Lod distances={[0, 55, 100]} bias={preset.lodBias}>
+        <Lod distances={[0, 55, 100]} bias={preset.lodBias * 0.35}>
           <InstancedShape items={strings} emissive="#ffd27a" emissiveIntensity={1.5} roughness={0.4} materialRef={stringMatRef}>
             <sphereGeometry args={[1, 8, 8]} />
           </InstancedShape>
@@ -328,7 +333,7 @@ export function KnowledgeTree() {
         </Lod>
 
         {/* lantern cords + fireflies — culled past 60 m alongside the strings */}
-        <Lod distances={[0, 60, 105]} bias={preset.lodBias}>
+        <Lod distances={[0, 60, 105]} bias={preset.lodBias * 0.35}>
           <group>
             <InstancedShape items={cords} color="#3a2c10" roughness={0.8}>
               <cylinderGeometry args={[0.85, 1, 1, 6]} />

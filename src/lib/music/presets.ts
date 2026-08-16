@@ -205,16 +205,6 @@ export const MUSIC_PRESETS: MusicPreset[] = [
     source: { kind: 'loop', url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/At%20Rest.mp3' },
     available: true,
   },
-  {
-    id: 'storm-rain',
-    name: 'Storm Rain',
-    subtitle: 'Heavy rain & wind · CC0 archive.org',
-    glyph: '🌦️',
-    tint: ['#26303a', '#43556a'],
-    source: { kind: 'loop', url: 'https://archive.org/download/Red_Library_Nature_Rain/R10-04-Heavy%20Rain%20and%20Wind.mp3' },
-    available: true,
-  },
-
   // ── Synth noise (no asset needed) ─────────────────────────────────────
   {
     id: 'brown',

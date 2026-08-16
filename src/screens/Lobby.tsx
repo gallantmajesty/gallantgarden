@@ -96,7 +96,8 @@ export function Lobby() {
   const [showQuests, setShowQuests] = useState(false)
   const [soonFeature, setSoonFeature] = useState<FeatureData | null>(null)
   // Max's guided tour for new players — starts on the lobby, walks into the Realm.
-  const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour())
+  // Keyed per-account (see lib/tour.ts), so every new user gets guided once.
+  const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour(user?.id))
 
   // Real stat sources: streak from magnet activity, focus from pomodoro history.
   const magnetData = useMagnet((s) => s.data)
@@ -190,17 +191,25 @@ useEffect(() => {
     return () => clearTimeout(t)
   }, [user?.isGuest, guestBannerHidden])
 
-  // Start Max's guided tour the first time a new player reaches the lobby.
+  // Start Max's guided tour the first time a player reaches the lobby. Syncs
+  // against the account's key once the user is available (it may load after
+  // the first render), and resumes mid-tour if they left and came back.
   useEffect(() => {
-    if (tourStep !== null || !user) return
-    saveTourStep('lobby-realm')
-    setTourStepState('lobby-realm')
-  }, [tourStep, user])
+    if (!user) return
+    const current = readTour(user.id)
+    if (current === null) {
+      saveTourStep('lobby-realm', user.id)
+      setTourStepState('lobby-realm')
+    } else if (current !== tourStep) {
+      setTourStepState(current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   const skipTour = useCallback(() => {
-    finishTour()
+    finishTour(user?.id)
     setTourStepState('done')
-  }, [])
+  }, [user?.id])
 
   const pickProfile = useCallback((e: React.MouseEvent) => {
     if (transition?.active || rankTransition?.active) return
@@ -231,7 +240,7 @@ useEffect(() => {
     if (transition?.active) return
     // Max's tour: clicking the Realm card walks him into the Realm screen.
     if (tourStep === 'lobby-realm' && o.key === 'realm') {
-      saveTourStep('realm-pick')
+      saveTourStep('realm-pick', user?.id)
       setTourStepState('realm-pick')
     }
     const rect = e.currentTarget.getBoundingClientRect()
@@ -260,11 +269,11 @@ useEffect(() => {
     if (!o.route) return
     // Max's tour: clicking the Realm card walks him into the Realm screen.
     if (tourStep === 'lobby-realm' && o.key === 'realm') {
-      saveTourStep('realm-pick')
+      saveTourStep('realm-pick', user?.id)
       setTourStepState('realm-pick')
     }
     navigate(o.route)
-  }, [navigate, tourStep])
+  }, [navigate, tourStep, user?.id])
 
   const startSession = useCallback(() => {
     if (!user) {
@@ -473,7 +482,7 @@ useEffect(() => {
           image={soonFeature?.image ?? ''}
           onClose={() => setSoonFeature(null)}
         />
-        <SupportModal open={showSupport} onClose={() => setShowSupport(false)} />
+        <SupportModal open={showSupport} onClose={() => setShowSupport(false)} defaultEmail={user?.email} />
         <ResourceBar />
         <RankUpCelebration />
         <SocialHub />
@@ -741,7 +750,7 @@ useEffect(() => {
       {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
       <LuckyWheelModal open={showWheel} onClose={() => setShowWheel(false)} />
       <NewsModal open={showNews} onClose={() => setShowNews(false)} />
-      <SupportModal open={showSupport} onClose={() => setShowSupport(false)} />
+      <SupportModal open={showSupport} onClose={() => setShowSupport(false)} defaultEmail={user?.email} />
       <ComingSoonModal
         open={!!soonFeature}
         title={soonFeature?.title ?? ''}
@@ -780,10 +789,12 @@ const SUPPORT_TOPICS = [
   'Other',
 ]
 
-function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function SupportModal({ open, onClose, defaultEmail }: { open: boolean; onClose: () => void; defaultEmail?: string }) {
   const [topic, setTopic] = useState(SUPPORT_TOPICS[0])
   const [message, setMessage] = useState('')
-  const [replyEmail, setReplyEmail] = useState('')
+  // Prefill the reply address with the signed-in account's email so support
+  // can answer straight back; guests leave it blank.
+  const [replyEmail, setReplyEmail] = useState(defaultEmail ?? '')
   // One support request per hour — timestamp when the cooldown ends.
   const [cooldownUntil, setCooldownUntil] = useState<number>(() => {
     const last = Number(localStorage.getItem(SUPPORT_COOLDOWN_KEY) ?? 0)

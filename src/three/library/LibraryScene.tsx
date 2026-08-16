@@ -26,7 +26,6 @@ import { NightMagic } from './NightMagic'
 import { Fireflies } from './Fireflies'
 import { FlyingCandles } from './FlyingCandles'
 import { Aurora } from './Aurora'
-import { FloatingBooks } from './FloatingBooks'
 import { FantasyLayer } from './FantasyLayer'
 import { Exterior } from './Exterior'
 import { DayNightWeather } from './DayNightWeather'
@@ -398,7 +397,7 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
           zero full-screen passes. Gated by the same particle/detail budget so they
           shed on low-end settings and Performance Mode.
           At NIGHT we drop the extra particle/overdraw effects (Fireflies, Aurora,
-          FantasyLayer, FloatingBooks, Sparkles) so the FPS freed by skipping the
+          FantasyLayer, Sparkles) so the FPS freed by skipping the
           exterior + cutting real lights isn't eaten by transparent-glass overdraw.
           The signature floating candles stay. Daytime is unchanged & full. */}
       {!selecting && (
@@ -412,13 +411,6 @@ At NIGHT the interior fill is dimmed way down so the hall reads dark
           <SoftBoundary>
             <FantasyLayer />
           </SoftBoundary>
-        )}
-        {/* FloatingBooks (transparent overdraw) is now high-tier only — it shed on
-            medium/low so the weakest GPUs skip the extra draw + fill cost. */}
-        {!nightMode && preset.lodBias < 0.5 && (
-          <LodCull base={45}>
-            <FloatingBooks count={8} />
-          </LodCull>
         )}
         {!nightMode && preset.dust > 0 && (
           <Sparkles count={Math.min(preset.dust, 20)} scale={[HALL.halfW * 2, HALL.wallH, HALL.halfL * 2]} position={[0, HALL.wallH / 2, 0]} size={1.5} speed={0.12} color="#ffe6b0" opacity={0.35} />

@@ -238,6 +238,30 @@
 }
 .fd-icon-btn { width: 32px; height: 32px; }
 
+.fd-exit-fullscreen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.25rem;
+  padding: 0.42rem 0.8rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-mono-display);
+  color: var(--fd-amber, #e9bd7f);
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.fd-exit-fullscreen:hover {
+  background: rgba(248, 113, 113, 0.22);
+  border-color: rgba(248, 113, 113, 0.7);
+  box-shadow: 0 0 14px rgba(248, 113, 113, 0.25);
+}
+
 /* ============================================================
    BODY
    ============================================================ */
@@ -700,6 +724,29 @@
 .fd-controls-wrap {
   display: flex;
   justify-content: center;
+}
+
+.fd-session-config-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.7rem;
+}
+.fd-session-config-row .fd-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--fd-ivory-faint, rgba(255, 255, 255, 0.75));
+  font-family: var(--font-mono-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fd-session-config-row .fd-btn-sm:hover {
+  border-color: rgba(233, 189, 127, 0.55);
+  color: var(--fd-ivory, #fff);
 }
 .fd-controls {
   display: flex;

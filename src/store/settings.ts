@@ -102,7 +102,12 @@ export interface QualityAxes {
 /** Named presets, expressed as axis bundles. Reproduces the old low/medium/high
  *  look (see scenePreset reproduction below). */
 export const QUALITY_AXES: Record<QualityPresetName, QualityAxes> = {
-  low:    { resolutionScale: 0.7,  viewDistance: 0.6, shadowQuality: 'off',  postProcessing: 'off',  textureQuality: 'low',    lodBias: 1.5,   impostorLod: 1.5 },
+  // Low keeps the scene's look intact (fog + mood preserved): the savings come
+  // from resolution, shadows off and low textures — NOT from culling the
+  // signature Knowledge Tree or blurring nearby players into billboards.
+  // (postProcessing was 'off' when the UI still offered an Off row; that option
+  // is gone, so the preset seeds the lowest selectable tier instead.)
+  low:    { resolutionScale: 0.7,  viewDistance: 0.6, shadowQuality: 'off',  postProcessing: 'low',  textureQuality: 'low',    lodBias: 1.0,   impostorLod: 0.75 },
   medium: { resolutionScale: 0.85, viewDistance: 0.8, shadowQuality: 'low',  postProcessing: 'low',  textureQuality: 'medium', lodBias: 0.75,  impostorLod: 0.75 },
   high:   { resolutionScale: 1,    viewDistance: 1,   shadowQuality: 'high', postProcessing: 'high', textureQuality: 'high',   lodBias: 0,     impostorLod: 0 },
 }

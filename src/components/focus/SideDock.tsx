@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { DockTab, LockerTask } from "../../hooks/focus/types";
 import { TaskPanel } from "./dock/TaskPanel";
-import { SearchPanel } from "./dock/SearchPanel";
 
 interface SideDockProps {
   isOpen: boolean;
@@ -33,18 +32,8 @@ function IconTasks({ size = 13 }: { size?: number }) {
     </svg>
   );
 }
-function IconSearch({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
-    </svg>
-  );
-}
-
 const tabs: { id: DockTab; label: string; icon: (s: number) => React.ReactNode }[] = [
   { id: "tasks", label: "Tasks", icon: (s) => <IconTasks size={s} /> },
-  { id: "search", label: "Search", icon: (s) => <IconSearch size={s} /> },
 ];
 
 export function SideDock({
@@ -108,7 +97,16 @@ export function SideDock({
         }}
       >
         <button
-          onClick={() => onTabChange(isOpen ? (lockOpen ? "tasks" : activeTab) : "tasks")}
+          onClick={() => {
+            // Trigger tab toggles the dock: closed → open (Tasks), open → close.
+            // During hardcore the bar is locked open, so it just stays on Tasks.
+            if (isOpen) {
+              if (lockOpen) onTabChange("tasks")
+              else onClose()
+            } else {
+              onTabChange("tasks")
+            }
+          }}
           className="genshin-card"
           style={{
             padding: "1.5rem 0.5rem",
@@ -227,7 +225,6 @@ export function SideDock({
               onLockIn={onLockIn}
             />
           )}
-          {activeTab === "search" && <SearchPanel />}
         </div>
 
         {/* Resize handle */}

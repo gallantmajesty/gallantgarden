@@ -1,0 +1,219 @@
+/* Mini mascot (Max) — floats top-left of the Library; click for the controls guide. */
+
+.lhm {
+  position: absolute;
+  top: 54px;
+  left: 14px;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.lhm-btn {
+  pointer-events: auto;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  animation: lhm-bob 3s ease-in-out infinite;
+}
+
+.lhm-btn:hover,
+.lhm-btn.on {
+  filter: drop-shadow(0 0 10px rgba(255, 205, 90, 0.75));
+}
+
+.lhm-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.lhm-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffe9a8, #e0a52e);
+  color: #4a3206;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  animation: lhm-pulse 2s ease-in-out infinite;
+}
+
+@keyframes lhm-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes lhm-pulse {
+  0%, 100% { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 205, 90, 0.25); }
+}
+
+/* ---- Controls panel ---- */
+
+.lhm-panel {
+  pointer-events: auto;
+  position: absolute;
+  top: 46px;
+  left: 0;
+  width: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgba(224, 180, 90, 0.14), transparent 55%),
+    linear-gradient(180deg, rgba(30, 22, 14, 0.96), rgba(16, 11, 7, 0.97));
+  border: 1px solid rgba(224, 180, 90, 0.45);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(224, 180, 90, 0.12),
+    inset 0 1px 0 rgba(255, 225, 160, 0.18);
+  color: #f0dfc0;
+  font-size: 13px;
+}
+
+/* Hero header */
+.lhm-hero {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  background: linear-gradient(180deg, rgba(224, 180, 90, 0.18), rgba(224, 180, 90, 0.04));
+  border-bottom: 1px solid rgba(224, 180, 90, 0.25);
+}
+
+.lhm-hero-face {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 205, 90, 0.55));
+  flex-shrink: 0;
+}
+
+.lhm-title {
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ffd98a;
+  font-size: 14px;
+  text-shadow: 0 0 12px rgba(255, 205, 90, 0.35);
+}
+
+.lhm-hero-sub {
+  color: #c9b48c;
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.lhm-close {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(224, 180, 90, 0.35);
+  color: #f0dfc0;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.lhm-close:hover {
+  background: rgba(224, 180, 90, 0.3);
+}
+
+/* Body */
+.lhm-body {
+  padding: 10px 12px;
+}
+
+.lhm-sec {
+  margin-bottom: 12px;
+}
+
+.lhm-sec:last-child {
+  margin-bottom: 0;
+}
+
+.lhm-sec-title {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c9a44a;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lhm-sec-title::before {
+  content: '';
+  width: 14px;
+  height: 1.5px;
+  background: linear-gradient(90deg, #e0b45a, transparent);
+  border-radius: 2px;
+}
+
+.lhm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+
+.lhm-row:hover {
+  background: rgba(224, 180, 90, 0.09);
+}
+
+.lhm-key {
+  flex: 0 0 auto;
+  min-width: 76px;
+  text-align: center;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffe9a8;
+  background: linear-gradient(180deg, rgba(255, 230, 170, 0.14), rgba(224, 180, 90, 0.06));
+  border: 1px solid rgba(224, 180, 90, 0.45);
+  border-bottom-width: 3px;
+  border-radius: 7px;
+  padding: 3px 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.lhm-desc {
+  color: #d9cba4;
+  font-size: 12.5px;
+}
+
+/* Footer */
+.lhm-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px 11px;
+  border-top: 1px solid rgba(224, 180, 90, 0.2);
+  color: #a99876;
+  font-size: 11.5px;
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.lhm-foot-ghost {
+  font-size: 13px;
+  filter: drop-shadow(0 0 6px rgba(255, 205, 90, 0.5));
+}

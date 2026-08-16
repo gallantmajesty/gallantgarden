@@ -12,6 +12,15 @@
   z-index: 0;
 }
 
+/* The 3D world layer. Brightness dims ONLY this — the HUD/UI stays at full
+   brightness while the library interior brightens/darkens with the slider. */
+.explore-world {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  filter: brightness(var(--app-brightness, 1));
+}
+
 /* Veil shown while scene is loading */
 .explore-veil {
   position: absolute;

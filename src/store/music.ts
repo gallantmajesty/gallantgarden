@@ -102,12 +102,22 @@ function load(): Persisted {
         y: Math.max(m, Math.min(p.pos.y, maxY)),
       }
     }
+    // Removed from the catalog — purge any persisted copies so the player
+    // never resumes a deleted stream.
+    const REMOVED_TRACK_IDS = new Set(['fb-storm-rain'])
     // Radio stations were removed — drop any stale persisted radio entries so
     // the player doesn't restore a dead SomaFM stream as "now playing".
     const isPlayable = (t: LiveTrack | null | undefined): t is LiveTrack =>
-      !!t && typeof t.url === 'string' && t.kind !== 'radio'
+      !!t && typeof t.url === 'string' && t.kind !== 'radio' && !REMOVED_TRACK_IDS.has(t.id)
     const current = isPlayable(p.current) ? p.current : null
-    const queue = Array.isArray(p.queue) ? p.queue.filter(isPlayable) : []
+    let queue = Array.isArray(p.queue) ? p.queue.filter(isPlayable) : []
+    // Fresh sessions used to persist a single auto-picked track (the old
+    // default) — expand those to the full built-in catalog so next/shuffle/
+    // repeat actually have variety instead of replaying the same song.
+    if (queue.length <= 1) {
+      const seen = new Set(queue.map((t) => t.id))
+      for (const t of defaultLiveTracks()) if (!seen.has(t.id)) queue.push(t)
+    }
     const repeat: RepeatMode = p.repeat === 'one' || p.repeat === 'all' ? p.repeat : 'off'
     return {
       volume: typeof p.volume === 'number' ? Math.max(0, Math.min(1, p.volume)) : fallback.volume,
@@ -159,6 +169,17 @@ export const useMusic = create<MusicStore>((set, get) => {
     eng.play()
     set({ current: track, qIndex: i, playing: true })
     persist()
+  }
+
+  /** Seed the queue with the whole built-in catalog, starting at a random
+   *  track — so pressing play never always starts with the same song, and
+   *  next/shuffle/repeat have a real playlist to work with. */
+  const startQueue = (): { queue: LiveTrack[]; qIndex: number } => {
+    const tracks = defaultLiveTracks()
+    if (tracks.length === 0) return { queue: [], qIndex: 0 }
+    const queue = [...tracks]
+    const qIndex = Math.floor(Math.random() * queue.length)
+    return { queue, qIndex }
   }
 
   return {
@@ -226,9 +247,10 @@ export const useMusic = create<MusicStore>((set, get) => {
       } else {
         const cur = get().current
         if (!cur) {
-          // Nothing chosen yet — start the first curated track.
-          const first = defaultLiveTracks().find((t) => t.id === 'fb-lofi') ?? defaultLiveTracks()[0]
-          get().playTrack(first)
+          // Nothing chosen yet — seed the catalog and start at a random track.
+          const { queue, qIndex } = startQueue()
+          set({ queue, qIndex })
+          playIndex(qIndex)
           return
         }
         eng.load(trackToPreset(cur))
@@ -241,8 +263,9 @@ export const useMusic = create<MusicStore>((set, get) => {
     next: () => {
       const { queue, qIndex, repeat, shuffle } = get()
       if (queue.length === 0) {
-        const first = defaultLiveTracks().find((t) => t.id === 'fb-lofi') ?? defaultLiveTracks()[0]
-        get().playTrack(first)
+        const { queue: q, qIndex: qi } = startQueue()
+        set({ queue: q, qIndex: qi })
+        playIndex(qi)
         return
       }
       // Repeat-one: replay the same track from the top.

@@ -240,27 +240,8 @@ export function Store() {
           </button>
         </div>
 
-        <label className="store-consent">
-          <input
-            type="checkbox"
-            checked={adultConfirmed}
-            onChange={(e) => {
-              const v = e.target.checked
-              setAdultConfirmed(v)
-              try {
-                if (v) sessionStorage.setItem('sf.store.adultConfirmed', '1')
-                else sessionStorage.removeItem('sf.store.adultConfirmed')
-              } catch { /* storage blocked */ }
-            }}
-          />
-          <span>
-            I am <strong>18 or older</strong>, or I am buying with my{" "}
-            <strong>parent or guardian's permission</strong>.
-          </span>
-        </label>
-        {!adultConfirmed && (
-          <p className="store-consent-hint">You must confirm this before you can buy golden leaves.</p>
-        )}
+        {/* Purchasing is Coming Soon — the age gate (adultConfirmed) stays in
+            the buy() path so it's already enforced when payments re-enable. */}
 
         <div className="store-grid">
           {packs.map((p) => (

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { TimerType } from "../store/pomodoro";
 import type { FocusMode } from "../store/hardcore";
 import { CornerFiligree } from "./focus/CornerFiligree";
@@ -7,7 +7,6 @@ import { TimerControls } from "./focus/TimerControls";
 import { MultiplayerBar } from "./focus/MultiplayerBar";
 import { usePomodoro, computeSegments, liveFocusLeaves, SESSION_OPTIONS, BREAK_ACTIVITIES, suggestBreakActivity } from "../store/pomodoro";
 import type { TimerPreset, SessionSummary, SessionHistoryEntry } from "../store/pomodoro";
-import type { ClockMode } from "../hooks/focus/types";
 import { useWorld } from "../store/world";
 import { useSettings } from "../store/settings";
 import { useProfile } from "../store/profile";
@@ -16,7 +15,6 @@ import { useDeviceBoost, boostPct } from "../lib/deviceBoost";
 import { useHardcodeMode } from "../hooks/focus/useHardcodeMode";
 import { useLockerTask } from "../hooks/focus/useLockerTask";
 import { useMultiplayerPresence } from "../hooks/focus/useMultiplayerPresence";
-import { useAstronomicalLog } from "../hooks/focus/useAstronomicalLog";
 import { useSideDock } from "../hooks/focus/useSideDock";
 import { WagerModal } from "./focus/WagerModal";
 import { HelpGuide } from "./focus/HelpGuide";
@@ -69,6 +67,14 @@ function IconLink({ size = 15 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
       <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    </svg>
+  );
+}
+function IconGear({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" />
     </svg>
   );
 }
@@ -391,7 +397,6 @@ function ExportModal({ onClose }: { onClose: () => void }) {
  *  FOCUS DOMAIN
  * ============================================================ */
 export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
-  const [clockMode, setClockMode] = useState<ClockMode>("sand");
   const [wallClock, setWallClock] = useState(new Date());
   const [pickTier, setPickTier] = useState<TierKey>("easy");
   const [pickType, setPickType] = useState<TimerType>("focus");
@@ -432,13 +437,33 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
     subject,
     lastReward,
     clearReward,
+    history,
   } = usePomodoro();
   const hardcode = useHardcodeMode();
   const boost = useDeviceBoost();
   const locker = useLockerTask();
   const multiplayer = useMultiplayerPresence();
-  const astroLog = useAstronomicalLog();
   const dock = useSideDock();
+
+  // Streak from REAL session history — the same source the Focus Score panel
+  // uses — so the header always matches the analytics. Consecutive days with a
+  // completed session count; updates live the moment a session completes.
+  const { currentStreak, bestStreak } = useMemo(() => {
+    const days = [...new Set(history.map((h) => {
+      const d = new Date(h.date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }))].sort((a, b) => a - b);
+    let best = 0;
+    let cur = 0;
+    let prev: number | null = null;
+    for (const t of days) {
+      cur = prev !== null && t - prev === 86400000 ? cur + 1 : 1;
+      best = Math.max(best, cur);
+      prev = t;
+    }
+    return { currentStreak: cur, bestStreak: best };
+  }, [history]);
 
   const isIdle = phase === "idle";
   // Live leaves counter: banked segments + the running segment's continuous
@@ -520,14 +545,8 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
   }, [pickType, pickBreaks, configure, toggle, dock, boost.deviceCount]);
 
   const handleReset = useCallback(() => {
-    if (isFinishedPhase || isPausedPhase) {
-      const focusMin = Math.floor(totalElapsed / 60);
-      if (focusMin > 0) {
-        astroLog.recordSession(focusMin, clockMode);
-      }
-    }
     forfeit();
-  }, [isFinishedPhase, isPausedPhase, totalElapsed, astroLog, clockMode, forfeit]);
+  }, [forfeit]);
 
   // Win: timer finished while hardcore/medium was active → settle enforcement.
   useEffect(() => {
@@ -613,12 +632,21 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
         </div>
 
         <div className="fd-stats">
-          <span>Streak: {astroLog.log.currentStreak}d</span>
-          <span>Leaves: {walletLeaves}</span>
+          <span>Streak: {currentStreak}d</span>
+          <span title={`Best streak ${bestStreak}d`}>Leaves: {walletLeaves}</span>
         </div>
 
         <button onClick={() => setShowConnect(true)} className="fd-close fd-icon-btn" style={{ marginRight: "0.25rem" }} title="Hardcore Connect — paste a boost code or see connected devices"><IconLink /></button>
         <button onClick={() => setShowHelp(true)} className="fd-close fd-icon-btn" style={{ marginRight: "0.25rem" }} title="How focus modes work"><IconBook /></button>
+        {hardcode.hardcodeActive && (
+          <button
+            onClick={() => useHardcore.getState().exitFullscreen()}
+            className="fd-btn fd-btn-sm fd-exit-fullscreen"
+            title="Leave fullscreen — you get a 20s warning to return before the session ends"
+          >
+            Exit Fullscreen
+          </button>
+        )}
         <button onClick={onClose} className="fd-close">✕</button>
       </div>
 
@@ -884,6 +912,18 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
                 onStartExitHold={() => hardcode.startExitHold(() => { forfeit(); })}
                 onCancelExitHold={hardcode.cancelExitHold}
               />
+            </div>
+
+            {/* Back to the tier picker — end the current session and open the
+                Choose Your Focus Tier page (Easy / Medium / Hardcore coming soon) */}
+            <div className="fd-session-config-row">
+              <button
+                onClick={handleReset}
+                className="fd-btn fd-btn-sm"
+                title="End the current session and choose a new tier (Easy / Medium / Hardcore coming soon)"
+              >
+                <IconGear /> Choose Tier
+              </button>
             </div>
 
             {/* Session leaves counter — live: banked segments + the current

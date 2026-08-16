@@ -8,6 +8,10 @@ import {
 } from "../../lib/deviceBoost";
 import { DEVICE_BOOST_MAX_DEVICES } from "../../store/hardcore";
 
+/** Hardcore Connect ships together with Hardcore mode — Coming Soon for now.
+ *  Set to false when the feature is ready to release. */
+const HARDCODE_CONNECT_COMING_SOON = true;
+
 interface DeviceConnectProps {
   /** Compact inline card used inside the WagerModal. */
   compact?: boolean;
@@ -57,7 +61,7 @@ export function DeviceConnect({ compact = false, autoHost = false }: DeviceConne
   // When the Master is planning a hardcore session (autoHost), generate a code
   // so the panel shows it + live device info. Never override a connector.
   useEffect(() => {
-    if (!autoHost || isConnector) return;
+    if (HARDCODE_CONNECT_COMING_SOON || !autoHost || isConnector) return;
     if (!code || !isHost) {
       boost.host(generateBoostCode());
     }
@@ -101,6 +105,32 @@ export function DeviceConnect({ compact = false, autoHost = false }: DeviceConne
     textTransform: "uppercase",
     marginBottom: "0.5rem",
   } as React.CSSProperties;
+
+  // ---- Coming Soon gate -----------------------------------------------------
+  if (HARDCODE_CONNECT_COMING_SOON) {
+    return (
+      <div style={containerStyle}>
+        <div style={titleStyle}>🔗 Hardcore Connect</div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontSize: "0.8rem",
+            color: "#fbbf24",
+            fontWeight: 700,
+            marginBottom: "0.4rem",
+          }}
+        >
+          ✨ Coming Soon
+        </div>
+        <div style={{ fontSize: "0.7rem", color: "#9aa3b2", lineHeight: 1.6 }}>
+          Connect a second device — like your phone — to boost your Hardcore session by{" "}
+          <b style={{ color: "#34d399" }}>+{boostPct(1).toFixed(0)}%</b> per device. This unlocks together with Hardcore mode.
+        </div>
+      </div>
+    );
+  }
 
   // ---- Connector (second device pasting the code) ---------------------------
   if (isConnector) {

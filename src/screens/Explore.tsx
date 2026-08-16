@@ -52,6 +52,7 @@ import { FocusDomain } from '../components/FocusDomain'
 import { CinematicEntry } from '../components/library/CinematicEntry'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { SeatSelectionOverlay } from '../components/library/SeatSelectionOverlay'
+import { LibraryHelpMascot } from '../components/library/LibraryHelpMascot'
 import { ChineseCafeSeatSelectionOverlay } from '../three/chinese-cafe/ChineseCafeSeatSelectionOverlay'
 import { NpcProfileCard } from '../components/NpcProfileCard'
 import { useNpcProfile } from '../store/npcProfile'
@@ -291,21 +292,24 @@ export function Explore({ defaultWorld }: ExploreProps) {
         show={seatFlowStage !== 'selecting'}
       >
         {isTrain || (sceneMounted && seatFlowStage !== 'selecting') ? (
-          isTrain ? (
-            <TrainStationScene onReady={() => setReady(true)} />
-          ) : isChineseCafe ? (
-            <ChineseCafeScene onReady={() => setReady(true)} />
-          ) : isUkCafe ? (
-            <LibraryScene
-              onReady={() => setReady(true)}
-              roomId={undefined}
-            />
-          ) : (
-            <LibraryScene
-              onReady={() => setReady(true)}
-              roomId={realm?.roomId}
-            />
-          )
+          /* The 3D world layer — brightness dims only this, never the HUD. */
+          <div className="explore-world">
+            {isTrain ? (
+              <TrainStationScene onReady={() => setReady(true)} />
+            ) : isChineseCafe ? (
+              <ChineseCafeScene onReady={() => setReady(true)} />
+            ) : isUkCafe ? (
+              <LibraryScene
+                onReady={() => setReady(true)}
+                roomId={undefined}
+              />
+            ) : (
+              <LibraryScene
+                onReady={() => setReady(true)}
+                roomId={realm?.roomId}
+              />
+            )}
+          </div>
         ) : null}
       </RoomLoader>
       <PomodoroTicker />
@@ -349,14 +353,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
           {/* top-right: compact bar — brightness · menu. (Audio volume now lives
               in the Library Realm music widget, bottom-right.) */}
           <div className="explore-topbar">
-            <button
-              className={`explore-iconbtn ${calcOpen ? 'on' : ''}`}
-              onClick={() => setCalcOpen((v) => !v)}
-              title={calcOpen ? 'Close calculator' : 'Calculator'}
-            >
-              <CalcGlyph />
-            </button>
-            <span className="explore-bar-sep" />
             <SunGlyph />
             <input
               className="explore-mini"
@@ -380,7 +376,10 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
           <RoomRoster />
 
-          <CameraSwitch />
+          {/* Max — tiny floating helper, top-left. Click for the controls guide.
+              Library + UK Café share the same LibraryScene controls; the train
+              and Chinese café have their own HUDs. */}
+          {!isTrain && !isChineseCafe && <LibraryHelpMascot />}
 
           <SeatPrompt />
           <SeatedPanel onToggleCalc={() => setCalcOpen((v) => !v)} calcOpen={calcOpen} />
@@ -755,108 +754,6 @@ function RoomRoster() {
           }}
         />
       )}
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------- camera view */
-
-/**
- * Minecraft-style camera switch (First · Third), always visible — including
- * while seated — so the player can freely change view without hunting for hotkeys.
- * Mirrors F1/F2 and the F5 cycle handled in PlayerController. Sitting stays in
- * third-person by default; First gives the seat-eye view (see PlayerController).
- */
-const CAM_MODES: { id: CameraMode; label: string }[] = [
-  { id: 'first', label: 'First' },
-  { id: 'third', label: 'Third' },
-]
-
-function CameraSwitch() {
-  const mode = useSettings((s) => s.cameraMode)
-  const set = useSettings((s) => s.set)
-  const cinematic = useWorld((s) => s.cinematic)
-  const setCine = useWorld((s) => s.setCinematic)
-  return (
-    <div className="explore-cam">
-      {CAM_MODES.map((m) => (
-        <button
-          key={m.id}
-          className={`explore-cam-btn ${mode === m.id ? 'on' : ''}`}
-          data-cam={m.id}
-          onClick={() => set('cameraMode', m.id)}
-        >
-          {m.label}
-        </button>
-      ))}
-      <button
-        type="button"
-        className={`explore-cam-btn cine-btn ${cinematic ? 'on' : ''}`}
-        title="Cinematic Tour (key 9)"
-        onClick={() => setCine(!cinematic)}
-      >
-        Cinematic
-      </button>
-      <FirstPersonHint />
-    </div>
-  )
-}
-
-/** One-time onboarding nudge: the first time the player EVER sits, a glowing arrow
- *  points at the First-person button for 15s so they discover the seat-eye view
- *  (the default stays third-person). Shows once ever — gated by a persisted flag —
- *  and dismisses early if they switch to First or stand up. */
-const FP_HINT_KEY = 'sg.hint.firstPersonSit.v1'
-function fpHintSeen(): boolean {
-  try {
-    return localStorage.getItem(FP_HINT_KEY) === '1'
-  } catch {
-    return true // storage blocked: treat as seen so we never nag
-  }
-}
-function markFpHintSeen(): void {
-  try {
-    localStorage.setItem(FP_HINT_KEY, '1')
-  } catch {
-    /* ignore */
-  }
-}
-
-function FirstPersonHint() {
-  const seat = useWorld((s) => s.seat)
-  const mode = useSettings((s) => s.cameraMode)
-  const [show, setShow] = useState(false)
-  const wasSeated = useRef(false)
-
-  // arm on the first sit transition ever (and burn the one-time flag immediately)
-  useEffect(() => {
-    const seated = seat != null
-    if (seated && !wasSeated.current && !fpHintSeen()) {
-      setShow(true)
-      markFpHintSeen()
-    }
-    wasSeated.current = seated
-  }, [seat])
-
-  // auto-hide after 15s
-  useEffect(() => {
-    if (!show) return
-    const t = window.setTimeout(() => setShow(false), 15000)
-    return () => window.clearTimeout(t)
-  }, [show])
-
-  // followed the hint (switched to First) or stood up → dismiss immediately
-  useEffect(() => {
-    if (show && (mode === 'first' || seat == null)) setShow(false)
-  }, [show, mode, seat])
-
-  if (!show) return null
-  return (
-    <div className="explore-fp-hint" role="status">
-      <span className="explore-fp-arrow" aria-hidden>
-        ←
-      </span>
-      <span className="explore-fp-label">Try First-person to look around</span>
     </div>
   )
 }
@@ -1281,7 +1178,7 @@ function PomodoroChip({ onFullscreen }: { onFullscreen?: () => void }) {
             <div className="pomo-config-btns">
               <button className={`pomo-config-btn ${pickMode === 'easy' ? 'active' : ''}`} onClick={() => setPickMode('easy')}>🟢 Easy</button>
               <button className={`pomo-config-btn ${pickMode === 'medium' ? 'active' : ''}`} onClick={() => setPickMode('medium')}>🟡 Medium</button>
-              <button className={`pomo-config-btn ${pickMode === 'hardcore' ? 'active' : ''}`} onClick={() => setPickMode('hardcore')}>🔴 Hardcore</button>
+              <button className="pomo-config-btn" disabled title="Coming soon">🔴 Hardcore · SOON</button>
             </div>
           </div>
           <div className="pomo-config-row">
@@ -1486,9 +1383,8 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             />
             <Seg<PostQuality>
               label="Post-processing (bloom + fog)"
-              value={s.postProcessing}
+              value={s.postProcessing === 'off' ? 'low' : s.postProcessing}
               options={[
-                ['off', 'Off'],
                 ['low', 'Low'],
                 ['high', 'High'],
               ]}
@@ -1541,9 +1437,19 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Toggle label="Bloom during cinematic" value={s.bloom} onChange={(v) => s.set('bloom', v)} />
           </Section>
 
-          {/* The "Audio" section was removed — all sound is controlled from the
-              Library Realm music widget (bottom-right), so there's nothing to tune
-              here. The underlying master/rain settings still exist in the store. */}
+          <Section title="Audio">
+            <Toggle label="Rain sound" value={s.rainOn} onChange={(v) => s.set('rainOn', v)} />
+            <Slider
+              label="Rain volume"
+              display={`${Math.round(s.rainVol * 100)}%`}
+              value={s.rainVol}
+              min={0}
+              max={1}
+              step={0.05}
+              disabled={!s.rainOn}
+              onChange={(v) => s.set('rainVol', v)}
+            />
+          </Section>
 
           {/* The "World" section (weather / day-night / time speed) was removed —
                the realm's atmosphere is now fixed for everyone (auto weather +

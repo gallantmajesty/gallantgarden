@@ -55,26 +55,27 @@ export function Realm() {
   const location = useLocation()
   const { user } = useAuth()
   const mode = useMemo(() => modeFromPath(location.pathname), [location.pathname])
-  // Max's guided tour — continues from the Lobby into the Realm.
-  const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour())
+  // Max's guided tour — continues from the Lobby into the Realm. Keyed
+  // per-account (see lib/tour.ts), so it follows the signed-in user.
+  const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour(user?.id))
 
   const skipTour = useCallback(() => {
-    finishTour()
+    finishTour(user?.id)
     setTourStepState('done')
-  }, [])
+  }, [user?.id])
 
   // Advance the tour as the new player picks their way into the realm, then
   // hand off to the normal navigation.
   const handlePick = useCallback((m: Mode) => {
     if (m === 'public' && tourStep === 'realm-pick') {
-      saveTourStep('realm-enter')
+      saveTourStep('realm-enter', user?.id)
       setTourStepState('realm-enter')
     } else if (m === 'library' && tourStep === 'realm-enter') {
-      finishTour()
+      finishTour(user?.id)
       setTourStepState('done')
     }
     navigate(pathForMode(m))
-  }, [navigate, tourStep])
+  }, [navigate, tourStep, user?.id])
 
   return (
     <div className="realm-root">

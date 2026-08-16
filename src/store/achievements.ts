@@ -30,6 +30,12 @@ import type { RealmKind } from '../lib/realm'
 
 const STORAGE_KEY = 'sf.achievements.v1'
 
+/** Supabase auth user ids are UUIDs; guest ids ("guest_…") must never touch
+ *  the DB (PostgREST rejects them with 400 invalid uuid). */
+function isRealUserId(userId: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+}
+
 export interface AchievementCounters {
   libraryMin: number
   librarySessions: number
@@ -167,6 +173,7 @@ let syncTimer: ReturnType<typeof setTimeout> | null = null
 let pendingBlob: Persisted | null = null
 
 function syncToDb(userId: string, blob: Persisted) {
+  if (!isRealUserId(userId)) return
   pendingBlob = blob
   if (syncTimer) return
   syncTimer = setTimeout(async () => {
@@ -318,16 +325,18 @@ export const useAchievements = create<AchievementState>((set, get) => ({
 
     const local = loadLocal()
     let db: Persisted = {}
-    try {
-      const { data: row } = await supabase
-        .from('profiles')
-        .select('achievements')
-        .eq('id', userId)
-        .maybeSingle()
-      if (row && typeof (row as Record<string, unknown>).achievements === 'object') {
-        db = ((row as Record<string, unknown>).achievements ?? {}) as Persisted
-      }
-    } catch { /* offline — local is fine */ }
+    if (isRealUserId(userId)) {
+      try {
+        const { data: row } = await supabase
+          .from('profiles')
+          .select('achievements')
+          .eq('id', userId)
+          .maybeSingle()
+        if (row && typeof (row as Record<string, unknown>).achievements === 'object') {
+          db = ((row as Record<string, unknown>).achievements ?? {}) as Persisted
+        }
+      } catch { /* offline — local is fine */ }
+    }
 
     const counters = mergeCounters(local.counters ?? {}, db.counters ?? {})
     const claimed = { ...(db.claimed ?? {}), ...(local.claimed ?? {}) }
