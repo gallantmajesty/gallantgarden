@@ -4,11 +4,13 @@ import ErrorBoundary from './ErrorBoundary'
 import { effectiveCharacters, characterById } from '../avatar/characters'
 import { useAvatar } from '../avatar/store'
 import { useProfile } from '../store/profile'
+import { useShop } from '../shop/store'
 
 // Derived from the single roster in src/avatar/characters.ts so editing there
 // updates both this picker and the customization screen. Uses the effective
 // roster so /owner rarity changes apply here automatically. Hidden characters
-// (visible:false / /owner override) are filtered out of this picker too.
+// (visible:false / /owner override) are filtered out of this picker; owned
+// filtering happens live in the component below.
 const ALL_CHARACTERS = effectiveCharacters()
   .filter((c) => c.visible !== false)
   .map((c) => ({
@@ -71,6 +73,10 @@ export function CharacterSelection() {
   const [selectedCharacter, setSelectedCharacter] = useState(useAvatar.getState().config.characterId || 'james')
   const leaves = useProfile((s) => s.xp)
   const golden = useProfile((s) => s.premiumXp)
+  // Outfit rule: only OWNED characters are shown here — everything else must be
+  // bought in the shop first (non-owned items never appear in outfits).
+  const ownedItems = useShop((s) => s.ownedItems)
+  const characters = ALL_CHARACTERS.filter((c) => ownedItems.includes(c.id))
 
   return (
     <ErrorBoundary>
@@ -89,7 +95,7 @@ export function CharacterSelection() {
         </div>
 
         <div className="character-grid">
-          {ALL_CHARACTERS.map((character) => (
+          {characters.map((character) => (
             <CharacterCard
               key={character.id}
               character={character}
@@ -107,11 +113,11 @@ export function CharacterSelection() {
 
         <div className="selected-character-info">
           <div className="selected-character-preview">
-            <h2>{ALL_CHARACTERS.find(c => c.id === selectedCharacter)?.name}</h2>
+            <h2>{characters.find(c => c.id === selectedCharacter)?.name}</h2>
             <div className="preview-3d">
               <div className="simple-avatar">
                 <div className="avatar-emoji">
-                  <img src={ALL_CHARACTERS.find(c => c.id === selectedCharacter)?.icon} alt="" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />
+                  <img src={characters.find(c => c.id === selectedCharacter)?.icon} alt="" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />
                 </div>
               </div>
             </div>

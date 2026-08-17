@@ -181,10 +181,11 @@ export function Shop() {
   const equippedChar = avatarConfig.characterId || 'james'
   const equippedAcc = avatarConfig.accessories?.[0] ?? null
 
-  // Full catalog: every banner, logo and accessory is on display — owned items
-  // carry an "Owned" badge and stay equippable, free starters show as "Free".
-  // Only the animal characters awaiting polish are withheld from players
-  // (owner releases them from the Owner panel → Pricing tab).
+  // Shop catalog: ONLY unowned items are on display here — owned characters,
+  // banners, logos and accessories live in the outfits (Avatar Creator / Profile
+  // pickers) and never appear in the shop. Free starters (owned from signup)
+  // are therefore hidden too. Only the animal characters awaiting polish are
+  // withheld entirely (owner releases them from the Owner panel → Pricing tab).
   const HELD_CHARACTER_IDS = new Set(['monkey', 'panda', 'elephant', 'sunflower'])
   const characters = useMemo(() => effectiveCharacters().filter((c) => !HELD_CHARACTER_IDS.has(c.id)), [])
   const banners = useMemo(() => effectiveBanners(), [])
@@ -192,23 +193,27 @@ export function Shop() {
   const accessories = useMemo(() => ACCESSORIES.filter((a) => a.id !== 'laptop'), [])
 
   const filtered = useMemo(() => {
+    const unownedCharacters = characters.filter((c) => !ownedItems.includes(c.id))
+    const unownedBanners = banners.filter((b) => !ownedItems.includes(b.id))
+    const unownedLogos = logos.filter((l) => !ownedItems.includes(l.id))
+    const unownedAccessories = accessories.filter((a) => !ownedItems.includes(a.id))
     if (tab === 'characters') {
-      if (sub === 'starter') return characters.filter((c) => (c.price ?? 0) === 0)
-      if (sub === 'epic' || sub === 'legendary') return characters.filter((c) => (c.rarity ?? '').toLowerCase() === sub)
-      return characters
+      if (sub === 'starter') return unownedCharacters.filter((c) => (c.price ?? 0) === 0)
+      if (sub === 'epic' || sub === 'legendary') return unownedCharacters.filter((c) => (c.rarity ?? '').toLowerCase() === sub)
+      return unownedCharacters
     }
     if (tab === 'banners') {
-      if (sub === 'default' || sub === 'gradient' || sub === 'others') return banners.filter((b) => b.category === sub)
-      return banners
+      if (sub === 'default' || sub === 'gradient' || sub === 'others') return unownedBanners.filter((b) => b.category === sub)
+      return unownedBanners
     }
     if (tab === 'logos') {
-      if (sub === 'default' || sub === 'others') return logos.filter((l) => l.category === sub)
-      return logos
+      if (sub === 'default' || sub === 'others') return unownedLogos.filter((l) => l.category === sub)
+      return unownedLogos
     }
-    if (sub === 'green') return accessories.filter((a) => a.currency !== 'gold')
-    if (sub === 'gold') return accessories.filter((a) => a.currency === 'gold')
-    return accessories
-  }, [tab, sub, characters, banners, logos, accessories])
+    if (sub === 'green') return unownedAccessories.filter((a) => a.currency !== 'gold')
+    if (sub === 'gold') return unownedAccessories.filter((a) => a.currency === 'gold')
+    return unownedAccessories
+  }, [tab, sub, characters, banners, logos, accessories, ownedItems])
 
   // Switching tabs resets the sub-filter and picks a first item.
   useEffect(() => {

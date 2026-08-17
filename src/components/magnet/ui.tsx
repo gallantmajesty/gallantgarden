@@ -115,10 +115,12 @@ export function EmptyState({
   icon,
   title,
   body,
+  action,
 }: {
   icon: string
   title: string
   body: string
+  action?: ReactNode
 }) {
   return (
     <div className="mg-empty">
@@ -127,6 +129,7 @@ export function EmptyState({
       </span>
       <h3>{title}</h3>
       <p>{body}</p>
+      {action && <div className="mg-empty-action">{action}</div>}
     </div>
   )
 }

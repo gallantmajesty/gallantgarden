@@ -220,13 +220,18 @@ export function Store() {
       {isGuest && <div className="store-note">You're in guest mode — sign in to buy golden leaves.</div>}
 
       <div className="store-coming-soon">
-        <div className="store-cs-lock">🔒</div>
+        <button className="store-cs-close" onClick={() => navigate(-1)} aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+        <div className="store-cs-coin"><GoldCoin size={64} /></div>
         <h1 className="store-cs-title">Coming Soon</h1>
         <p className="store-cs-sub">The Golden Store</p>
         <p className="store-cs-desc">
-          Golden leaves and secure checkout (Razorpay ₹ / Stripe $) are on the way.
-          They'll be the premium currency for legendary items and help keep Focus Lily running.
-          Watch the Lobby for the grand opening.
+          Coming soon — golden leaves will unlock the expensive assets:
+          legendary characters, rare banners, exclusive accessories and more.
+          Go get them!
         </p>
         <div className="store-cs-balance">
           <span className="store-pill store-pill--green"><LeafIcon />{xp.toLocaleString()}</span>

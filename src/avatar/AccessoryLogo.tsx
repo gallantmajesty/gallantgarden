@@ -114,20 +114,6 @@ const tradingLaptopArt: Art = () => (
   </g>
 )
 
-/* ---------------------------------------------------------------- piano */
-
-const pianoArt: Art = () => (
-  <g>
-    <path d="M9 32 C 9 18, 17 12, 28 12 H40 V32 Z" fill={INK} {...S} strokeWidth="1.8" />
-    <path d="M12 16 h24" stroke={GOLD} strokeWidth="1.2" opacity="0.8" strokeLinecap="round" />
-    <rect x="11" y="28" width="27" height="4.5" rx="1.2" fill={CREAM} opacity="0.92" />
-    <rect x="15.5" y="25.5" width="2" height="3" fill={INK} />
-    <rect x="20.5" y="25.5" width="2" height="3" fill={INK} />
-    <rect x="25.5" y="25.5" width="2" height="3" fill={INK} />
-    <rect x="30.5" y="25.5" width="2" height="3" fill={INK} />
-  </g>
-)
-
 /* ------------------------------------------------------------------ mug */
 
 const mugArt: Art = () => (
@@ -151,33 +137,6 @@ const flowerPotArt: Art = () => (
   </g>
 )
 
-/* --------------------------------------------------------- chair balloon */
-
-const balloonArt: Art = () => (
-  <g>
-    <path d="M24 5 C 15 5, 9 12, 9 18 C 9 24, 14 27, 24 31 C 34 27, 39 24, 39 18 C 39 12, 33 5, 24 5 Z" fill="#e85d75" {...S} strokeWidth="1.8" />
-    <path d="M24 5 V31" stroke={CREAM} strokeWidth="1.2" opacity="0.85" strokeLinecap="round" />
-    <path d="M16.5 7 C 15.5 14, 15.5 22, 17 28.5" stroke={CREAM} strokeWidth="1.1" opacity="0.6" fill="none" strokeLinecap="round" />
-    <path d="M31.5 7 C 32.5 14, 32.5 22, 31 28.5" stroke={CREAM} strokeWidth="1.1" opacity="0.6" fill="none" strokeLinecap="round" />
-    <path d="M21.5 32 L19 36 M26.5 32 L29 36" stroke={CREAM} strokeWidth="1.2" strokeLinecap="round" />
-    <path d="M21 36 h6 l1 4 h-8 z" fill="#7a4a24" stroke={CREAM} strokeWidth="1.4" strokeLinejoin="round" />
-  </g>
-)
-
-/* ------------------------------------------------------------- bento box */
-
-const bentoArt: Art = () => (
-  <g>
-    <rect x="9" y="13" width="30" height="22" rx="3" fill="#3a2416" {...S} />
-    <path d="M22 13 V35" stroke={CREAM} strokeWidth="1.2" opacity="0.5" />
-    <path d="M12.5 22 a6 6 0 0 1 12 0 z" fill={CREAM} opacity="0.9" />
-    <circle cx="29" cy="19" r="3" fill="#d9777f" />
-    <circle cx="35" cy="19" r="2.6" fill={LEAF} />
-    <circle cx="32" cy="26.5" r="2.8" fill={GOLD} />
-    <path d="M9 13 h30" stroke={GOLD} strokeWidth="1.6" opacity="0.8" strokeLinecap="round" />
-  </g>
-)
-
 /* ------------------------------------------------------------- hourglass */
 
 const hourglassArt: Art = () => (
@@ -187,56 +146,6 @@ const hourglassArt: Art = () => (
     <path d="M16 41 H32 L24 28 Z" fill="none" {...S} />
     <path d="M24 20 V28" stroke="#ffd97a" strokeWidth="1.5" strokeLinecap="round" />
     <path d="M21 28 H27 L24 35 Z" fill="#ffd97a" opacity="0.9" />
-  </g>
-)
-
-/* ---------------------------------------------------------- water bottle */
-
-const bottleArt: Art = () => (
-  <g>
-    <rect x="18" y="7" width="12" height="5" rx="1.5" fill="#27484a" {...S} strokeWidth="1.6" />
-    <path d="M17 13 H31 V21 C 31 25.5, 30 33, 24 33 C 18 33, 17 25.5, 17 21 Z" fill="#1e3a44" {...S} />
-    <path d="M17.5 22 c2 -1.8 4 1.8 6.5 0 s4.5 1.8 6.5 0" stroke="#8ecdf0" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-    <path d="M22 15 h4" stroke={CREAM} strokeWidth="1.2" opacity="0.5" strokeLinecap="round" />
-  </g>
-)
-
-/* ------------------------------------------------------------ headphones */
-
-const headphonesArt: Art = () => (
-  <g>
-    <path d="M12 26 V20 a12 12 0 0 1 24 0 v6" fill="none" {...S} strokeWidth="2.4" />
-    <rect x="8" y="24" width="7" height="13" rx="3.2" fill="#2a2a35" {...S} strokeWidth="1.8" />
-    <rect x="33" y="24" width="7" height="13" rx="3.2" fill="#2a2a35" {...S} strokeWidth="1.8" />
-    <rect x="9.5" y="26.5" width="4" height="8" rx="2" fill={GOLD} opacity="0.55" />
-    <rect x="34.5" y="26.5" width="4" height="8" rx="2" fill={GOLD} opacity="0.55" />
-    <path d="M40 21 q2 3 0 6 M43.5 18 q4 6 0 12" stroke={LEAF} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-  </g>
-)
-
-/* ------------------------------------------------------------- desk lamp */
-
-const lampArt: Art = () => (
-  <g>
-    <ellipse cx="24" cy="37" rx="10" ry="2.6" fill="#3a2c1c" {...S} strokeWidth="1.6" />
-    <path d="M24 37 V22" stroke={CREAM} strokeWidth="2" strokeLinecap="round" />
-    <path d="M24 22 L31 14" stroke={CREAM} strokeWidth="2" strokeLinecap="round" />
-    <circle cx="31.5" cy="14" r="1.4" fill={GOLD} />
-    <path d="M28.5 11.5 h10 l-1.5 4.5 h-7 z" fill={GOLD} opacity="0.9" stroke={CREAM} strokeWidth="1.4" strokeLinejoin="round" />
-    <path d="M30.5 16.5 v5 M33.5 16 v6" stroke="#ffd97a" strokeWidth="1.6" strokeLinecap="round" />
-  </g>
-)
-
-/* ---------------------------------------------------------------- plant */
-
-const plantArt: Art = () => (
-  <g>
-    <path d="M15 26 h18 l-2.5 10 h-13 z" fill="#a05a34" {...S} />
-    <path d="M14 25.5 h20" stroke={CREAM} strokeWidth="2" strokeLinecap="round" />
-    <path d="M24 25 V16" stroke={LEAF} strokeWidth="2" strokeLinecap="round" />
-    <path d="M24 21 C 19 19, 15 15, 14 10 C 19 11, 23 15, 24 21 Z" fill={LEAF} opacity="0.9" />
-    <path d="M24 17 C 29 15, 33 12, 34.5 7 C 29.5 8, 25.5 12, 24 17 Z" fill={LEAF} opacity="0.75" />
-    <path d="M24 16 C 22 11, 22 7, 24 4 C 26 7, 26 11, 24 16 Z" fill="#5ea45a" />
   </g>
 )
 
@@ -260,16 +169,9 @@ const ART: Record<string, Art> = {
   book_stack: bookStackArt,
   do_not_disturb_poster: dndArt,
   trading_laptop: tradingLaptopArt,
-  piano: pianoArt,
   mug: mugArt,
   flower_pot: flowerPotArt,
-  chair_balloon: balloonArt,
-  bento_box: bentoArt,
   hourglass: hourglassArt,
-  water_bottle: bottleArt,
-  headphones: headphonesArt,
-  desk_lamp: lampArt,
-  plant: plantArt,
   study_timer: timerArt,
 }
 

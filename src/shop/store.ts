@@ -12,7 +12,7 @@ const FREE_PLAYER_ID = import.meta.env.DEV ? -1 : -1
 // Common characters are always owned (free starter characters)
 const STARTER_CHARACTER_IDS = ['james', 'claire', 'mia', 'ojas', 'priya', 'zara', 'owen', 'taro']
 // Free banners and logos are always owned
-const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn', 'tide', 'mystic', 'sunset', 'arctic', 'candy', 'neonlight', 'ocean', 'lilac']
+const STARTER_BANNER_IDS = ['default_banner', 'aurora', 'ember', 'forest', 'midnight', 'dawn', 'tide', 'mystic', 'sunset', 'arctic', 'candy', 'neonlight', 'ocean', 'lilac', 'crimson_flame']
 const STARTER_LOGO_IDS = ['default_logo']
 // The free starter accessory (laptop) is always owned; every other accessory
 // must be bought in the Lobby Shop first.

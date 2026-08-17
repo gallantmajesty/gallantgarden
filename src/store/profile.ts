@@ -18,6 +18,8 @@ import {
 import { checkDailyLogin, claimDailyFocus, syncXpToDb } from '../lib/xpEngine'
 import { DISPLAY_NAME_CHANGES_MAX } from '../lib/types'
 import { isNameValid } from '../lib/displayName'
+import { generatePlayerId } from '../lib/playerId'
+import { normalizeUsername, validateUsername } from '../lib/usernames'
 
 // Per-user public/onboarding profile state. Distinct from `useSettings` (UI
 // prefs): this holds identity-ish fields set during onboarding — country (the
@@ -290,15 +292,28 @@ export const useProfile = create<ProfileState>((set, get) => ({
     const userId = get().userId
     if (!userId) return false
     if (get().isGuest) { set({ playerId }); persistGuest(get()); return true }
-    const { error } = await supabase
-      .from('profiles')
-      .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
-    if (error) {
-      console.error('[profile] setPlayerId failed:', { userId, error: error.message, code: error.code, details: error.details, hint: error.hint })
-      return false
+    // Prefer the atomic DB assigner: it returns the existing id or loops on
+    // collisions server-side, so calls are idempotent and race-safe.
+    try {
+      const { data, error } = await supabase.rpc('assign_player_id', { p_user_id: userId })
+      if (!error && data != null) {
+        const assigned = Number(data)
+        if (Number.isFinite(assigned)) { set({ playerId: assigned }); return true }
+      }
+    } catch { /* fall through to the client-side path */ }
+    // Client-side fallback: upsert, retrying with a fresh id on unique violations.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert([{ id: userId, player_id: playerId }], { onConflict: 'id' })
+      if (!error) { set({ playerId }); return true }
+      if (error.code !== '23505') {
+        console.error('[profile] setPlayerId failed:', { userId, error: error.message, code: error.code, details: error.details, hint: error.hint })
+        return false
+      }
+      playerId = generatePlayerId()
     }
-    set({ playerId })
-    return true
+    return false
   },
 
   canChangeDisplayName: () => get().nameWarning || get().displayNameChanges < DISPLAY_NAME_CHANGES_MAX,
@@ -313,9 +328,14 @@ export const useProfile = create<ProfileState>((set, get) => ({
     // (the first name during onboarding is free — the limit guards renames).
     if (get().onboarded && !warningActive && changes >= DISPLAY_NAME_CHANGES_MAX) return false
     if (get().isGuest) { set({ displayName: name, displayNameChanges: changes + 1, nameWarning: false }); persistGuest(get()); return true }
+    // Mirror the handle into the username column too: the DB unique index on
+    // lower(username) is the final guard against duplicate names.
+    const handle = normalizeUsername(name)
+    const payload: Record<string, unknown> = { id: userId, display_name: name, display_name_changes: changes + 1 }
+    if (validateUsername(name).ok) payload.username = handle
     const { error } = await supabase
       .from('profiles')
-      .upsert([{ id: userId, display_name: name, display_name_changes: changes + 1 }], { onConflict: 'id' })
+      .upsert([payload], { onConflict: 'id' })
     if (error) {
       console.error('[profile] setDisplayName failed:', { userId, error: error.message, code: error.code, details: error.details, hint: error.hint })
       return false

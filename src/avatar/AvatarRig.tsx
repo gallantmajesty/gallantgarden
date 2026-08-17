@@ -1553,7 +1553,6 @@ function PigHead({ P, main, belly, nose, dark }: { P: Proportions; main: Mat; be
   const cy = r * 0.92
   const black = sharedMaterial('#3a2f33', 0.25, 0.2)
   const white = sharedMaterial('#ffffff', 0.3)
-  const rim = sharedMaterial('#c05080', 0.55)
 
   return (
     <group position={[0, cy, 0]}>
@@ -1571,14 +1570,11 @@ function PigHead({ P, main, belly, nose, dark }: { P: Proportions; main: Mat; be
         </group>
       ))}
 
-      {/* Snout — the signature pig nose: a raised rounded pad with a deeper
-          rimmed edge, classic angled oval nostril slits and freckles. */}
+      {/* Snout — the signature pig nose: a raised rounded pad with classic
+          angled oval nostril slits and freckles. */}
       <group position={[0, -r * 0.24, r * 0.8]}>
         {/* pad — squashed oval dome that protrudes off the face */}
         <mesh geometry={sphereGeo(1)} material={nose} scale={[r * 0.52, r * 0.4, r * 0.38]} castShadow />
-        {/* rim — deeper ring hugging the pad edge so it reads as a raised nose */}
-        <mesh geometry={torusGeo(r * 0.26, r * 0.05, 8, 24)} material={rim}
-          scale={[2.0, 1.0, 1.0]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, r * 0.36]} />
         {/* nostrils — two oval slits angled outward like a real pig snout */}
         {[-1, 1].map((sx) => (
           <mesh key={'ns' + sx} geometry={sphereGeo(1)} material={black}

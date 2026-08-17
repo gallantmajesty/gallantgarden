@@ -886,26 +886,35 @@
 /* ---------- themed modal ---------- */
 .mg-modal-overlay {
   position: fixed; inset: 0; z-index: 50;
-  display: grid; place-items: center;
-  padding: 20px;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding: 48px 20px;
+  overflow-y: auto;
   background: rgba(0, 0, 0, 0.45);
-  
-  
   animation: mg-fade 0.18s ease;
 }
 .mg-modal {
+  width: 100%;
   max-width: 100%;
-  max-height: 90vh;
+  max-height: calc(100vh - 96px);
   overflow-y: auto;
   background: var(--mg-panel);
   border: 1px solid var(--mg-border);
   border-radius: var(--mg-radius);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
-  
-  
   animation: mg-pop 0.2s ease;
 }
-.mg-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
+.mg-modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px;
+  background: var(--mg-panel);
+  border-bottom: 1px solid var(--mg-border);
+}
+.mg-modal-body { padding: 16px 20px 20px; }
 .mg-modal-head h2 { font-size: 18px; font-weight: 800; }
 .mg-modal-close {
   display: grid; place-items: center;
@@ -1111,6 +1120,74 @@
   font-variant-numeric: tabular-nums; font-weight: 800; font-size: 16px;
   color: var(--mg-accent); padding: 0 4px;
 }
+
+/* ---- Notion-style quick capture ---- */
+.mg-quickcapture {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: var(--mg-radius);
+  background: var(--mg-panel); border: 1px solid var(--mg-border);
+  box-shadow: 0 4px 14px var(--mg-shadow);
+  color: var(--mg-text-soft);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.mg-quickcapture:focus-within { border-color: var(--mg-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mg-accent) 18%, transparent); }
+.mg-quickcapture > svg { color: var(--mg-accent); flex-shrink: 0; }
+.mg-quickcapture input {
+  flex: 1; border: none; background: transparent; outline: none;
+  color: var(--mg-text); font-size: 16px; font-weight: 600; padding: 2px 0;
+}
+.mg-quickcapture input::placeholder { color: var(--mg-text-soft); opacity: 0.85; }
+
+/* ---- focus card (desk-doc style timer) ---- */
+.mg-focuscard {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; border-radius: var(--mg-radius);
+  background: color-mix(in srgb, var(--mg-accent) 8%, var(--mg-panel-soft));
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 30%, var(--mg-border));
+  color: var(--mg-text); margin-top: 14px;
+}
+.mg-focuscard > svg { color: var(--mg-accent); flex-shrink: 0; }
+.mg-focus-subject {
+  flex: 1; min-width: 140px; padding: 8px 11px; border-radius: 9px;
+  border: 1px solid var(--mg-border); background: var(--mg-panel); color: var(--mg-text);
+  font-weight: 600;
+}
+.mg-focus-time {
+  font-variant-numeric: tabular-nums; font-weight: 800; font-size: 20px;
+  color: var(--mg-accent); padding: 0 6px;
+  letter-spacing: 0.02em;
+}
+.mg-focuscard.running { box-shadow: 0 0 26px -8px color-mix(in srgb, var(--mg-accent) 60%, transparent); }
+
+/* ---- area dropdown (compact filter) ---- */
+.mg-areapick {
+  padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--mg-border); background: var(--mg-panel);
+  color: var(--mg-text); font-size: 13px; font-weight: 600; cursor: pointer;
+  appearance: none;
+}
+.mg-areapick:focus { border-color: var(--mg-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mg-accent) 18%, transparent); }
+
+/* ---- history (completed log) ---- */
+.mg-history { margin-top: 4px; border-top: 1px dashed var(--mg-border); padding-top: 14px; }
+.mg-history-head {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: none; background: none; cursor: pointer;
+  color: var(--mg-text-soft); font-size: 13px; font-weight: 700;
+}
+.mg-history-head:hover { color: var(--mg-text); }
+.mg-history-count {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 999px; background: var(--mg-panel-soft); color: var(--mg-text); font-size: 11px; font-weight: 800;
+}
+.mg-history-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.mg-history-list li {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 9px; font-size: 13px; color: var(--mg-text-soft);
+}
+.mg-history-list li svg { color: #46d6a0; flex-shrink: 0; }
+.mg-history-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-history-date { font-size: 11px; font-weight: 700; opacity: 0.8; }
 
 /* ---- templates strip ---- */
 .mg-tpl-strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -2232,4 +2309,11 @@
   color: var(--mg-accent2);
   font-weight: 800;
   letter-spacing: 0.02em;
+}
+
+/* empty-state call to action (e.g. "New task" / "Clear filters") */
+.mg-empty-action {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
 }

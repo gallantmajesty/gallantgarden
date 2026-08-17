@@ -1,12 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
-import { effectiveThemes, mxpPrice, type MagnetTheme } from '../../../lib/magnet/themes'
+import { effectiveThemes, mxpPrice, hasFreeThemeAccess, type MagnetTheme } from '../../../lib/magnet/themes'
+import { useProfile } from '../../../store/profile'
 import { SectionHead } from '../ui'
 import { Icon } from '../Icon'
 
 // The Task Magnet's own store: themes for the magnet world, bought with
 // Magnet Power earned by finishing tasks, habits, milestones and goals.
-// Nothing here touches the global leaves / rank economy.
+// Nothing here touches the global leaves / rank economy. Accounts granted
+// free theme access (see lib/magnet/themes) own the entire catalog at 0 Power.
 
 export function StoreView() {
   const { t } = useTranslation()
@@ -15,9 +17,10 @@ export function StoreView() {
   const unlocked = useMagnet((s) => s.data.unlockedThemes)
   const purchaseTheme = useMagnet((s) => s.purchaseTheme)
   const applyTheme = useMagnet((s) => s.applyTheme)
+  const freeAccess = hasFreeThemeAccess(useProfile((s) => s.playerId))
 
   const themes = effectiveThemes()
-  const owned = new Set(unlocked)
+  const owned = new Set(freeAccess ? themes.map((t) => t.id) : unlocked)
   const categories: { key: string; items: MagnetTheme[] }[] = []
   for (const theme of themes) {
     const cat = categories.find((c) => c.key === theme.category)

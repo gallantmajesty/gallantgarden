@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Canvas } from '@react-three/fiber'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
+import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '../lib/onboardingDraft'
 import { useAvatar } from '../avatar/store'
 import { SKINS, type AvatarConfig } from '../avatar/config'
 import { CharacterAvatar } from '../avatar/CharacterAvatar'
@@ -13,6 +14,7 @@ import { getRank, DEFAULT_RANK_ID } from '../lib/ranks'
 import { generatePlayerId } from '../lib/playerId'
 import { createNullSafeEvents } from '../three/safeEvents'
 import { checkDisplayName } from '../lib/displayName'
+import { checkUsername, USERNAME_MIN } from '../lib/usernames'
 import { Flag } from '../components/Flag'
 import { RankBadge } from '../components/RankBadge'
 import { StudyGoalsSelector } from '../components/StudyGoalsSelector'
@@ -126,20 +128,33 @@ export function Onboarding() {
   const complete = useProfile((s) => s.complete)
   const setPlayerId = useProfile((s) => s.setPlayerId)
 
-  const [step, setStep] = useState<StepId>(0)
-  const [fullName, setFullName] = useState('')
-  const [fullNameOk, setFullNameOk] = useState(false)
-  const [country, setCountry] = useState<string | null>(null)
-  const [age, setAge] = useState<number | null>(null)
-  const [guardianConsent, setGuardianConsent] = useState(false)
-  const [characterId, setCharacterId] = useState<string>('james')
-  const [skinId, setSkinId] = useState<string>('light')
-  const [goals, setGoals] = useState<string[]>([])
-  const [referral, setReferral] = useState<ReferralOption | null>(null)
-  const [referralOther, setReferralOther] = useState('')
-  const [termsAccepted, setTermsAccepted] = useState(false)
+  // Per-user draft key so a refresh resumes the wizard where the user left off
+  // (instead of restarting from step 0 and re-asking for name + every detail).
+  const draftKey = useProfile((s) => s.userId) ?? user?.id ?? 'anon'
+  const draft = useMemo(() => loadOnboardingDraft(draftKey), [draftKey])
+
+  const [step, setStep] = useState<StepId>((draft?.step ?? 0) as StepId)
+  const [fullName, setFullName] = useState(draft?.fullName ?? '')
+  const [fullNameOk, setFullNameOk] = useState(draft?.fullNameOk ?? false)
+  const [country, setCountry] = useState<string | null>(draft?.country ?? null)
+  const [age, setAge] = useState<number | null>(draft?.age ?? null)
+  const [guardianConsent, setGuardianConsent] = useState(draft?.guardianConsent ?? false)
+  const [characterId, setCharacterId] = useState(draft?.characterId ?? 'james')
+  const [skinId, setSkinId] = useState(draft?.skinId ?? 'light')
+  const [goals, setGoals] = useState<string[]>(draft?.goals ?? [])
+  const [referral, setReferral] = useState<ReferralOption | null>(draft?.referral ?? null)
+  const [referralOther, setReferralOther] = useState(draft?.referralOther ?? '')
+  const [termsAccepted, setTermsAccepted] = useState(draft?.termsAccepted ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Persist the whole wizard on every change — refresh-safe.
+  useEffect(() => {
+    saveOnboardingDraft(draftKey, {
+      step, fullName, fullNameOk, country, age, guardianConsent,
+      characterId, skinId, goals, referral, referralOther, termsAccepted,
+    })
+  }, [draftKey, step, fullName, fullNameOk, country, age, guardianConsent, characterId, skinId, goals, referral, referralOther, termsAccepted])
 
   const displayName = user?.profile?.name || user?.email?.split('@')[0] || t('onboarding.explorerLabel')
 
@@ -204,7 +219,11 @@ export function Onboarding() {
     if (!ok) {
       console.error('[Onboarding] complete returned false')
       setError(t('onboarding.saveError'))
+      return
     }
+    // Success — drop the saved draft so the wizard can never restart in the
+    // lobby (and so a stale draft can't re-spam name/id writes on re-login).
+    clearOnboardingDraft(draftKey)
     // On success, useProfile.onboarded flips true and App swaps to the lobby.
   }
 
@@ -380,23 +399,35 @@ function FullNameStep({
 
   // Validate inline and report via callback — no setState in effect needed.
   const trimmed = value.trim()
-  let valid = false
+  const shape = !trimmed ? undefined : checkDisplayName(trimmed)
+  const shapeOk = shape?.ok ?? false
 
-  if (!trimmed) {
-    valid = false
-  } else {
-    const check = checkDisplayName(trimmed)
-    valid = check.ok
-  }
-
-  const errorMsg = !trimmed
-    ? ''
-    : checkDisplayName(trimmed).error || ''
+  // Live availability check (debounced). Names shorter than the username
+  // minimum (3 chars) can't be guaranteed unique, so they stay allowed.
+  const [availability, setAvailability] = useState<'checking' | 'free' | 'taken'>('checking')
+  useEffect(() => {
+    if (!shapeOk || trimmed.length < USERNAME_MIN) {
+      setAvailability('free')
+      return
+    }
+    let cancelled = false
+    setAvailability('checking')
+    const timer = window.setTimeout(async () => {
+      const res = await checkUsername(trimmed)
+      if (cancelled) return
+      setAvailability(res.ok ? 'free' : 'taken')
+    }, 350)
+    return () => { cancelled = true; window.clearTimeout(timer) }
+  }, [trimmed, shapeOk])
 
   // Report validity on every render (safe — no cascading setState).
   useEffect(() => {
-    onValidity(valid)
-  }, [valid, onValidity])
+    onValidity(shapeOk && availability === 'free')
+  }, [shapeOk, availability, onValidity])
+
+  const errorMsg = !trimmed
+    ? ''
+    : shape?.error || (availability === 'taken' ? 'That username is taken' : '')
 
   return (
     <div className="ob-step">
@@ -414,7 +445,10 @@ function FullNameStep({
         }}
       />
       {errorMsg && <p className="ob-username-status bad">{errorMsg}</p>}
-      {!errorMsg && valid && (
+      {!errorMsg && shapeOk && availability === 'checking' && (
+        <p className="ob-username-status bad">Checking…</p>
+      )}
+      {!errorMsg && shapeOk && availability === 'free' && (
         <p className="ob-username-status ok">{trimmed}</p>
       )}
     </div>

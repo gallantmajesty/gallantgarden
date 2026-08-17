@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import { usePomodoro } from '../../../store/pomodoro'
@@ -69,7 +69,6 @@ export function TasksView({
   const addSubtask = useMagnet((s) => s.addSubtask)
   const toggleSubtask = useMagnet((s) => s.toggleSubtask)
   const removeSubtask = useMagnet((s) => s.removeSubtask)
-  const reorderTasks = useMagnet((s) => s.reorderTasks)
   const toggleBlockedBy = useMagnet((s) => s.toggleBlockedBy)
   const addTemplate = useMagnet((s) => s.addTemplate)
   const deleteTemplate = useMagnet((s) => s.deleteTemplate)
@@ -81,13 +80,12 @@ export function TasksView({
   const [area, setArea] = useState<LifeArea | 'all'>('all')
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [manual, setManual] = useState(false)
-
+  const [quick, setQuick] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [subInput, setSubInput] = useState('')
-
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [tplOpen, setTplOpen] = useState(false)
   const [tplDraft, setTplDraft] = useState({
     title: '',
@@ -100,7 +98,6 @@ export function TasksView({
   })
 
   const [doneAnim, setDoneAnim] = useState<string | null>(null)
-  const dragId = useRef<string | null>(null)
   const float = useMxpFloat()
 
   function todayKey(): string {
@@ -108,8 +105,7 @@ export function TasksView({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }
 
-  // When the calendar (or another view) asks to create a task on a specific
-  // date, open the editor prefilled with that due date.
+  // When the calendar (or another view) asks to create a task on a specific date.
   useEffect(() => {
     if (prefillDue) {
       startCreate(prefillDue)
@@ -118,26 +114,47 @@ export function TasksView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillDue])
 
-  const filtered = useMemo(() => {
+  const baseList = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const base = data.tasks
-      .filter((t) => (status === 'all' ? true : status === 'done' ? t.done : !t.done))
-      .filter((t) => (area === 'all' ? true : t.area === area))
-      .filter((t) => (q ? t.title.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q) : true))
-    return [...base].sort((a, b) => {
+    return data.tasks
+      .filter((tk) => (status === 'all' ? true : status === 'done' ? tk.done : !tk.done))
+      .filter((tk) => (area === 'all' ? true : tk.area === area))
+      .filter((tk) =>
+        q ? tk.title.toLowerCase().includes(q) || tk.subject.toLowerCase().includes(q) || tk.notes.toLowerCase().includes(q) : true,
+      )
+  }, [data.tasks, status, area, search])
+
+  // Smart sort: open tasks first, then by priority weight, then by due date.
+  // Completed tasks (history) are sorted newest-completed first.
+  const filtered = useMemo(() => {
+    if (status === 'done') {
+      return [...baseList].sort((a, b) => {
+        const da = a.completedAt ? new Date(a.completedAt).getTime() : 0
+        const db = b.completedAt ? new Date(b.completedAt).getTime() : 0
+        return db - da
+      })
+    }
+    return [...baseList].sort((a, b) => {
       if (a.done !== b.done) return a.done ? 1 : -1
-      if (manual) return b.order - a.order
       const w = PRIORITY_META[b.priority].weight - PRIORITY_META[a.priority].weight
       if (w !== 0) return w
       return (a.due ?? '9999').localeCompare(b.due ?? '9999')
     })
-  }, [data.tasks, status, area, search, manual])
+  }, [baseList, status])
 
-  const openCount = data.tasks.filter((t) => !t.done).length
+  const openCount = data.tasks.filter((tk) => !tk.done).length
   const doneCount = data.tasks.length - openCount
 
+  function quickAdd(e: React.FormEvent) {
+    e.preventDefault()
+    const title = quick.trim()
+    if (!title) return
+    addTask({ title, due: prefillDue ?? null })
+    setQuick('')
+  }
+
   function clearDone() {
-    for (const t of data.tasks) if (t.done) deleteTask(t.id)
+    for (const tk of data.tasks) if (tk.done) deleteTask(tk.id)
   }
 
   function startCreate(due?: string) {
@@ -184,27 +201,11 @@ export function TasksView({
     if (!tk.done) {
       setDoneAnim(tk.id)
       setTimeout(() => setDoneAnim((cur) => (cur === tk.id ? null : cur)), 850)
-      // Mirror the store's award condition exactly: tasks pay only when due
-      // today or undated (future-due incl. spawned repeats pay nothing).
-      if (tk.due ? tk.due === todayKey() : true) float.push(e, taskPower(tk))
+      // Mirror the store: tasks pay power only when due today or undated.
+      const eligible = tk.due ? tk.due === todayKey() : true
+      if (eligible) float.push(e, taskPower(tk))
     }
     toggleTask(tk.id)
-  }
-
-  // ---- drag-and-drop reorder (manual mode, open list) ----
-  function handleDrop(overId: string) {
-    const ids = filtered.filter((t) => !t.done).map((t) => t.id)
-    const from = ids.indexOf(dragId.current ?? '')
-    const to = ids.indexOf(overId)
-    dragId.current = null
-    if (from < 0 || to < 0 || from === to) return
-    const next = [...ids]
-    next.splice(from, 1)
-    next.splice(to, 0, ids[from] === undefined ? overId : ids[from]!)
-    // rebuild using the moved id tracked separately (dragId already cleared)
-    const moved = next.filter((x) => x !== overId)
-    moved.splice(to, 0, overId)
-    reorderTasks(moved)
   }
 
   function saveTemplate(e: React.FormEvent) {
@@ -229,16 +230,9 @@ export function TasksView({
       <SectionHead
         icon="check"
         title={t('tasks.title')}
-        subtitle={`${openCount} open · ${data.tasks.length} total`}
+        subtitle={`${openCount} ${t('tasks.openCount')} · ${data.tasks.length} ${t('tasks.totalCount')}`}
         action={
           <div className="mg-view-actions">
-            <button
-              className={`mg-btn glass small ${manual ? 'active' : ''}`}
-              onClick={() => setManual((m) => !m)}
-              title={t('tasks.sortManual')}
-            >
-              <Icon name="grid" size={15} /> {manual ? t('tasks.sortManual') : t('tasks.sortSmart')}
-            </button>
             {doneCount > 0 && (
               <button className="mg-btn glass small" onClick={clearDone} title={t('tasks.clearDone')}>
                 <Icon name="trash" size={15} /> {t('tasks.clearDone')}
@@ -251,27 +245,46 @@ export function TasksView({
         }
       />
 
-      {/* quick focus timer — starts a real Pomodoro session that auto-logs focus */}
-      <div className="mg-pomo">
-        <Icon name="clock" size={16} />
+      {/* Notion-style quick capture — type and press Enter to create. */}
+      <form className="mg-quickcapture" onSubmit={quickAdd}>
+        <Icon name="plus" size={18} />
         <input
-          className="mg-pomo-subject"
+          value={quick}
+          onChange={(e) => setQuick(e.target.value)}
+          placeholder={t('tasks.quickPlaceholder')}
+        />
+        <button type="submit" className="mg-btn primary small" disabled={!quick.trim()}>
+          {t('tasks.add')}
+        </button>
+      </form>
+
+      {/* Focus timer — visible like a desk doc; expands to a live countdown. */}
+      <div className={`mg-focuscard ${pomo.phase !== 'idle' ? 'running' : ''}`}>
+        <Icon name="clock" size={18} />
+        <input
+          className="mg-focus-subject"
           value={pomo.subject}
           onChange={(e) => pomo.setSubject(e.target.value)}
           placeholder={t('tasks.subjectLabel')}
         />
-        {pomo.phase !== 'idle' && <span className="mg-pomo-time">{fmtTime(pomo.remaining)}</span>}
-        <button className="mg-btn primary small" onClick={pomo.toggle}>
-          {pomo.phase === 'idle' ? t('tasks.startFocus') : pomo.running ? t('explore.pause') : t('explore.start')}
-        </button>
-        {pomo.phase !== 'idle' && (
-          <button className="mg-btn glass small" onClick={pomo.forfeit}>
-            {t('explore.reset')}
+        {pomo.phase !== 'idle' ? (
+          <>
+            <span className="mg-focus-time">{fmtTime(pomo.remaining)}</span>
+            <button className="mg-btn primary small" onClick={pomo.toggle}>
+              {pomo.running ? t('explore.pause') : t('explore.start')}
+            </button>
+            <button className="mg-btn glass small" onClick={pomo.forfeit}>
+              {t('explore.reset')}
+            </button>
+          </>
+        ) : (
+          <button className="mg-btn primary small" onClick={pomo.toggle}>
+            <Icon name="play" size={14} /> {t('tasks.startFocus')}
           </button>
         )}
       </div>
 
-      {/* templates strip */}
+      {/* Templates (Notion-style) */}
       {data.templates.length > 0 && (
         <div className="mg-tpl-strip">
           <span className="mg-tpl-label">
@@ -295,30 +308,27 @@ export function TasksView({
         </div>
       )}
 
-      {/* filter bar */}
+      {/* Filter bar — status + area + search (no clutter, no fake controls). */}
       <div className="mg-filterbar">
         <div className="mg-seg">
           {(['open', 'done', 'all'] as StatusFilter[]).map((s) => (
             <button key={s} className={status === s ? 'active' : ''} onClick={() => setStatus(s)}>
-              {s[0].toUpperCase() + s.slice(1)}
+              {s === 'open' ? t('tasks.filter_open') : s === 'done' ? t('tasks.filter_done') : t('tasks.filter_all')}
             </button>
           ))}
         </div>
-        <div className="mg-chipscroll">
-          <button className={`mg-fchip ${area === 'all' ? 'active' : ''}`} onClick={() => setArea('all')}>
-            All areas
-          </button>
+        <select
+          className="mg-areapick"
+          value={area}
+          onChange={(e) => setArea(e.target.value as LifeArea | 'all')}
+        >
+          <option value="all">{t('tasks.allAreas')}</option>
           {AREAS.map((a) => (
-            <button
-              key={a}
-              className={`mg-fchip ${area === a ? 'active' : ''}`}
-              onClick={() => setArea(a)}
-              style={{ ['--mg-tag' as string]: AREA_META[a].color }}
-            >
-              <Icon name={AREA_META[a].icon} size={13} /> {AREA_META[a].label}
-            </button>
+            <option key={a} value={a}>
+              {AREA_META[a].label}
+            </option>
           ))}
-        </div>
+        </select>
         <div className="mg-search">
           <Icon name="target" size={15} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('tasks.searchPlaceholder')} />
@@ -326,7 +336,29 @@ export function TasksView({
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon="check" title={t('tasks.noTasksTitle')} body={t('tasks.noTasksBody')} />
+        <EmptyState
+          icon="check"
+          title={t('tasks.noTasksTitle')}
+          body={data.tasks.length === 0 ? t('tasks.noTasksBody') : t('tasks.noTasksMatch')}
+          action={
+            data.tasks.length === 0 ? (
+              <button className="mg-btn primary" onClick={() => startCreate()}>
+                <Icon name="plus" size={16} /> {t('tasks.newTask')}
+              </button>
+            ) : (
+              <button
+                className="mg-btn glass"
+                onClick={() => {
+                  setStatus('all')
+                  setArea('all')
+                  setSearch('')
+                }}
+              >
+                {t('tasks.clearFilters')}
+              </button>
+            )
+          }
+        />
       ) : (
         <ul className="mg-tasklist">
           {filtered.map((task) => {
@@ -344,20 +376,8 @@ export function TasksView({
                   doneAnim === task.id ? 'mg-burst' : ''
                 }`}
                 style={{ ['--mg-prio' as string]: PRIORITY_META[task.priority].color }}
-                draggable={manual && status === 'open'}
-                onDragStart={() => (dragId.current = task.id)}
-                onDragOver={(e) => manual && e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  handleDrop(task.id)
-                }}
               >
                 <div className="mg-taskcard-main">
-                  {manual && status === 'open' && (
-                    <span className="mg-draghandle" title={t('tasks.sortManual')}>
-                      <Icon name="grip" size={14} />
-                    </span>
-                  )}
                   <button
                     className="mg-check"
                     onClick={(e) => onCheck(task, e)}
@@ -465,14 +485,13 @@ export function TasksView({
                       )}
                     </div>
 
+                    {/* Notion-style nested subtasks */}
                     <ul className="mg-sublist">
                       {task.subtasks.map((s) => (
                         <li key={s.id}>
                           <button
                             className={`mg-subcheck ${s.done ? 'done' : ''}`}
                             onClick={(e) => {
-                              // Mirror the store: subtasks pay only while the
-                              // parent task is open.
                               if (!task.done && !s.done) float.push(e, subtaskPower())
                               toggleSubtask(task.id, s.id)
                             }}
@@ -511,6 +530,40 @@ export function TasksView({
             )
           })}
         </ul>
+      )}
+
+      {/* History — completed tasks, newest first (like a chat log). */}
+      {doneCount > 0 && status !== 'done' && (
+        <div className="mg-history">
+          <button className="mg-history-head" onClick={() => setHistoryOpen((o) => !o)}>
+            <span style={{ display: 'inline-flex', transform: historyOpen ? 'rotate(90deg)' : 'none' }}><Icon name="chevron" size={16} /></span>
+            <Icon name="clock" size={15} />
+            {t('tasks.history')}
+            <span className="mg-history-count">{doneCount}</span>
+          </button>
+          {historyOpen && (
+            <ul className="mg-history-list">
+              {[...data.tasks]
+                .filter((tk) => tk.done)
+                .sort((a, b) => {
+                  const da = a.completedAt ? new Date(a.completedAt).getTime() : 0
+                  const db = b.completedAt ? new Date(b.completedAt).getTime() : 0
+                  return db - da
+                })
+                .map((tk) => (
+                  <li key={tk.id}>
+                    <Icon name="check" size={13} />
+                    <span className="mg-history-title">{tk.title}</span>
+                    {tk.completedAt && (
+                      <span className="mg-history-date">
+                        {new Date(tk.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <MgModal open={modalOpen} title={editId ? t('tasks.editTask') : t('tasks.newTask')} onClose={() => setModalOpen(false)} width={520}>
@@ -629,10 +682,10 @@ export function TasksView({
               <Icon name="bulb" size={14} /> {t('tasks.saveTemplate')}
             </button>
             <button type="button" className="mg-btn glass" onClick={() => setModalOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="mg-btn primary">
-              {editId ? 'Save changes' : 'Add task'}
+              {editId ? t('tasks.saveChanges') : t('tasks.addTask')}
             </button>
           </div>
         </form>
@@ -672,7 +725,7 @@ export function TasksView({
           </label>
           <div className="mg-form-actions">
             <button type="button" className="mg-btn glass" onClick={() => setTplOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="mg-btn primary">
               {t('tasks.saveTemplate')}

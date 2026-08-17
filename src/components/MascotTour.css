@@ -5,7 +5,10 @@
   position: fixed;
   inset: 0;
   z-index: 900;
-  pointer-events: none; /* the dim must never block the click through to the target */
+  pointer-events: none; /* root is transparent to clicks; the dim regions (auto)
+                          below re-enable clicks only over the non-target area so
+                          they swallow stray clicks, while the spotlighted target
+                          and the skip button stay clickable. */
 }
 
 .mt-dim {
@@ -14,6 +17,12 @@
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: mt-fade-in 0.35s ease-out both;
+  /* The dim is the click-catcher: it sits over everything EXCEPT the
+     spotlighted target, so only the glowing element (and the skip button)
+     stay clickable while the tour is up. */
+  pointer-events: auto;
+  z-index: 1;
+  cursor: default;
 }
 
 @keyframes mt-fade-in {
@@ -80,12 +89,14 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Skip button — the only interactive piece of the overlay. */
+/* Skip button — the only interactive piece of the overlay (besides the
+   glowing target). Kept above the dim so it always stays clickable. */
 .mt-skip {
   position: absolute;
   top: 16px;
   right: 16px;
   pointer-events: auto;
+  z-index: 10;
   padding: 8px 16px;
   border-radius: 999px;
   background: rgba(20, 14, 6, 0.85);

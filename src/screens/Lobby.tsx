@@ -28,7 +28,7 @@ import { ComingSoonModal } from '../components/ComingSoonModal'
 import { featureData, type FeatureData } from './IndividualComingSoon'
 import { RankUpCelebration } from '../components/RankUpCelebration'
 import { MascotTour } from '../components/MascotTour'
-import { readTour, setTourStep as saveTourStep, completeTour as finishTour, type TourState } from '../lib/tour'
+import { readTour, setTourStep as saveTourStep, completeTour as finishTour, isTourLive, type TourState } from '../lib/tour'
 import './Lobby.css'
 
 interface LobbyObject {
@@ -193,13 +193,22 @@ useEffect(() => {
 
   // Start Max's guided tour the first time a player reaches the lobby. Syncs
   // against the account's key once the user is available (it may load after
-  // the first render), and resumes mid-tour if they left and came back.
+  // the first render), and resumes mid-tour as the player navigates through
+  // the guided walk in THIS tab. Any leftover mid-tour step from a PREVIOUS
+  // visit is retired instead of replayed — the guide is a first-time-only
+  // helper, and once a user has walked (or skipped) it, it must never show
+  // again on every visit.
   useEffect(() => {
     if (!user) return
     const current = readTour(user.id)
     if (current === null) {
       saveTourStep('lobby-realm', user.id)
       setTourStepState('lobby-realm')
+    } else if (current !== 'done' && !isTourLive(user.id)) {
+      // Stale mid-tour state left behind by an earlier tab/session — retire
+      // it for good so the mascot never reappears on later visits.
+      finishTour(user.id)
+      setTourStepState('done')
     } else if (current !== tourStep) {
       setTourStepState(current)
     }

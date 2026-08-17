@@ -59,6 +59,11 @@ const QUOTES = [
 export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: MagnetView) => void }) {
   const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
+  // The username is the logged-in user's OWN profile name — read it straight
+  // from the profile store (synced from the DB `display_name` column) so the
+  // Headquarters always greets the person who is signed in, never a fallback.
+  const profileName = useProfile((s) => s.displayName)
+  const who = profileName && profileName.trim() && profileName !== 'Explorer' ? profileName : name
   const addTask = useMagnet((s) => s.addTask)
   const toggleTask = useMagnet((s) => s.toggleTask)
   const toggleHabitToday = useMagnet((s) => s.toggleHabitToday)
@@ -130,6 +135,13 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
   }, [data.tasks, tk])
 
   const quote = useMemo(() => QUOTES[now.getDate() % QUOTES.length], [now])
+  const focusH = Math.floor(today.focusMinutes / 60)
+  const focusM = today.focusMinutes % 60
+  const weekH = Math.round((s7.focusMinutes / 60) * 10) / 10
+  const velocity = Math.round((s7.completed / 7) * 10) / 10
+  // Magnet Power earned today (local-only progression currency).
+  const todayPower = data.mxpDay.date === tk ? data.mxpDay.value : 0
+
   const dateLine = useMemo(
     () => new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(now),
     [now],
@@ -143,31 +155,27 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
     setQuick('')
   }
 
-  const focusH = Math.floor(today.focusMinutes / 60)
-  const focusM = today.focusMinutes % 60
-  const weekH = Math.round((s7.focusMinutes / 60) * 10) / 10
-  const velocity = Math.round((s7.completed / 7) * 10) / 10
-  // Magnet Power earned today (local-only progression currency).
-  const todayPower = data.mxpDay.date === tk ? data.mxpDay.value : 0
-
   return (
     <div className="mg-today">
       {!hasData ? (
-        <div className="mg-pr">
-          <div className="mg-hero2">
-            <div className="mg-hero2-main">
-              <span className="mg-kicker"><Icon name="sparkle" size={13} />{t('dashboard.headquarters')}</span>
-              <h1 className="mg-hero-hello">{greeting(now)}, <span className="mg-name-accent">{name}</span></h1>
-              <p className="mg-hero-date">{dateLine}</p>
-              <p className="mg-hero-sub">A clear horizon. Plant one small intention and watch your world grow.</p>
-              <form className="mg-quick2" onSubmit={submitQuick}>
-                <input value={quick} onChange={(e) => setQuick(e.target.value)} placeholder={t('dashboard.quickCapturePlaceholder')} />
-                <button type="submit" aria-label={t('common.add')}><Icon name="plus" size={18} /></button>
-              </form>
-            </div>
-            <div className="mg-hero2-side">
-              <ScoreGauge score={score} />
-              <EmptyState icon="leaf" title={t('dashboard.nothingScheduled')} body={t('dashboard.nothingScheduledBody')} />
+        <div className="mg-pr mg-welcome">
+          <span className="mg-kicker"><Icon name="sparkle" size={13} />{t('dashboard.headquarters')}</span>
+          <h1 className="mg-hero-hello">{greeting(now)}, <span className="mg-name-accent">{who}</span></h1>
+          <p className="mg-hero-date">{dateLine}</p>
+          <p className="mg-hero-sub">A clear horizon. Plant one small intention and watch your world grow.</p>
+          <form className="mg-quick2" onSubmit={submitQuick}>
+            <input value={quick} onChange={(e) => setQuick(e.target.value)} placeholder={t('dashboard.quickCapturePlaceholder')} />
+            <button type="submit" aria-label={t('common.add')}><Icon name="plus" size={18} /></button>
+          </form>
+          <div className="mg-welcome-start">
+            <span className="mg-welcome-start-ico"><Icon name="leaf" size={26} /></span>
+            <div>
+              <h3>{t('dashboard.notStartedTitle')}</h3>
+              <p>{t('dashboard.notStartedBody')}</p>
+              <div className="mg-welcome-actions">
+                <button className="mg-welcome-btn" onClick={() => onNavigate('tasks')}>{t('dashboard.planDay')}</button>
+                <button className="mg-welcome-btn ghost" onClick={() => onNavigate('habits')}>{t('dashboard.buildHabit')}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -180,7 +188,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
             <div className="mg-hero2">
               <div className="mg-hero2-main">
                 <span className="mg-kicker"><Icon name="sparkle" size={13} />{t('dashboard.headquarters')}</span>
-                <h1 className="mg-hero-hello mg-anim">{greeting(now)}, <span className="mg-name-accent">{name}</span></h1>
+                <h1 className="mg-hero-hello mg-anim">{greeting(now)}, <span className="mg-name-accent">{who}</span></h1>
                 <p className="mg-hero-date">{dateLine}</p>
                 <p className="mg-hero-sub">{agenda.length > 0 ? `You have ${agenda.length} thing${agenda.length > 1 ? 's' : ''} waiting — let's make today count.` : 'A clear horizon today. Protect one deep session and the rest flows.'}</p>
                 <form className="mg-quick2" onSubmit={submitQuick}>

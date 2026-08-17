@@ -1,5 +1,12 @@
 # AGENTS.md
 
+<!-- ════════════════════════════════════════════════════════════════
+     MANDATORY FIRST READ — PROJECT RULE BOOK
+     Before ANY work in this repo, read RULES.md (project root) in full.
+     Its rules override everything else here. If a request conflicts with
+     RULES.md, follow RULES.md and flag the conflict to the user.
+     ═══════════════════════════════════════════════════════════════ -->
+
 <!-- INSFORGE:START -->
 ## InsForge backend
 

@@ -14,7 +14,7 @@ import type { AvatarConfig } from '../avatar/config'
 import { CHINESE_CAFE_ROOMS, LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES, chineseCafeEnabled } from '../lib/realm'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
 import { MascotTour } from '../components/MascotTour'
-import { readTour, setTourStep as saveTourStep, completeTour as finishTour, type TourState } from '../lib/tour'
+import { readTour, setTourStep as saveTourStep, completeTour as finishTour, isTourLive, type TourState } from '../lib/tour'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
 import { roomTheme } from '../lib/roomThemes'
 import { createRealm, getRealmByCode, searchPublicRealms, inviteLink, type Realm as DbRealm } from '../lib/realms'
@@ -58,6 +58,17 @@ export function Realm() {
   // Max's guided tour — continues from the Lobby into the Realm. Keyed
   // per-account (see lib/tour.ts), so it follows the signed-in user.
   const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour(user?.id))
+
+  // If we land here carrying a mid-tour step from a PREVIOUS visit (not the
+  // live walk started in this tab), retire it — the guide is first-time-only
+  // and must never keep showing on every visit.
+  useEffect(() => {
+    if (!user || tourStep === null || tourStep === 'done') return
+    if (!isTourLive(user.id)) {
+      finishTour(user.id)
+      setTourStepState('done')
+    }
+  }, [user, tourStep])
 
   const skipTour = useCallback(() => {
     finishTour(user?.id)

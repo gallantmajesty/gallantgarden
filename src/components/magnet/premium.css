@@ -18,8 +18,8 @@
   --pr-ease: cubic-bezier(0.22, 1, 0.36, 1);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-bottom: 28px;
+  gap: 20px;
+  padding: 6px 0 44px;
 }
 
 /* Shared premium glass card */
@@ -970,6 +970,113 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
+
+/* ── Headquarters: minimal, calm, generous whitespace ── */
+
+/* one quiet fade on first paint — no per-section motion, no jank */
+@keyframes mg-fade { from { opacity: 0; } to { opacity: 1; } }
+.mg-today { animation: mg-fade 0.4s ease both; }
+
+.mg-hero2 { gap: 30px; }
+.mg-hero2-side { gap: 18px; }
+
+/* the score is the single focal point — no extra nested surface */
+.mg-hero-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* chips: quiet and flat, accent appears only on hover */
+.mg-chip { transition: border-color 0.2s, background 0.2s; }
+.mg-chip:hover {
+  border-color: color-mix(in srgb, var(--mg-accent) 35%, var(--pr-border));
+  background: color-mix(in srgb, var(--mg-accent) 6%, var(--pr-glass-2));
+}
+
+/* mood: a calm accent chip */
+.mg-mood-ico {
+  display: grid;
+  place-items: center;
+  width: 46px; height: 46px;
+  flex: none;
+  border-radius: 13px;
+  color: var(--mg-mood, var(--mg-accent));
+  background: color-mix(in srgb, var(--mg-mood, var(--mg-accent)) 14%, transparent);
+}
+
+/* quote — room for the quiet serif mark */
+.mg-quote { position: relative; }
+.mg-quote blockquote { padding-left: 6px; }
+
+/* empty-state: calm "haven't started yet" */
+.mg-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  max-width: 680px;
+  position: relative;
+  overflow: hidden;
+}
+.mg-welcome::before {
+  content: '';
+  position: absolute;
+  top: -55%; right: -22%;
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--mg-accent) 14%, transparent), transparent 65%);
+  filter: blur(26px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.mg-welcome .mg-hero-hello { font-size: clamp(30px, 3.6vw, 44px); }
+.mg-welcome .mg-quick2 { width: 100%; max-width: 460px; }
+.mg-welcome-start {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 560px;
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--pr-glass-2);
+  border: 1px solid var(--pr-border);
+}
+.mg-welcome-start-ico {
+  flex: none;
+  width: 52px; height: 52px;
+  border-radius: 15px;
+  display: grid; place-items: center;
+  color: var(--mg-accent);
+  background: color-mix(in srgb, var(--mg-accent) 12%, transparent);
+}
+.mg-welcome-start h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.mg-welcome-start p { margin: 0; font-size: 13px; color: var(--pr-muted); line-height: 1.5; }
+.mg-welcome-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.mg-welcome-btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 55%, transparent);
+  background: var(--mg-accent);
+  color: #fff;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.mg-welcome-btn:hover { filter: brightness(1.05); }
+.mg-welcome-btn.ghost {
+  background: transparent;
+  color: var(--mg-text);
+  border-color: var(--pr-border);
+}
+
+/* tabular numbers where it matters */
+.mg-tile-value,
+.mg-chip b,
+.mg-miniring-label,
+.mg-tl-time { font-variant-numeric: tabular-nums; }
 
 /* ════════════════ GROWTH STUDIO (Analytics) ════════════════ */
 .mg-studio-hero {

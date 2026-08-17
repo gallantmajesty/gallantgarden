@@ -213,7 +213,7 @@ export function AICard({
     <div className={`mg-ai tone-${tone}`}>
       <div className="mg-ai-badge">
         <Icon name="sparkle" size={14} />
-        <span>AI</span>
+        <span>Insight</span>
       </div>
       <strong className="mg-ai-title">{title}</strong>
       <p className="mg-ai-body">{body}</p>

@@ -29,7 +29,7 @@ import { levelForXp } from '../lib/magnet/types'
 import { taskPower, subtaskPower, habitPower, milestonePower, goalCompletePower, MXP_DAILY_EARN_CAP, mxpDailyRoom } from '../lib/magnet/score'
 import { pushMagnet, pullMagnet } from '../lib/magnet/sync'
 import { useProfile } from './profile'
-import { MAGNET_DEFAULT_THEME_ID, starterThemeIds, getTheme, mxpPrice } from '../lib/magnet/themes'
+import { MAGNET_DEFAULT_THEME_ID, starterThemeIds, getTheme, mxpPrice, hasFreeThemeAccess } from '../lib/magnet/themes'
 
 // ---- id + time helpers ------------------------------------------------------
 let counter = 0
@@ -110,29 +110,15 @@ function emptyData(): MagnetData {
   }
 }
 
-// One-time import of lifetime focus minutes from the old standalone pomodoro
-// store (sg.pomo.totalmin) into Magnet's focus history, so existing users don't
-// see their hours vanish when analytics becomes the single source of truth.
-// Idempotent via the `pomoBackfilled` flag. Dated to yesterday so it never
-// inflates "today's pulse", and deliberately awards no XP (it's history, not a
-// fresh session).
-const OLD_POMO_MIN_KEY = 'sg.pomo.totalmin'
+// The old pomodoro store accumulated LIFETIME focus minutes (sg.pomo.totalmin).
+// A past migration fabricated a single focus session dated "yesterday" holding
+// that whole lifetime sum — which made analytics show phantom hours (e.g. "9h
+// this week") and a distorted 100% deep-work ratio. Real focus minutes are
+// logged live, session-by-session, by the focus sink in appInit — we never
+// fabricate a lump anymore. Any legacy "Imported" lump is purged in
+// migrateData; backfillPomodoro now just marks the migration done.
 function backfillPomodoro(data: MagnetData): MagnetData {
-  if (data.pomoBackfilled) return data
-  let oldMin = 0
-  try {
-    oldMin = Number(localStorage.getItem(OLD_POMO_MIN_KEY) ?? 0)
-  } catch {
-    oldMin = 0
-  }
-  if (!Number.isFinite(oldMin) || oldMin <= 0) {
-    return { ...data, pomoBackfilled: true }
-  }
-  const y = new Date()
-  y.setDate(y.getDate() - 1)
-  const date = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`
-  const session = { id: uid('foc'), date, minutes: Math.round(oldMin), subject: 'Imported' }
-  return { ...data, focus: [session, ...data.focus], pomoBackfilled: true }
+  return { ...data, pomoBackfilled: true }
 }
 
 // Legacy tasks created before manual ordering / dependencies existed have no
@@ -155,6 +141,13 @@ function migrateData(data: MagnetData): MagnetData {
   // Personal Diary was removed for privacy: purge any previously-stored
   // journal entries so sensitive content never lingers in local storage.
   delete (merged as unknown as Record<string, unknown>).journal
+  // Purge legacy fabricated focus lump(s): a past migration dumped the whole
+  // lifetime pomodoro total into a single "Imported" session dated yesterday,
+  // which showed up as phantom hours in analytics (e.g. "9h in 7 days") and a
+  // fake 100% deep-work ratio. These were never real sessions — drop them.
+  if (Array.isArray(merged.focus)) {
+    merged.focus = merged.focus.filter((f) => !(f && (f as { subject?: string }).subject === 'Imported'))
+  }
   // backfill new per-task fields
   merged.tasks = backfillTasks(merged.tasks ?? [])
   merged.templates = merged.templates ?? []
@@ -520,7 +513,8 @@ if (isEmpty) {
       const owner = new Set(d.unlockedThemes)
       if (owner.has(id)) return
       const theme = getTheme(id)
-      const price = mxpPrice(theme)
+      const free = hasFreeThemeAccess(useProfile.getState().playerId)
+      const price = free ? 0 : mxpPrice(theme)
       if (d.mxp < price) {
         set({
           toast: {
@@ -534,7 +528,7 @@ if (isEmpty) {
       set({
         toast: {
           title: `${theme.name} unlocked`,
-          body: `Spent ${price} Magnet Power. Open it in the store to apply.`,
+          body: free ? 'Gift catalog — every theme is yours.' : `Spent ${price} Magnet Power. Open it in the store to apply.`,
           icon: 'store',
         },
       })
@@ -547,7 +541,8 @@ if (isEmpty) {
     },
     applyTheme: (id) => {
       const d = get().data
-      if (!d.unlockedThemes.includes(id)) return
+      const owned = d.unlockedThemes.includes(id) || hasFreeThemeAccess(useProfile.getState().playerId)
+      if (!owned) return
       commit((d) => ({ ...d, theme: id }))
     },
 

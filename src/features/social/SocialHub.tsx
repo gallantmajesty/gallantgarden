@@ -495,6 +495,7 @@ function MiniDock() {
   const openGroup = useSocialOverlay((s) => s.openGroup)
   const activeConversationId = useSocialOverlay((s) => s.activeConversationId)
   const activeGroupId = useSocialOverlay((s) => s.activeGroupId)
+  const setFullscreen = useSocialOverlay((s) => s.setFullscreen)
   const theme = useChatThemeName()
   const settings = useChatSettings()
   const dockClass = `sh-dock theme-${theme} style-${settings.bubbleStyle}`

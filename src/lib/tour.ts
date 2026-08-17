@@ -17,9 +17,14 @@ export type TourStep = 'lobby-realm' | 'realm-pick' | 'realm-enter'
 export type TourState = TourStep | 'done'
 
 const TOUR_KEY = 'sf.tour.v1'
+const TOUR_LIVE_KEY = 'sf.tour.active.v1'
 
 function keyFor(uid?: string | null): string {
   return uid ? `${TOUR_KEY}.${uid}` : TOUR_KEY
+}
+
+function liveKeyFor(uid?: string | null): string {
+  return uid ? `${TOUR_LIVE_KEY}.${uid}` : TOUR_LIVE_KEY
 }
 
 /** Read the current tour state for an account. `null` = never started. */
@@ -38,6 +43,7 @@ export function readTour(uid?: string | null): TourState | null {
 export function setTourStep(step: TourState, uid?: string | null): void {
   try {
     localStorage.setItem(keyFor(uid), step)
+    if (step !== 'done') markTourLive(uid)
   } catch {
     /* storage blocked — the tour just replays next time */
   }
@@ -46,4 +52,27 @@ export function setTourStep(step: TourState, uid?: string | null): void {
 /** Finish (or skip) the tour for an account for good. */
 export function completeTour(uid?: string | null): void {
   setTourStep('done', uid)
+}
+
+/** Mark that the tour is actively being walked RIGHT NOW (this browser tab).
+ *  Used to tell a live mid-tour walk (which may keep resuming as the player
+ *  navigates) apart from a leftover mid-tour state from a PREVIOUS visit —
+ *  the guide is a first-time-only helper, so stale visits must never replay
+ *  it. sessionStorage (not localStorage) keeps the marker tied to the tab. */
+export function markTourLive(uid?: string | null): void {
+  try {
+    sessionStorage.setItem(liveKeyFor(uid), '1')
+  } catch {
+    /* storage blocked — stale tour states just get retired next visit */
+  }
+}
+
+/** True when this tab is currently walking the tour (setTourStep or a prior
+ *  step was called since this tab opened). */
+export function isTourLive(uid?: string | null): boolean {
+  try {
+    return sessionStorage.getItem(liveKeyFor(uid)) === '1'
+  } catch {
+    return false
+  }
 }

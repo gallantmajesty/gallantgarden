@@ -18,6 +18,7 @@ import { HabitsView } from '../components/magnet/views/HabitsView'
 import { StoreView } from '../components/magnet/views/StoreView'
 import { SheetView } from '../components/magnet/views/SheetView'
 import { CalendarView } from '../components/magnet/views/CalendarView'
+import { MagnetLoader } from '../components/magnet/MagnetLoader'
 import { usePendingClaims } from '../components/pending/usePendingClaims'
 
 import './TaskMagnet.css'
@@ -37,8 +38,11 @@ export function TaskMagnet() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const hydrate = useMagnet((s) => s.hydrate)
-  const ready = useMagnet((s) => s.ready)
   const data = useMagnet((s) => s.data)
+  // Full-screen "send-off" loader while the world hydrates; dismissed by the
+  // loader itself once the data is ready (with a built-in safety timeout so it
+  // can never get stuck on screen).
+  const [loaderDone, setLoaderDone] = useState(false)
   // Green "you have an update" dot — only lights for real, unseen updates
   // (unclaimed achievements, unread News, incoming friend requests).
   const pendingClaims = usePendingClaims()
@@ -136,14 +140,6 @@ export function TaskMagnet() {
   }
   const powerToday = data.mxpDay.date === todayKey() ? data.mxpDay.value : 0
   const powerCapped = powerToday >= MXP_DAILY_EARN_CAP
-
-  if (!ready) {
-    return (
-      <div className="mg-root mg-loading dark" style={rootStyle}>
-        <div className="mg-loading-card">{t('taskMagnet.openingWorld')}</div>
-      </div>
-    )
-  }
 
   return (
     <div className={`mg-root dark mg-theme-${activeTheme.id}`} style={rootStyle}>
@@ -275,6 +271,8 @@ export function TaskMagnet() {
       )}
 
       {navOpen && <div className="mg-scrim" onClick={() => setNavOpen(false)} />}
+
+      {!loaderDone && <MagnetLoader onDone={() => setLoaderDone(true)} />}
     </div>
   )
 }

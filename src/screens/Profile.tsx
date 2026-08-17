@@ -20,6 +20,7 @@ import { getRank, rankForLifetime, rankForTotalXp, rankProgress, RANKS, type Ran
 import { computeStreak } from '../lib/magnet/insights'
 import { generatePlayerId } from '../lib/playerId'
 import { checkDisplayName } from '../lib/displayName'
+import { checkUsername, validateUsername } from '../lib/usernames'
 import { studyGoalLabel } from '../lib/studyGoals'
 import { characterById } from '../avatar/characters'
 import { useAvatar } from '../avatar/store'
@@ -826,6 +827,7 @@ function EditOverlay({
   const savePublic = useProfile((s) => s.savePublic)
   const setStudyGoals = useProfile((s) => s.setStudyGoals)
   const canChange = useProfile((s) => s.canChangeDisplayName())
+  const { user } = useAuth()
   const nameWarning = useProfile((s) => s.nameWarning)
   const changesUsed = useProfile((s) => s.displayNameChanges)
   const goals = useProfile((s) => s.data.studyGoals)
@@ -845,10 +847,16 @@ function EditOverlay({
     if (!trimmed || trimmed === view.displayName) return
     const check = checkDisplayName(trimmed)
     if (!check.ok) { setNameStatus({ ok: false, error: check.error }); return }
+    // Duplicate-handle guard: same normalized name on another account is rejected.
+    // Names under the username minimum (3 chars) can't be guaranteed unique.
+    if (validateUsername(trimmed).ok) {
+      const avail = await checkUsername(trimmed, user?.id)
+      if (!avail.ok) { setNameStatus({ ok: false, error: avail.error }); return }
+    }
     if (!canChange && !nameWarning) { setNameStatus({ ok: false, error: 'Changes used up — buy a Name Card' }); return }
     setNameStatus({ ok: true })
     const ok = await setDisplayName(trimmed)
-    if (!ok) setNameStatus({ ok: false, error: 'Could not save' })
+    if (!ok) setNameStatus({ ok: false, error: 'That username is taken or could not save' })
   }
 
   async function saveAll() {
