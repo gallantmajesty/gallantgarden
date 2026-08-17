@@ -262,13 +262,13 @@ export function StatTile({
 }
 
 // ══════════════ Score gauge (focus score 0..100) ══════════════
-export function ScoreGauge({ score, label = 'Focus Score', size = 132 }: { score: number; label?: string; size?: number }) {
-  const tone = score >= 75 ? '#46d6a0' : score >= 50 ? '#ffb454' : '#ff7a3d'
+export function ScoreGauge({ score, label = 'Focus Score', size = 132 }: { score: number | null; label?: string; size?: number }) {
+  const tone = score == null ? '#8a8f98' : score >= 75 ? '#46d6a0' : score >= 50 ? '#ffb454' : '#ff7a3d'
   return (
     <div className="mg-gauge" style={{ width: size }}>
-      <ProgressRing pct={score / 100} size={size} label={String(score)} sub={label} />
+      <ProgressRing pct={(score ?? 0) / 100} size={size} label={score == null ? '—' : String(score)} sub={label} />
       <span className="mg-gauge-tone" style={{ color: tone, borderColor: tone }}>
-        {score >= 75 ? 'Strong' : score >= 50 ? 'Steady' : 'Recover'}
+        {score == null ? 'No data' : score >= 75 ? 'Strong' : score >= 50 ? 'Steady' : 'Recover'}
       </span>
     </div>
   )
@@ -317,7 +317,12 @@ export function TimelineItem({
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Composite 0..100 "Focus Score" from the student's own signals.
-export function focusScore(data: MagnetData, now: Date): number {
+// Returns null when the student has no history at all — the UI must not show a
+// number (let alone a punishing one) for someone who just started.
+// Weights: completion 25, streak 20, habit 20, focus volume 15, consistency 10,
+// deep-work ratio 10. Focus volume saturates at 20h in 30 days (~5h/week).
+export function focusScore(data: MagnetData, now: Date): number | null {
+  if (data.tasks.length === 0 && data.focus.length === 0 && data.habits.length === 0) return null
   const s30 = computeStats(data, now, 30)
   const s7 = computeStats(data, now, 7)
   const streak = computeStreakSafe(data, now)
@@ -325,9 +330,10 @@ export function focusScore(data: MagnetData, now: Date): number {
   const consistency = Math.min(1, s7.activeDays / 7)
   const habit = s30.habitConsistency
   const deep = s30.focusMinutes > 0 ? Math.min(1, s30.deepWorkMinutes / s30.focusMinutes) : 0
+  const volume = Math.min(1, s30.focusMinutes / 1200)
   const raw =
-    completion * 0.3 + Math.min(1, streak / 30) * 0.25 + habit * 0.2 + consistency * 0.15 + deep * 0.1
-  return Math.max(1, Math.min(100, Math.round(raw * 100)))
+    completion * 0.25 + Math.min(1, streak / 30) * 0.2 + habit * 0.2 + volume * 0.15 + consistency * 0.1 + deep * 0.1
+  return Math.max(0, Math.min(100, Math.round(raw * 100)))
 }
 
 // 0..100 heuristic burnout risk. Higher = more at risk.

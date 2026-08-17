@@ -203,7 +203,7 @@ export function Dashboard({ name, onNavigate }: { name: string; onNavigate: (v: 
                     <ScoreGauge score={score} />
                     <div className="mg-hero-scoretext">
                       <h4>{t('dashboard.focusScore')}</h4>
-                      <p>{score >= 75 ? 'You are in a strong, sustainable rhythm.' : score >= 50 ? 'Steady progress — protect your deep blocks.' : 'Time to recover — one small win resets the curve.'}</p>
+                      <p>{score == null ? 'No history yet — finish a task or log a focus session and this gauge comes alive.' : score >= 75 ? 'You are in a strong, sustainable rhythm.' : score >= 50 ? 'Steady progress — protect your deep blocks.' : 'Time to recover — one small win resets the curve.'}</p>
                     </div>
                   </div>
                 </div>
@@ -447,18 +447,21 @@ function MiniRingLive({ pct, label }: { pct: number; label: string }) {
   )
 }
 
-function moodIcon(score: number, streak: number): string {
+function moodIcon(score: number | null, streak: number): string {
+  if (score == null) return 'moon'
   if (score >= 75 && streak >= 5) return 'sun'
   if (score >= 60) return 'spark'
   if (score >= 40) return 'leaf'
   return 'moon'
 }
-function moodColor(score: number): string {
+function moodColor(score: number | null): string {
+  if (score == null) return '#8a8f98'
   if (score >= 60) return '#d8a657'
   if (score >= 40) return '#9b6dff'
   return '#46d6a0'
 }
-function moodLabel(score: number, streak: number): string {
+function moodLabel(score: number | null, streak: number): string {
+  if (score == null) return 'Getting started'
   if (score >= 75 && streak >= 5) return 'Thriving'
   if (score >= 60) return 'Balanced'
   if (score >= 40) return 'Steady'

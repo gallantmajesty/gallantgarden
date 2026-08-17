@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
-import { usePomodoro } from '../../../store/pomodoro'
 import {
   AREA_META,
   PRIORITY_META,
@@ -47,12 +46,6 @@ function emptyDraft(): Draft {
   }
 }
 
-function fmtTime(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 export function TasksView({
   prefillDue = null,
   onPrefillDue,
@@ -73,8 +66,6 @@ export function TasksView({
   const addTemplate = useMagnet((s) => s.addTemplate)
   const deleteTemplate = useMagnet((s) => s.deleteTemplate)
   const createFromTemplate = useMagnet((s) => s.createFromTemplate)
-
-  const pomo = usePomodoro()
 
   const [status, setStatus] = useState<StatusFilter>('open')
   const [area, setArea] = useState<LifeArea | 'all'>('all')
@@ -257,32 +248,6 @@ export function TasksView({
           {t('tasks.add')}
         </button>
       </form>
-
-      {/* Focus timer — visible like a desk doc; expands to a live countdown. */}
-      <div className={`mg-focuscard ${pomo.phase !== 'idle' ? 'running' : ''}`}>
-        <Icon name="clock" size={18} />
-        <input
-          className="mg-focus-subject"
-          value={pomo.subject}
-          onChange={(e) => pomo.setSubject(e.target.value)}
-          placeholder={t('tasks.subjectLabel')}
-        />
-        {pomo.phase !== 'idle' ? (
-          <>
-            <span className="mg-focus-time">{fmtTime(pomo.remaining)}</span>
-            <button className="mg-btn primary small" onClick={pomo.toggle}>
-              {pomo.running ? t('explore.pause') : t('explore.start')}
-            </button>
-            <button className="mg-btn glass small" onClick={pomo.forfeit}>
-              {t('explore.reset')}
-            </button>
-          </>
-        ) : (
-          <button className="mg-btn primary small" onClick={pomo.toggle}>
-            <Icon name="play" size={14} /> {t('tasks.startFocus')}
-          </button>
-        )}
-      </div>
 
       {/* Templates (Notion-style) */}
       {data.templates.length > 0 && (

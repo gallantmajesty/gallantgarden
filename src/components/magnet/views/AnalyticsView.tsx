@@ -309,7 +309,7 @@ export function AnalyticsView() {
               <div className="mg-ai-stack">
                 <div className="mg-why">
                   <Icon name="target" size={18} />
-                  <span>{t('growth.focusScoreNote', { score })}</span>
+                  <span>{t('growth.focusScoreNote', { score: score == null ? '—' : score })}</span>
                 </div>
               </div>
             </div>

@@ -596,10 +596,12 @@
   width: 13px;
   height: 13px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--mg-text) 8%, transparent);
-  transition: transform 0.15s, box-shadow 0.15s;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--mg-text) 6%, transparent);
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
   cursor: default;
 }
+.mg-heat-cell.lvl-0 { border-color: transparent; background: transparent; }
 .mg-heat-cell:hover {
   transform: scale(1.35);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-accent) 40%, transparent);

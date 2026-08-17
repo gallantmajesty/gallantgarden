@@ -597,7 +597,7 @@
     "forecastBody": "If your current pace continues, you'll log about a {{days}}-day worth of focus.",
     "forecastAiTitle": "You're on a trajectory",
     "forecastAiBody": "AI confidence {{conf}}% — based on your recent consistency, not guesswork.",
-    "focusScoreNote": "Focus Score {{score}}/100 — your composite of completion, streak and consistency.",
+    "focusScoreNote": "Focus Score {{score}}/100 — your composite of completion, streak, consistency, habits and deep-work volume.",
     "aiTitle": "This period at a glance",
     "aiBody": "Keep showing up — your patterns get sharper every week."
   },

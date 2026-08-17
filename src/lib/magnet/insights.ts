@@ -31,9 +31,20 @@ export function addDays(d: Date, n: number): Date {
   return c
 }
 
+// Date-only keys ("YYYY-MM-DD") are local calendar days — parse them as local
+// midnight, never UTC, so the 7/30-day windows line up with the student's own
+// timezone. Full ISO timestamps (task created/completed) keep plain parsing.
+function parseDayLocal(iso: string): number {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(y, m - 1, d).getTime()
+  }
+  return new Date(iso).getTime()
+}
+
 function inRange(iso: string | null, now: Date, days: number): boolean {
   if (!iso) return false
-  const t = new Date(iso).getTime()
+  const t = parseDayLocal(iso)
   if (Number.isNaN(t)) return false
   const cutoff = now.getTime() - days * 86400000
   return t >= cutoff && t <= now.getTime() + 86400000
@@ -141,7 +152,7 @@ export function computeStats(data: MagnetData, now: Date, days: number): Stats {
   return {
     completed,
     created,
-    completionRate: created > 0 ? Math.min(1, completed / created) : completed > 0 ? 1 : 0,
+    completionRate: created > 0 ? Math.min(1, completed / created) : 0,
     focusMinutes,
     deepWorkMinutes,
     activeDays: activeSet.size,
@@ -188,7 +199,7 @@ function prevWindowFocus(focus: FocusSession[], now: Date, days: number): number
   const end = now.getTime() - days * 86400000
   return focus
     .filter((f) => {
-      const t = new Date(f.date).getTime()
+      const t = parseDayLocal(f.date)
       return t >= start && t < end
     })
     .reduce((s, f) => s + f.minutes, 0)
