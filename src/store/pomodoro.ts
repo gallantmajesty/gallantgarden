@@ -26,6 +26,7 @@ import { useHardcore, rateForMode, EASY_RATE, MEDIUM_RATE, type FocusMode } from
 import { useProfile } from './profile'
 import { awardFocusLeaves } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
+import { compute24hStreak } from '../lib/magnet/insights'
 
 // ---- Types ----
 
@@ -671,8 +672,13 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
             breakCount: state.breakCount,
             breakDurations: state.breakDurations,
             completed: true,
-            totalFocusMinutes: state.sessionMinutes,
-            leavesEarned: updated.totalSessionLeaves,
+              totalFocusMinutes: state.sessionMinutes,
+              // Real leaves earned this session = sum of every segment's reward
+              // (pendingRewards carries the true amount for ALL modes — Easy
+              // banks it, Medium/Hardcore credit at the end, but the figure is
+              // always here). Using totalSessionLeaves would show 0 for
+              // Medium/Hardcore and make dashboards report phantom zeroes.
+              leavesEarned: updated.pendingRewards.reduce((a, r) => a + r.leaves, 0),
             subject: state.subject,
             segmentRewards: updated.pendingRewards,
           }
@@ -839,32 +845,12 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         recentSessions: history.slice(0, 10),
       }
 
-      const sortedHistory = [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      let streak = 0
-      let longestStreak = 0
-      let lastDate: Date | null = null
-
-      for (const session of sortedHistory) {
-        const sessionDate = new Date(session.date)
-        sessionDate.setHours(0, 0, 0, 0)
-
-        if (!lastDate) {
-          lastDate = sessionDate
-          streak = 1
-        } else {
-          const diffDays = Math.floor((lastDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24))
-          if (diffDays === 1) {
-            streak++
-          } else if (diffDays > 1) {
-            streak = 1
-          }
-        }
-        lastDate = sessionDate
-        longestStreak = Math.max(longestStreak, streak)
-      }
-
-      summary.currentStreak = streak
-      summary.longestStreak = longestStreak
+      // 24-hour rolling day streak — a day counts when the user returns within
+      // 24 hours of their previous day's activity; a calendar midnight never
+      // breaks it. Best streak is intentionally dropped.
+      const { current, longest } = compute24hStreak(history.map((s) => new Date(s.date).getTime()))
+      summary.currentStreak = current
+      summary.longestStreak = longest
 
       for (const session of history) {
         summary.sessionsByType[session.timerType]++

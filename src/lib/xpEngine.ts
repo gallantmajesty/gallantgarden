@@ -85,11 +85,8 @@ export const XP_VALUES = {
   // Train journeys: extra GREEN per completed journey (beyond journeyMin).
   journeyPremium: 20,
 
-// Inactivity penalty — applied for every FULLY MISSED day (no visit at all):
-// 20 leaves + rank XP per missed day, stacking across consecutive absences.
-  inactivityPenaltyLeaves: 20,
-  inactivityPenaltyXp: 50,
-  inactivityThresholdMin: 20,
+  /** minutes of focus required for the "Perfect Day" bonus */
+  perfectDayFocusMin: 20,
 } as const
 
 // Pomodoro session rewards — the main study currency engine
@@ -165,26 +162,13 @@ interface DailyRecord {
   firstBlueprintAwarded: boolean
   /** timestamp of last recorded activity (ISO ms) */
   lastActive: number
-  /** whether the inactivity penalty has been applied today */
-  penaltyApplied: boolean
-  /** whether the penalty notification panel has already been shown to the user */
-  penaltyPanelShown: boolean
   /** active XP-earning minutes today (capped at DAILY_CAPS.activeMinCap) */
   activeMinToday: number
   /** whether today's daily focus claim has been taken */
   focusClaimed: boolean
-  /** leaves lost to the inactivity penalty today (drives ScorePanel "Lost") */
-  penaltyLostToday: number
-  /** consecutive fully-missed days penalized when the penalty last applied */
-  penaltyMissedDays: number
 }
 
 const DAILY_KEY = 'sf.xp.daily'
-
-/** Last calendar day the user opened the app — the basis for missed-day counting.
- *  Stored separately from the daily record because that record resets at
- *  midnight, and we need yesterday's visit date to know how many days passed. */
-const LAST_VISIT_KEY = 'sf.xp.lastVisitDay'
 
 function todayStr(): string {
   const d = new Date()
@@ -212,12 +196,8 @@ function loadDaily(): DailyRecord {
       firstTreeAwarded: (parsed.firstTreeAwarded as boolean) || false,
       firstBlueprintAwarded: (parsed.firstBlueprintAwarded as boolean) || false,
   lastActive: (parsed.lastActive as number) || 0,
-  penaltyApplied: (parsed.penaltyApplied as boolean) || false,
-  penaltyPanelShown: (parsed.penaltyPanelShown as boolean) || false,
   activeMinToday: (parsed.activeMinToday as number) || 0,
   focusClaimed: (parsed.focusClaimed as boolean) || false,
-  penaltyLostToday: (parsed.penaltyLostToday as number) || 0,
-  penaltyMissedDays: (parsed.penaltyMissedDays as number) || 0,
     }
   } catch {
     return freshDaily()
@@ -238,12 +218,8 @@ function freshDaily(): DailyRecord {
     firstTreeAwarded: false,
     firstBlueprintAwarded: false,
   lastActive: 0,
-  penaltyApplied: false,
-  penaltyPanelShown: false,
   activeMinToday: 0,
   focusClaimed: false,
-  penaltyLostToday: 0,
-  penaltyMissedDays: 0,
   }
 }
 
@@ -263,80 +239,6 @@ export function recordActivity(): void {
   saveDaily(daily)
 }
 
-// ---- Inactivity penalty ----------------------------------------------------
-
-/**
- * Apply the missed-day inactivity penalty for every FULLY missed day.
- *
- * Rules:
- *   - A day counts as missed when the app wasn't opened at all that day
- *     (calendar-day difference between the last visit and today, minus today).
- *   - Returning the next day, or visiting multiple times in one day, is free.
- *   - Each missed day deducts `inactivityPenaltyLeaves` leaves from the wallet
- *     plus `inactivityPenaltyXp` from lifetime rank XP, and they STACK for
- *     consecutive absent days.
- *
- * Call once when a session starts (magnet hydrate). Records today as a visit
- * either way, so the count only ever covers genuinely missed days.
- */
-export function checkInactivityPenalty(
-  currentLeaves: number,
-  currentGoldenLeaves: number,
-  currentRankId: string,
-  /** Lifetime rank XP — see awardLeaves. */
-  rankXp?: number,
-): AwardResult {
-  const today = todayStr()
-  const lastVisit = localStorage.getItem(LAST_VISIT_KEY)
-
-  // Calendar days fully skipped between the last visit and today.
-  let missedDays = 0
-  if (lastVisit) {
-    const elapsed =
-      (Date.parse(today + 'T00:00:00Z') - Date.parse(lastVisit + 'T00:00:00Z')) / 86_400_000
-    missedDays = Math.max(0, Math.round(elapsed) - 1)
-  }
-
-  // Record this visit — tomorrow's check counts against today, not earlier.
-  try {
-    localStorage.setItem(LAST_VISIT_KEY, today)
-  } catch {
-    /* ignore */
-  }
-
-  if (missedDays === 0) {
-    return { leaves: 0, goldenLeaves: 0, rankChanged: false, newRankId: currentRankId, capped: false, onCooldown: false, missedDays: 0, xpLost: 0 }
-  }
-
-  // Stacked penalty: per missed day — leaves from the wallet (never below 0)
-  // and the full XP hit from lifetime rank XP, so an empty wallet can't dodge
-  // the rank drop. Honors owner overrides from the admin panel.
-  const penaltyPerDay = getOverride('xp', 'inactivityPenaltyLeaves', XP_VALUES.inactivityPenaltyLeaves)
-  const xpPerDay = getOverride('xp', 'inactivityPenaltyXp', XP_VALUES.inactivityPenaltyXp)
-  const penaltyLeaves = penaltyPerDay * missedDays
-  const penaltyXp = xpPerDay * missedDays
-  const rankBase = rankXp ?? (currentLeaves + currentGoldenLeaves)
-  const newRankTotal = Math.max(0, rankBase - penaltyXp)
-  const newRank = rankForTotalXp(newRankTotal)
-  const rankChanged = newRank.id !== rankForTotalXp(rankBase).id
-
-  const daily = loadDaily()
-  daily.penaltyApplied = true
-  daily.penaltyLostToday = (daily.penaltyLostToday ?? 0) + Math.min(currentLeaves, penaltyLeaves)
-  daily.penaltyMissedDays = (daily.penaltyMissedDays ?? 0) + missedDays
-  saveDaily(daily)
-
-  return {
-    leaves: -Math.min(currentLeaves, penaltyLeaves),
-    goldenLeaves: 0,
-    rankChanged,
-    newRankId: newRank.id,
-    capped: false,
-    onCooldown: false,
-    missedDays,
-    xpLost: penaltyXp,
-  }
-}
 export interface AwardResult {
   leaves: number
   goldenLeaves: number
@@ -344,10 +246,6 @@ export interface AwardResult {
   newRankId: string
   capped: boolean
   onCooldown: boolean
-  /** full days missed when an inactivity penalty applied (undefined = no penalty) */
-  missedDays?: number
-  /** lifetime rank XP deducted by the penalty (undefined = none) */
-  xpLost?: number
 }
 
 // ---- Award leaves (regular XP) — study sources only --------------------------
@@ -661,7 +559,7 @@ export function awardDailyTaskCompletion(
   saveDaily(daily)
 
   // Check for Perfect Day (daily tasks + focus + login)
-  if (daily.dailyTasksCompleted && daily.totalFocusMin >= XP_VALUES.inactivityThresholdMin && daily.loginAwarded) {
+  if (daily.dailyTasksCompleted && daily.totalFocusMin >= XP_VALUES.perfectDayFocusMin && daily.loginAwarded) {
     return awardLeaves(currentLeaves, currentGoldenLeaves, 'login', XP_VALUES.perfectDay, currentRankId)
   }
 
@@ -844,15 +742,11 @@ export function getDailyEngagement() {
     focusSessionCount: daily.focusSessionCount,
     blueprintsCreated: daily.blueprintsCreated,
     lastActive: daily.lastActive,
-    penaltyApplied: daily.penaltyApplied,
-    penaltyThresholdMin: XP_VALUES.inactivityThresholdMin,
     activeMinToday: daily.activeMinToday,
     activeMinCap: getOverride('dailyCaps', 'activeMinCap', DAILY_CAPS.activeMinCap),
     focusClaimed: daily.focusClaimed,
     focusClaimMin: DAILY_FOCUS_CLAIM_MIN_MINUTES,
     focusClaimLeaves: XP_VALUES.dailyFocusClaim,
-    penaltyLostToday: daily.penaltyLostToday ?? 0,
-    penaltyMissedDays: daily.penaltyMissedDays ?? 0,
   }
 }
 

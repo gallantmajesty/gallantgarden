@@ -154,7 +154,7 @@ export function HabitsView() {
   )
 }
 
-function HabitRow({
+export function HabitRow({
   habit,
   gridDays,
   today,

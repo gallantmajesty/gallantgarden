@@ -46,8 +46,6 @@ export default function OwnerRewardsTab() {
           {numField("30-day streak", "xp", "streak30", XP_VALUES.streak30, refresh)}
           {numField("Weekly warrior", "xp", "weeklyWarrior", XP_VALUES.weeklyWarrior, refresh)}
           {numField("Rank up (gold)", "xp", "rankUp", XP_VALUES.rankUp, refresh)}
-          {numField("Inactivity penalty — leaves/day", "xp", "inactivityPenaltyLeaves", XP_VALUES.inactivityPenaltyLeaves, refresh)}
-          {numField("Inactivity penalty — XP/day", "xp", "inactivityPenaltyXp", XP_VALUES.inactivityPenaltyXp, refresh)}
         </Section>
 
         {/* Pomodoro Rewards */}

@@ -464,7 +464,7 @@ export const THEMES: MagnetTheme[] = [
     mood: 'Fairy lights and a soft blanket',
     particle: 'fireflies',
     particleColor: '#ffecb0',
-    scene: 'none',
+    scene: 'bedroom',
     dark: true,
     vars: {
       bg: 'radial-gradient(130% 150% at 28% 0%, #533a5c 0%, #3f2d4a 44%, #2d2038 75%, #1f1526 100%)',
@@ -711,7 +711,7 @@ export const THEMES: MagnetTheme[] = [
   },
 ]
 
-export const DEFAULT_THEME_ID = 'mystic-forest'
+export const DEFAULT_THEME_ID = 'ink-wash'
 
 /** Player IDs granted every magnet theme free (store shows them all as owned
  *  and applying never costs Power). Used to gift the full catalog to a
@@ -766,8 +766,8 @@ export function mxpPrice(theme: MagnetTheme): number {
   return theme.leafPrice * 3
 }
 
-/** Theme applied for every account on first run (keeps the classic coffee look). */
-export const MAGNET_DEFAULT_THEME_ID = 'coffee-house'
+/** Theme applied for every account on first run — calm, minimal default. */
+export const MAGNET_DEFAULT_THEME_ID = 'ink-wash'
 
 /** Themes every account owns from the start. */
 export function starterThemeIds(): string[] {

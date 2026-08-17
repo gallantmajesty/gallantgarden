@@ -9,7 +9,6 @@ import { KoreanCafeShowcase } from '../three/library/KoreanCafeShowcase'
 import { createNullSafeEvents } from '../three/safeEvents'
 import { useAvatar } from '../avatar/store'
 import { useShop } from '../shop/store'
-import { useProfile } from '../store/profile'
 import { StudioBackdrop } from '../avatar/StudioBackdrop'
 import { effectiveCharacters, characterById } from '../avatar/characters'
 import {
@@ -21,8 +20,6 @@ import {
   ACCESSORIES,
   skinHex,
   hairHex,
-  topHex,
-  bottomHex,
   shoeHex,
 } from '../avatar/config'
 import { AccessoryLogo } from '../avatar/AccessoryLogo'
@@ -154,18 +151,6 @@ function MindMap({ step, onPick, config }: { step: 'characters' | 'outfit' | 'ac
 
 type SetFn = (patch: Partial<AvatarConfig>) => void
 
-const CHARACTER_TABS = [
-  { id: 'owned', label: 'Owned' },
-  { id: 'common', label: 'Common' },
-  { id: 'epic', label: 'Epic' },
-  { id: 'legendary', label: 'Legendary' },
-] as const
-type CharTabId = (typeof CHARACTER_TABS)[number]['id']
-
-/** The four animal characters awaiting polish — not offered for purchase until
- *  the owner releases them (Owner panel → Pricing tab). */
-const HELD_CHARACTER_IDS = new Set(['monkey', 'panda', 'elephant', 'sunflower'])
-
 function CharacterDisplayTab({
   config,
   set,
@@ -179,92 +164,51 @@ function CharacterDisplayTab({
 }) {
   const characters = effectiveCharacters()
   const current = config.characterId || 'james'
-  const leaves = useProfile((s) => s.xp)
-  const gold = useProfile((s) => s.premiumXp)
   const ownedItems = useShop((s) => s.ownedItems)
-  const [tab, setTab] = useState<CharTabId>('owned')
+  const navigate = useNavigate()
   const equipped = (ch: (typeof characters)[number]) => {
     set({ ...characterById(ch.id).fallback, characterId: ch.id })
   }
-  const buy = (ch: (typeof characters)[number]) => {
-    const id = ch.id
-    const price = ch.price ?? 0
-    if (price <= 0 || useShop.getState().isOwned(id)) return
-    if (ch.currency === 'gold') {
-      if (!useShop.getState().canAffordGold(price, gold)) return
-      const newGold = useShop.getState().purchaseGold(id, price, gold)
-      useProfile.getState().applyXp({ golden: newGold - gold, rankXp: 0 })
-    } else {
-      if (!useShop.getState().canAfford(price, leaves)) return
-      const newLeaves = useShop.getState().purchase(id, price, leaves)
-      useProfile.getState().applyXp({ leaves: newLeaves - leaves, rankXp: 0 })
-    }
-    equipped(ch)
-    onPreview(null)
-  }
-  const inTab = (ch: (typeof characters)[number]) => {
-    const owned = ownedItems.includes(ch.id)
-    if (tab === 'owned') return owned // existing owners keep their characters
-    // The four animal characters awaiting polish are not offered for purchase —
-    // they appear here only for players who already own them.
-    return !owned && !HELD_CHARACTER_IDS.has(ch.id) && (ch.rarity ?? 'Common').toLowerCase() === tab
-  }
-  const visible = characters.filter(inTab)
+  // The avatar section shows ONLY characters you already own. Characters still to
+  // be bought live in the Lobby Shop — that's what the shop is for.
+  const visible = characters.filter((ch) => ownedItems.includes(ch.id))
   return (
     <div className="ac-char-section">
-      <div className="ac-char-tabs">
-        {CHARACTER_TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`ac-char-tab ${tab === t.id ? 'active' : ''}`}
-            data-rarity={t.id}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
       <div className="ac-char-grid">
         {visible.map((ch) => {
           const isSelected = (previewCharId ?? current) === ch.id
-          const owned = ownedItems.includes(ch.id)
-          const price = ch.price ?? 0
-          const goldItem = ch.currency === 'gold'
-          const affordable = goldItem
-            ? useShop.getState().canAffordGold(price, gold)
-            : useShop.getState().canAfford(price, leaves)
           return (
             <div
               key={ch.id}
-              className={`ac-char-tile ${isSelected ? 'selected' : ''} ${!owned ? 'locked' : ''}`}
+              className={`ac-char-tile ${isSelected ? 'selected' : ''}`}
               onClick={() => { equipped(ch); onPreview(ch.id) }}
             >
               <div className="ac-char-avatar" style={{ background: ch.bg }}>
                 <img className="ac-char-img" src={ch.icon} alt={ch.name} />
                 {current === ch.id && <div className="ac-char-selected-label">SELECTED</div>}
-                {!owned && (
-                  <span className={`ac-char-price ${affordable ? 'affordable' : ''}`}>
-                    {goldItem ? '🌟' : '🍃'} {price.toLocaleString()}
-                  </span>
-                )}
               </div>
               <div className="ac-char-info">
                 <span className="ac-char-tile-name">{ch.name}</span>
                 <span className="ac-char-rarity" style={{ color: ch.color }}>{ch.rarity}</span>
               </div>
-              {!owned ? (
-                <button className="ac-char-buy-btn" disabled={!affordable} onClick={(e) => { e.stopPropagation(); buy(ch) }}>
-                  {goldItem ? '🌟 Buy' : '🍃 Buy'}
-                </button>
-              ) : current !== ch.id ? (
+              {current !== ch.id && (
                 <button className="ac-char-equip-btn" onClick={(e) => { e.stopPropagation(); equipped(ch); onPreview(null) }}>
                   Equip
                 </button>
-              ) : null}
+              )}
             </div>
           )
         })}
       </div>
+      {visible.length === 0 ? (
+        <p className="ac-foot-note">
+          You haven't unlocked any characters yet. Visit the shop to buy some.
+        </p>
+      ) : (
+        <button className="ac-shop-link" onClick={() => navigate('/shop')}>
+          🛍️ Buy more characters in the shop
+        </button>
+      )}
     </div>
   )
 }
@@ -325,22 +269,6 @@ function OutfitTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
       />
 
       <ColorField
-        label="T-Shirt Colour"
-        value={config.topColor}
-        fallback={topHex(config.top)}
-        onChange={(hex) => set({ topColor: hex })}
-        onClear={() => set({ topColor: undefined })}
-      />
-
-      <ColorField
-        label="Pants Colour"
-        value={config.bottomColor}
-        fallback={bottomHex(config.bottom)}
-        onChange={(hex) => set({ bottomColor: hex })}
-        onClear={() => set({ bottomColor: undefined })}
-      />
-
-      <ColorField
         label="Shoes Colour"
         value={config.shoeColor}
         fallback={shoeHex(config.shoes)}
@@ -348,76 +276,11 @@ function OutfitTab({ config, set }: { config: AvatarConfig; set: SetFn }) {
         onClear={() => set({ shoeColor: undefined })}
       />
 
-      <ColorField
-        label="Nail Polish"
-        value={config.nailColor}
-        fallback="#e8b4b8"
-        onChange={(hex) => set({ nailColor: hex })}
-        onClear={() => set({ nailColor: undefined })}
-      />
-
-      <ToggleField
-        label="Glasses"
-        on={!!config.glasses}
-        onToggle={() => set({ glasses: !config.glasses })}
-      />
-      {config.glasses && (
-        <ColorField
-          label="Glasses Colour"
-          value={config.glassesColor}
-          fallback="#2a2f3a"
-          onChange={(hex) => set({ glassesColor: hex })}
-          onClear={() => set({ glassesColor: undefined })}
-        />
-      )}
-
-      <ToggleField
-        label="Hair Band"
-        on={!!config.hairBand}
-        onToggle={() => set({ hairBand: !config.hairBand })}
-      />
-      {config.hairBand && (
-        <ColorField
-          label="Hair Band Colour"
-          value={config.hairBandColor}
-          fallback="#f4b8cf"
-          onChange={(hex) => set({ hairBandColor: hex })}
-          onClear={() => set({ hairBandColor: undefined })}
-        />
-      )}
-
       <p className="ac-foot-note">
-        Free colours apply to any outfit — pick your skin, hair, clothes, shoes, nails and
-        accessories. Next: add one desk accessory.
+        Tune your look — pick your skin tone, eye, hair and shoe colours. Your desk accessory is
+        added in the next step, and more characters live in the shop.
       </p>
     </>
-  )
-}
-
-/** Simple on/off toggle for wearable accessories (glasses, hair band). */
-function ToggleField({
-  label,
-  on,
-  onToggle,
-}: {
-  label: string
-  on: boolean
-  onToggle: () => void
-}) {
-  return (
-    <Field label={label}>
-      <button
-        className={`ac-toggle ${on ? 'on' : ''}`}
-        onClick={onToggle}
-        role="switch"
-        aria-checked={on}
-      >
-        <span className="ac-toggle-track">
-          <span className="ac-toggle-knob" />
-        </span>
-        <span className="ac-toggle-text">{on ? 'On' : 'Off'}</span>
-      </button>
-    </Field>
   )
 }
 

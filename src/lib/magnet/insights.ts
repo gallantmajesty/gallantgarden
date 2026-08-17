@@ -171,6 +171,7 @@ export function computeStats(data: MagnetData, now: Date, days: number): Stats {
 }
 
 // Current streak: consecutive days (ending today or yesterday) with any activity.
+// (24-hour rolling variant: compute24hStreak below)
 export function computeStreak(data: MagnetData, now: Date): number {
   const active = new Set<string>()
   for (const t of data.tasks) if (t.done && t.completedAt) active.add(dayKey(new Date(t.completedAt)))
@@ -185,6 +186,48 @@ export function computeStreak(data: MagnetData, now: Date): number {
     cursor = addDays(cursor, -1)
   }
   return streak
+}
+
+/**
+ * 24-hour rolling day streak. A day counts toward the streak when the user's
+ * activity returns within 24 hours of their last activity the previous day — a
+ * calendar midnight never breaks it. Multiple sessions in one day still count
+ * as one day, but the run only survives if each next day's last activity lands
+ * within 24h of the previous day's last activity.
+ *
+ * The current streak is only ALIVE while the most recent activity is still
+ * within 24 hours of now — if the user has been away longer, the run is broken
+ * and the streak is 0 until they return. `longest` is returned for internal
+ * use only; the UI never shows a "best streak".
+ */
+export function compute24hStreak(timestamps: number[], now: number = Date.now()): { current: number; longest: number } {
+  const DAY = 24 * 3600 * 1000
+  const sorted = [...timestamps].filter((t) => Number.isFinite(t)).sort((a, b) => a - b)
+  if (sorted.length === 0) return { current: 0, longest: 0 }
+
+  // Last activity per local calendar day.
+  const byDay = new Map<string, number>()
+  for (const t of sorted) {
+    const d = new Date(t)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    byDay.set(key, t)
+  }
+
+  const days = [...byDay.values()].sort((a, b) => a - b)
+  let current = 1
+  let longest = 1
+  let prev = days[0]
+  for (let i = 1; i < days.length; i++) {
+    if (days[i] - prev <= DAY) current += 1
+    else current = 1
+    if (current > longest) longest = current
+    prev = days[i]
+  }
+
+  // The run only counts while it's still alive — the last activity must be
+  // within 24h of now, otherwise the streak is broken and reads 0.
+  if (now - days[days.length - 1] > DAY) current = 0
+  return { current, longest }
 }
 
 export interface Insight {

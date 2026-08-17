@@ -127,33 +127,6 @@
   letter-spacing: 0.5px;
 }
 
-.lp-penalty {
-  background: rgba(226, 91, 75, 0.1);
-  border: 1px solid rgba(226, 91, 75, 0.3);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.lp-penalty-icon {
-  font-size: 24px;
-  margin-bottom: 6px;
-}
-
-.lp-penalty-title {
-  font-weight: 700;
-  color: #e25b4b;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.lp-penalty-body {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.5;
-}
-
 .lp-tips {
   margin-bottom: 20px;
 }

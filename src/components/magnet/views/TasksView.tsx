@@ -8,11 +8,17 @@ import {
   type Priority,
   type Recurrence,
   type Task,
+  type Goal,
+  type Habit,
 } from '../../../lib/magnet/types'
 import { SectionHead, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
-import { taskPower, subtaskPower } from '../../../lib/magnet/score'
+import { taskPower, subtaskPower, habitPower, milestonePower, goalCompletePower } from '../../../lib/magnet/score'
 import { useMxpFloat } from '../MxpFeedback'
+import { useNow } from '../useNow'
+import { dayKey, addDays } from '../../../lib/magnet/insights'
+import { GoalCard } from './GoalsView'
+import { HabitRow } from './HabitsView'
 
 type StatusFilter = 'open' | 'done' | 'all'
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'urgent']
@@ -66,6 +72,15 @@ export function TasksView({
   const addTemplate = useMagnet((s) => s.addTemplate)
   const deleteTemplate = useMagnet((s) => s.deleteTemplate)
   const createFromTemplate = useMagnet((s) => s.createFromTemplate)
+  const addMilestone = useMagnet((s) => s.addMilestone)
+  const toggleMilestone = useMagnet((s) => s.toggleMilestone)
+  const updateGoal = useMagnet((s) => s.updateGoal)
+  const deleteGoal = useMagnet((s) => s.deleteGoal)
+  const linkProjectGoal = useMagnet((s) => s.linkProjectGoal)
+  const unlinkProjectGoal = useMagnet((s) => s.unlinkProjectGoal)
+  const toggleHabitToday = useMagnet((s) => s.toggleHabitToday)
+  const toggleHabitFreeze = useMagnet((s) => s.toggleHabitFreeze)
+  const deleteHabit = useMagnet((s) => s.deleteHabit)
 
   const [status, setStatus] = useState<StatusFilter>('open')
   const [area, setArea] = useState<LifeArea | 'all'>('all')
@@ -96,6 +111,18 @@ export function TasksView({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }
 
+  // Habit streak calculation (mirrors HabitsView)
+  function habitStreak(history: string[], freezeDays: string[], now: Date): number {
+    const set = new Set([...history, ...freezeDays])
+    let streak = 0
+    let cursor = set.has(dayKey(now)) ? now : addDays(now, -1)
+    while (set.has(dayKey(cursor))) {
+      streak += 1
+      cursor = addDays(cursor, -1)
+    }
+    return streak
+  }
+
   // When the calendar (or another view) asks to create a task on a specific date.
   useEffect(() => {
     if (prefillDue) {
@@ -114,6 +141,25 @@ export function TasksView({
         q ? tk.title.toLowerCase().includes(q) || tk.subject.toLowerCase().includes(q) || tk.notes.toLowerCase().includes(q) : true,
       )
   }, [data.tasks, status, area, search])
+
+  // Goals filtered by search/status
+  const goalsList = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return data.goals
+      .filter((g) => (status === 'all' ? true : status === 'done' ? g.progress >= 100 : g.progress < 100))
+      .filter((g) =>
+        q ? g.title.toLowerCase().includes(q) || g.detail.toLowerCase().includes(q) : true,
+      )
+  }, [data.goals, status, search])
+
+  // Habits filtered by search
+  const habitsList = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return data.habits
+      .filter((h) =>
+        q ? h.title.toLowerCase().includes(q) : true,
+      )
+  }, [data.habits, search])
 
   // Smart sort: open tasks first, then by priority weight, then by due date.
   // Completed tasks (history) are sorted newest-completed first.
@@ -135,6 +181,24 @@ export function TasksView({
 
   const openCount = data.tasks.filter((tk) => !tk.done).length
   const doneCount = data.tasks.length - openCount
+
+  // Unified list: tasks, goals, habits as sections
+  const filteredSections = useMemo(() => {
+    const sections: { type: 'tasks'; items: typeof baseList } | { type: 'goals'; items: typeof goalsList } | { type: 'habits'; items: typeof habitsList }[] = []
+    if (filtered.length > 0) sections.push({ type: 'tasks', items: filtered })
+    if (goalsList.length > 0) sections.push({ type: 'goals', items: goalsList })
+    if (habitsList.length > 0) sections.push({ type: 'habits', items: habitsList })
+    return sections
+  }, [filtered, goalsList, habitsList])
+
+  const now = useNow()
+  const habitToday = dayKey(now)
+  const habitGridDays = useMemo(() => {
+    const out: string[] = []
+    const GRID_DAYS = 21
+    for (let i = GRID_DAYS - 1; i >= 0; i--) out.push(dayKey(addDays(now, -i)))
+    return out
+  }, [now])
 
   function quickAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -300,13 +364,13 @@ export function TasksView({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {filteredSections.length === 0 ? (
         <EmptyState
           icon="check"
           title={t('tasks.noTasksTitle')}
-          body={data.tasks.length === 0 ? t('tasks.noTasksBody') : t('tasks.noTasksMatch')}
+          body={data.tasks.length === 0 && data.goals.length === 0 && data.habits.length === 0 ? t('tasks.noTasksBody') : t('tasks.noTasksMatch')}
           action={
-            data.tasks.length === 0 ? (
+            data.tasks.length === 0 && data.goals.length === 0 && data.habits.length === 0 ? (
               <button className="mg-btn primary" onClick={() => startCreate()}>
                 <Icon name="plus" size={16} /> {t('tasks.newTask')}
               </button>
@@ -325,176 +389,247 @@ export function TasksView({
           }
         />
       ) : (
-        <ul className="mg-tasklist">
-          {filtered.map((task) => {
-            const a = AREA_META[task.area]
-            const subsDone = task.subtasks.filter((s) => s.done).length
-            const isOpen = expanded === task.id
-            const openBlockers = task.blockedBy
-              .map((id) => data.tasks.find((x) => x.id === id))
-              .filter((b): b is Task => !!b && !b.done)
-            const isBlocked = !task.done && openBlockers.length > 0
+        <div className="mg-unified">
+          {filteredSections.map((section) => {
+            const title =
+              section.type === 'tasks' ? t('tasks.title') : section.type === 'goals' ? t('goals.title') : t('habits.title')
+            const secIcon = section.type === 'tasks' ? 'check' : section.type === 'goals' ? 'target' : 'fire'
             return (
-              <li
-                key={task.id}
-                className={`mg-taskcard ${task.done ? 'done' : ''} ${isBlocked ? 'blocked' : ''} ${
-                  doneAnim === task.id ? 'mg-burst' : ''
-                }`}
-                style={{ ['--mg-prio' as string]: PRIORITY_META[task.priority].color }}
-              >
-                <div className="mg-taskcard-main">
-                  <button
-                    className="mg-check"
-                    onClick={(e) => onCheck(task, e)}
-                    aria-label="Complete"
-                    style={{ ['--mg-check-tone' as string]: PRIORITY_META[task.priority].color }}
-                  >
-                    <Icon name="check" size={14} />
-                  </button>
-                  <button className="mg-taskcard-body" onClick={() => setExpanded(isOpen ? null : task.id)}>
-                    <span className="mg-task-icon" style={{ color: PRIORITY_META[task.priority].color }}>
-                      <Icon name={task.icon} size={16} />
-                    </span>
-                    <span className="mg-task-text">
-                      <span className="mg-task-title">
-                        {task.title}
-                        {isBlocked && (
-                          <span className="mg-task-lock" title={t('tasks.blockedHint')}>
-                            <Icon name="lock" size={12} />
-                          </span>
-                        )}
-                      </span>
-                      <span className="mg-task-meta">
-                        <span className="mg-tag" style={{ ['--mg-tag' as string]: a.color }}>
-                          {a.label}
-                        </span>
-                        <span className="mg-tag soft" style={{ ['--mg-tag' as string]: PRIORITY_META[task.priority].color }}>
-                          {PRIORITY_META[task.priority].label}
-                        </span>
-                        {task.subject && <span className="mg-task-subject">{task.subject}</span>}
-                        {task.due && (
-                          <span className="mg-task-due">
-                            <Icon name="calendar" size={12} /> {task.due}
-                          </span>
-                        )}
-                        {task.estimateMin > 0 && (
-                          <span className="mg-task-est">
-                            <Icon name="clock" size={12} /> {task.estimateMin}m
-                          </span>
-                        )}
-                        {task.recurring !== 'none' && (
-                          <span className="mg-task-rec">
-                            <Icon name="spark" size={12} /> {task.recurring}
-                          </span>
-                        )}
-                        {task.subtasks.length > 0 && (
-                          <span className="mg-task-subcount">
-                            {subsDone}/{task.subtasks.length}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                  <div className="mg-taskcard-actions">
-                    <button className="mg-iconbtn" onClick={() => startEdit(task)} aria-label="Edit">
-                      <Icon name="edit" size={15} />
-                    </button>
-                    <button className="mg-iconbtn danger" onClick={() => deleteTask(task.id)} aria-label="Delete">
-                      <Icon name="trash" size={15} />
-                    </button>
-                  </div>
+              <section key={section.type} className={`mg-unified-section mg-sec-${section.type}`}>
+                <div className="mg-section-divider">
+                  <span className="mg-section-title">
+                    <Icon name={secIcon} size={15} /> {title}
+                  </span>
                 </div>
 
-                {isOpen && (
-                  <div className="mg-taskcard-detail">
-                    {task.notes && <p className="mg-task-notes">{task.notes}</p>}
-
-                    {/* dependencies */}
-                    <div className="mg-deps">
-                      <div className="mg-deps-head">
-                        <Icon name="link" size={13} /> {t('tasks.dependsOn')}
-                        <select
-                          className="mg-dep-add"
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) toggleBlockedBy(task.id, e.target.value)
-                          }}
+                {section.type === 'tasks' && (
+                  <ul className="mg-tasklist">
+                    {(section.items as Task[]).map((task) => {
+                      const a = AREA_META[task.area]
+                      const subsDone = task.subtasks.filter((s) => s.done).length
+                      const isOpen = expanded === task.id
+                      const openBlockers = task.blockedBy
+                        .map((id) => data.tasks.find((x) => x.id === id))
+                        .filter((b): b is Task => !!b && !b.done)
+                      const isBlocked = !task.done && openBlockers.length > 0
+                      return (
+                        <li
+                          key={task.id}
+                          className={`mg-taskcard ${task.done ? 'done' : ''} ${isBlocked ? 'blocked' : ''} ${
+                            doneAnim === task.id ? 'mg-burst' : ''
+                          }`}
+                          style={{ ['--mg-prio' as string]: PRIORITY_META[task.priority].color }}
                         >
-                          <option value="">+ {t('tasks.addBlocker')}</option>
-                          {data.tasks
-                            .filter((x) => x.id !== task.id && !task.blockedBy.includes(x.id))
-                            .map((x) => (
-                              <option key={x.id} value={x.id}>
-                                {x.title}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                      {task.blockedBy.length === 0 ? (
-                        <small className="mg-muted">{t('tasks.blockedHint')}</small>
-                      ) : (
-                        <ul className="mg-deplist">
-                          {task.blockedBy.map((id) => {
-                            const b = data.tasks.find((x) => x.id === id)
-                            if (!b) return null
-                            return (
-                              <li key={id} className={b.done ? 'done' : ''}>
-                                <Icon name={b.done ? 'check' : 'lock'} size={12} /> {b.title}
-                                <button className="mg-iconbtn danger" onClick={() => toggleBlockedBy(task.id, id)} aria-label="Unblock">
-                                  <Icon name="close" size={11} />
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </div>
+                          <div className="mg-taskcard-main">
+                            <button
+                              className="mg-check"
+                              onClick={(e) => onCheck(task, e)}
+                              aria-label="Complete"
+                              style={{ ['--mg-check-tone' as string]: PRIORITY_META[task.priority].color }}
+                            >
+                              <Icon name="check" size={14} />
+                            </button>
+                            <button className="mg-taskcard-body" onClick={() => setExpanded(isOpen ? null : task.id)}>
+                              <span className="mg-task-icon" style={{ color: PRIORITY_META[task.priority].color }}>
+                                <Icon name={task.icon} size={16} />
+                              </span>
+                              <span className="mg-task-text">
+                                <span className="mg-task-title">
+                                  {task.title}
+                                  {isBlocked && (
+                                    <span className="mg-task-lock" title={t('tasks.blockedHint')}>
+                                      <Icon name="lock" size={12} />
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="mg-task-meta">
+                                  <span className="mg-tag" style={{ ['--mg-tag' as string]: a.color }}>
+                                    {a.label}
+                                  </span>
+                                  <span className="mg-tag soft" style={{ ['--mg-tag' as string]: PRIORITY_META[task.priority].color }}>
+                                    {PRIORITY_META[task.priority].label}
+                                  </span>
+                                  {task.subject && <span className="mg-task-subject">{task.subject}</span>}
+                                  {task.due && (
+                                    <span className="mg-task-due">
+                                      <Icon name="calendar" size={12} /> {task.due}
+                                    </span>
+                                  )}
+                                  {task.estimateMin > 0 && (
+                                    <span className="mg-task-est">
+                                      <Icon name="clock" size={12} /> {task.estimateMin}m
+                                    </span>
+                                  )}
+                                  {task.recurring !== 'none' && (
+                                    <span className="mg-task-rec">
+                                      <Icon name="spark" size={12} /> {task.recurring}
+                                    </span>
+                                  )}
+                                  {task.subtasks.length > 0 && (
+                                    <span className="mg-task-subcount">
+                                      {subsDone}/{task.subtasks.length}
+                                    </span>
+                                  )}
+                                </span>
+                              </span>
+                            </button>
+                            <div className="mg-taskcard-actions">
+                              <button className="mg-iconbtn" onClick={() => startEdit(task)} aria-label="Edit">
+                                <Icon name="edit" size={15} />
+                              </button>
+                              <button className="mg-iconbtn danger" onClick={() => deleteTask(task.id)} aria-label="Delete">
+                                <Icon name="trash" size={15} />
+                              </button>
+                            </div>
+                          </div>
 
-                    {/* Notion-style nested subtasks */}
-                    <ul className="mg-sublist">
-                      {task.subtasks.map((s) => (
-                        <li key={s.id}>
-                          <button
-                            className={`mg-subcheck ${s.done ? 'done' : ''}`}
-                            onClick={(e) => {
-                              if (!task.done && !s.done) float.push(e, subtaskPower())
-                              toggleSubtask(task.id, s.id)
-                            }}
-                          >
-                            <Icon name="check" size={11} />
-                          </button>
-                          <span className={s.done ? 'done' : ''}>{s.title}</span>
-                          <button className="mg-iconbtn danger" onClick={() => removeSubtask(task.id, s.id)}>
-                            <Icon name="close" size={12} />
-                          </button>
+                          {isOpen && (
+                            <div className="mg-taskcard-detail">
+                              {task.notes && <p className="mg-task-notes">{task.notes}</p>}
+
+                              <div className="mg-deps">
+                                <div className="mg-deps-head">
+                                  <Icon name="link" size={13} /> {t('tasks.dependsOn')}
+                                  <select
+                                    className="mg-dep-add"
+                                    value=""
+                                    onChange={(e) => {
+                                      if (e.target.value) toggleBlockedBy(task.id, e.target.value)
+                                    }}
+                                  >
+                                    <option value="">+ {t('tasks.addBlocker')}</option>
+                                    {data.tasks
+                                      .filter((x) => x.id !== task.id && !task.blockedBy.includes(x.id))
+                                      .map((x) => (
+                                        <option key={x.id} value={x.id}>
+                                          {x.title}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                                {task.blockedBy.length === 0 ? (
+                                  <small className="mg-muted">{t('tasks.blockedHint')}</small>
+                                ) : (
+                                  <ul className="mg-deplist">
+                                    {task.blockedBy.map((id) => {
+                                      const b = data.tasks.find((x) => x.id === id)
+                                      if (!b) return null
+                                      return (
+                                        <li key={id} className={b.done ? 'done' : ''}>
+                                          <Icon name={b.done ? 'check' : 'lock'} size={12} /> {b.title}
+                                          <button className="mg-iconbtn danger" onClick={() => toggleBlockedBy(task.id, id)} aria-label="Unblock">
+                                            <Icon name="close" size={11} />
+                                          </button>
+                                        </li>
+                                      )
+                                    })}
+                                  </ul>
+                                )}
+                              </div>
+
+                              <ul className="mg-sublist">
+                                {task.subtasks.map((s) => (
+                                  <li key={s.id}>
+                                    <button
+                                      className={`mg-subcheck ${s.done ? 'done' : ''}`}
+                                      onClick={(e) => {
+                                        if (!task.done && !s.done) float.push(e, subtaskPower())
+                                        toggleSubtask(task.id, s.id)
+                                      }}
+                                    >
+                                      <Icon name="check" size={11} />
+                                    </button>
+                                    <span className={s.done ? 'done' : ''}>{s.title}</span>
+                                    <button className="mg-iconbtn danger" onClick={() => removeSubtask(task.id, s.id)}>
+                                      <Icon name="close" size={12} />
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                              <form
+                                className="mg-subadd"
+                                onSubmit={(e) => {
+                                  e.preventDefault()
+                                  const v = subInput.trim()
+                                  if (!v) return
+                                  addSubtask(task.id, v)
+                                  setSubInput('')
+                                }}
+                              >
+                                <input
+                                  value={subInput}
+                                  onChange={(e) => setSubInput(e.target.value)}
+                                  placeholder={t('tasks.addSubtaskPlaceholder')}
+                                />
+                                <button type="submit">
+                                  <Icon name="plus" size={14} />
+                                </button>
+                              </form>
+                            </div>
+                          )}
                         </li>
-                      ))}
-                    </ul>
-                    <form
-                      className="mg-subadd"
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        const v = subInput.trim()
-                        if (!v) return
-                        addSubtask(task.id, v)
-                        setSubInput('')
-                      }}
-                    >
-                      <input
-                        value={subInput}
-                        onChange={(e) => setSubInput(e.target.value)}
-                        placeholder={t('tasks.addSubtaskPlaceholder')}
+                      )
+                    })}
+                  </ul>
+                )}
+
+                {section.type === 'goals' && (
+                  <div className="mg-goalgrid">
+                    {(section.items as Goal[]).map((g) => (
+                      <GoalCard
+                        key={g.id}
+                        goal={g}
+                        projects={data.projects}
+                        linkedProject={data.projects.find((p) => p.id === g.projectId) ?? null}
+                        taskCount={data.tasks.filter((tk) => tk.projectId === g.projectId).length}
+                        msInput={msInput[g.id] ?? ''}
+                        onMsInput={(v) => setMsInput((m) => ({ ...m, [g.id]: v }))}
+                        onAddMs={() => {
+                          const v = (msInput[g.id] ?? '').trim()
+                          if (!v) return
+                          addMilestone(g.id, v)
+                          setMsInput((m) => ({ ...m, [g.id]: '' }))
+                        }}
+                        onToggleMs={(id, e) => {
+                          const m = g.milestones.find((x) => x.id === id)
+                          if (m && !m.done) float.push(e, milestonePower())
+                          const doneAfter = g.milestones.filter((x) => (x.id !== id ? x.done : !x.done)).length
+                          const afterPct = g.milestones.length ? Math.round((doneAfter / g.milestones.length) * 100) : g.progress
+                          if (afterPct >= 100 && g.progress < 100) float.push(e, goalCompletePower())
+                          toggleMilestone(g.id, id)
+                        }}
+                        onProgress={(p) => updateGoal(g.id, { progress: p })}
+                        onDelete={() => deleteGoal(g.id)}
+                        onLinkProject={(projId) => (projId ? linkProjectGoal(projId, g.id) : unlinkProjectGoal(g.id))}
                       />
-                      <button type="submit">
-                        <Icon name="plus" size={14} />
-                      </button>
-                    </form>
+                    ))}
                   </div>
                 )}
-              </li>
+
+                {section.type === 'habits' && (
+                  <div className="mg-habitlist">
+                    {(section.items as Habit[]).map((h) => (
+                      <HabitRow
+                        key={h.id}
+                        habit={h}
+                        gridDays={habitGridDays}
+                        today={habitToday}
+                        streak={habitStreak(h.history, h.freezeDays, now)}
+                        onToggleToday={(e) => {
+                          const doneToday = h.history.includes(habitToday)
+                          if (!doneToday) float.push(e, habitPower())
+                          toggleHabitToday(h.id)
+                        }}
+                        onFreeze={() => toggleHabitFreeze(h.id)}
+                        onDelete={() => deleteHabit(h.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
             )
           })}
-        </ul>
+        </div>
       )}
 
       {/* History — completed tasks, newest first (like a chat log). */}

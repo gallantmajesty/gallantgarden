@@ -21,7 +21,6 @@ import {
   awardWeeklyWarrior,
   awardTaskStreak,
   awardHabitStreak,
-  checkInactivityPenalty,
   recordActivity,
 } from '../lib/xpEngine'
 import { rankForTotalXp } from '../lib/ranks'
@@ -437,38 +436,6 @@ export const useMagnet = create<MagnetState>((set, get) => {
        } catch {
          /* ignore */
        }
-
-       // Check inactivity penalty on daily load
-       try {
-         const p = useProfile.getState()
-         const rankBase = p.rankXp > 0 ? p.rankXp : p.xp + p.premiumXp
-         const currentRank = rankForTotalXp(rankBase)
-         const penaltyResult = checkInactivityPenalty(p.xp, p.premiumXp, currentRank.id, rankBase)
-         if (penaltyResult.leaves < 0 || penaltyResult.goldenLeaves > 0) {
-           // Wallet takes what it can carry (clamped at 0); lifetime rank XP
-           // always takes the FULL stacked hit per missed day — an empty
-           // wallet shouldn't dodge the rank drop.
-           const balance = p.applyXp({
-             leaves: penaltyResult.leaves,
-             golden: penaltyResult.goldenLeaves,
-             rankXp: -(penaltyResult.xpLost ?? 0),
-           })
-           const newRank = rankForTotalXp(balance.rankXp)
-           let achievements = data.achievements
-           if (penaltyResult.rankChanged && newRank.id !== currentRank.id) {
-             achievements = [
-               { id: uid('ach'), title: `Rank Down: ${newRank.name}`, detail: `Inactivity penalty applied.`, icon: 'alert-circle', at: nowIso() },
-               ...achievements,
-             ]
-           }
-           const updated = { ...data, xp: balance.xp, premiumXp: balance.premiumXp, rankXp: balance.rankXp, achievements }
-           persist(updated)
-           set({ data: updated })
-   if (penaltyResult.leaves < 0) {
-     set({ toast: { title: 'Inactivity Penalty', body: `-${Math.abs(penaltyResult.leaves)} leaves and -${penaltyResult.xpLost ?? 0} XP for ${penaltyResult.missedDays ?? 0} missed day${(penaltyResult.missedDays ?? 0) > 1 ? 's' : ''}. Open FocusLily daily to avoid more.`, icon: 'alert-circle' } })
-           }
-         }
-       } catch { /* ignore — penalty is best-effort */ }
 
        // The profile store is the authoritative wallet. Reconcile the local
        // Magnet snapshot with it so stale local XP (earned outside Magnet —

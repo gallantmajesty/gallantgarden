@@ -271,7 +271,7 @@ export function GoalsView() {
   )
 }
 
-function GoalCard({
+export function GoalCard({
   goal,
   projects,
   linkedProject,

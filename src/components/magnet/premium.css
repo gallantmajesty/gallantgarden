@@ -1275,3 +1275,38 @@
 @media (max-width: 560px) {
   .mg-perf, .mg-kpis { grid-template-columns: 1fr; }
 }
+
+/* ── Unified Tasks view: Tasks + Goals + Habits as calm stacked sections ── */
+.mg-unified {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.mg-unified-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* section header divider between Tasks / Goals / Habits */
+.mg-section-divider {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 -2px;
+}
+.mg-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mg-text-soft);
+}
+.mg-section-title .mg-icon { color: var(--mg-accent); }
+/* The goals/habits grids already carry their own spacing; keep them flush
+   under their section header for a tidy, single-column rhythm. */
+.mg-sec-goals .mg-goalgrid,
+.mg-sec-habits .mg-habitlist {
+  margin-top: 2px;
+}

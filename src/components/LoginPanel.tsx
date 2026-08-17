@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../store/magnet'
 import { useProfile } from '../store/profile'
-import { getDailyEngagement, syncXpToDb, XP_VALUES, DAILY_CAPS } from '../lib/xpEngine'
+import { getDailyEngagement, syncXpToDb } from '../lib/xpEngine'
 import { rankForLifetime, RANKS } from '../lib/ranks'
 import './LoginPanel.css'
 
@@ -10,21 +9,6 @@ export function LoginPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
   const engagement = getDailyEngagement()
-
-const [showPenalty, setShowPenalty] = useState(false)
-const [penaltyMsg, setPenaltyMsg] = useState('')
-
-useEffect(() => {
-  const penaltyKey = 'sf.loginPenalty.shownToday'
-  const panelShownToday = localStorage.getItem(penaltyKey) === new Date().toDateString()
-  const daily = engagement
-  if (!panelShownToday && daily.penaltyApplied && (daily.penaltyLostToday ?? 0) > 0) {
-    const days = daily.penaltyMissedDays ?? 1
-    setPenaltyMsg(`You were away for ${days} day${days > 1 ? 's' : ''} — ${daily.penaltyLostToday} leaves and ${XP_VALUES.inactivityPenaltyXp * days} XP deducted. Open FocusLily every day to keep your streak!`)
-    setShowPenalty(true)
-    localStorage.setItem(penaltyKey, new Date().toDateString())
-  }
-}, [engagement])
 
   const handleClose = () => {
     localStorage.setItem('sf.loginPanel.lastShown', String(Date.now()))
@@ -84,21 +68,11 @@ useEffect(() => {
           </div>
         </div>
 
-        {showPenalty && (
-          <div className="lp-penalty">
-            <div className="lp-penalty-icon">⚠️</div>
-            <div className="lp-penalty-title">Inactivity Penalty</div>
-            <div className="lp-penalty-body">{penaltyMsg}</div>
-          </div>
-        )}
-
         <div className="lp-tips">
           <h4>📖 Daily Tips</h4>
           <ul>
-            <li>Open FocusLily <strong>every day</strong> to avoid inactivity penalties</li>
-            <li>Earn up to <strong>{DAILY_CAPS.activeMinCap} min</strong> of active XP earning per day</li>
-            <li>Maintain a <strong>streak</strong> for bonus golden leaves</li>
-            <li>Check your <strong>Focus Score</strong> for 30-day analytics</li>
+            <li>Maintain a <strong>streak</strong> — a day counts if you return within 24 hours</li>
+            <li>Check your <strong>Focus Score</strong> for lifetime analytics</li>
           </ul>
         </div>
 

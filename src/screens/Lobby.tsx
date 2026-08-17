@@ -13,7 +13,6 @@ import { ResourceBar } from '../components/ResourceBar'
 import { ScorePanel } from '../components/ScorePanel'
 import { LoginPanel } from '../components/LoginPanel'
 import { RANKS, getRank, rankProgress, rankForLifetime } from '../lib/ranks'
-import { getDailyEngagement } from '../lib/xpEngine'
 import { computeStreak } from '../lib/magnet/insights'
 import { FriendsPanel } from '../components/FriendsPanel'
 import { SocialHub } from '../features/social/SocialHub'
@@ -80,7 +79,6 @@ export function Lobby() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [panel, setPanel] = useState<null | 'settings' | 'friends' | 'inbox' | 'score' | 'login'>(null)
-  const [showLoginPanel, setShowLoginPanel] = useState(false)
   const [showWheel, setShowWheel] = useState(false)
   const [showNews, setShowNews] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
@@ -169,19 +167,7 @@ export function Lobby() {
     }
   }, [])
 
-useEffect(() => {
-  const lastShown = localStorage.getItem('sf.loginPanel.lastShown')
-  const now = Date.now()
-  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
-  const cooldownOk = !lastShown || (now - Number(lastShown)) > TWENTY_FOUR_HOURS
-  const engagement = getDailyEngagement()
-  // Only pop the welcome panel when a missed-day inactivity penalty was
-  // actually applied today — not for every fresh user with zero minutes.
-  if (user && cooldownOk && engagement.penaltyApplied) {
-    setShowLoginPanel(true)
-    localStorage.setItem('sf.loginPanel.lastShown', String(now))
-  }
-}, [user])
+
 
   // Guest banner: visible for 3s, then fades out (never comes back until reload).
   useEffect(() => {
@@ -481,7 +467,6 @@ useEffect(() => {
         {panel === 'settings' && <LobbySettings onClose={() => setPanel(null)} />}
         {panel === 'score' && <ScorePanel onClose={() => setPanel(null)} />}
         {panel === 'login' && <LoginPanel onClose={() => setPanel(null)} />}
-        {showLoginPanel && <LoginPanel onClose={() => setShowLoginPanel(false)} />}
         <LuckyWheelModal open={showWheel} onClose={() => setShowWheel(false)} />
         <NewsModal open={showNews} onClose={() => setShowNews(false)} />
         <ComingSoonModal

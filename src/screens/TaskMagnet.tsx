@@ -15,8 +15,6 @@ import { TasksView } from '../components/magnet/views/TasksView'
 import { AnalyticsView } from '../components/magnet/views/AnalyticsView'
 import { GoalsView } from '../components/magnet/views/GoalsView'
 import { HabitsView } from '../components/magnet/views/HabitsView'
-import { StoreView } from '../components/magnet/views/StoreView'
-import { SheetView } from '../components/magnet/views/SheetView'
 import { CalendarView } from '../components/magnet/views/CalendarView'
 import { MagnetLoader } from '../components/magnet/MagnetLoader'
 import { usePendingClaims } from '../components/pending/usePendingClaims'
@@ -26,12 +24,10 @@ import './TaskMagnet.css'
 export type MagnetView =
   | 'dashboard'
   | 'tasks'
-  | 'sheet'
   | 'analytics'
   | 'goals'
   | 'habits'
   | 'calendar'
-  | 'store'
 
 export function TaskMagnet() {
   const { t } = useTranslation()
@@ -121,8 +117,6 @@ export function TaskMagnet() {
     { key: 'goals', label: t('taskMagnet.navGoals'), icon: 'target', png: 'goals' },
     { key: 'habits', label: t('taskMagnet.navHabits'), icon: 'fire', png: 'habits' },
     { key: 'calendar', label: t('taskMagnet.navCalendar'), icon: 'calendar' },
-    { key: 'sheet', label: t('taskMagnet.navSheet'), icon: 'grid' },
-    { key: 'store', label: t('taskMagnet.navStore'), icon: 'store' },
   ]
 
   const profileName = useProfile((s) => s.displayName)
@@ -206,9 +200,6 @@ export function TaskMagnet() {
               ? t('taskMagnet.powerCap', { xp: powerToday, cap: MXP_DAILY_EARN_CAP })
               : t('taskMagnet.powerToday', { xp: powerToday })}
           </small>
-          <button className="mg-storebtn" onClick={() => { setView('store'); setNavOpen(false) }}>
-            <Icon name="store" size={14} /> {t('taskMagnet.openStore')}
-          </button>
         </div>
       </aside>
 
@@ -231,11 +222,9 @@ export function TaskMagnet() {
           {view === 'tasks' && (
             <TasksView prefillDue={prefillDue} onPrefillDue={() => setPrefillDue(null)} />
           )}
-          {view === 'sheet' && <SheetView />}
           {view === 'analytics' && <AnalyticsView />}
           {view === 'goals' && <GoalsView />}
           {view === 'habits' && <HabitsView />}
-          {view === 'store' && <StoreView />}
           {view === 'calendar' && <CalendarView />}
         </div>
       </main>

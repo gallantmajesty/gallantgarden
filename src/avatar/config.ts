@@ -198,9 +198,7 @@ export type AccessoryId =
   | 'laptop'
   | 'gaming_laptop'
   | 'phone'
-  | 'book'
   | 'book_stack'
-  | 'do_not_disturb_poster'
   | 'trading_laptop'
   | 'piano'
   | 'mug'
@@ -239,10 +237,8 @@ export interface AccessoryDef {
 export const ACCESSORIES: AccessoryDef[] = [
   { id: 'laptop', visible: true, name: 'Laptop', icon: '💻', color: '#b8a48c', blurb: 'Study companion', price: 0 },
   { id: 'gaming_laptop', visible: true, name: 'Gaming Laptop', icon: '🎮', color: '#a06a3a', blurb: 'Amber-lit rig', price: 120, currency: 'gold' },
-  { id: 'phone', visible: true, name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Always in hand', price: 300 },
-  { id: 'book', visible: true, name: 'Single Book', icon: '📖', color: '#7a3b22', blurb: 'Open textbook', price: 250 },
+  { id: 'phone', visible: true, name: 'Phone', icon: '📱', color: '#5b3a22', blurb: 'Desk companion', price: 300 },
   { id: 'book_stack', visible: true, name: 'Book Stack', icon: '📚', color: '#6b4a2e', blurb: '20-book tower', price: 450 },
-  { id: 'do_not_disturb_poster', visible: true, name: 'Do Not Disturb Sign', icon: '🚫', color: '#c9302c', blurb: 'Focus mode active', price: 400 },
   { id: 'trading_laptop', visible: true, name: 'Trading Laptop', icon: '📈', color: '#2a3b2c', blurb: 'Multi-screen charts', price: 200, currency: 'gold' },
   { id: 'mug', visible: true, name: 'Coffee Mug', icon: '☕', color: '#c96f43', blurb: 'Warm sip', price: 200 },
   { id: 'flower_pot', visible: true, name: 'Potted Flower', icon: '🌷', color: '#d9777f', blurb: 'Cozy botanic life', price: 350 },
@@ -328,15 +324,23 @@ export function normalizeAvatar(input: Partial<AvatarConfig> | null | undefined)
   if (!ALL_BOTTOM_IDS.has(merged.bottom)) merged.bottom = 'pants'
 
   // free colours: keep valid-looking hex overrides, drop anything malformed.
+  // (topColor/bottomColor/nailColor/glasses/hairBand were removed from the
+  // customizer — they're dropped entirely just below.)
   const hexOk = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)
-  if (merged.topColor !== undefined && !hexOk(merged.topColor)) delete (merged as Partial<AvatarConfig>).topColor
-  if (merged.bottomColor !== undefined && !hexOk(merged.bottomColor)) delete (merged as Partial<AvatarConfig>).bottomColor
   if (merged.shoeColor !== undefined && !hexOk(merged.shoeColor)) delete (merged as Partial<AvatarConfig>).shoeColor
   if (merged.hairColorHex !== undefined && !hexOk(merged.hairColorHex)) delete (merged as Partial<AvatarConfig>).hairColorHex
   if (merged.skinColor !== undefined && !hexOk(merged.skinColor)) delete (merged as Partial<AvatarConfig>).skinColor
-  if (merged.nailColor !== undefined && !hexOk(merged.nailColor)) delete (merged as Partial<AvatarConfig>).nailColor
-  if (merged.glassesColor !== undefined && !hexOk(merged.glassesColor)) delete (merged as Partial<AvatarConfig>).glassesColor
-  if (merged.hairBandColor !== undefined && !hexOk(merged.hairBandColor)) delete (merged as Partial<AvatarConfig>).hairBandColor
+
+  // Outfit options removed from the customizer — drop any legacy overrides for
+  // t-shirt/pant colour, glasses, hair band and nail polish so they never render
+  // with no way to toggle them off.
+  delete (merged as Partial<AvatarConfig>).topColor
+  delete (merged as Partial<AvatarConfig>).bottomColor
+  delete (merged as Partial<AvatarConfig>).nailColor
+  delete (merged as Partial<AvatarConfig>).glasses
+  delete (merged as Partial<AvatarConfig>).glassesColor
+  delete (merged as Partial<AvatarConfig>).hairBand
+  delete (merged as Partial<AvatarConfig>).hairBandColor
 
   // accessories: keep only known ids.
   if (Array.isArray(merged.accessories)) {

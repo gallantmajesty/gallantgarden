@@ -11,6 +11,7 @@ import { useWorld } from "../store/world";
 import { useSettings } from "../store/settings";
 import { useProfile } from "../store/profile";
 import { useHardcore, EASY_RATE, MEDIUM_RATE, hardcoreRateFor, hardcoreMultiplier, minWagerFor, wagerBonusMultiplier } from "../store/hardcore";
+import { compute24hStreak } from "../lib/magnet/insights";
 import { useDeviceBoost, boostPct } from "../lib/deviceBoost";
 import { useHardcodeMode } from "../hooks/focus/useHardcodeMode";
 import { useLockerTask } from "../hooks/focus/useLockerTask";
@@ -274,7 +275,6 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
             <div><span style={{ opacity: 0.6 }}>Completed</span><br />{summary.completedSessions}</div>
             <div><span style={{ opacity: 0.6 }}>Avg Session</span><br />{Math.round(summary.averageSessionLength)}min</div>
             <div><span style={{ opacity: 0.6 }}>Current Streak</span><br />{summary.currentStreak}d</div>
-            <div><span style={{ opacity: 0.6 }}>Longest Streak</span><br />{summary.longestStreak}d</div>
             <div><span style={{ opacity: 0.6 }}>Focus Sessions</span><br />{summary.sessionsByType.focus}</div>
             <div><span style={{ opacity: 0.6 }}>Pomodoro Sessions</span><br />{summary.sessionsByType.pomodoro}</div>
           </div>
@@ -446,24 +446,13 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
   const dock = useSideDock();
 
   // Streak from REAL session history — the same source the Focus Score panel
-  // uses — so the header always matches the analytics. Consecutive days with a
-  // completed session count; updates live the moment a session completes.
-  const { currentStreak, bestStreak } = useMemo(() => {
-    const days = [...new Set(history.map((h) => {
-      const d = new Date(h.date);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    }))].sort((a, b) => a - b);
-    let best = 0;
-    let cur = 0;
-    let prev: number | null = null;
-    for (const t of days) {
-      cur = prev !== null && t - prev === 86400000 ? cur + 1 : 1;
-      best = Math.max(best, cur);
-      prev = t;
-    }
-    return { currentStreak: cur, bestStreak: best };
-  }, [history]);
+  // uses — so the header always matches the analytics. Uses the 24-hour rule:
+  // a day counts when the user returns within 24 hours of their previous
+  // day's activity; a calendar midnight never breaks it. Best streak is gone.
+  const { current: currentStreak } = useMemo(
+    () => compute24hStreak(history.map((h) => new Date(h.date).getTime())),
+    [history],
+  );
 
   const isIdle = phase === "idle";
   // Live leaves counter: banked segments + the running segment's continuous
@@ -633,7 +622,7 @@ export function FocusDomain({ isOpen, onClose }: FocusDomainProps) {
 
         <div className="fd-stats">
           <span>Streak: {currentStreak}d</span>
-          <span title={`Best streak ${bestStreak}d`}>Leaves: {walletLeaves}</span>
+          <span>Leaves: {walletLeaves}</span>
         </div>
 
         <button onClick={() => setShowConnect(true)} className="fd-close fd-icon-btn" style={{ marginRight: "0.25rem" }} title="Hardcore Connect — paste a boost code or see connected devices"><IconLink /></button>
