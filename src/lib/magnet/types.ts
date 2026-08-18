@@ -5,7 +5,9 @@
 
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 export type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly'
-export type LifeArea = 'academic' | 'personal' | 'health' | 'career' | 'creative' | 'social'
+// Areas are now free-form: users create their own. The presets in AREA_META are
+// only suggestions surfaced in the area picker; any other string is valid.
+export type LifeArea = string
 
 export interface SubTask {
   id: string
@@ -31,9 +33,6 @@ export interface Task {
   // Manual ordering: tasks are displayed in this array order (open first, then
   // done). Assigned when created; changed by drag-and-drop reordering.
   order: number
-  // Dependency support: task IDs this task is blocked by. A blocked task cannot
-  // be completed until every blocker is done.
-  blockedBy: string[]
   templateId: string | null // set when this task was created from a template
   createdAt: string // ISO timestamp
   completedAt: string | null
@@ -188,6 +187,18 @@ export const AREA_META: Record<LifeArea, { label: string; icon: string; color: s
   career: { label: 'Career', icon: 'rocket', color: '#ffb454' },
   creative: { label: 'Creative', icon: 'palette', color: '#b76cff' },
   social: { label: 'Social', icon: 'people', color: '#4fd1e0' },
+}
+
+// Safe lookup that also handles free-form (user-created) areas: falls back to a
+// neutral chip showing the raw area name when it isn't one of the presets.
+export function getAreaMeta(area: string): { label: string; icon: string; color: string } {
+  return (
+    AREA_META[area as keyof typeof AREA_META] ?? {
+      label: area || 'Task',
+      icon: 'tag',
+      color: 'var(--mg-accent)',
+    }
+  )
 }
 
 export const PRIORITY_META: Record<Priority, { label: string; color: string; weight: number }> = {

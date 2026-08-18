@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useProfile } from '../store/profile'
 import { useMagnet } from '../store/magnet'
-import { levelProgress } from '../lib/magnet/types'
 import { getTheme } from '../lib/magnet/themes'
-import { MXP_DAILY_EARN_CAP } from '../lib/magnet/score'
 import { Icon } from '../components/magnet/Icon'
 import { PngIcon, type PngIconName } from '../components/PngIcon'
 import { ThemeBackdrop } from '../components/magnet/ThemeBackdrop'
@@ -14,10 +12,8 @@ import { Dashboard } from '../components/magnet/views/Dashboard'
 import { TasksView } from '../components/magnet/views/TasksView'
 import { AnalyticsView } from '../components/magnet/views/AnalyticsView'
 import { GoalsView } from '../components/magnet/views/GoalsView'
-import { HabitsView } from '../components/magnet/views/HabitsView'
 import { CalendarView } from '../components/magnet/views/CalendarView'
 import { MagnetLoader } from '../components/magnet/MagnetLoader'
-import { usePendingClaims } from '../components/pending/usePendingClaims'
 
 import './TaskMagnet.css'
 
@@ -39,9 +35,6 @@ export function TaskMagnet() {
   // loader itself once the data is ready (with a built-in safety timeout so it
   // can never get stuck on screen).
   const [loaderDone, setLoaderDone] = useState(false)
-  // Green "you have an update" dot — only lights for real, unseen updates
-  // (unclaimed achievements, unread News, incoming friend requests).
-  const pendingClaims = usePendingClaims()
   const toast = useMagnet((s) => s.toast)
   const clearToast = useMagnet((s) => s.clearToast)
 
@@ -83,6 +76,7 @@ export function TaskMagnet() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // The applied magnet theme owns the whole world: replace the fixed coffee
@@ -112,11 +106,10 @@ export function TaskMagnet() {
 
   const NAV: { key: MagnetView; label: string; icon: string; png?: PngIconName }[] = [
     { key: 'dashboard', label: t('taskMagnet.navDashboard'), icon: 'home' },
-    { key: 'tasks', label: t('taskMagnet.navTasks'), icon: 'check', png: 'tasks' },
     { key: 'analytics', label: t('taskMagnet.navAnalytics'), icon: 'chart', png: 'analytics' },
-    { key: 'goals', label: t('taskMagnet.navGoals'), icon: 'target', png: 'goals' },
-    { key: 'habits', label: t('taskMagnet.navHabits'), icon: 'fire', png: 'habits' },
+    { key: 'tasks', label: t('taskMagnet.navTasks'), icon: 'check', png: 'tasks' },
     { key: 'calendar', label: t('taskMagnet.navCalendar'), icon: 'calendar' },
+    { key: 'goals', label: t('taskMagnet.navGoals'), icon: 'target', png: 'goals' },
   ]
 
   const profileName = useProfile((s) => s.displayName)
@@ -125,33 +118,19 @@ export function TaskMagnet() {
     user?.profile?.name ||
     user?.email?.split('@')[0] ||
     t('auth.defaultName')
-  // Magnet Power drives the magnet's own level bar + theme store: the bar uses
-  // the LIFETIME total (never lowered by spending), the chip shows the balance.
-  const mp = levelProgress(data.mxpTotal ?? data.mxp)
-  const todayKey = (): string => {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
-  const powerToday = data.mxpDay.date === todayKey() ? data.mxpDay.value : 0
-  const powerCapped = powerToday >= MXP_DAILY_EARN_CAP
 
   return (
     <div className={`mg-root dark mg-theme-${activeTheme.id}`} style={rootStyle}>
       <ThemeBackdrop theme={activeTheme} density={0.7} accent={activeTheme.vars.accent2} />
 
       <aside className={`mg-sidebar ${navOpen ? 'open' : ''}`}>
-        <button className="mg-back" onClick={() => navigate(-1)}>
-          <Icon name="back" size={18} /> {t('common.lobby')}
-        </button>
-
-        <div className="mg-brand">
-          <span className="mg-brand-orb">
-            <img className="mg-brand-logo-img" src="/task-mgmt-logo.png" alt="Task Magnet" />
-          </span>
-          <div>
-            <strong>{t('taskMagnet.brand')}</strong>
-            <small>Task Magnet</small>
-          </div>
+        <div className="mg-sidebar-top">
+          <button className="mg-back" onClick={() => navigate(-1)}>
+            <Icon name="back" size={18} /> {t('common.lobby')}
+          </button>
+          <button className="mg-burger" onClick={() => setNavOpen((o) => !o)} aria-label={t('taskMagnet.menu')}>
+            <Icon name={navOpen ? 'close' : 'chevron'} size={20} />
+          </button>
         </div>
 
         <nav className="mg-nav">
@@ -176,47 +155,18 @@ export function TaskMagnet() {
           ))}
         </nav>
 
-        <div className="mg-levelcard">
-          <div className="mg-levelcard-top">
-            <span className="mg-levellv">
-              <Icon name="spark" size={13} />
-              {t('taskMagnet.level', { level: mp.level })}
-            </span>
-            <span className="mg-levelxp" title={t('taskMagnet.powerHint')}>
-              <Icon name="bag" size={13} />
-              {t('taskMagnet.powerValue', { xp: data.mxp })}
-            </span>
+        <div className="mg-brand mg-brand-bottom">
+          <span className="mg-brand-orb">
+            <img className="mg-brand-logo-img" src="/task-mgmt-logo.png" alt="Task Magnet" />
+          </span>
+          <div>
+            <strong>{t('taskMagnet.brand')}</strong>
+            <small>Task Magnet</small>
           </div>
-          <div className="mg-levelbar">
-            <div className="mg-levelbar-fill" style={{ width: `${mp.pct * 100}%` }} />
-          </div>
-          <small className="mg-leveltop">{t('taskMagnet.powerToLevel', { xp: mp.span - mp.into, nextLevel: mp.level + 1 })}</small>
-          <small
-            className={`mg-leveltoday ${powerCapped ? 'capped' : ''}`}
-            title={powerCapped ? t('taskMagnet.powerCapHint') : t('taskMagnet.powerHint')}
-          >
-            <Icon name="leaf" size={11} />
-            {powerCapped
-              ? t('taskMagnet.powerCap', { xp: powerToday, cap: MXP_DAILY_EARN_CAP })
-              : t('taskMagnet.powerToday', { xp: powerToday })}
-          </small>
         </div>
       </aside>
 
       <main className="mg-main">
-        <header className="mg-topbar">
-          <button className="mg-burger" onClick={() => setNavOpen((o) => !o)} aria-label={t('taskMagnet.menu')}>
-            <Icon name={navOpen ? 'close' : 'chevron'} size={20} />
-          </button>
-          <div className="mg-topbar-title">
-            {NAV.find((n) => n.key === view)?.label}
-          </div>
-          <div className="mg-topbar-user">
-            <span className="mg-topbar-name">{displayName}</span>
-            {pendingClaims > 0 && <span className="mg-topbar-dot" />}
-          </div>
-        </header>
-
         <div className="mg-content">
           {view === 'dashboard' && <Dashboard name={displayName} onNavigate={setView} />}
           {view === 'tasks' && (
@@ -224,7 +174,6 @@ export function TaskMagnet() {
           )}
           {view === 'analytics' && <AnalyticsView />}
           {view === 'goals' && <GoalsView />}
-          {view === 'habits' && <HabitsView />}
           {view === 'calendar' && <CalendarView />}
         </div>
       </main>

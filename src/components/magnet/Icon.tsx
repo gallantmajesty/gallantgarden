@@ -48,6 +48,7 @@ const PATHS: Record<string, string> = {
   upload: 'M12 21V9 M7 13l5-5 5 5 M5 3h14',
   store: 'M3 9l1.5-5h15L21 9 M3 9h18v11H3z M3 9l1 3h16l1-3 M9 20v-5h6v5',
   bag: 'M6 8l1-4h10l1 4 M6 8h12v13H6z M9 11V8 M15 11V8',
+  restore: 'M7 5l-4 4 4 4 M3 9h9a6 6 0 016 6v3',
 }
 
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {

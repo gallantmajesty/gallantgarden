@@ -10,6 +10,7 @@ import { HalfFloatType, Vector3 } from 'three'
 // DPR is fixed at mount time — no live re-scaling to avoid GPU stalls / context loss.
 import { useSettings, type PostQuality } from '../../store/settings'
 import { useScenePreset } from '../../store/quality'
+import { settleRealmQuality } from '../realmQuality'
 import { useSeatFlow } from '../../store/seatFlow'
 import { useWorld } from '../../store/world'
 import { useSocialOverlay } from '../../features/social/store'
@@ -205,6 +206,9 @@ export function LibraryScene({ onReady, frameloop = 'always', roomId }: { onRead
     // Open the impostor bake gate only after the loading veil lifts — the
     // entry window must never absorb the ~30 full-rig bake renders+readbacks.
     setBakeGate(true)
+    // Realm ready — step the resolution back up to the detected device tier
+    // (auto-quality only; never touches LOD axes).
+    settleRealmQuality()
     onReady?.()
   }
   // Refs so the context-loss fallback can also lift the veil (the callback

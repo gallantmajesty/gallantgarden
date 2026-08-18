@@ -6,8 +6,6 @@ import { dayKey, addDays } from '../../../lib/magnet/insights'
 import { SectionHead, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
 import { useNow } from '../useNow'
-import { habitPower } from '../../../lib/magnet/score'
-import { useMxpFloat } from '../MxpFeedback'
 
 const HABIT_ICONS = ['fire', 'book', 'brain', 'leaf', 'heart', 'spark', 'sun', 'moon', 'rocket', 'star']
 const HABIT_COLORS = ['#ff7a3d', '#46d6a0', '#6c8cff', '#ff6f9c', '#b76cff', '#4fd1e0', '#ffb454']
@@ -38,7 +36,6 @@ export function HabitsView() {
   const [title, setTitle] = useState('')
   const [icon, setIcon] = useState(HABIT_ICONS[0])
   const [color, setColor] = useState(HABIT_COLORS[0])
-  const float = useMxpFloat()
 
   const now = useNow()
   const tk = dayKey(now)
@@ -87,11 +84,7 @@ export function HabitsView() {
               gridDays={gridDays}
               today={tk}
               streak={habitStreak(h.history, h.freezeDays, now)}
-              onToggleToday={(e) => {
-                const doneToday = h.history.includes(tk)
-                if (!doneToday) float.push(e, habitPower())
-                toggleHabitToday(h.id)
-              }}
+              onToggleToday={() => toggleHabitToday(h.id)}
               onFreeze={() => toggleHabitFreeze(h.id)}
               onDelete={() => deleteHabit(h.id)}
             />
@@ -148,8 +141,6 @@ export function HabitsView() {
           </div>
         </form>
       </MgModal>
-
-      {float.node}
     </div>
   )
 }

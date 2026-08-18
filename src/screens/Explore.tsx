@@ -23,6 +23,8 @@ import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../component
 import { usePomodoro, SESSION_OPTIONS, computeSegments, liveFocusLeaves, formatLiveLeaves, suggestBreakActivity } from '../store/pomodoro'
 import { hardcoreMultiplier, minWagerFor } from '../store/hardcore'
 import { useDeviceBoost } from '../lib/deviceBoost'
+import { enterRealmLowFirst } from '../three/realmQuality'
+import { getCachedDeviceProfile, onDeviceProfile, type DeviceProfile } from '../lib/deviceProfile'
 import { DeviceConnect } from '../components/focus/DeviceConnect'
 import type { TimerType, PomoPhase } from '../store/pomodoro'
 import { getRemoteOccupied, setLocalTimer, setLocalCelebrate } from '../multiplayer/net'
@@ -84,13 +86,20 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const set = useSettings((s) => s.set)
   const hidden = useHud((s) => s.widgetsHidden)
   const perfMode = useHud((s) => s.perfMode)
-  useAudio()
   useExploreShortcuts()
+
+
 
   // Determine which world to render: use worldFromUrl if available, otherwise use defaultWorld prop, otherwise use realm.world
   const isTrain = worldFromUrl === 'train-station' || defaultWorld === 'train-station' || realm?.world === 'train-station'
   const isUkCafe = worldFromUrl === 'uk-cafe' || defaultWorld === 'uk-cafe' || realm?.world === 'uk-cafe'
   const isChineseCafe = worldFromUrl === 'chinese-cafe' || defaultWorld === 'chinese-cafe' || realm?.world === 'chinese-cafe'
+  const seatFlowStage = useSeatFlow((s) => s.stage)
+
+  // Rain/ambience must NOT play over the seat picker: the Library & UK Café
+  // hold the soundscape until the player is actually in the world (past seat
+  // selection). The Train has no seat picker and always enables it.
+  useAudio({ enabled: isTrain || seatFlowStage !== 'selecting' })
 
   // Auto-collapse the desk whenever the player sits down, so the seated avatar (and
   // its sitting animation) stays visible behind a small header rather than the full
@@ -98,7 +107,6 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const seat = useWorld((s) => s.seat)
   const cinematic = useWorld((s) => s.cinematic)
   const cineFade = useWorld((s) => s.cineFade)
-  const seatFlowStage = useSeatFlow((s) => s.stage)
   const wasSeated = useRef(false)
   useEffect(() => {
     if (seat != null && !wasSeated.current) useDesk.getState().setView('collapsed')
@@ -129,6 +137,13 @@ export function Explore({ defaultWorld }: ExploreProps) {
     const t = window.setTimeout(() => setSceneMounted(true), 450)
     return () => window.clearTimeout(t)
   }, [seatFlowStage])
+
+  // Realm entry — drop the resolution for a fast first settle (auto-quality
+  // only; the player's own axes are left untouched). The scene steps back up
+  // to the detected tier once it signals ready.
+  useEffect(() => {
+    if (sceneMounted && seatFlowStage !== 'selecting') enterRealmLowFirst()
+  }, [sceneMounted, seatFlowStage])
 
   // Restore saved seat on tab return (30s expiry). Fresh entries stay in
   // 'selecting' so the seat picker (with occupied seats) always shows before
@@ -1339,6 +1354,9 @@ function FpsMeter() {
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const s = useSettings()
   const [fullscreen, setFullscreen] = useState(!!document.fullscreenElement)
+  // Detected device tier — reacts when the app-start probe completes.
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(() => getCachedDeviceProfile())
+  useEffect(() => onDeviceProfile(setDeviceProfile), [])
 
   function toggleFullscreen() {
     if (document.fullscreenElement) {
@@ -1441,6 +1459,22 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             />
             <Toggle label="Ultra effects (SSAO · god rays · DoF) — high-end GPU" value={s.ultra} onChange={(v) => s.set('ultra', v)} />
             <Toggle label="Show FPS counter" value={s.fps} onChange={(v) => s.set('fps', v)} />
+            {/* Detected device read-out from the app-start probe — proves the
+                auto-detection actually ran and shows what it decided. */}
+            <div className="set-row set-row--device">
+              <span>Detected device</span>
+              <span className={`ls-device-tier ls-device-tier--${deviceProfile?.tier ?? 'high'}`}>
+                {deviceProfile
+                  ? deviceProfile.tier === 'low'
+                    ? 'Low'
+                    : deviceProfile.tier === 'medium'
+                      ? 'Medium'
+                      : deviceProfile.tier === 'blocked'
+                        ? 'Blocked'
+                        : 'High'
+                  : 'Detecting…'}
+              </span>
+            </div>
           </Section>
 
           <Section title="Players & Performance">

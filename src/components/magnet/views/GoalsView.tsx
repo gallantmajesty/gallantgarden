@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
-import type { Goal, GoalKind, Project } from '../../../lib/magnet/types'
+import type { Goal, GoalKind } from '../../../lib/magnet/types'
 import { SectionHead, Panel, ProgressRing, EmptyState, MgModal, Field } from '../ui'
 import { Icon } from '../Icon'
-import { milestonePower, goalCompletePower } from '../../../lib/magnet/score'
-import { useMxpFloat } from '../MxpFeedback'
 import './GoalsView.css'
 
 const KINDS: { key: GoalKind; labelKey: string; icon: string; blurbKey: string; color: string }[] = [
@@ -15,7 +13,6 @@ const KINDS: { key: GoalKind; labelKey: string; icon: string; blurbKey: string; 
   { key: 'dream', labelKey: 'goals.kindDream', icon: 'rocket', blurbKey: 'goals.blurbDream', color: '#ff6f9c' },
 ]
 const GOAL_COLORS = ['#9a6cff', '#ff6f9c', '#46d6a0', '#ffb454', '#4fd1e0', '#b76cff', '#ff5d6c']
-const PROJECT_ICONS = ['flag', 'rocket', 'book', 'brain', 'star', 'bulb', 'heart', 'fire']
 
 interface Draft {
   title: string
@@ -28,10 +25,8 @@ function emptyDraft(): Draft {
   return { title: '', detail: '', kind: 'long', target: '', color: GOAL_COLORS[0] }
 }
 
-function projectProgress(tasks: { projectId: string | null; done: boolean }[], projectId: string) {
-  const pts = tasks.filter((t) => t.projectId === projectId)
-  const done = pts.filter((t) => t.done).length
-  return { total: pts.length, pct: pts.length ? Math.round((done / pts.length) * 100) : 0 }
+function fmtDate(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function GoalsView() {
@@ -42,20 +37,10 @@ export function GoalsView() {
   const deleteGoal = useMagnet((s) => s.deleteGoal)
   const addMilestone = useMagnet((s) => s.addMilestone)
   const toggleMilestone = useMagnet((s) => s.toggleMilestone)
-  const addProject = useMagnet((s) => s.addProject)
-  const deleteProject = useMagnet((s) => s.deleteProject)
-  const linkProjectGoal = useMagnet((s) => s.linkProjectGoal)
-  const unlinkProjectGoal = useMagnet((s) => s.unlinkProjectGoal)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [msInput, setMsInput] = useState<Record<string, string>>({})
-
-  const [projOpen, setProjOpen] = useState(false)
-  const [projTitle, setProjTitle] = useState('')
-  const [projIcon, setProjIcon] = useState(PROJECT_ICONS[0])
-  const [projColor, setProjColor] = useState(GOAL_COLORS[0])
-  const float = useMxpFloat()
 
   function save(e: React.FormEvent) {
     e.preventDefault()
@@ -72,18 +57,7 @@ export function GoalsView() {
     setDraft(emptyDraft())
   }
 
-  function saveProject(e: React.FormEvent) {
-    e.preventDefault()
-    const title = projTitle.trim()
-    if (!title) return
-    addProject(title, projColor, projIcon)
-    setProjTitle('')
-    setProjIcon(PROJECT_ICONS[0])
-    setProjColor(GOAL_COLORS[0])
-    setProjOpen(false)
-  }
-
-  return (
+return (
     <div className="mg-view">
       <SectionHead
         icon="target"
@@ -91,60 +65,12 @@ export function GoalsView() {
         subtitle={t('goals.subtitle')}
         action={
           <div className="mg-view-actions">
-            <button className="mg-btn glass" onClick={() => setProjOpen(true)}>
-              <Icon name="flag" size={16} /> {t('goals.linkProject')}
-            </button>
             <button className="mg-btn primary" onClick={() => setModalOpen(true)}>
               <Icon name="plus" size={16} /> {t('goals.newGoal')}
             </button>
           </div>
         }
       />
-
-      {/* ---- Projects: the work that serves goals ---- */}
-      {data.projects.length > 0 || projOpen ? (
-        <Panel className="mg-projects">
-          <div className="mg-panel-head">
-            <h3>
-              <Icon name="flag" size={17} /> {t('goals.linkProject')}
-            </h3>
-          </div>
-          {data.projects.length === 0 ? (
-            <p className="mg-muted">{t('goals.noProject')}</p>
-          ) : (
-            <div className="mg-project-grid">
-              {data.projects.map((p: Project) => {
-                const pr = projectProgress(data.tasks, p.id)
-                const linkedGoal = data.goals.find((g) => g.projectId === p.id)
-                return (
-                  <div key={p.id} className="mg-project-card" style={{ ['--mg-tag' as string]: p.color }}>
-                    <div className="mg-project-top">
-                      <span className="mg-project-ico">
-                        <Icon name={p.icon} size={15} />
-                      </span>
-                      <strong>{p.title}</strong>
-                      <button className="mg-iconbtn danger" onClick={() => deleteProject(p.id)} aria-label={t('common.delete')}>
-                        <Icon name="close" size={14} />
-                      </button>
-                    </div>
-                    <div className="mg-project-bar">
-                      <i style={{ width: `${pr.pct}%`, background: p.color }} />
-                    </div>
-                    <small>
-                      {pr.pct}% · {pr.total} {t('tasks.title').toLowerCase()}
-                      {linkedGoal && (
-                        <span className="mg-project-goal">
-                          {' '}→ {linkedGoal.title}
-                        </span>
-                      )}
-                    </small>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Panel>
-      ) : null}
 
       {data.goals.length === 0 ? (
         <EmptyState icon="rocket" title={t('goals.emptyTitle')} body={t('goals.emptyBody')} />
@@ -163,9 +89,6 @@ export function GoalsView() {
                   <GoalCard
                     key={g.id}
                     goal={g}
-                    projects={data.projects}
-                    linkedProject={data.projects.find((p) => p.id === g.projectId) ?? null}
-                    taskCount={data.tasks.filter((t) => t.projectId === g.projectId).length}
                     msInput={msInput[g.id] ?? ''}
                     onMsInput={(v) => setMsInput((m) => ({ ...m, [g.id]: v }))}
                     onAddMs={() => {
@@ -174,18 +97,9 @@ export function GoalsView() {
                       addMilestone(g.id, v)
                       setMsInput((m) => ({ ...m, [g.id]: '' }))
                     }}
-                    onToggleMs={(id, e) => {
-                      const m = g.milestones.find((x) => x.id === id)
-                      if (m && !m.done) float.push(e, milestonePower())
-                      // Also celebrate a goal crossing 100% (matches the store).
-                      const doneAfter = g.milestones.filter((x) => x.id !== id ? x.done : !x.done).length
-                      const afterPct = g.milestones.length ? Math.round((doneAfter / g.milestones.length) * 100) : g.progress
-                      if (afterPct >= 100 && g.progress < 100) float.push(e, goalCompletePower())
-                      toggleMilestone(g.id, id)
-                    }}
+                    onToggleMs={(id) => toggleMilestone(g.id, id)}
                     onProgress={(p) => updateGoal(g.id, { progress: p })}
                     onDelete={() => deleteGoal(g.id)}
-                    onLinkProject={(projId) => (projId ? linkProjectGoal(projId, g.id) : unlinkProjectGoal(g.id))}
                   />
                 ))}
               </div>
@@ -233,73 +147,32 @@ export function GoalsView() {
           </div>
         </form>
       </MgModal>
-
-      <MgModal open={projOpen} title={t('goals.linkProject')} onClose={() => setProjOpen(false)} width={460}>
-        <form className="mg-form" onSubmit={saveProject}>
-          <Field label={t('goals.goalLabel')}>
-            <input autoFocus value={projTitle} onChange={(e) => setProjTitle(e.target.value)} placeholder={t('goals.goalPlaceholder')} />
-          </Field>
-          <Field label={t('common.icon')}>
-            <div className="mg-iconpick">
-              {PROJECT_ICONS.map((ic) => (
-                <button type="button" key={ic} className={`mg-iconopt ${projIcon === ic ? 'active' : ''}`} onClick={() => setProjIcon(ic)}>
-                  <Icon name={ic} size={16} />
-                </button>
-              ))}
-            </div>
-          </Field>
-          <Field label={t('goals.colorLabel')}>
-            <div className="mg-swatches">
-              {GOAL_COLORS.map((c) => (
-                <button type="button" key={c} className={`mg-swatch ${projColor === c ? 'active' : ''}`} style={{ background: c }} onClick={() => setProjColor(c)} />
-              ))}
-            </div>
-          </Field>
-          <div className="mg-form-actions">
-            <button type="button" className="mg-btn glass" onClick={() => setProjOpen(false)}>
-              Cancel
-            </button>
-            <button type="submit" className="mg-btn primary">
-              {t('goals.linkProject')}
-            </button>
-          </div>
-        </form>
-      </MgModal>
-
-      {float.node}
     </div>
   )
 }
 
 export function GoalCard({
   goal,
-  projects,
-  linkedProject,
-  taskCount,
   msInput,
   onMsInput,
   onAddMs,
   onToggleMs,
   onProgress,
   onDelete,
-  onLinkProject,
 }: {
   goal: Goal
-  projects: Project[]
-  linkedProject: Project | null
-  taskCount: number
   msInput: string
   onMsInput: (v: string) => void
   onAddMs: () => void
   onToggleMs: (id: string, e: { clientX: number; clientY: number }) => void
   onProgress: (p: number) => void
   onDelete: () => void
-  onLinkProject: (projectId: string | null) => void
 }) {
   const { t } = useTranslation()
   const hasMs = goal.milestones.length > 0
   const complete = goal.progress >= 100 || (hasMs && goal.milestones.every((m) => m.done))
   const kindMeta = KINDS.find((x) => x.key === goal.kind)
+  const msDone = goal.milestones.filter((m) => m.done).length
   return (
     <Panel
       className={`mg-goalcard ${goal.kind === 'dream' ? 'is-dream' : ''} ${complete ? 'is-complete' : ''}`}
@@ -309,44 +182,32 @@ export function GoalCard({
         <ProgressRing pct={goal.progress / 100} size={62} label={`${goal.progress}%`} />
         <div className="mg-goalcard-head">
           <h4>{goal.title}</h4>
-          {kindMeta && <span className="mg-goal-kind">{t(kindMeta.labelKey)}</span>}
-          {goal.target && (
-            <span className="mg-goal-target">
-              <Icon name="calendar" size={12} /> {goal.target}
-            </span>
-          )}
+          <span className="mg-goalcard-meta">
+            {kindMeta && <span className="mg-goal-kind">{t(kindMeta.labelKey)}</span>}
+            {hasMs && (
+              <span className="mg-goal-milestones">
+                {msDone}/{goal.milestones.length} {t('goals.milestones')}
+              </span>
+            )}
+            {goal.target && (
+              <span className="mg-goal-target">
+                <Icon name="calendar" size={12} /> {fmtDate(goal.target)}
+              </span>
+            )}
+          </span>
         </div>
-        <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('goals.deleteGoal')}>
-          <Icon name="trash" size={15} />
-        </button>
+        {complete ? (
+          <span className="mg-goal-donechip">
+            <Icon name="check" size={13} /> {t('goals.complete')}
+          </span>
+        ) : (
+          <button className="mg-iconbtn danger" onClick={onDelete} aria-label={t('goals.deleteGoal')}>
+            <Icon name="trash" size={15} />
+          </button>
+        )}
       </div>
 
       {goal.detail && <p className="mg-goal-detail">{goal.detail}</p>}
-
-      {/* linked project */}
-      <div className="mg-goal-project">
-        <span className="mg-goal-project-label">
-          <Icon name="link" size={13} /> {t('goals.linkProject')}
-        </span>
-        <select
-          className="mg-goal-project-select"
-          value={goal.projectId ?? ''}
-          onChange={(e) => onLinkProject(e.target.value || null)}
-        >
-          <option value="">{t('goals.noProject')}</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.title}
-            </option>
-          ))}
-        </select>
-        {linkedProject && (
-          <span className="mg-goal-project-info">
-            {taskCount} {t('tasks.title').toLowerCase().replace(/s$/, '')}
-            {taskCount === 1 ? '' : 's'}
-          </span>
-        )}
-      </div>
 
       {!hasMs && (
         <label className="mg-goal-slider">

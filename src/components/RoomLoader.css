@@ -114,3 +114,21 @@
   letter-spacing: 1.2px;
   color: rgba(240, 223, 192, 0.6);
 }
+
+/* Low-spec device notice — one-time, honest, non-blocking. */
+.rl-low-device {
+  margin: 22px auto 0;
+  max-width: 380px;
+  font-size: 12px;
+  line-height: 1.55;
+  letter-spacing: 0.2px;
+  color: rgba(240, 223, 192, 0.75);
+  background: rgba(122, 74, 38, 0.18);
+  border: 1px solid rgba(255, 170, 60, 0.22);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.rl-low-device b {
+  color: rgba(255, 214, 120, 0.9);
+  font-weight: 700;
+}

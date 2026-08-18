@@ -4,7 +4,7 @@
 
 import type { MagnetData, Task, FocusSession, LifeArea } from './types'
 
-export type RangeKey = 'today' | '7d' | '30d' | '90d' | '6m' | '1y' | 'lifetime'
+export type RangeKey = 'today' | '7d' | '30d' | '90d' | '6m' | '1y'
 
 export const RANGES: { key: RangeKey; label: string; days: number }[] = [
   { key: 'today', label: 'Today', days: 1 },
@@ -13,7 +13,6 @@ export const RANGES: { key: RangeKey; label: string; days: number }[] = [
   { key: '90d', label: '90 Days', days: 90 },
   { key: '6m', label: '6 Months', days: 182 },
   { key: '1y', label: '1 Year', days: 365 },
-  { key: 'lifetime', label: 'Lifetime', days: 100000 },
 ]
 
 // `now` is always passed in so this module never touches Date.now() directly at

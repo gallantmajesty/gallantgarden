@@ -28,8 +28,10 @@ export class AmbientEngine {
     return !!this.ctx
   }
 
-  /** Build the graph (must be called from a user gesture). Safe to call again. */
-  ensure() {
+  /** Build the graph (must be called from a user gesture). Safe to call again.
+   *  Pass the *current* mix so the very first ramp respects the caller's gate
+   *  (e.g. rain held off during seat selection) instead of the stored default. */
+  ensure(initialMix?: AudioMix) {
     if (this.ctx) {
       void this.ctx.resume()
       return
@@ -73,7 +75,7 @@ export class AmbientEngine {
     void rainEl.play().catch(() => {})
 
     master.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.4)
-    this.apply(this.mix)
+    this.apply(initialMix ?? this.mix)
   }
 
   /** Apply a new mix (call any time; gentle ramps avoid clicks). */

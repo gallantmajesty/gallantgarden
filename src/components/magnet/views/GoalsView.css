@@ -165,43 +165,47 @@
   font-weight: 600;
   color: color-mix(in srgb, var(--mg-goal) 72%, var(--mg-text-soft));
 }
+
+/* professional meta strip: kind · milestones · target date on one line */
+.mg-view .mg-goalcard-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.mg-view .mg-goalcard-meta .mg-goal-kind { margin: 0; }
+.mg-view .mg-goalcard-meta .mg-goal-target { margin: 0; }
+.mg-view .mg-goal-milestones {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--mg-goal) 60%, var(--mg-text-soft));
+  background: color-mix(in srgb, var(--mg-goal) 12%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.mg-view .mg-goal-donechip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--mg-goal);
+  background: color-mix(in srgb, var(--mg-goal) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-goal) 50%, transparent);
+  border-radius: 999px;
+  padding: 5px 10px;
+}
 .mg-view .mg-goal-detail {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--mg-text-soft);
 }
-
-/* ---- linked project chip ---- */
-.mg-view .mg-goal-project {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--mg-panel-soft) 82%, transparent);
-  border: 1px solid var(--mg-border);
-}
-.mg-view .mg-goal-project-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--mg-text-soft);
-}
-.mg-view .mg-goal-project-select {
-  flex: 1;
-  min-width: 120px;
-  background: var(--mg-panel);
-  border: 1px solid var(--mg-border);
-  color: var(--mg-text);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 12px;
-}
-.mg-view .mg-goal-project-info { font-size: 11px; color: var(--mg-text-soft); }
 
 /* ---- progress slider (no milestones) ---- */
 .mg-view .mg-goal-slider {
@@ -281,49 +285,3 @@
   transition: background 0.15s;
 }
 .mg-view .mg-subadd button:hover { background: color-mix(in srgb, var(--mg-goal) 26%, transparent); }
-
-/* ---- projects ---- */
-.mg-view .mg-project-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
-}
-.mg-view .mg-project-card {
-  --mg-tag: var(--mg-accent);
-  padding: 14px;
-  border-radius: 12px;
-  background:
-    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--mg-tag) 16%, transparent), transparent 60%),
-    var(--mg-panel);
-  border: 1px solid color-mix(in srgb, var(--mg-tag) 30%, var(--mg-border));
-  box-shadow: 0 8px 22px -18px color-mix(in srgb, var(--mg-tag) 80%, transparent);
-  transition: transform 0.18s var(--pr-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow 0.2s;
-}
-.mg-view .mg-project-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--mg-tag) 90%, transparent);
-}
-.mg-view .mg-project-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.mg-view .mg-project-ico {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--mg-tag) 16%, transparent);
-  color: var(--mg-tag);
-}
-.mg-view .mg-project-top strong { flex: 1; font-size: 14px; }
-.mg-view .mg-project-bar {
-  height: 7px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--mg-tag) 14%, var(--mg-panel-soft));
-}
-.mg-view .mg-project-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--mg-tag) 50%, transparent);
-}
-.mg-view .mg-project-goal { color: var(--mg-tag); font-weight: 700; }

@@ -119,12 +119,10 @@ export function buildHeatmap(data: MagnetData, now: Date, weeks = 18): HeatCell[
 export function Heatmap({
   cells,
   color = 'var(--mg-accent)',
-  weeks = 18,
   today,
 }: {
   cells: HeatCell[]
   color?: string
-  weeks?: number
   today?: string
 }) {
   const columns: HeatCell[][] = []
@@ -275,11 +273,124 @@ export function ScoreGauge({ score, label = 'Focus Score', size = 132 }: { score
 }
 
 // ══════════════ Donut / ring wrapper ══════════════
-export function MiniRing({ pct, label, color = 'var(--mg-accent)', size = 64 }: { pct: number; label: string; color?: string; size?: number }) {
+export function MiniRing({ pct, label, size = 64 }: { pct: number; label: string; size?: number }) {
   return (
     <div className="mg-miniring" style={{ width: size }}>
       <ProgressRing pct={pct / 100} size={size} />
       <span className="mg-miniring-label">{label}</span>
+    </div>
+  )
+}
+
+// ══════════════ HQ score donut — one ring, four time periods ══════════════
+// Each segment is the student's focus score (0..100) over one period — Daily,
+// Monthly, Yearly, All-time — and the arc length is proportional to that
+// score. The center always shows the HIGHEST score of all time, never the
+// current score. Deterministic over the student's own history, like the rest
+// of the magnet.
+export const DONUT_PERIODS = ['Daily', 'Monthly', 'Yearly', 'All-time'] as const
+export const DONUT_COLORS = ['#46d6a0', '#6c8cff', '#ffb454', '#b76cff']
+
+export function ScoreDonut({
+  values,
+  labels = [...DONUT_PERIODS],
+  colors = DONUT_COLORS,
+  centerLabel,
+  centerValue,
+}: {
+  values: number[]
+  labels?: string[]
+  colors?: string[]
+  centerLabel: string
+  centerValue: number | null
+}) {
+  const R = 45
+  const C = 2 * Math.PI * R
+  const total = values.reduce((s, v) => s + Math.max(0, v), 0)
+  let acc = 0
+  const segs = values.map((v) => {
+    const frac = total > 0 ? Math.max(0, v) / total : 0
+    const seg = { len: Math.max(0, frac * C - 1.2), off: -acc * C }
+    acc += frac
+    return seg
+  })
+
+  return (
+    <div className="mg-donut">
+      <div className="mg-donut-ring">
+        <svg viewBox="0 0 120 120" role="img" aria-label="Focus score by period">
+          <circle cx="60" cy="60" r={R} fill="none" stroke="var(--mg-border)" strokeWidth="16" />
+          {total > 0 &&
+            segs.map((seg, i) => (
+              <circle
+                key={i}
+                cx="60"
+                cy="60"
+                r={R}
+                fill="none"
+                stroke={colors[i % colors.length]}
+                strokeWidth="16"
+                strokeLinecap="round"
+                strokeDasharray={`${seg.len} ${C}`}
+                strokeDashoffset={seg.off}
+                transform="rotate(-90 60 60)"
+              />
+            ))}
+        </svg>
+        <div className="mg-donut-center">
+          <b>{centerValue == null ? '—' : centerValue}</b>
+          <span>{centerLabel}</span>
+        </div>
+      </div>
+      <div className="mg-donut-legend">
+        {values.map((v, i) => (
+          <div className="mg-donut-row" key={i}>
+            <span className="mg-donut-dot" style={{ background: colors[i % colors.length] }} />
+            <span className="mg-donut-row-label">{labels[i % labels.length]}</span>
+            <span className="mg-donut-row-val">{v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ══════════════ Vertical column chart ══════════════
+// Columns grow UP from the baseline — a traditional column chart, never
+// horizontal bars. Zero days render as a quiet nub so the rhythm stays visible.
+export function ColumnChart({
+  values,
+  labels,
+  format,
+  highlight = -1,
+  height = 170,
+}: {
+  values: number[]
+  labels: string[]
+  format?: (v: number, i: number) => string
+  highlight?: number
+  height?: number
+}) {
+  const max = Math.max(1, ...values)
+  const showLabels = values.length <= 12
+  return (
+    <div className="mg-chart" style={{ height }}>
+      {values.map((v, i) => {
+        const pct = v > 0 ? Math.max(3, (v / max) * 100) : 0
+        return (
+          <div
+            className={`mg-chart-col${i === highlight ? ' hot' : ''}`}
+            key={i}
+            title={format ? format(v, i) : String(v)}
+          >
+            {showLabels && <span className="mg-chart-val">{format ? format(v, i) : String(v)}</span>}
+            <div className="mg-chart-track">
+              <div className="mg-chart-bar" style={{ height: `${pct}%` }} />
+            </div>
+            {showLabels && labels[i] !== '' && <span className="mg-chart-label">{labels[i]}</span>}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -333,6 +444,24 @@ export function focusScore(data: MagnetData, now: Date): number | null {
   const volume = Math.min(1, s30.focusMinutes / 1200)
   const raw =
     completion * 0.25 + Math.min(1, streak / 30) * 0.2 + habit * 0.2 + volume * 0.15 + consistency * 0.1 + deep * 0.1
+  return Math.max(0, Math.min(100, Math.round(raw * 100)))
+}
+
+// Same weighted composite as focusScore, but parameterized over an arbitrary
+// window — used by the HQ donut to score each time period (day / month / year /
+// lifetime) with the same honest logic. Returns 0 when the student has no
+// history at all.
+export function periodScore(data: MagnetData, now: Date, days: number): number {
+  if (data.tasks.length === 0 && data.focus.length === 0 && data.habits.length === 0) return 0
+  const s = computeStats(data, now, days)
+  const window = Math.max(1, days)
+  const completion = s.completionRate
+  const consistency = Math.min(1, s.activeDays / window)
+  const habit = s.habitConsistency
+  const deep = s.focusMinutes > 0 ? Math.min(1, s.deepWorkMinutes / s.focusMinutes) : 0
+  const volume = Math.min(1, s.focusMinutes / 1200)
+  const raw =
+    completion * 0.25 + Math.min(1, computeStreakSafe(data, now) / 30) * 0.2 + habit * 0.2 + volume * 0.15 + consistency * 0.1 + deep * 0.1
   return Math.max(0, Math.min(100, Math.round(raw * 100)))
 }
 

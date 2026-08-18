@@ -344,7 +344,11 @@ function loadActiveSession(): ActiveSessionSnapshot | null {
 
     const awaySec = Math.max(0, Math.round((Date.now() - s.savedAt) / 1000))
     const remaining = s.remaining - awaySec
-    const totalElapsed = s.phase === 'running' ? s.totalElapsed + awaySec : s.totalElapsed
+    // Honest elapsed: time the app was CLOSED is not study time. Keep the
+    // pre-away totalElapsed so the settle-away path can credit only what the
+    // student actually focused, not the full session length (which used to turn
+    // a 2-minute session into a phantom hour on the profile).
+    const totalElapsed = s.totalElapsed
     if (remaining <= 0) {
       if (s.phase !== 'running' || s.focusMode === 'hardcore') return null
       return {
@@ -898,7 +902,13 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       } catch { /* award is best-effort */ }
 
       // Lifetime stats — recorded once here; the finished phase never re-adds.
-      saveNum(MIN_KEY, loadNum(MIN_KEY) + s.sessionMinutes)
+      // HONEST minutes: only the elapsed time actually recorded BEFORE the app
+      // was closed counts as study time. Away time (app closed) never counts,
+      // and a session that barely started must not credit its full length — the
+      // same 5-minute floor the forfeit path uses. Capped at the session length.
+      const honestElapsedSec = Math.max(0, Math.min(s.totalElapsed, s.sessionMinutes * 60))
+      const honestMin = honestElapsedSec >= MINIMUM_SESSION_SEC ? Math.max(1, Math.round(honestElapsedSec / 60)) : 0
+      saveNum(MIN_KEY, loadNum(MIN_KEY) + honestMin)
       saveNum(DONE_KEY, loadNum(DONE_KEY) + 1)
 
       // Session history, mirroring the live completion entry.
@@ -913,7 +923,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         breakCount: s.breakCount,
         breakDurations: s.breakDurations,
         completed: true,
-        totalFocusMinutes: s.sessionMinutes,
+        totalFocusMinutes: honestMin,
         leavesEarned: s.totalSessionLeaves + segmentLeaves,
         subject: s.subject,
         segmentRewards: s.pendingRewards,

@@ -265,6 +265,13 @@
 }
 .mg-back:hover { color: var(--mg-text); transform: translateX(-2px); }
 
+.mg-sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mg-sidebar-top .mg-burger { margin-left: auto; }
+
 .mg-brand {
   display: flex;
   align-items: center;
@@ -282,6 +289,12 @@
 }
 .mg-brand strong { display: block; font-size: 16px; letter-spacing: -0.01em; }
 .mg-brand small { color: var(--mg-text-soft); font-size: 12px; }
+/* name settles at the bottom of the rail, under the level card */
+.mg-brand-bottom {
+  margin-top: 2px;
+  padding: 12px 6px 2px;
+  border-top: 1px solid var(--mg-border);
+}
 
 .mg-nav {
   display: flex;
@@ -423,18 +436,6 @@
   flex-direction: column;
   min-width: 0;
 }
-.mg-topbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--mg-border);
-  background: color-mix(in srgb, var(--mg-panel) 94%, var(--mg-accent) 2%);
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
 .mg-burger {
   display: none;
   width: 38px;
@@ -445,10 +446,6 @@
   color: var(--mg-text);
   cursor: pointer;
 }
-.mg-topbar-title { font-size: 18px; font-weight: 700; }
-.mg-topbar-user { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.mg-topbar-name { font-size: 14px; font-weight: 600; color: var(--mg-text-soft); }
-.mg-topbar-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--mg-accent); border: 2px solid color-mix(in srgb, var(--mg-accent2) 60%, var(--mg-accent)); }
 
 /* mood indicator (icon, not emoji) */
 .mg-mood-ico {
@@ -943,7 +940,7 @@
 .mg-task-title { display: block; font-weight: 600; font-size: 15px; }
 .mg-taskcard.done .mg-task-title { text-decoration: line-through; }
 .mg-task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 5px; }
-.mg-task-subject, .mg-task-due, .mg-task-est, .mg-task-rec, .mg-task-subcount {
+.mg-task-due, .mg-task-est, .mg-task-rec, .mg-task-subcount {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 11px; color: var(--mg-text-soft); font-weight: 600;
 }
@@ -1050,6 +1047,12 @@
 .mg-history-list li svg { color: #46d6a0; flex-shrink: 0; }
 .mg-history-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mg-history-date { font-size: 11px; font-weight: 700; opacity: 0.8; }
+.mg-history-goal svg { color: var(--mg-accent, #ffb454); }
+.mg-history-kind {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+  background: var(--mg-panel-soft); color: var(--mg-text-soft);
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;
+}
 
 /* ---- templates strip ---- */
 .mg-tpl-strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -1365,8 +1368,6 @@
   .mg-form-row { flex-direction: column; }
   .mg-habitrow-left { width: auto; }
   .mg-sectionhead { flex-wrap: wrap; }
-  .mg-topbar { padding: 10px 16px; gap: 10px; }
-  .mg-topbar-title { font-size: 16px; }
   .mg-hero-text h1 { font-size: 22px; }
   .mg-quickadd { flex-direction: column; }
   .mg-quickadd button { width: 100%; min-height: 44px; }
@@ -1381,7 +1382,6 @@
   .mg-rooms { grid-template-columns: 1fr; }
   .mg-hero-text h1 { font-size: 20px; }
   .mg-content { padding: 12px; }
-  .mg-topbar { padding: 8px 12px; }
 }
 
 /* ============================================================================
@@ -1787,11 +1787,6 @@
   padding: 1px !important;
 }
 
-/* topbar — airy, hairline only */
-.mg-topbar-title {
-  letter-spacing: -0.02em;
-}
-
 /* task list — rows with hairlines, not cards with boxes */
 .mg-tasklist { gap: 2px; }
 .mg-taskcard {
@@ -1866,8 +1861,7 @@
 
 /* glass over the living backdrop: panels stay translucent so the ambient
    scenes / particles bleed through the whole world */
-.mg-sidebar,
-.mg-topbar {
+.mg-sidebar {
   background: var(--mg-panel);
   backdrop-filter: blur(16px) saturate(1.15);
 }
@@ -2179,3 +2173,190 @@
   display: flex;
   justify-content: center;
 }
+
+/* ============================================================================
+   STUDIO — monochrome black/white theme fixes
+   Studio's accent is pure white, so any element that paints white text on the
+   accent background would disappear. Flip those to dark ink.
+   ============================================================================ */
+.mg-theme-studio .mg-seg button.active { color: #0f0f0f; }
+.mg-theme-studio .mg-iconopt.active { color: #0f0f0f; }
+.mg-theme-studio .mg-subcheck.done { color: #0f0f0f; }
+.mg-theme-studio .mg-taskcard.done .mg-check { color: #0f0f0f; }
+.mg-theme-studio .mg-sheet-add { color: #0f0f0f; }
+.mg-theme-studio .mg-sheet-check.on { color: #0f0f0f; }
+.mg-theme-studio .mg-themecard-active { color: #0f0f0f; }
+
+/* ============================================================================
+   TASKS — due-date chips: overdue / today / tomorrow tones + quick set
+   ============================================================================ */
+.mg-task-due.overdue { color: #ff5d6c; font-weight: 800; }
+.mg-task-due.today { color: var(--mg-accent); }
+.mg-task-due.tomorrow { color: var(--mg-text); }
+.mg-task-due.set-today {
+  border: 1px dashed var(--mg-border); border-radius: 8px;
+  padding: 1px 7px; background: none; cursor: pointer; font: inherit;
+}
+.mg-task-due.set-today:hover { border-color: var(--mg-accent); color: var(--mg-accent); }
+
+/* ============================================================================
+   HQ WINDOW SPIRAL — a 90° corner tab with the three windows fanned out on an
+   ~80° radial arc at the exact bottom-right corner of the screen.
+   ============================================================================ */
+.mg-hq-corner {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  width: 108px;
+  height: 108px;
+  z-index: 40;
+  pointer-events: none;
+  color: var(--mg-accent);
+}
+.mg-hq-spiral {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 108px;
+  height: 108px;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--mg-accent) 40%, transparent));
+}
+.mg-hq-orb {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--mg-accent) 55%, var(--mg-border));
+  background: color-mix(in srgb, var(--mg-panel) 92%, transparent);
+  backdrop-filter: blur(6px);
+  color: var(--mg-text-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 8px 20px -8px var(--mg-shadow);
+  transition: color 0.16s, border-color 0.16s, background 0.16s, box-shadow 0.16s;
+}
+.mg-hq-orb:hover {
+  color: var(--mg-text);
+  border-color: var(--mg-accent);
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--mg-accent) 45%, transparent);
+}
+.mg-hq-orb.on {
+  background: var(--mg-accent);
+  color: var(--mg-text);
+  border-color: var(--mg-accent);
+}
+.mg-theme-studio .mg-hq-orb.on {
+  color: #0f0f0f;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-hq-orb { transition: none; }
+}
+
+/* overdue task cards — red left rail + soft border tint so the day's backlog
+   jumps out without breaking the calm look */
+.mg-taskcard.overdue { border-color: color-mix(in srgb, #ff5d6c 38%, var(--mg-border)); }
+.mg-taskcard.overdue::before { background: #ff5d6c; }
+.mg-taskcard.overdue .mg-task-icon { opacity: 0.9; }
+
+/* ============================================================================
+   TASKS — round-3 polish: counted filters, area chips, card entrance, chip
+   tones, subtask progress rail, restore-in-history.
+   ============================================================================ */
+.mg-seg button { display: inline-flex; align-items: center; gap: 6px; }
+.mg-seg-count {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  background: color-mix(in srgb, var(--mg-text-soft) 14%, transparent); color: var(--mg-text-soft);
+}
+.mg-seg button.active .mg-seg-count { background: rgba(255, 255, 255, 0.22); color: #fff; }
+
+.mg-fchip { gap: 6px; }
+.mg-fchip-count {
+  display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; font-size: 10px; font-weight: 800;
+  background: color-mix(in srgb, var(--mg-tag) 16%, transparent); color: var(--mg-tag);
+}
+
+.mg-search { flex-shrink: 0; }
+.mg-search-clear {
+  display: grid; place-items: center; width: 20px; height: 20px; margin-right: -4px;
+  border: none; border-radius: 6px; background: transparent; color: var(--mg-text-soft); cursor: pointer;
+}
+.mg-search-clear:hover { background: color-mix(in srgb, var(--mg-text-soft) 14%, transparent); color: var(--mg-text); }
+
+.mg-quickcapture .mg-kbd {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px;
+  background: color-mix(in srgb, var(--mg-text-soft) 12%, transparent); color: var(--mg-text-soft);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em; flex-shrink: 0;
+}
+.mg-quickcapture > .mg-btn { flex-shrink: 0; }
+
+/* card entrance — light stagger, settles before hover lifts kick in */
+.mg-taskcard { animation: mgCardIn 0.3s var(--pr-ease, ease) both; }
+@keyframes mgCardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* meta chips become quiet pills; due dates get colored tones */
+.mg-task-due, .mg-task-est, .mg-task-rec {
+  padding: 2px 9px; border-radius: 999px;
+  background: var(--mg-panel-soft); border: 1px solid transparent;
+}
+.mg-task-due.overdue {
+  color: #ff5d6c; background: color-mix(in srgb, #ff5d6c 13%, transparent);
+  border-color: color-mix(in srgb, #ff5d6c 26%, transparent);
+}
+.mg-task-due.overdue::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: #ff5d6c; box-shadow: 0 0 6px #ff5d6c;
+  animation: mgPulse 1.6s ease-in-out infinite;
+}
+@keyframes mgPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.mg-task-due.today {
+  color: var(--mg-accent); background: color-mix(in srgb, var(--mg-accent) 13%, transparent);
+  border-color: color-mix(in srgb, var(--mg-accent) 26%, transparent);
+  font-weight: 800;
+}
+.mg-task-due.tomorrow { color: var(--mg-text); background: var(--mg-panel-soft); }
+.mg-task-due.set-today {
+  border-style: dashed; background: transparent; cursor: pointer; font: inherit;
+  color: var(--mg-text-soft);
+}
+.mg-task-due.set-today:hover {
+  border-color: var(--mg-accent); color: var(--mg-accent);
+  background: color-mix(in srgb, var(--mg-accent) 10%, transparent);
+}
+.mg-task-rec { text-transform: capitalize; }
+
+/* subtask progress rail — hugs the bottom of the card */
+.mg-task-progress {
+  height: 3px; margin: 0 16px 12px 54px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--mg-prio, var(--mg-accent)) 16%, var(--mg-panel-soft));
+}
+.mg-task-progress i {
+  display: block; height: 100%; border-radius: 999px;
+  background: var(--mg-prio, var(--mg-accent)); transition: width 0.4s ease;
+}
+.mg-taskcard.done .mg-task-progress i { background: var(--mg-accent); }
+
+/* history rows: hover tint + one-click restore */
+.mg-history-list li { position: relative; transition: background 0.15s; }
+.mg-history-list li:hover { background: color-mix(in srgb, var(--mg-text-soft) 7%, transparent); }
+.mg-history-restore {
+  display: grid; place-items: center; width: 22px; height: 22px;
+  border: none; border-radius: 7px; background: transparent; color: var(--mg-text-soft);
+  cursor: pointer; opacity: 0; transform: scale(0.8);
+  transition: opacity 0.15s, transform 0.15s, background 0.15s, color 0.15s;
+}
+.mg-history-list li:hover .mg-history-restore,
+.mg-history-restore:focus-visible { opacity: 1; transform: scale(1); }
+.mg-history-restore:hover { background: color-mix(in srgb, var(--mg-accent) 16%, transparent); color: var(--mg-accent); }
+

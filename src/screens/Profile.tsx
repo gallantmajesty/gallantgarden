@@ -360,15 +360,24 @@ function ProfileBody({
         <div className="pf-divider" />
 
         {/* ========== STATS ROW ========== */}
+        {/* Study Hours + Sessions read the LOCAL pomodoro store — they are only
+            true for the viewer's own profile. The remote public_profiles view
+            carries no focus-time data, so showing them on other people's
+            profiles would display the viewer's own numbers as if they belonged
+            to the person being viewed (fake stats). Own profile only. */}
         <div className="pf-stats-row">
-          <div className="pf-stat-card">
-            <div className="pf-stat-card-label">Study Hours</div>
-            <div className="pf-stat-card-value">{formatHours(totalFocusMin)}</div>
-          </div>
-          <div className="pf-stat-card">
-            <div className="pf-stat-card-label">Sessions</div>
-            <div className="pf-stat-card-value">{focusSessions}</div>
-          </div>
+          {isOwn && (
+            <div className="pf-stat-card">
+              <div className="pf-stat-card-label">Study Hours</div>
+              <div className="pf-stat-card-value">{formatHours(totalFocusMin)}</div>
+            </div>
+          )}
+          {isOwn && (
+            <div className="pf-stat-card">
+              <div className="pf-stat-card-label">Sessions</div>
+              <div className="pf-stat-card-value">{focusSessions}</div>
+            </div>
+          )}
           <div className="pf-stat-card">
             <div className="pf-stat-card-label">Blueprints</div>
             <div className="pf-stat-card-value">{studyCounts.blueprints}</div>

@@ -34,6 +34,7 @@ export type SceneKind =
   | 'rain-window'
   | 'bookshelf'
   | 'deep-sea'
+  | 'bedroom'
 
 export interface ThemeVars {
   bg: string // full-screen background (gradient)
@@ -73,6 +74,35 @@ export const THEME_CATEGORIES = [
 ] as const
 
 export const THEMES: MagnetTheme[] = [
+  // ---------------- Studio (default) ----------------
+  // The single professional theme every account uses — a calm, crisp
+  // black-and-white world in the spirit of a minimal dark video player.
+  {
+    id: 'studio',
+    name: 'Studio',
+    category: 'Aesthetic',
+    unlockLevel: 0,
+    leafPrice: 0,
+    mood: 'Monochrome studio calm — crisp black, white, zero noise',
+    particle: 'none',
+    particleColor: '#ffffff',
+    scene: 'none',
+    dark: true,
+    vars: {
+      bg: 'radial-gradient(130% 150% at 30% 0%, #161616 0%, #101010 55%, #0a0a0a 100%)',
+      glowA: 'rgba(255,255,255,0.05)',
+      glowB: 'rgba(255,255,255,0.03)',
+      panel: 'rgba(31,31,31,0.92)',
+      panelSoft: 'rgb(39, 39, 39)',
+      border: 'rgba(255,255,255,0.14)',
+      text: '#f1f1f1',
+      textSoft: '#a7a7a7',
+      accent: '#ffffff',
+      accent2: '#e0e0e0',
+      shadow: 'rgba(0,0,0,0.62)',
+    },
+  },
+
   // ---------------- Nature Paradise ----------------
   {
     id: 'mystic-forest',
@@ -711,7 +741,7 @@ export const THEMES: MagnetTheme[] = [
   },
 ]
 
-export const DEFAULT_THEME_ID = 'ink-wash'
+export const DEFAULT_THEME_ID = 'studio'
 
 /** Player IDs granted every magnet theme free (store shows them all as owned
  *  and applying never costs Power). Used to gift the full catalog to a
@@ -767,7 +797,7 @@ export function mxpPrice(theme: MagnetTheme): number {
 }
 
 /** Theme applied for every account on first run — calm, minimal default. */
-export const MAGNET_DEFAULT_THEME_ID = 'ink-wash'
+export const MAGNET_DEFAULT_THEME_ID = 'studio'
 
 /** Themes every account owns from the start. */
 export function starterThemeIds(): string[] {

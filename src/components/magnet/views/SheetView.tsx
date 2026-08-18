@@ -33,7 +33,6 @@ export function SheetView() {
       r = r.filter(
         (x) =>
           x.title.toLowerCase().includes(term) ||
-          x.subject.toLowerCase().includes(term) ||
           x.notes.toLowerCase().includes(term),
       )
     }
@@ -173,15 +172,6 @@ export function SheetView() {
                         </option>
                       ))}
                     </select>
-                  </td>
-
-                  <td className="cell-subject" data-col="E">
-                    <input
-                      className="cell-input"
-                      value={task.subject}
-                      placeholder="—"
-                      onChange={(e) => updateTask(task.id, { subject: e.target.value })}
-                    />
                   </td>
 
                   <td className="cell-due" data-col="F">

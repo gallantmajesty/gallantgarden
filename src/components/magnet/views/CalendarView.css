@@ -28,6 +28,32 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
+/* Advanced mode toggle — sits in the header, clearly visible. */
+.mg-cal-advbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--mg-border);
+  background: var(--mg-tag);
+  color: var(--mg-text-soft);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.mg-cal-advbtn:hover {
+  border-color: var(--mg-accent);
+  color: var(--mg-text);
+}
+.mg-cal-advbtn.active {
+  background: color-mix(in srgb, var(--mg-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--mg-accent) 55%, var(--mg-border));
+  color: var(--mg-accent);
+}
+
 .mg-cal-bar {
   display: flex;
   align-items: center;
@@ -124,6 +150,12 @@
 }
 .mg-cal-grid.week .mg-cal-cell {
   min-height: 200px;
+}
+.mg-cal-grid.advanced .mg-cal-cell {
+  min-height: 132px;
+}
+.mg-cal-grid.advanced.week .mg-cal-cell {
+  min-height: 220px;
 }
 .mg-cal-cell:hover {
   border-color: var(--mg-accent);
@@ -274,12 +306,60 @@
   padding-left: 2px;
 }
 
+/* Plain mode: quiet count chips (no clutter, still one glance). */
+.mg-cal-chips.plain {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mg-cal-chip.count {
+  cursor: default;
+  background: color-mix(in srgb, var(--mg-c, var(--mg-accent)) 14%, transparent);
+  color: var(--mg-text-soft);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-left: 2px solid var(--mg-c, var(--mg-accent));
+}
+.mg-cal-chip.count:hover {
+  filter: none;
+  transform: none;
+}
+.mg-cal-chip.count .mg-cal-ring {
+  margin-left: 2px;
+}
+
+/* Advanced chips: extra micro-badges for subtask progress & estimate. */
+.mg-cal-chip-sub,
+.mg-cal-chip-est {
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--mg-c);
+  background: color-mix(in srgb, var(--mg-c) 18%, transparent);
+  border-radius: 999px;
+  padding: 0 5px;
+  margin-left: 3px;
+  flex: 0 0 auto;
+}
+.mg-cal-chip-txt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .mg-cal-day {
   margin-top: 18px;
   padding: 14px 16px;
   border: 1px solid var(--mg-border);
   border-radius: 14px;
   background: var(--mg-panel);
+}
+.mg-modal-body > .mg-cal-day {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 .mg-cal-day-head {
   margin: 0 0 10px;
@@ -385,6 +465,35 @@
   color: var(--mg-c);
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+/* ── multi-select ──────────────────────────────────────────────────────── */
+.mg-cal-chip.sel {
+  outline: 2px solid var(--mg-accent);
+  outline-offset: 1px;
+}
+.mg-cal-list li.sel {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mg-accent) 12%, transparent);
+}
+.mg-cal-selbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--mg-accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.mg-cal-bulk {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.mg-cal-bulk .mg-btn.small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
 }
 
 @media (max-width: 640px) {

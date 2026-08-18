@@ -10,6 +10,7 @@ import { useAchievements } from '../store/achievements'
 import { useHardcore, applyPendingRefund } from '../store/hardcore'
 import { startHeartbeat, stopHeartbeat, setStudyStatus } from './presence'
 import { clearProfileSettingsCache, loadProfileSettings, patchProfileSettings } from './profileStore'
+import { runLoginAutoQuality } from '../three/realmQuality'
 import { globalRunOnce, userRunOnce } from './runOnce'
 import { awardFocusLeaves } from './xpEngine'
 import { rankForTotalXp } from './ranks'
@@ -52,6 +53,9 @@ export async function runUserInit(user: AuthUser): Promise<void> {
     useMagnet.getState().hydrate(user.id)
     bindFocusPresence()
     bindFocusLogging()
+    // Device auto-detect AFTER local state is in place — guests have no cloud
+    // settings to race against, but ordering stays identical for everyone.
+    runLoginAutoQuality()
     return
   }
 
@@ -62,6 +66,12 @@ export async function runUserInit(user: AuthUser): Promise<void> {
   //    don't immediately echo the freshly-loaded values back to the server.
   useSettings.getState().hydrateFromCloud(cloud.app)
   useSettings.getState().bindCloud(user.id)
+
+  // 2a. Device auto-detect runs AFTER cloud hydration, not at App mount: the
+  //     cloud copy (loaded from another device) would otherwise clobber the
+  //     auto-applied preset. Detection only ever LOWERS quality for weak
+  //     devices, so a user who hand-tuned to Low on the cloud stays respected.
+  runLoginAutoQuality()
 
   // 2a. If this page was opened with ?boost=CODE, this tab is a connector device
   //     for a hardcore session (multi-device boost). Connect automatically.

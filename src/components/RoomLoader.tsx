@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { getCachedDeviceProfile } from '../lib/deviceProfile'
 import './RoomLoader.css'
 
 interface RoomLoaderProps {
@@ -84,6 +85,26 @@ export function RoomLoader({
     return () => clearTimeout(t)
   }, [done])
 
+  // One-time low-device notice: when the detected tier is weak, tell the user
+  // honestly why the room was tuned down — then remember it so it never nags.
+  const lowDevice = getCachedDeviceProfile()?.tier === 'low' || getCachedDeviceProfile()?.tier === 'blocked'
+  const [showLowDevice, setShowLowDevice] = useState(() => {
+    if (!lowDevice) return false
+    try {
+      return sessionStorage.getItem('sf.lowDeviceNoticeSeen') !== '1'
+    } catch {
+      return true
+    }
+  })
+  useEffect(() => {
+    if (!showLowDevice) return
+    try {
+      sessionStorage.setItem('sf.lowDeviceNoticeSeen', '1')
+    } catch {
+      /* ignore */
+    }
+  }, [showLowDevice])
+
   // Rotating flavour lines while the doors are closed — gives the (now longer)
   // minimum hold a deliberate, storybook feel instead of a dead bar.
   const LINES = [
@@ -132,6 +153,14 @@ export function RoomLoader({
             <div className="rl-sub">
               {ready ? 'Opening the doors…' : LINES[line]}
             </div>
+
+            {showLowDevice && (
+              <div className="rl-low-device" role="note">
+                <b>Low-spec device detected</b> — this room is tuned to run smoothly on your
+                machine, so it may look simpler than on high-end PCs. You can manage this in
+                Settings → Performance.
+              </div>
+            )}
           </div>
         </div>
       )}
