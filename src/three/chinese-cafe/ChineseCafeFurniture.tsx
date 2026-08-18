@@ -50,8 +50,9 @@ function CafeChairs() {
     const legs: ShapeItem[] = []
     const backPosts: ShapeItem[] = []
     const spindles: ShapeItem[] = []
-    for (const seat of chineseCafeSeatAnchors()) {
-      const [x, y, z] = seat.pos
+    const arms: BoxItem[] = []
+for (const seat of chineseCafeSeatAnchors()) {
+        const [x, y, z] = seat.pos
       const upper = seat.zone === 'mezzanine'
       const upholstery = seat.zone === 'booth' ? '#66534b' : upper ? '#375f55' : '#77533f'
       seats.push({ pos: [x, y + 0.43, z], scale: [0.39, 0.1, 0.36], color: '#372217' })
@@ -71,12 +72,23 @@ function CafeChairs() {
       rails.push({ pos: [railX, y + 1.2, railZ], size: [0.7, 0.09, 0.1], rotY: seat.yaw, color: '#4b2e1c' })
       rails.push({ pos: [railX, y + 0.66, railZ], size: [0.64, 0.06, 0.07], rotY: seat.yaw, color: CAFE_PALETTE.brass })
 
+      // armrests — a top bar each side with a front + back support post, sitting
+      // just outside the seat edge so they don't clip the seated avatar
+      for (const side of [-1, 1]) {
+        const [ax, az] = offset(x, z, seat.yaw, side * 0.33, 0.0)
+        arms.push({ pos: [ax, y + 0.72, az], size: [0.07, 0.07, 0.54], rotY: seat.yaw, color: '#4b2e1c' })
+        const [fx, fz] = offset(x, z, seat.yaw, side * 0.33, 0.26)
+        arms.push({ pos: [fx, y + 0.48, fz], size: [0.07, 0.5, 0.07], color: '#2a1a12' })
+        const [bx, bz] = offset(x, z, seat.yaw, side * 0.33, -0.18)
+        arms.push({ pos: [bx, y + 0.48, bz], size: [0.07, 0.5, 0.07], color: '#2a1a12' })
+      }
+
       for (const lx of [-0.25, 0.25]) for (const lz of [-0.24, 0.24]) {
         const [wx, wz] = offset(x, z, seat.yaw, lx, lz)
         legs.push({ pos: [wx, y + 0.22, wz], scale: [0.045, 0.44, 0.045], color: '#2a1a12' })
       }
     }
-    return { seats, cushions, rails, legs, backPosts, spindles }
+    return { seats, cushions, rails, legs, backPosts, spindles, arms }
   }, [])
 
   return (
@@ -88,6 +100,7 @@ function CafeChairs() {
         <cylinderGeometry args={[1, 1, 1, 20]} />
       </InstancedShape>
       <InstancedBoxes items={data.rails} roughness={0.42} metalness={0.12} castShadow />
+      <InstancedBoxes items={data.arms} roughness={0.45} castShadow />
       <InstancedShape items={[...data.legs, ...data.backPosts]} roughness={0.48} castShadow>
         <cylinderGeometry args={[1, 1, 1, 12]} />
       </InstancedShape>
@@ -307,7 +320,7 @@ function LatticeBooths() {
         <group key={z}>
           <BoothDesk z={z} wood={textures.wood} />
           <mesh position={[19.85, 1.4, z]}>
-            <boxGeometry args={[0.18, 2.8, 5.9]} />
+            <boxGeometry args={[0.18, 2.8, 5.0]} />
             <meshStandardMaterial color="#3a2619" roughness={0.62} />
           </mesh>
           <mesh position={[19.72, 2.25, z]} rotation={[0, -Math.PI / 2, 0]}>

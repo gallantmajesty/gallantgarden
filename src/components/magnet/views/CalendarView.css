@@ -520,3 +520,73 @@
     font-size: 0.95rem;
   }
 }
+
+/* right-click day context menu */
+.mg-cal-ctx {
+  position: fixed;
+  z-index: 120;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 6px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--mg-panel) 97%, transparent);
+  border: 1px solid var(--mg-border);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42), 0 4px 14px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: mg-pop 0.14s ease;
+}
+.mg-cal-ctx > button,
+.mg-cal-ctx-sub button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--mg-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.mg-cal-ctx > button:hover,
+.mg-cal-ctx-sub button:hover {
+  background: color-mix(in srgb, var(--mg-accent) 12%, transparent);
+}
+.mg-cal-ctx > button > svg,
+.mg-cal-ctx-sub button > svg {
+  color: var(--mg-accent);
+  flex: 0 0 auto;
+}
+.mg-cal-ctx-sub {
+  margin-left: 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--mg-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.mg-cal-ctx-sub button.on {
+  color: var(--mg-accent);
+}
+.mg-cal-ctx-task {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-cal-ctx-empty {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--mg-text-soft);
+}

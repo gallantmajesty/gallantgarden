@@ -285,3 +285,12 @@
   transition: background 0.15s;
 }
 .mg-view .mg-subadd button:hover { background: color-mix(in srgb, var(--mg-goal) 26%, transparent); }
+
+/* Guarantee the goal name stays readable on every card and theme. */
+.mg-view .mg-goalcard-head h4 {
+  color: var(--mg-text);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+.mg-view .mg-goalcard {
+  background-color: var(--mg-panel);
+}

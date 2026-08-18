@@ -41,20 +41,24 @@ for (const side of [-1, 1] as const) {
   }
 }
 
-// Four two-person lattice booths on the east wall.
-for (const z of [-15, -7, 1, 9]) {
+// Four two-person lattice booths on the east wall — expanded to 4 chairs per desk
+// (seats 9–24) so each booth has two chairs on each long side.
+const BOOTH_ZS = [-15, -7, 1, 9]
+for (const z of BOOTH_ZS) {
   for (const side of [-1, 1] as const) {
-    const id = seats.length
-    seats.push({
-      id,
-      zone: 'booth',
-      label: `Lattice Booth ${Math.round((z + 15) / 8) + 1} · ${side < 0 ? 'Inner' : 'Window'}`,
-      floor: 'Ground Floor',
-      feature: 'Private lattice booth',
-      quietness: 'Quiet',
-      pos: [14.8 + side * 1.45, 0, z],
-      yaw: side === 1 ? Math.PI / 2 : -Math.PI / 2,
-    })
+    for (const dz of [-1.2, 1.2]) {
+      const id = seats.length
+      seats.push({
+        id,
+        zone: 'booth',
+        label: `Lattice Booth ${Math.round((z + 15) / 8) + 1} · ${side < 0 ? 'Inner' : 'Window'} · ${dz < 0 ? 'Front' : 'Back'}`,
+        floor: 'Ground Floor',
+        feature: 'Private lattice booth',
+        quietness: 'Quiet',
+        pos: [14.8 + side * 1.45, 0, z + dz],
+        yaw: side === 1 ? Math.PI / 2 : -Math.PI / 2,
+      })
+    }
   }
 }
 
@@ -143,7 +147,7 @@ export function chineseCafeBlockers(): CafeAabb[] {
     aabb(0, wallH / 2, -halfL - 0.25, halfW * 2, wallH, 0.5),
     aabb(0, wallH / 2, halfL + 0.25, halfW * 2, wallH, 0.5),
     aabb(-8.4, 0.78, -7.2, 2.4, 1.56, 13.2),
-    ...[-15, -7, 1, 9].map((z) => aabb(14.8, 0.75, z, 2.1, 1.5, 2.25)),
+    ...BOOTH_ZS.map((z) => aabb(14.8, 0.75, z, 2.1, 1.5, 5.0)),
     aabb(-19.6, 0.75, 9.675, 1.4, 1.5, 14.65),
     aabb(0, 0.45, 5.2, 8.2, 0.9, 9.1),
     aabb(10.7, 1.2, 20.2, 8.8, 2.4, 3.2),

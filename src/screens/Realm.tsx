@@ -134,6 +134,7 @@ export function Realm() {
 /* ------------------------------------------------------------ choose flavour */
 
 function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
+  const { t } = useTranslation()
   return (
     <>
       <div className="realm-topright">
@@ -167,8 +168,8 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
         </button>
 
         <button
-          className="realm-card water-glass"
-          onClick={() => onPick('private')}
+          className="realm-card water-glass realm-card--soon"
+          disabled
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -184,7 +185,7 @@ function RealmChoose({ onPick }: { onPick: (m: Mode) => void }) {
           </div>
           <h2>Private Realm</h2>
           <p>Create a realm for you and your friends. Share the code and password to join together.</p>
-          <span className="realm-card-cta">Create or join ›</span>
+          <span className="realm-card-cta">{t('common.soon')}</span>
         </button>
       </div>
     </>
@@ -271,8 +272,9 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
         </button>
 
         <button
-          className="realm-card water-glass realm-card--soon"
-          disabled
+          className="realm-card water-glass"
+          data-tour-key="chinese-cafe"
+          onClick={() => onPick('chinese-cafe')}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             e.currentTarget.style.setProperty('--glow-x', `${((e.clientX - r.left) / r.width) * 100}%`)
@@ -288,7 +290,7 @@ function PrivateChoose({ onPick }: { onPick: (m: Mode) => void }) {
           </div>
           <h2>🏮 Jade Lantern Café</h2>
           <p>Study beside a moon-gate koi courtyard, quiet lattice booths, and rain-washed windows.</p>
-          <span className="realm-card-cta">{t('common.soon')}</span>
+          <span className="realm-card-cta">Enter the café ›</span>
         </button>
       </div>
     </>

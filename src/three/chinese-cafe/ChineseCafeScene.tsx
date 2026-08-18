@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, HueSaturation, Vignette, Bloom } from '@react-three/postprocessing'
+import {
+  EffectComposer,
+  HueSaturation,
+  Vignette,
+  Bloom,
+  N8AO,
+  BrightnessContrast,
+  DepthOfField,
+} from '@react-three/postprocessing'
+import {
+  CafeAvatarCull,
+  CafeCanvasBoundary,
+  CafeHeartbeat,
+  CafeShadowFreeze,
+  CafeTextureSync,
+  CafeWatchdog,
+} from './quality'
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three'
 import { useSocialOverlay } from '../../features/social/store'
 import { useScenePreset } from '../../store/quality'
@@ -48,16 +64,45 @@ function RendererHeartbeat() {
 
 function CafePostEffects() {
   const tier = useSettings((state) => state.postProcessing)
+  const ultra = tier === 'high'
+  const cameraMode = useSettings((state) => state.cameraMode)
+  const gl = useThree((state) => state.gl)
+  const [glRestored, setGlRestored] = useState(0)
+
+  // A GPU context loss (driver switch, resource pressure, backgrounding) wipes
+  // the WebGL state. Rebuild the composer after restore so the passes re-link
+  // instead of rendering a black/broken frame. preventDefault stops the browser's
+  // "Aw, snap" overlay.
+  useEffect(() => {
+    const el = gl.domElement
+    const onRestored = () => setGlRestored((n) => n + 1)
+    const onLost = (e: Event) => e.preventDefault()
+    el.addEventListener('webglcontextlost', onLost as EventListener)
+    el.addEventListener('webglcontextrestored', onRestored)
+    return () => {
+      el.removeEventListener('webglcontextlost', onLost as EventListener)
+      el.removeEventListener('webglcontextrestored', onRestored)
+    }
+  }, [gl])
+
   if (tier === 'off') return null
   return (
-    <EffectComposer multisampling={0}>
-      {/* The café is a night realm — its lanterns, fireflies, jade pond glow and
-          stone-lantern window are all emissive, so an always-on bloom is what
-          makes the whole hall glow. A low threshold keeps the warm glow visible
-          over the whole scene; mipmapBlur keeps the pass cheap. */}
-      <Bloom mipmapBlur intensity={1.25} luminanceThreshold={0.28} luminanceSmoothing={0.35} radius={0.7} />
+    <EffectComposer key={glRestored} multisampling={ultra ? 4 : 2}>
+      {/* Ambient occlusion — the biggest "flat vs premium" factor. Cheap at
+          halfRes low quality, gated to the High tier. */}
+      {ultra && <N8AO aoRadius={1.0} distanceFalloff={1.2} intensity={1.6} quality="low" halfRes aoSamples={16} />}
+      {/* The café is a night realm: its lanterns, jade pond glow and fountain are
+          emissive, so always-on bloom is what makes the whole hall glow. */}
+      <Bloom mipmapBlur intensity={1.15} luminanceThreshold={0.26} luminanceSmoothing={0.4} radius={0.72} />
+      {/* First-person cinematic depth — the room becomes softly layered when you
+          sit and look out. Skipped in third-person so your own avatar stays sharp. */}
+      {ultra && cameraMode === 'first' && (
+        <DepthOfField focusDistance={0.02} focalLength={0.18} bokehScale={2.0} height={480} />
+      )}
+      {/* Filmic grade on High — lifts the warm lantern light and adds contrast. */}
+      {ultra && <BrightnessContrast brightness={0.02} contrast={0.12} />}
       <HueSaturation saturation={-0.04} hue={0} />
-      <Vignette eskil={false} offset={0.18} darkness={0.45} />
+      <Vignette eskil={false} offset={0.2} darkness={0.5} />
     </EffectComposer>
   )
 }
@@ -82,34 +127,48 @@ export function ChineseCafeScene({ onReady }: { onReady?: () => void }) {
   const renderPaused = useWorld((state) => state.renderPaused)
   const pauseWhenHidden = useSettings((state) => state.pauseWhenHidden)
   const hidden = useHiddenTab()
+  // Bumped by CafeWatchdog when the render loop freezes — remounts the Canvas so
+  // the frozen frame recovers instead of staying stuck behind the DOM.
+  const [canvasKey, setCanvasKey] = useState(0)
+  const paused = Boolean(socialOpen || renderPaused || (pauseWhenHidden && hidden))
 
   return (
-    <Canvas
-      events={createNullSafeEvents}
-      frameloop={socialOpen || renderPaused || (pauseWhenHidden && hidden) ? 'never' : 'always'}
-      shadows={preset.shadows ? 'soft' : false}
-      dpr={preset.dpr}
-      camera={{ position: [0, 2.2, 20], fov: 63, near: 0.08, far: Math.min(180, preset.far) }}
-      gl={{ antialias: false, powerPreference: 'high-performance' }}
-      onCreated={({ gl }) => {
-        gl.outputColorSpace = SRGBColorSpace
-        gl.toneMapping = ACESFilmicToneMapping
-        gl.toneMappingExposure = 1.05
-      }}
-    >
-      <color attach="background" args={['#101b1d']} />
-      <ChineseCafeAtmosphere />
-      <ChineseCafeArchitecture />
-      <ChineseCafeCourtyard />
-      <ChineseCafeFurniture />
-      <ChineseCafeTableAccessories />
-      <ChineseCafePlayerController />
-      <RemotePlayers />
-      <CafePostEffects />
-      <SceneReady onReady={onReady} />
-      <RendererHeartbeat />
-      <CafeRainMute />
-    </Canvas>
+    <>
+      <CafeWatchdog active={!paused} onStall={() => setCanvasKey((k) => k + 1)} />
+      <Canvas
+        key={canvasKey}
+        events={createNullSafeEvents}
+        frameloop={paused ? 'never' : 'always'}
+        shadows={preset.shadows ? 'soft' : false}
+        dpr={preset.dpr}
+        camera={{ position: [0, 2.2, 20], fov: 63, near: 0.08, far: Math.min(180, preset.far) }}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
+        onCreated={({ gl }) => {
+          gl.outputColorSpace = SRGBColorSpace
+          gl.toneMapping = ACESFilmicToneMapping
+          gl.toneMappingExposure = 1.05
+        }}
+      >
+        <color attach="background" args={['#101b1d']} />
+        <ChineseCafeAtmosphere />
+        <ChineseCafeArchitecture />
+        <ChineseCafeCourtyard />
+        <ChineseCafeFurniture />
+        <ChineseCafeTableAccessories />
+        <ChineseCafePlayerController />
+        <RemotePlayers />
+        <CafeTextureSync anisotropy={8} />
+        <CafeAvatarCull />
+        <CafeShadowFreeze enabled={preset.shadows} />
+        <CafeHeartbeat />
+        <CafeCanvasBoundary>
+          <CafePostEffects />
+        </CafeCanvasBoundary>
+        <SceneReady onReady={onReady} />
+        <RendererHeartbeat />
+        <CafeRainMute />
+      </Canvas>
+    </>
   )
 }
 

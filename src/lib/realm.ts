@@ -116,9 +116,8 @@ export const ENABLE_TRAIN_STATION_REALM = false
  *  all of its code, routes and scenes intact (developers still reach it via `?dev=1`). */
 export const ENABLE_UK_CAFE_REALM = false
 
-/** The Jade Lantern Chinese Café is parked until further notice — the team is
- *  focusing on the Library. The scene, routes and seats stay intact; only the
- *  public card is hidden (developers still reach it via `?dev=1`). */
+/** The Jade Lantern Chinese Café — coming soon (hidden from public, developers
+ *  still reach it via `?dev=1`). */
 export const ENABLE_CHINESE_CAFE_REALM = false
 
 /** Whether the Train Station Realm may be shown and entered right now. Every

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMagnet } from '../../../store/magnet'
 import { PRIORITY_META, type Priority, type Task, type FocusSession, type Goal, type Recurrence, type LifeArea } from '../../../lib/magnet/types'
@@ -70,11 +70,32 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
   const [cursor, setCursor] = useState<Date>(() => new Date())
   const [selected, setSelected] = useState<string | null>(null)
   const [edit, setEdit] = useState<EditState | null>(null)
-  // Calendar mode: plain (quiet counts) or advanced (full chip calendar with
-  // titles, subtask progress, estimates and repeats).
-  const [advanced, setAdvanced] = useState(false)
   // Multi-select: task ids picked up with right-click / shift-click.
   const [sel, setSel] = useState<Set<string>>(new Set())
+  // Right-click context menu on a day cell: Select all / Specific select /
+  // Add tasks / More options — replaces the browser's default menu.
+  const [ctx, setCtx] = useState<{ x: number; y: number; key: string } | null>(null)
+  const [ctxSpecific, setCtxSpecific] = useState<string | null>(null)
+
+  // Close the context menu on any outside click, another right-click, or Esc.
+  useEffect(() => {
+    if (!ctx) return
+    const close = () => {
+      setCtx(null)
+      setCtxSpecific(null)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    window.addEventListener('click', close)
+    window.addEventListener('contextmenu', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('click', close)
+      window.removeEventListener('contextmenu', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [ctx])
 
   function toggleSel(id: string) {
     setSel((s) => {
@@ -83,6 +104,29 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
       else n.add(id)
       return n
     })
+  }
+
+  function openCtx(e: React.MouseEvent, key: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setCtxSpecific(null)
+    setCtx({
+      x: Math.min(e.clientX, window.innerWidth - 220),
+      y: Math.min(e.clientY, window.innerHeight - 180),
+      key,
+    })
+  }
+
+  function ctxSelectAll(key: string) {
+    const items = byDate.get(key)
+    if (items && items.tasks.length > 0) {
+      setSel((s) => {
+        const n = new Set(s)
+        for (const x of items.tasks) n.add(x.id)
+        return n
+      })
+    }
+    setCtx(null)
   }
 
   function openCreate(due: string) {
@@ -233,17 +277,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
         subtitle={t('calendar.subtitle')}
         action={
           <div className="mg-cal-controls">
-            <button
-              role="tab"
-              aria-selected={advanced}
-              aria-pressed={advanced}
-              className={`mg-cal-advbtn${advanced ? ' active' : ''}`}
-              onClick={() => setAdvanced((a) => !a)}
-              title={t('calendar.advanced')}
-            >
-              <Icon name="spark" size={13} /> {t('calendar.advanced')}
-            </button>
-            <div className="mg-cal-toggle" role="tablist">
+          <div className="mg-cal-toggle" role="tablist">
               <button
                 role="tab"
                 aria-selected={mode === 'month'}
@@ -305,7 +339,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
         )}
       </div>
 
-      <div className={`mg-cal-grid ${mode}${advanced ? ' advanced' : ''}`}>
+      <div className={`mg-cal-grid ${mode}`}>
         {weekdayLabels.map((w) => (
           <div key={w} className="mg-cal-wd">
             {w}
@@ -317,8 +351,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             cell={cell}
             items={byDate.get(cell.key)}
             selected={selected === cell.key}
-            advanced={advanced}
-            cap={mode === 'week' ? 7 : advanced ? 6 : 3}
+            cap={mode === 'week' ? 7 : 6}
             selectedIds={sel}
             addLabel={t('calendar.addOnDate', { date: cell.key })}
             onSelect={() => setSelected(cell.key)}
@@ -326,12 +359,72 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             onEditTask={openEdit}
             onToggleDone={toggleTask}
             onToggleSel={toggleSel}
+            onContext={(e) => openCtx(e, cell.key)}
           />
         ))}
       </div>
 
       {!hasAnyEvents && (
         <EmptyState icon="calendar" title={t('calendar.noEvents')} body={t('calendar.subtitle')} />
+      )}
+
+      {ctx && (
+        <div
+          className="mg-cal-ctx"
+          style={{ left: ctx.x, top: ctx.y }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+        >
+          <button type="button" onClick={() => ctxSelectAll(ctx.key)}>
+            <Icon name="grid" size={13} /> {t('calendar.selectAll')}
+          </button>
+          <button type="button" onClick={() => setCtxSpecific((d) => (d === ctx.key ? null : ctx.key))}>
+            <Icon name="checkCircle" size={13} /> {t('calendar.specificSelect')}
+          </button>
+          {ctxSpecific === ctx.key && (
+            <div className="mg-cal-ctx-sub">
+              {(byDate.get(ctx.key)?.tasks ?? []).length === 0 ? (
+                <span className="mg-cal-ctx-empty">{t('calendar.noEvents')}</span>
+              ) : (
+                (byDate.get(ctx.key)?.tasks ?? []).map((task) => (
+                  <button
+                    type="button"
+                    key={task.id}
+                    className={sel.has(task.id) ? 'on' : ''}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleSel(task.id)
+                    }}
+                  >
+                    <Icon name="check" size={11} />
+                    <span className="mg-cal-ctx-task">{task.title}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setCtx(null)
+              openCreate(ctx.key)
+            }}
+          >
+            <Icon name="plus" size={13} /> {t('calendar.addTasks')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCtx(null)
+              setSelected(ctx.key)
+            }}
+          >
+            <Icon name="chevron" size={13} /> {t('calendar.moreOptions')}
+          </button>
+        </div>
       )}
 
       {/* ═══ Day editor — a modal instead of a bar under the grid ═══ */}
@@ -537,7 +630,6 @@ function DayCellView({
   cell,
   items,
   selected,
-  advanced,
   cap,
   selectedIds,
   addLabel,
@@ -546,11 +638,11 @@ function DayCellView({
   onEditTask,
   onToggleDone,
   onToggleSel,
+  onContext,
 }: {
   cell: DayCell
   items: DayItems | undefined
   selected: boolean
-  advanced: boolean
   cap: number
   selectedIds: Set<string>
   addLabel: string
@@ -559,6 +651,7 @@ function DayCellView({
   onEditTask: (task: Task) => void
   onToggleDone: (id: string) => void
   onToggleSel: (id: string) => void
+  onContext: (e: React.MouseEvent) => void
 }) {
   const { t } = useTranslation()
   const tasks = items?.tasks ?? []
@@ -572,6 +665,7 @@ function DayCellView({
     <div
       className={`mg-cal-cell${cell.inMonth ? '' : ' out'}${cell.isToday ? ' today' : ''}${selected ? ' selected' : ''}`}
       onClick={onSelect}
+      onContextMenu={onContext}
     >
       <div className="mg-cal-cell-top">
         <span className="mg-cal-num">{cell.date.getDate()}</span>
@@ -587,29 +681,6 @@ function DayCellView({
           <Icon name="plus" size={12} />
         </button>
       </div>
-      {!advanced ? (
-        <div className="mg-cal-chips plain" onClick={(e) => e.stopPropagation()}>
-          {tasks.length > 0 && (
-            <span
-              className="mg-cal-chip task count"
-              style={{ ['--mg-c' as string]: PRIORITY_META[tasks[0].priority].color }}
-            >
-              <Icon name="check" size={10} /> {tasks.length}
-              {tasks.some((x) => !x.done) && <span className="mg-cal-ring" />}
-            </span>
-          )}
-          {focusMin > 0 && (
-            <span className="mg-cal-chip focus count">
-              <Icon name="clock" size={10} /> {focusMin}m
-            </span>
-          )}
-          {goals.map((g) => (
-            <span key={g.id} className="mg-cal-chip goal count" style={{ ['--mg-c' as string]: g.color }}>
-              <Icon name="target" size={10} /> 1
-            </span>
-          ))}
-        </div>
-      ) : (
       <div className="mg-cal-chips">
         {shownTasks.map((task) => (
           <div
@@ -672,7 +743,6 @@ function DayCellView({
           </span>
         ))}
       </div>
-      )}
     </div>
   )
 }

@@ -5,31 +5,58 @@ import { CAFE } from './layout'
 import { CAFE_PALETTE, useChineseCafeTextures } from './materials'
 
 function MoonGate() {
-  // The moon gate arch stands free as a decorative passage — the partition
-  // walls that separated the main hall from the south room are gone, so the
-  // two rooms read as ONE open space. The round ring keeps the garden feel.
+  // A garden moon gate (月洞门) — the round opening frames a small planted
+  // view so it reads as a portal into the courtyard garden, not a bare hoop or
+  // an "incomplete door". Anchored on a stone plinth with a path leading through.
   return (
-    <group>
-      <mesh position={[0, 4.15, 17.1]} castShadow>
-        <torusGeometry args={[4.15, 0.28, 12, 72]} />
-        <meshStandardMaterial color={CAFE_PALETTE.walnut} roughness={0.46} metalness={0.04} />
+    <group position={[0, 0, 17.1]}>
+      {/* stone plinth the ring rises from */}
+      <mesh position={[0, 0.2, 0]} receiveShadow>
+        <boxGeometry args={[9.8, 0.4, 1.7]} />
+        <meshStandardMaterial color={CAFE_PALETTE.stoneDark} roughness={0.82} />
       </mesh>
-      <mesh position={[0, 4.15, 17.02]}>
-        <torusGeometry args={[3.82, 0.045, 8, 72]} />
-        <meshStandardMaterial color={CAFE_PALETTE.brass} emissive="#8a5f22" emissiveIntensity={0.65} metalness={0.78} roughness={0.27} />
+      {/* the ring — thick, warm stone, with a soft brass inner lip */}
+      <mesh position={[0, 4.15, 0]} castShadow receiveShadow>
+        <torusGeometry args={[4.15, 0.34, 16, 80]} />
+        <meshStandardMaterial color={CAFE_PALETTE.walnut} roughness={0.5} metalness={0.05} />
       </mesh>
-      {/* small decorative plaque above the arch */}
-      <mesh position={[0, 8.95, 17.06]}>
-        <boxGeometry args={[4.2, 0.12, 0.12]} />
-        <meshStandardMaterial color={CAFE_PALETTE.brass} emissive="#a87a30" emissiveIntensity={1.5} />
+      <mesh position={[0, 4.15, -0.12]}>
+        <torusGeometry args={[3.83, 0.05, 10, 80]} />
+        <meshStandardMaterial color={CAFE_PALETTE.brass} emissive="#8a5f22" emissiveIntensity={0.4} metalness={0.78} roughness={0.27} />
       </mesh>
-      {/* two small stone plinths bracing the base of the ring */}
-      {[-3.6, 3.6].map((x) => (
-        <mesh key={x} position={[x, 0.25, 17.15]} castShadow>
-          <boxGeometry args={[0.5, 0.5, 0.5]} />
-          <meshStandardMaterial color={CAFE_PALETTE.stone} roughness={0.7} />
+      {/* planted view seen THROUGH the opening — a low hedge + slender tree, so
+          the ring frames a little garden instead of reading as a floating hoop */}
+      <mesh position={[0, 1.4, -1.0]} castShadow>
+        <cylinderGeometry args={[3.45, 3.75, 2.8, 24]} />
+        <meshStandardMaterial color="#2f4a2c" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.5, -1.0]}>
+        <cylinderGeometry args={[3.65, 3.85, 1.0, 24]} />
+        <meshStandardMaterial color="#36432f" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 3.2, -1.7]} castShadow>
+        <cylinderGeometry args={[0.12, 0.18, 3.4, 8]} />
+        <meshStandardMaterial color="#3a2a1c" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 4.7, -1.7]} castShadow>
+        <sphereGeometry args={[1.05, 12, 10]} />
+        <meshStandardMaterial color="#3f6b46" roughness={0.9} />
+      </mesh>
+      {/* stone path leading up to the gate */}
+      {[-1.5, -0.5, 0.5, 1.5].map((z) => (
+        <mesh key={z} position={[0, 0.08, z]} receiveShadow>
+          <cylinderGeometry args={[0.55, 0.6, 0.12, 8]} />
+          <meshStandardMaterial color="#6f746b" roughness={0.95} />
         </mesh>
       ))}
+      {/* a small hanging lantern at the crown — soft, not a hard bar */}
+      <group position={[0, 8.3, 0.25]}>
+        <mesh>
+          <cylinderGeometry args={[0.28, 0.34, 0.6, 14]} />
+          <meshStandardMaterial color="#d6b66d" emissive="#e0a53e" emissiveIntensity={1.3} transparent opacity={0.9} roughness={0.6} />
+        </mesh>
+        <pointLight color="#ffcf8a" intensity={3} distance={5} decay={2} />
+      </group>
     </group>
   )
 }
@@ -100,6 +127,25 @@ function RoofAndBeams() {
     { pos: [-22.6, 11.65, -29.6], rot: [0, -2.34, 0] },
   ]
 
+  // Dougong (斗拱) bracket sets — the signature Chinese corbel that caps every
+  // column and supports the eaves. Stacked arms read as carved brackets from the
+  // floor; all flattened into one instanced draw call.
+  const dougong = useMemo<BoxItem[]>(() => {
+    const items: BoxItem[] = []
+    const ring: [number, number][] = []
+    for (const x of [-18, -9, 0, 9, 18]) { ring.push([x, 29.4]); ring.push([x, -29.4]) }
+    for (const z of [-18, -9, 0, 9, 18]) { ring.push([22.1, z]); ring.push([-22.1, z]) }
+    const base = 9.9
+    for (const [px, pz] of ring) {
+      items.push({ pos: [px, base + 0.23, pz], size: [0.46, 0.46, 0.46], color: '#2b190f' })
+      items.push({ pos: [px, base + 0.5, pz], size: [1.0, 0.12, 1.0], color: '#3a2013' })
+      items.push({ pos: [px, base + 0.66, pz], size: [1.4, 0.12, 1.4], color: '#3a2013' })
+      items.push({ pos: [px, base + 0.82, pz], size: [1.8, 0.12, 1.8], color: '#3a2013' })
+      items.push({ pos: [px, base + 0.95, pz], size: [0.6, 0.14, 0.6], color: CAFE_PALETTE.brass })
+    }
+    return items
+  }, [])
+
   return (
     <group>
       <InstancedBoxes items={beams} roughness={0.62} metalness={0.05} castShadow />
@@ -162,6 +208,7 @@ function RoofAndBeams() {
           <mesh position={[0.72, 0.52, 0.72]}><coneGeometry args={[0.16, 0.3, 4]} /><meshStandardMaterial color={CAFE_PALETTE.brass} metalness={0.8} roughness={0.28} /></mesh>
         </group>
       ))}
+      <InstancedBoxes items={dougong} roughness={0.55} castShadow />
     </group>
   )
 }
@@ -263,13 +310,20 @@ function EntranceVestibule() {
           </mesh>
         </group>
       ))}
+      {/* entrance signboard — carved plaque with a soft warm inlay (clamped so it
+          glows under bloom without the old flat bar blowing out) */}
       <mesh position={[0, 7.65, 26.96]}>
         <boxGeometry args={[8.2, 0.72, 0.25]} />
-        <meshStandardMaterial color="#111916" roughness={0.42} />
+        <meshStandardMaterial color="#2a1d10" roughness={0.55} />
       </mesh>
       <mesh position={[0, 7.66, 26.78]}>
-        <planeGeometry args={[6.5, 0.42]} />
-        <meshBasicMaterial color="#e9c778" />
+        <planeGeometry args={[6.6, 0.5]} />
+        <meshStandardMaterial color="#e9b85a" emissive="#e9b85a" emissiveIntensity={0.8} roughness={0.55} />
+      </mesh>
+      {/* small warm lantern plaque above the signboard — emissive only, no new real light */}
+      <mesh position={[0, 8.7, 26.9]}>
+        <boxGeometry args={[1.4, 0.5, 0.18]} />
+        <meshStandardMaterial color="#d6b66d" emissive="#e0a53e" emissiveIntensity={1.2} transparent opacity={0.9} roughness={0.6} />
       </mesh>
       <mesh position={[-6.1, 0.55, 25.25]} castShadow>
         <boxGeometry args={[3.7, 1.1, 1.1]} />

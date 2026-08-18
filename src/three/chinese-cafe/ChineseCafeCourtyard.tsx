@@ -303,10 +303,11 @@ function RainChain({ x }: { x: number }) {
   )
 }
 
-/** Animated jade surface + soft light rising from the pond bed. */
+/** Calm jade pond — a gently rippling dark-jade surface with a faint self-glow
+ *  and a soft clearcoat reflection. No separate additive "glow disc", which read
+ *  as an unnatural colored reflection floating over the water. */
 function JadeWater() {
   const surface = useRef<Mesh>(null)
-  const glowMat = useRef<MeshBasicMaterial>(null)
   const base = useRef<Float32Array | null>(null)
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
@@ -324,32 +325,20 @@ function JadeWater() {
     }
     pos.needsUpdate = true
     mesh.geometry.computeVertexNormals()
-    if (glowMat.current) glowMat.current.opacity = 0.4 + Math.sin(t * 0.75) * 0.12
   })
-  const glowTex = useMemo(() => radialTexture('rgba(58, 176, 148, 0.9)', 'rgba(30, 108, 92, 0.4)', 'rgba(12, 46, 42, 0)'), [])
   return (
-    <group>
-      <mesh position={[CAFE.pond.x, 0.46, CAFE.pond.z]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[CAFE.pond.w * 0.92, CAFE.pond.l * 0.92]} />
-        <meshBasicMaterial ref={glowMat} map={glowTex} transparent opacity={0.42} blending={AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <mesh ref={surface} position={[CAFE.pond.x, 0.55, CAFE.pond.z]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[CAFE.pond.w, CAFE.pond.l, 42, 42]} />
-        <meshPhysicalMaterial
-          color="#1d5d50"
-          roughness={0.1}
-          metalness={0.06}
-          transmission={0.16}
-          transparent
-          opacity={0.86}
-          clearcoat={1}
-          clearcoatRoughness={0.06}
-          emissive="#0d3f36"
-          emissiveIntensity={0.35}
-          depthWrite={false}
-        />
-      </mesh>
-    </group>
+    <mesh ref={surface} position={[CAFE.pond.x, 0.55, CAFE.pond.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[CAFE.pond.w, CAFE.pond.l, 42, 42]} />
+      <meshPhysicalMaterial
+        color="#1b4f47"
+        roughness={0.22}
+        metalness={0.0}
+        clearcoat={0.6}
+        clearcoatRoughness={0.28}
+        emissive="#0c3b34"
+        emissiveIntensity={0.16}
+      />
+    </mesh>
   )
 }
 

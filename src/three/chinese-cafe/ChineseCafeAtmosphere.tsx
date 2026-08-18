@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { AdditiveBlending, BufferAttribute, Color, type Points } from 'three'
+import { AdditiveBlending, BufferAttribute, type Points } from 'three'
 import { useScenePreset } from '../../store/quality'
 
 import { CAFE_PALETTE } from './materials'
@@ -82,29 +82,64 @@ function RainCurtain({ count }: { count: number }) {
     </points>
   )
 }
-function ExteriorStreet() {
-  const signs = useMemo(() => Array.from({ length: 14 }, (_, i) => ({
-    x: -25.4 - (i % 3) * 1.7,
-    y: 1.8 + (i % 5) * 1.8,
+function StreetLantern({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.16, 0.2, 0.5, 16]} />
+        <meshStandardMaterial color="#d6b66d" emissive="#e0a53e" emissiveIntensity={1.6} transparent opacity={0.86} roughness={0.64} />
+      </mesh>
+      <mesh position={[0, -0.28, 0]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.5, 6]} />
+        <meshStandardMaterial color="#a98a4d" roughness={0.5} />
+      </mesh>
+      <pointLight color="#ffcf8a" intensity={2.4} distance={5} decay={2} />
+    </group>
+  )
+}
 
-    z: -25 + i * 3.9,
-    color: new Color().setHSL(0.42 + (i % 4) * 0.07, 0.45, 0.45).getStyle(),
-  })), [])
+function ExteriorStreet() {
+  const lanternSpots = useMemo<[number, number, number][]>(
+    () => Array.from({ length: 12 }, (_, i) => [-25.2, 3.4 + (i % 6) * 1.6, -24 + i * 4.2] as [number, number, number]),
+    [],
+  )
   return (
     <group>
+      {/* far building wall — quiet, dark, lets the café read as the bright focus */}
       <mesh position={[-27, 4.5, 0]}>
         <boxGeometry args={[4, 9, 60]} />
-        <meshStandardMaterial color="#172429" roughness={0.96} />
+        <meshStandardMaterial color="#141f24" roughness={0.97} />
       </mesh>
-      {signs.map((sign, i) => (
-        <mesh key={i} position={[sign.x, sign.y, sign.z]} rotation={[0, Math.PI / 2, 0]}>
-          <planeGeometry args={[2.1 + (i % 2), 0.45 + (i % 3) * 0.18]} />
-          <meshBasicMaterial color={sign.color} transparent opacity={0.55} />
-        </mesh>
+      {/* wooden awning beam running along the street front */}
+      <mesh position={[-24.4, 6.2, 0]}>
+        <boxGeometry args={[0.7, 0.4, 56]} />
+        <meshStandardMaterial color="#3a2a18" roughness={0.8} />
+      </mesh>
+      {/* warm under-awning glow strip — soft so it blooms without blowing out */}
+      <mesh position={[-24.6, 6.0, 0]}>
+        <boxGeometry args={[0.18, 0.08, 56]} />
+        <meshStandardMaterial color="#e9c778" emissive="#e9c778" emissiveIntensity={0.5} roughness={0.6} />
+      </mesh>
+      {/* a few carved vertical shop-sign boards, warm-lit — not random blank colors */}
+      {[-16, 4, 22].map((z, i) => (
+        <group key={i} position={[-24.9, 3.4, z]}>
+          <mesh>
+            <boxGeometry args={[0.22, 3.4, 1.1]} />
+            <meshStandardMaterial color="#2a1d10" roughness={0.7} />
+          </mesh>
+          <mesh position={[0.13, 0, 0]}>
+            <boxGeometry args={[0.04, 3.0, 0.9]} />
+            <meshStandardMaterial color="#e9b85a" emissive="#e9b85a" emissiveIntensity={0.55} roughness={0.6} />
+          </mesh>
+        </group>
       ))}
+      {lanternSpots.map((p, i) => (
+        <StreetLantern key={i} position={p} />
+      ))}
+      {/* damp street ground — faint warm reflection */}
       <mesh position={[-23.2, 0.06, 0]} receiveShadow>
         <boxGeometry args={[4.2, 0.12, 60]} />
-        <meshPhysicalMaterial color="#303a3a" roughness={0.18} clearcoat={0.5} clearcoatRoughness={0.2} />
+        <meshPhysicalMaterial color="#28302f" roughness={0.16} clearcoat={0.6} clearcoatRoughness={0.18} />
       </mesh>
     </group>
   )

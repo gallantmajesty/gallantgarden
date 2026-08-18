@@ -1364,6 +1364,10 @@
     "doneSelected": "Mark done",
     "deleteSelected": "Delete",
     "bulkMoveHint": "Drag a selected task to move all of them to another day",
+    "selectAll": "Select all",
+    "specificSelect": "Specific select",
+    "addTasks": "Add tasks",
+    "moreOptions": "More options",
     "editTask": "Edit task"
   },
   "review": {
