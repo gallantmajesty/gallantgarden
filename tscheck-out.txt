@@ -1,3 +1,0 @@
-src/components/magnet/MagnetLoader.tsx(3,27): error TS2307: Cannot find module '../store/magnet' or its corresponding type declarations.
-src/components/magnet/MagnetLoader.tsx(4,26): error TS2307: Cannot find module '../lib/magnet/themes' or its corresponding type declarations.
-src/features/social/SocialHub.tsx(510,69): error TS2304: Cannot find name 'setFullscreen'.

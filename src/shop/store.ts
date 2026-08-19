@@ -8,7 +8,7 @@ import { useProfile } from '../store/profile'
 import { STARTER_THEME_IDS } from '../lib/magnet/themes'
 
 const STORAGE_KEY = 'sf.shop.inventory'
-const FREE_PLAYER_ID = import.meta.env.DEV ? -1 : -1
+const FREE_PLAYER_ID = -1
 // Common characters are always owned (free starter characters)
 const STARTER_CHARACTER_IDS = ['james', 'claire', 'mia', 'ojas', 'priya', 'zara', 'owen', 'taro']
 // Free banners and logos are always owned

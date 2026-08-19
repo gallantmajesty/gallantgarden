@@ -61,7 +61,7 @@ export type MetricKey =
   | 'cafeVisits'
 
 /** Placeholder for future non-leaf rewards (characters / banners / logos /
- *  shop items). Kept so owner can attach real rewards later without a schema
+ *  shop items). Kept so the owner can attach real rewards later without a schema
  *  change — v1 pays out leaves only. */
 export interface AchievementItemReward {
   kind: 'banner' | 'logo' | 'character' | 'item'

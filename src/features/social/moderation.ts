@@ -2,11 +2,11 @@
 //
 // Detected bad words are REPLACED with a hashtag token (`#word`) rather than
 // rejected, so the message still sends but is "censored". The actual word list
-// and any extra rules are provided later (owner) — this module is the single
+// and any extra rules are provided later — this module is the single
 // extension point. Fill `BAD_WORDS` (and optionally `RULES`) and the rest of the
 // pipeline stays the same.
 
-// TODO(owner): paste the security/spam word list here.
+// TODO: paste the security/spam word list here.
 const BAD_WORDS: string[] = []
 
 // Optional regex-based rules (e.g. phone numbers, links) → replaced by a tag.

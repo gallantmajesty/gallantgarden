@@ -51,3 +51,35 @@ dist-ssr
 
 .vercel
 .env*
+
+# Scratch / debug artifacts (never commit)
+.backup/
+.freebuff/
+torso-shots/
+repro-*.cjs
+repro-*.png
+tsc-*.txt
+tscheck-*.txt
+tsc-out-*.txt
+vite-build-*.txt
+build-*.txt
+eslint-*.txt
+errors.txt
+all_files.txt
+src_file_list.txt
+reachable_files.txt
+unreachable*.txt
+settings-tabs.txt
+todo_fixme_hack.txt
+shot-xp.png
+swap-leaves.js
+probe.cjs
+check-*.cjs
+cine_test.js
+profile-forest.cjs
+setup-diagram.bat
+test-shell.bat
+*.patch.zip
+test.txt
+test_write*.txt
+src/screens/public/test_*.txt

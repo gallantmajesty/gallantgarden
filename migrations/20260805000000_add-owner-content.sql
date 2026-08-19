@@ -29,14 +29,16 @@ ALTER TABLE owner_content ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- Helper: check if the current user is the owner
 -- ============================================================
+-- !! REPLACE THIS UUID with your owner account's auth UUID !!
+-- (Email lookup below is a temporary bootstrap and must be swapped for the
+--  owner account's auth.users UUID before going live.)
 CREATE OR REPLACE FUNCTION _is_owner()
 RETURNS boolean
 LANGUAGE sql
 STABLE
 AS $$
   SELECT auth.uid() IN (
-    -- !! REPLACE THIS UUID with your owner account's auth UUID !!
-    SELECT id FROM auth.users WHERE email = 'support@focuslily.com'
+    SELECT id FROM auth.users WHERE email = 'REPLACE_WITH_OWNER_EMAIL'
   );
 $$;
 
