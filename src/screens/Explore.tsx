@@ -1675,6 +1675,7 @@ function MobileRealmHud({
   navigate,
   settingsOpen,
   setSettingsOpen,
+  calcOpen,
   setCalcOpen,
   setFpOpen,
 }: {
