@@ -43,8 +43,9 @@ function dueTone(due: string, today: string): { tone: DueTone; days: number } {
   return { tone: 'upcoming', days: diff }
 }
 
-function shortDate(due: string): string {
-  return new Date(due + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+/** "2026-08-19" → "Wed, Aug 19" — the label of one history page. */
+function pageLabel(day: string): string {
+  return new Date(day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' })
 }
 
 interface Draft {
@@ -101,6 +102,8 @@ export function TasksView({
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [subInput, setSubInput] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [openPage, setOpenPage] = useState<string>('__top__')
+  const [ctx, setCtx] = useState<{ task: Task; x: number; y: number } | null>(null)
   const [tplOpen, setTplOpen] = useState(false)
   const [tplDraft, setTplDraft] = useState({
     title: '',
@@ -137,6 +140,26 @@ export function TasksView({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Right-click menu: Escape closes it.
+  useEffect(() => {
+    if (!ctx) return
+    const close = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCtx(null)
+    }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [ctx])
+
+  // History drawer: Escape closes it.
+  useEffect(() => {
+    if (!historyOpen) return
+    const close = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHistoryOpen(false)
+    }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [historyOpen])
 
   const baseList = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -191,6 +214,23 @@ export function TasksView({
     [data.goals],
   )
 
+  // Done tasks grouped by completion day — the history is one "page" per day
+  // (like a book), not a flat list of individual tasks.
+  const donePages = useMemo(() => {
+    const byDay = new Map<string, Task[]>()
+    for (const tk of data.tasks) {
+      if (!tk.done) continue
+      const day = dayKey(new Date(tk.completedAt ?? tk.createdAt))
+      const arr = byDay.get(day) ?? []
+      arr.push(tk)
+      byDay.set(day, arr)
+    }
+    return [...byDay.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([day, tasks]) => ({ day, tasks }))
+  }, [data.tasks])
+  const openDay = openPage === '__top__' ? (donePages[0]?.day ?? null) : openPage
+
   // Smart sections for the open queue: Overdue → Today → Tomorrow → Upcoming → No date.
   // Flat list whenever searching or browsing done/all.
   const groups = useMemo(() => {
@@ -232,21 +272,10 @@ export function TasksView({
   // Is an open task past its due date?
   const isOverdueTask = (task: Task) => !task.done && !!task.due && dueTone(task.due, today).tone === 'overdue'
 
-  // One task card: check, title, meta row, expandable detail, progress rail.
+  // One task card: check, title, recurrence label, expandable detail.
+  // Editing & deleting live in the right-click context menu.
   const taskRow = (task: Task) => {
-    const a = getAreaMeta(task.area)
-    const subsDone = task.subtasks.filter((s) => s.done).length
     const isOpen = expanded === task.id
-    const due = task.due ? dueTone(task.due, today) : null
-    const dueLabel = task.due
-      ? due?.tone === 'overdue'
-        ? t('tasks.daysOverdue', { n: due.days })
-        : due?.tone === 'today'
-          ? t('tasks.dueToday')
-          : due?.tone === 'tomorrow'
-            ? t('tasks.dueTomorrow')
-            : shortDate(task.due)
-      : ''
     return (
       <>
         <div className="mg-taskcard-top">
@@ -259,57 +288,15 @@ export function TasksView({
             <Icon name="check" size={14} />
           </button>
           <button className="mg-taskcard-body" onClick={() => setExpanded(isOpen ? null : task.id)}>
-            <span className="mg-task-icon" style={{ color: PRIORITY_META[task.priority].color }}>
-              <Icon name={task.icon} size={16} />
-            </span>
             <span className="mg-task-text">
               <span className="mg-task-title">{task.title}</span>
-              <span className="mg-task-meta">
-                <span className="mg-tag" style={{ ['--mg-tag' as string]: a.color }}>
-                  {a.label}
+              {task.recurring !== 'none' && (
+                <span className="mg-task-rec" title={t('tasks.repeatLabel')}>
+                  {task.recurring[0].toUpperCase() + task.recurring.slice(1)}
                 </span>
-                <span className="mg-tag soft" style={{ ['--mg-tag' as string]: PRIORITY_META[task.priority].color }}>
-                  {PRIORITY_META[task.priority].label}
-                </span>
-                {task.due ? (
-                  <span className={`mg-task-due ${due?.tone ?? ''}`} title={task.due}>
-                    <Icon name="calendar" size={12} /> {dueLabel}
-                  </span>
-                ) : !task.done ? (
-                  <button
-                    className="mg-task-due set-today"
-                    onClick={() => updateTask(task.id, { due: today })}
-                    title={t('tasks.setDueToday')}
-                  >
-                    <Icon name="calendar" size={12} /> {t('tasks.setDueToday')}
-                  </button>
-                ) : null}
-                {task.estimateMin > 0 && (
-                  <span className="mg-task-est">
-                    <Icon name="clock" size={12} /> {task.estimateMin}m
-                  </span>
-                )}
-                {task.recurring !== 'none' && (
-                  <span className="mg-task-rec">
-                    <Icon name="spark" size={12} /> {task.recurring}
-                  </span>
-                )}
-                {task.subtasks.length > 0 && (
-                  <span className="mg-task-subcount">
-                    {subsDone}/{task.subtasks.length}
-                  </span>
-                )}
-              </span>
+              )}
             </span>
           </button>
-          <div className="mg-taskcard-actions">
-            <button className="mg-iconbtn" onClick={() => startEdit(task)} aria-label="Edit" title="Edit">
-              <Icon name="edit" size={15} />
-            </button>
-            <button className="mg-iconbtn danger" onClick={() => deleteTask(task.id)} aria-label="Delete" title="Delete">
-              <Icon name="trash" size={15} />
-            </button>
-          </div>
         </div>
 
         {isOpen && (
@@ -355,12 +342,6 @@ export function TasksView({
             </form>
           </div>
         )}
-
-        {task.subtasks.length > 0 && (
-          <div className="mg-task-progress" title={`${subsDone}/${task.subtasks.length}`}>
-            <i style={{ width: `${Math.round((subsDone / task.subtasks.length) * 100)}%` }} />
-          </div>
-        )}
       </>
     )
   }
@@ -395,6 +376,15 @@ export function TasksView({
       icon: tk.icon,
     })
     setModalOpen(true)
+  }
+  /** Right-click a task card → context menu (Edit / Delete). */
+  function openCtx(e: React.MouseEvent, task: Task) {
+    e.preventDefault()
+    setCtx({
+      task,
+      x: Math.min(e.clientX, Math.max(8, window.innerWidth - 196)),
+      y: Math.min(e.clientY, Math.max(8, window.innerHeight - 120)),
+    })
   }
   function save(e: React.FormEvent) {
     e.preventDefault()
@@ -586,6 +576,7 @@ export function TasksView({
                 className={`mg-taskcard ${task.done ? 'done' : ''} ${
                   isOverdueTask(task) ? 'overdue' : ''
                 } ${doneAnim === task.id ? 'mg-burst' : ''}`}
+                onContextMenu={(e) => openCtx(e, task)}
                 style={{
                   ['--mg-prio' as string]: PRIORITY_META[task.priority].color,
                   animationDelay: `${Math.min(index, 8) * 30}ms`,
@@ -600,6 +591,7 @@ export function TasksView({
                 className={`mg-taskcard ${task.done ? 'done' : ''} ${
                   isOverdueTask(task) ? 'overdue' : ''
                 } ${doneAnim === task.id ? 'mg-burst' : ''}`}
+                onContextMenu={(e) => openCtx(e, task)}
                 style={{
                   ['--mg-prio' as string]: PRIORITY_META[task.priority].color,
                   animationDelay: `${Math.min(index, 8) * 30}ms`,
@@ -611,43 +603,101 @@ export function TasksView({
         </ul>
       )}
 
-      {/* History — completed tasks, finished goals & dreams, newest first. */}
-      {(doneCount > 0 || doneGoals.length > 0) && status !== 'done' && (
-        <div className="mg-history">
-          <button className="mg-history-head" onClick={() => setHistoryOpen((o) => !o)}>
-            <span style={{ display: 'inline-flex', transform: historyOpen ? 'rotate(90deg)' : 'none' }}><Icon name="chevron" size={16} /></span>
-            <Icon name="clock" size={15} />
-            {t('tasks.history')}
-            <span className="mg-history-count">{doneCount + doneGoals.length}</span>
+      {/* Right-click context menu for a task card (Edit / Delete). */}
+      {ctx && (
+        <>
+          <div
+            className="mg-ctx-overlay"
+            onClick={() => setCtx(null)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setCtx(null)
+            }}
+          />
+          <div className="mg-ctx-menu" role="menu" style={{ left: ctx.x, top: ctx.y }}>
+            <button
+              role="menuitem"
+              onClick={() => {
+                startEdit(ctx.task)
+                setCtx(null)
+              }}
+            >
+              <Icon name="edit" size={15} /> {t('tasks.editTask')}
+            </button>
+            <button
+              role="menuitem"
+              className="danger"
+              onClick={() => {
+                deleteTask(ctx.task.id)
+                setCtx(null)
+              }}
+            >
+              <Icon name="trash" size={15} /> {t('tasks.delete')}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* History — right-side drawer. A tab pinned to the right edge toggles it. */}
+      {!historyOpen && (doneCount > 0 || doneGoals.length > 0) && status !== 'done' && (
+        <button className="mg-hist-tab" onClick={() => setHistoryOpen(true)} aria-label={t('tasks.history')}>
+          <Icon name="journal" size={16} />
+          {t('tasks.history')}
+          <span className="mg-history-count">{doneCount + doneGoals.length}</span>
+        </button>
+      )}
+      <div className={`mg-hist-pane ${historyOpen ? 'open' : ''}`} role="dialog" aria-label={t('tasks.history')}>
+        <div className="mg-hist-head">
+          <span className="mg-hist-title">
+            <Icon name="journal" size={18} /> {t('tasks.history')}
+          </span>
+          <span className="mg-history-count">{doneCount + doneGoals.length}</span>
+          <button className="mg-modal-close" onClick={() => setHistoryOpen(false)} aria-label="Close">
+            <Icon name="close" size={18} />
           </button>
-          {historyOpen && (
+        </div>
+        {historyOpen && (
+          <div className="mg-hist-body">
             <ul className="mg-history-list">
-              {[...data.tasks]
-                .filter((tk) => tk.done)
-                .sort((a, b) => {
-                  const da = a.completedAt ? new Date(a.completedAt).getTime() : 0
-                  const db = b.completedAt ? new Date(b.completedAt).getTime() : 0
-                  return db - da
-                })
-                .map((tk) => (
-                  <li key={tk.id}>
-                    <Icon name="check" size={13} />
-                    <span className="mg-history-title">{tk.title}</span>
-                    {tk.completedAt && (
-                      <span className="mg-history-date">
-                        {new Date(tk.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </span>
-                    )}
+              {donePages.map((p) => {
+                const isOpen = openDay === p.day
+                return (
+                  <li key={p.day} className={`mg-history-page ${isOpen ? 'open' : ''}`}>
                     <button
-                      className="mg-history-restore"
-                      onClick={() => toggleTask(tk.id)}
-                      title={t('tasks.restore')}
-                      aria-label={t('tasks.restore')}
+                      className="mg-history-page-head"
+                      onClick={() => setOpenPage(isOpen ? null : p.day)}
                     >
-                      <Icon name="restore" size={13} />
+                      <span className="mg-history-page-caret"><Icon name="chevron" size={14} /></span>
+                      <Icon name="journal" size={15} />
+                      <span className="mg-history-page-date">{pageLabel(p.day)}</span>
+                      <span className="mg-history-count">{p.tasks.length}</span>
                     </button>
+                    {isOpen && (
+                      <ul className="mg-history-tasks">
+                        {p.tasks.map((tk) => (
+                          <li key={tk.id}>
+                            <Icon name="check" size={12} />
+                            <span className="mg-history-title">{tk.title}</span>
+                            {tk.recurring !== 'none' && (
+                              <span className="mg-task-rec">
+                                {tk.recurring[0].toUpperCase() + tk.recurring.slice(1)}
+                              </span>
+                            )}
+                            <button
+                              className="mg-history-restore"
+                              onClick={() => toggleTask(tk.id)}
+                              title={t('tasks.restore')}
+                              aria-label={t('tasks.restore')}
+                            >
+                              <Icon name="restore" size={13} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
-                ))}
+                )
+              })}
               {doneGoals.map((g) => (
                 <li key={`goal-${g.id}`} className="mg-history-goal">
                   <Icon name={GOAL_KIND_ICONS[g.kind]} size={13} />
@@ -667,9 +717,10 @@ export function TasksView({
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+      {historyOpen && <div className="mg-hist-scrim" onClick={() => setHistoryOpen(false)} />}
 
       <MgModal open={modalOpen} title={editId ? t('tasks.editTask') : t('tasks.newTask')} onClose={() => setModalOpen(false)} width={520}>
         <form className="mg-form" onSubmit={save}>

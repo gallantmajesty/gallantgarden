@@ -7,24 +7,18 @@ import {
   addDays,
   type RangeKey,
 } from '../../../lib/magnet/insights'
-import { PRIORITY_META, type Priority } from '../../../lib/magnet/types'
-import { Panel, MgModal, Field, EmptyState } from '../ui'
+import { Panel, EmptyState } from '../ui'
 import { Icon } from '../Icon'
 import {
   ColumnChart,
   Trend,
   windowTrends,
-  forecastFocus,
-  focusScore,
   burnoutRisk,
 } from '../premium'
 import '../premium.css'
 import './AnalyticsView.css'
 import { useNow } from '../useNow'
 
-const MAX_MANUAL_SESSION = 240
-
-// Compact labels for the range bar (quiet, no clutter).
 const SHORT_LABELS: Record<RangeKey, string> = {
   today: 'Today',
   '7d': '7D',
@@ -46,11 +40,7 @@ const SESSION_BUCKETS = [
 export function AnalyticsView() {
   const { t } = useTranslation()
   const data = useMagnet((s) => s.data)
-  const logFocus = useMagnet((s) => s.logFocus)
-
   const [range, setRange] = useState<RangeKey>('30d')
-  const [focusOpen, setFocusOpen] = useState(false)
-  const [focusMin, setFocusMin] = useState(25)
 
   // Live clock — refreshes every 30s so every window (today / streak / weekly)
   // stays real-time and rolls over at midnight while the view is open.
@@ -60,8 +50,6 @@ export function AnalyticsView() {
   const stats = useMemo(() => computeStats(data, now, days), [data, now, days])
   const streak = useMemo(() => computeStreakSafe(data, now), [data, now])
   const trends = useMemo(() => windowTrends(data, now, days), [data, now, days])
-  const forecast = useMemo(() => forecastFocus(data, now, days), [data, now, days])
-  const score = useMemo(() => focusScore(data, now), [data, now])
   const burnout = useMemo(() => burnoutRisk(data, now), [data, now])
 
   // Window helper: is this yyyy-mm-dd date inside the current window?
@@ -72,7 +60,7 @@ export function AnalyticsView() {
   const cutoff = now.getTime() - days * 86400000
   const ceil = now.getTime() + 86400000
 
-  // condense the daily series for the focus chart (max ~14 columns)
+  // Condense the daily series for the focus chart (max ~14 columns)
   const bars = useMemo(() => {
     const d = stats.daily
     const tk = dayKeySafe(now.toISOString())
@@ -87,7 +75,21 @@ export function AnalyticsView() {
     return out
   }, [stats.daily, now])
 
+  const studyBars = useMemo(() => {
+    const d = stats.daily
+    return {
+      values: d.map((x) => x.minutes),
+      labels: d.map((x) => String(new Date(x.day + 'T00:00:00').getDate())),
+    }
+  }, [stats.daily])
+
   const totalFocus = Math.round((stats.focusMinutes / 60) * 10) / 10
+
+  const completionPct = useMemo(() => {
+    const total = data.tasks.length
+    const done = data.tasks.filter((t) => t.done).length
+    return total > 0 ? Math.round((done / total) * 100) : 0
+  }, [data.tasks])
 
   // ── Goal-centered analysis: every goal's progress + the tasks completed
   // towards it inside the current window.
@@ -123,39 +125,8 @@ export function AnalyticsView() {
     }
   }, [data.focus, cutoff, ceil])
 
-  // ── Completed tasks by priority (within the window).
-  const prioEntries = useMemo(() => {
-    const counts = new Map<Priority, number>()
-    for (const tk of data.tasks) {
-      if (!tk.done || !tk.completedAt) continue
-      const tt = new Date(tk.completedAt).getTime()
-      if (Number.isNaN(tt) || tt < cutoff || tt > ceil) continue
-      counts.set(tk.priority, (counts.get(tk.priority) ?? 0) + 1)
-    }
-    return (['urgent', 'high', 'medium', 'low'] as Priority[])
-      .map((p) => ({ p, count: counts.get(p) ?? 0 }))
-      .filter((x) => x.count > 0)
-  }, [data.tasks, cutoff, ceil])
-  const prioTotal = prioEntries.reduce((s, x) => s + x.count, 0)
-
-  // ── Daily study bars (in place of the old heatmap).
-  const studyBars = useMemo(() => {
-    const d = stats.daily
-    return {
-      values: d.map((x) => x.minutes),
-      labels: d.map((x) => String(new Date(x.day + 'T00:00:00').getDate())),
-    }
-  }, [stats.daily])
 
   const hasData = data.tasks.length > 0 || data.focus.length > 0 || data.goals.length > 0
-
-  function submitFocus(e: React.FormEvent) {
-    e.preventDefault()
-    const m = Math.min(MAX_MANUAL_SESSION, Math.max(1, Number(focusMin) || 0))
-    if (!m || m <= 0) return
-    logFocus(m, '', { award: true })
-    setFocusOpen(false)
-  }
 
   return (
     <div className="mg-studio an">
@@ -165,9 +136,6 @@ export function AnalyticsView() {
           <h2>{t('growth.title')}</h2>
           <p>{t('growth.subtitle')}</p>
         </div>
-        <button className="mg-btn primary" onClick={() => setFocusOpen(true)}>
-          <Icon name="clock" size={16} />{t('analytics.logFocus')}
-        </button>
       </div>
 
       <div className="mg-rangebar2">
@@ -184,7 +152,7 @@ export function AnalyticsView() {
         </Panel>
       ) : (
         <>
-          {/* ═══ BIG KPIs (YouTube Studio style) ═══ */}
+          {/* ═══ BIG KPIs ═══ */}
           <section className="mg-kpis">
             <div className="mg-kpi">
               <span className="mg-kpi-label"><Icon name="clock" size={16} />{t('growth.focusHours')}</span>
@@ -203,20 +171,29 @@ export function AnalyticsView() {
               </div>
             </div>
             <div className="mg-kpi">
-              <span className="mg-kpi-label"><Icon name="target" size={16} />{t('growth.followThrough')}</span>
-              <span className="mg-kpi-val">{Math.round(stats.completionRate * 100)}<small>%</small></span>
-              <div className="mg-kpi-foot">
-                <span>{streak} {t('growth.dayStreakShort')}</span>
-                <span>{stats.activeDays} {t('growth.activeDaysShort')}</span>
-              </div>
-            </div>
-            <div className="mg-kpi">
               <span className="mg-kpi-label"><Icon name="timer" size={16} />{t('analytics.sessionsKpi')}</span>
               <span className="mg-kpi-val">{sessions.total}</span>
               <div className="mg-kpi-foot">
                 <span>{sessions.total > 0 ? `${Math.round(sessions.minutes / sessions.total)}m ${t('analytics.avgSession')}` : t('growth.notEnough')}</span>
               </div>
             </div>
+          </section>
+
+          {/* ═══ TASK COMPLETION PROGRESS ═══ */}
+          <section className="mg-pr">
+            <div className="mg-pr-head">
+              <h3><Icon name="check" size={18} />{t('growth.tasksDone')}</h3>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+              <strong style={{ fontSize: 36, fontVariantNumeric: 'tabular-nums' }}>{completionPct}%</strong>
+              <span className="mg-muted" style={{ fontSize: 13 }}>done</span>
+            </div>
+            <div className="mg-msub" style={{ height: 10, borderRadius: 5, background: 'color-mix(in srgb, var(--mg-text) 10%, transparent)' }}>
+              <i style={{ width: `${completionPct}%`, background: 'var(--mg-accent)', borderRadius: 5, display: 'block', height: '100%', transition: 'width 0.4s ease' }} />
+            </div>
+            <p className="mg-muted" style={{ fontSize: 12, marginTop: 8 }}>
+              {stats.completed} of {data.tasks.length} tasks completed
+            </p>
           </section>
 
           {/* ═══ FOCUS TIME (big chart) ═══ */}
@@ -228,13 +205,13 @@ export function AnalyticsView() {
             <FocusAreaChart bars={bars} />
           </section>
 
-          {/* ═══ DAILY STUDY (vertical bars — replaces the heatmap) ═══ */}
+          {/* ═══ DAILY STUDY (vertical bars) ═══ */}
           <section className="mg-pr">
             <div className="mg-pr-head">
               <h3><Icon name="chart" size={18} />{t('analytics.studyBars')}</h3>
               <span className="mg-muted" style={{ fontSize: 12 }}>{t('growth.perDay')}</span>
             </div>
-            {Math.max(...studyBars.values) === 0 ? (
+            {Math.max(...studyBars.values, 0) === 0 ? (
               <div className="mg-chart-empty">{t('dashboard.hoursEmpty')}</div>
             ) : (
               <ColumnChart
@@ -246,8 +223,8 @@ export function AnalyticsView() {
             )}
           </section>
 
-          {/* ═══ SESSION LENGTHS + PRIORITY SPLIT ═══ */}
-          <section className="mg-duo">
+          {/* ═══ SESSION LENGTHS ═══ */}
+          <section className="mg-pr">
             <Panel>
               <div className="mg-pr-head">
                 <h3><Icon name="timer" size={18} />{t('analytics.sessionLengths')}</h3>
@@ -261,27 +238,6 @@ export function AnalyticsView() {
                       <span>{b.label}</span>
                       <span className="mg-muted">{b.count} · {Math.round((b.count / sessions.total) * 100)}%</span>
                       <span className="mg-msub"><i style={{ width: `${(b.count / sessions.max) * 100}%`, background: 'var(--mg-accent)' }} /></span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-            <Panel>
-              <div className="mg-pr-head">
-                <h3><Icon name="target" size={18} />{t('analytics.prioritySplit')}</h3>
-              </div>
-              {prioTotal === 0 ? (
-                <p className="mg-muted">{t('analytics.priorityEmpty')}</p>
-              ) : (
-                <ul className="mg-meterlist">
-                  {prioEntries.map((e) => (
-                    <li key={e.p}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <span className="mg-pill-dot" style={{ background: PRIORITY_META[e.p].color }} />
-                        {PRIORITY_META[e.p].label}
-                      </span>
-                      <span className="mg-muted">{Math.round((e.count / prioTotal) * 100)}%</span>
-                      <span className="mg-msub"><i style={{ width: `${(e.count / prioTotal) * 100}%`, background: PRIORITY_META[e.p].color }} /></span>
                     </li>
                   ))}
                 </ul>
@@ -335,54 +291,13 @@ export function AnalyticsView() {
             </Panel>
           </section>
 
-          {/* ═══ GROWTH FORECAST ═══ */}
-          <section className="mg-pr">
-            <div className="mg-forecast">
-              <span className="mg-kicker"><Icon name="rocket" size={13} />{t('growth.forecast')}</span>
-              <div className="mg-forecast-big">
-                {forecast.hours}<small>h projected</small>
-              </div>
-              <p className="mg-muted" style={{ fontSize: 13, margin: 0 }}>
-                {t('growth.forecastBody', { days })}
-                {score != null && ` ${t('growth.focusScoreNote', { score })}`}
-              </p>
-            </div>
-          </section>
         </>
       )}
 
-      <MgModal open={focusOpen} title={t('analytics.logFocusTitle')} onClose={() => setFocusOpen(false)}>
-        <form className="mg-form" onSubmit={submitFocus}>
-          <Field label={t('analytics.minutesFocused')}>
-            <input
-              type="number"
-              min={1}
-              max={MAX_MANUAL_SESSION}
-              step={5}
-              value={focusMin}
-              onChange={(e) => setFocusMin(Number(e.target.value))}
-              autoFocus
-            />
-            <p className="mg-muted" style={{ fontSize: 12, marginTop: 6 }}>
-              {t('analytics.manualCap', { max: MAX_MANUAL_SESSION })}
-            </p>
-          </Field>
-          <div className="mg-form-actions">
-            <button type="button" className="mg-btn glass" onClick={() => setFocusOpen(false)}>
-              Cancel
-            </button>
-            <button type="submit" className="mg-btn primary">
-              {t('analytics.logSession')}
-            </button>
-          </div>
-        </form>
-      </MgModal>
     </div>
   )
 }
 
-// A clean, readable focus-time chart: a single area+line over a hairline grid,
-// axis ticks, and a hover guide + tooltip. The live "today" point is filled.
 function FocusAreaChart({ bars }: { bars: { label: string; minutes: number; today: boolean }[] }) {
   const [hover, setHover] = useState<number | null>(null)
   const W = 760
@@ -414,6 +329,10 @@ function FocusAreaChart({ bars }: { bars: { label: string; minutes: number; toda
   const colW = n <= 1 ? innerW : innerW / (n - 1)
   const active = hover != null ? pts[hover] : null
 
+  if (bars.length === 0 || bars.every((b) => b.minutes === 0)) {
+    return <div className="mg-chart-empty">No focus data yet for this range.</div>
+  }
+
   return (
     <div className="an-areachart">
       <svg viewBox={`0 0 ${W} ${H}`} onMouseLeave={() => setHover(null)} role="img" aria-label="Daily focus minutes">
@@ -423,53 +342,29 @@ function FocusAreaChart({ bars }: { bars: { label: string; minutes: number; toda
             <stop offset="100%" stopColor="var(--mg-accent)" stopOpacity={0} />
           </linearGradient>
         </defs>
-
         {gridVals.map((g, i) => (
           <g key={i}>
             <line className="an-grid" x1={padL} x2={padL + innerW} y1={g.y} y2={g.y} />
-            <text className="an-axis" x={padL - 8} y={g.y + 3} textAnchor="end">
-              {g.v}m
-            </text>
+            <text className="an-axis" x={padL - 8} y={g.y + 3} textAnchor="end">{g.v}m</text>
           </g>
         ))}
-
         <path d={areaPath} fill="url(#anFocusFill)" />
         <path className="an-line" d={linePath} />
-
         {pts.map((p, i) =>
           i % labelStep === 0 || p.today ? (
-            <text
-              key={`x${i}`}
-              className={`an-xlabel${p.today ? ' today' : ''}`}
-              x={p.x}
-              y={H - 9}
-            >
+            <text key={`x${i}`} className={`an-xlabel${p.today ? ' today' : ''}`} x={p.x} y={H - 9}>
               {p.today ? 'Today' : p.label}
             </text>
           ) : null,
         )}
-
-        {active && (
-          <line className="an-guide" x1={active.x} x2={active.x} y1={padT} y2={padT + innerH} />
-        )}
+        {active && <line className="an-guide" x1={active.x} x2={active.x} y1={padT} y2={padT + innerH} />}
         {pts.map((p, i) => (
           <circle key={`d${i}`} className={`an-dot${p.today ? ' today' : ''}`} cx={p.x} cy={p.y} r={p.today ? 4 : 2.6} />
         ))}
-
-        {/* invisible hover targets spanning each column */}
         {pts.map((p, i) => (
-          <rect
-            key={`h${i}`}
-            x={p.x - colW / 2}
-            y={padT}
-            width={colW}
-            height={innerH}
-            fill="transparent"
-            onMouseEnter={() => setHover(i)}
-          />
+          <rect key={`h${i}`} x={p.x - colW / 2} y={padT} width={colW} height={innerH} fill="transparent" onMouseEnter={() => setHover(i)} />
         ))}
       </svg>
-
       {active && (
         <div className="an-tip" style={{ left: `${(active.x / W) * 100}%` }}>
           <span className="an-tip-day">{active.today ? 'Today' : active.label}</span>

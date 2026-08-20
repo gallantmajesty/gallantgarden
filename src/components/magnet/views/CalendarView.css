@@ -590,3 +590,84 @@
   font-size: 12px;
   color: var(--mg-text-soft);
 }
+
+/* Subtask list in task editor */
+.mg-subtask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mg-subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mg-subtask-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--mg-border);
+  border-radius: 8px;
+  background: var(--mg-panel);
+  color: var(--mg-text);
+  font: inherit;
+  font-size: 13px;
+}
+.mg-subtask-row input:focus {
+  outline: none;
+  border-color: var(--mg-accent);
+}
+.mg-subtask-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px dashed var(--mg-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mg-text-soft);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.mg-subtask-add:hover {
+  background: color-mix(in srgb, var(--mg-accent) 10%, transparent);
+  border-color: var(--mg-accent);
+  color: var(--mg-accent);
+}
+
+/* Weekday picker for weekly repeat */
+.mg-weekday-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mg-weekday-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--mg-border);
+  border-radius: 999px;
+  background: var(--mg-panel);
+  color: var(--mg-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.mg-weekday-chip:hover {
+  background: color-mix(in srgb, var(--mg-accent) 10%, transparent);
+  border-color: var(--mg-accent);
+}
+.mg-weekday-chip input[type="checkbox"] {
+  accent-color: var(--mg-accent);
+  width: 14px;
+  height: 14px;
+}
+.mg-weekday-chip:has(input:checked) {
+  background: color-mix(in srgb, var(--mg-accent) 18%, transparent);
+  border-color: var(--mg-accent);
+  color: var(--mg-accent);
+}

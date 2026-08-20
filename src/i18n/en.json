@@ -564,11 +564,13 @@
     "noRepeat": "No repeat",
     "iconLabel": "Icon",
     "addSubtaskPlaceholder": "Add a subtask…",
+    "subtasksLabel": "Subtasks",
     "saveChanges": "Save changes",
     "addTask": "Add task",
     "sortManual": "Manual",
     "sortSmart": "Smart",
     "clearDone": "Clear done",
+    "delete": "Delete",
     "templates": "Templates",
     "templatePlaceholder": "Save this task as a template",
     "saveTemplate": "Save template",
@@ -1366,9 +1368,12 @@
     "bulkMoveHint": "Drag a selected task to move all of them to another day",
     "selectAll": "Select all",
     "specificSelect": "Specific select",
+    "select": "Select",
     "addTasks": "Add tasks",
     "moreOptions": "More options",
-    "editTask": "Edit task"
+    "editTask": "Edit task",
+    "weeklyDaysLabel": "Repeat on",
+    "monthlyDayLabel": "Day of month"
   },
   "review": {
     "title": "Weekly review",

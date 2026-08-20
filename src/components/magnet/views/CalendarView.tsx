@@ -13,12 +13,13 @@ const RECURRENCES: Recurrence[] = ['none', 'daily', 'weekly', 'monthly']
 interface EditState {
   id?: string
   title: string
-  notes: string
+  subtasks: { id: string; title: string; done: boolean }[]
   priority: Priority
   area: LifeArea
   due: string
   recurring: Recurrence
-  estimateMin: number
+  weeklyDays: number[] // 0-6 for Sunday-Saturday, when recurring is 'weekly'
+  monthlyDay: number // 1-31, when recurring is 'monthly'
 }
 
 type Mode = 'month' | 'week'
@@ -72,17 +73,14 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
   const [edit, setEdit] = useState<EditState | null>(null)
   // Multi-select: task ids picked up with right-click / shift-click.
   const [sel, setSel] = useState<Set<string>>(new Set())
-  // Right-click context menu on a day cell: Select all / Specific select /
-  // Add tasks / More options — replaces the browser's default menu.
+  // Right-click context menu on a day cell: Select / Add tasks / More options — replaces the browser's default menu.
   const [ctx, setCtx] = useState<{ x: number; y: number; key: string } | null>(null)
-  const [ctxSpecific, setCtxSpecific] = useState<string | null>(null)
 
   // Close the context menu on any outside click, another right-click, or Esc.
   useEffect(() => {
     if (!ctx) return
     const close = () => {
       setCtx(null)
-      setCtxSpecific(null)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
@@ -109,39 +107,42 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
   function openCtx(e: React.MouseEvent, key: string) {
     e.preventDefault()
     e.stopPropagation()
-    setCtxSpecific(null)
+    // Constrain context menu to viewport to avoid off-screen on right/bottom edges
+    const menuWidth = 260 // matches CSS max-width
+    const menuHeight = 100 // estimated height for 2 buttons
+    const x = Math.min(Math.max(8, e.clientX), window.innerWidth - menuWidth - 8)
+    const y = Math.min(Math.max(8, e.clientY), window.innerHeight - menuHeight - 8)
     setCtx({
-      x: Math.min(e.clientX, window.innerWidth - 220),
-      y: Math.min(e.clientY, window.innerHeight - 180),
+      x,
+      y,
       key,
     })
   }
 
-  function ctxSelectAll(key: string) {
-    const items = byDate.get(key)
-    if (items && items.tasks.length > 0) {
-      setSel((s) => {
-        const n = new Set(s)
-        for (const x of items.tasks) n.add(x.id)
-        return n
-      })
-    }
-    setCtx(null)
-  }
-
   function openCreate(due: string) {
-    setEdit({ title: '', notes: '', priority: 'medium', area: '', due, recurring: 'none', estimateMin: 0 })
+    setEdit({
+      title: '',
+      subtasks: [],
+      priority: 'medium',
+      area: '',
+      due,
+      recurring: 'none',
+      weeklyDays: [],
+      monthlyDay: new Date(due + 'T00:00:00').getDate(),
+    })
   }
   function openEdit(task: Task) {
+    const dueDate = task.due ? new Date(task.due + 'T00:00:00') : new Date()
     setEdit({
       id: task.id,
       title: task.title,
-      notes: task.notes,
+      subtasks: task.subtasks.map(s => ({ ...s })),
       priority: task.priority,
       area: task.area,
       due: task.due ?? '',
       recurring: task.recurring,
-      estimateMin: task.estimateMin || 0,
+      weeklyDays: task.weeklyDays ?? [],
+      monthlyDay: task.monthlyDay ?? dueDate.getDate(),
     })
   }
   function saveEdit(e: React.FormEvent) {
@@ -151,12 +152,13 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
     if (!title) return
     const payload = {
       title,
-      notes: edit.notes.trim(),
+      subtasks: edit.subtasks.map(s => ({ id: s.id, title: s.title, done: s.done })),
       priority: edit.priority,
       area: edit.area,
       due: edit.due || null,
       recurring: edit.recurring,
-      estimateMin: Math.max(0, Math.round(edit.estimateMin) || 0),
+      weeklyDays: edit.recurring === 'weekly' ? edit.weeklyDays : undefined,
+      monthlyDay: edit.recurring === 'monthly' ? edit.monthlyDay : undefined,
     }
     if (edit.id) updateTask(edit.id, payload)
     else addTask(payload)
@@ -378,34 +380,9 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             e.stopPropagation()
           }}
         >
-          <button type="button" onClick={() => ctxSelectAll(ctx.key)}>
-            <Icon name="grid" size={13} /> {t('calendar.selectAll')}
+          <button type="button" onClick={() => { setCtx(null); setSelected(ctx.key); }}>
+            <Icon name="checkCircle" size={13} /> {t('calendar.select')}
           </button>
-          <button type="button" onClick={() => setCtxSpecific((d) => (d === ctx.key ? null : ctx.key))}>
-            <Icon name="checkCircle" size={13} /> {t('calendar.specificSelect')}
-          </button>
-          {ctxSpecific === ctx.key && (
-            <div className="mg-cal-ctx-sub">
-              {(byDate.get(ctx.key)?.tasks ?? []).length === 0 ? (
-                <span className="mg-cal-ctx-empty">{t('calendar.noEvents')}</span>
-              ) : (
-                (byDate.get(ctx.key)?.tasks ?? []).map((task) => (
-                  <button
-                    type="button"
-                    key={task.id}
-                    className={sel.has(task.id) ? 'on' : ''}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleSel(task.id)
-                    }}
-                  >
-                    <Icon name="check" size={11} />
-                    <span className="mg-cal-ctx-task">{task.title}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
           <button
             type="button"
             onClick={() => {
@@ -414,15 +391,6 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             }}
           >
             <Icon name="plus" size={13} /> {t('calendar.addTasks')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCtx(null)
-              setSelected(ctx.key)
-            }}
-          >
-            <Icon name="chevron" size={13} /> {t('calendar.moreOptions')}
           </button>
         </div>
       )}
@@ -521,7 +489,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
         </div>
       </MgModal>
 
-      {/* ═══ Task editor — with an advanced section (repeats + estimate) ═══ */}
+{/* ═══ Task editor — with subtasks and repeat options ═══ */}
       <MgModal
         open={!!edit}
         title={edit?.id ? t('tasks.editTask') : t('tasks.newTask')}
@@ -537,14 +505,49 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
               placeholder={t('tasks.titlePlaceholder')}
             />
           </Field>
-          <Field label={t('tasks.notesLabel')}>
-            <textarea
-              rows={2}
-              value={edit?.notes ?? ''}
-              onChange={(e) => edit && setEdit({ ...edit, notes: e.target.value })}
-              placeholder={t('tasks.notesPlaceholder')}
-            />
+
+          {/* Subtasks */}
+          <Field label={t('tasks.subtasksLabel') || 'Subtasks'}>
+            <div className="mg-subtask-list">
+              {edit?.subtasks.map((st, idx) => (
+                <div key={st.id} className="mg-subtask-row">
+                  <input
+                    type="text"
+                    value={st.title}
+                    onChange={(e) => {
+                      if (!edit) return
+                      const next = [...edit.subtasks]
+                      next[idx] = { ...next[idx], title: e.target.value }
+                      setEdit({ ...edit, subtasks: next })
+                    }}
+                    placeholder={t('tasks.addSubtaskPlaceholder') || 'Add a subtask…'}
+                  />
+                  <button
+                    type="button"
+                    className="mg-iconbtn danger"
+                    onClick={() => {
+                      if (!edit) return
+                      setEdit({ ...edit, subtasks: edit.subtasks.filter((_, i) => i !== idx) })
+                    }}
+                    aria-label={t('common.delete') || 'Delete'}
+                  >
+                    <Icon name="trash" size={14} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="mg-subtask-add"
+                onClick={() => {
+                  if (!edit) return
+                  setEdit({ ...edit, subtasks: [...edit.subtasks, { id: `sub-${Date.now()}`, title: '', done: false }] })
+                }}
+              >
+                <Icon name="plus" size={14} /> {t('tasks.addSubtaskPlaceholder') || 'Add subtask'}
+              </button>
+            </div>
           </Field>
+
           <div className="mg-form-row">
             <Field label={t('tasks.priorityLabel')}>
               <select
@@ -566,6 +569,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
               />
             </Field>
           </div>
+
           <div className="mg-form-row">
             <Field label={t('tasks.dueDateLabel')}>
               <input
@@ -588,17 +592,45 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
             </Field>
           </div>
 
-          <div className="mg-form-row">
-            <Field label={t('calendar.estimateLabel')}>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={edit?.estimateMin ?? 0}
-                onChange={(e) => edit && setEdit({ ...edit, estimateMin: Number(e.target.value) })}
-              />
+          {/* Weekly repeat: day-of-week checkboxes */}
+          {edit?.recurring === 'weekly' && (
+            <Field label={t('calendar.weeklyDaysLabel') || 'Repeat on'}>
+              <div className="mg-weekday-picker">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                  <label key={day} className="mg-weekday-chip">
+                    <input
+                      type="checkbox"
+                      checked={edit.weeklyDays.includes(i)}
+                      onChange={(e) => {
+                        if (!edit) return
+                        const next = edit.weeklyDays.includes(i)
+                          ? edit.weeklyDays.filter((d) => d !== i)
+                          : [...edit.weeklyDays, i]
+                        setEdit({ ...edit, weeklyDays: next })
+                      }}
+                    />
+                    <span>{day}</span>
+                  </label>
+                ))}
+              </div>
             </Field>
-          </div>
+          )}
+
+          {/* Monthly repeat: day-of-month picker */}
+          {edit?.recurring === 'monthly' && (
+            <Field label={t('calendar.monthlyDayLabel') || 'Day of month'}>
+              <select
+                value={edit?.monthlyDay ?? 1}
+                onChange={(e) => edit && setEdit({ ...edit, monthlyDay: Number(e.target.value) })}
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <div className="mg-form-actions">
             {edit?.id && (
@@ -614,7 +646,7 @@ export function CalendarView({ onAddTask }: { onAddTask?: (date: string) => void
               </button>
             )}
             <button type="button" className="mg-btn glass" onClick={() => setEdit(null)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="mg-btn primary">
               {edit?.id ? t('tasks.saveChanges') : t('tasks.addTask')}

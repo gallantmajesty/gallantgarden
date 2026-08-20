@@ -1,0 +1,196 @@
+/* MobileShell — minimal mobile chrome. Independent of the desktop web-theme. */
+
+.ms-root {
+  --ms-bg: #0c0b12;
+  --ms-bg-2: #13111c;
+  --ms-surface: #1a1825;
+  --ms-surface-2: #211e2e;
+  --ms-border: rgba(255, 255, 255, 0.08);
+  --ms-text: #f3f1ea;
+  --ms-text-dim: rgba(243, 241, 234, 0.6);
+  --ms-accent: #6bbf4f;
+  --ms-accent-ink: #0c0b12;
+  --ms-radius: 16px;
+
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ms-bg);
+  background-image:
+    radial-gradient(120% 60% at 50% -10%, rgba(107, 191, 79, 0.12), transparent 60%),
+    radial-gradient(90% 50% at 100% 0%, rgba(138, 108, 255, 0.1), transparent 55%);
+  background-attachment: fixed;
+  color: var(--ms-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.ms-appbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(12, 11, 18, 0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--ms-border);
+  padding-top: env(safe-area-inset-top);
+}
+
+.ms-appbar-inner {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.ms-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  font-size: 16px;
+}
+.ms-brand img { border-radius: 8px; }
+
+.ms-title {
+  flex: 1;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.ms-appbar-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ms-icon-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  cursor: pointer;
+}
+.ms-icon-btn svg { width: 20px; height: 20px; }
+.ms-icon-btn:active { transform: scale(0.96); }
+
+.ms-content {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+
+/* Bottom tab bar */
+.ms-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(12, 11, 18, 0.92);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--ms-border);
+}
+
+.ms-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--ms-text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+}
+.ms-tab svg { width: 23px; height: 23px; }
+.ms-tab.on { color: var(--ms-accent); }
+.ms-tab.on::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  width: 30px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--ms-accent);
+}
+
+/* Overflow sheet */
+.ms-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  animation: ms-fade 0.18s ease;
+}
+.ms-sheet {
+  width: 100%;
+  background: var(--ms-surface);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-top: 1px solid var(--ms-border);
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: ms-rise 0.22s ease;
+}
+.ms-sheet-grab {
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 4px auto 12px;
+}
+.ms-sheet-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ms-text-dim);
+}
+.ms-sheet-list { display: flex; flex-direction: column; gap: 4px; }
+.ms-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--ms-surface-2);
+  color: var(--ms-text);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.ms-sheet-item:active { transform: scale(0.99); }
+.ms-sheet-ico { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.ms-sheet-ico-img, .ms-sheet-ico-svg { width: 22px; height: 22px; object-fit: contain; }
+
+@keyframes ms-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ms-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }

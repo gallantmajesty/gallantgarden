@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/auth'
+import { useIsMobileOrTablet } from '../hooks/useDevice'
+import { MobileShell } from '../components/mobile/MobileShell'
 import './Notes.css'
 
 // Hub shown when a student opens "Notes" from the Lobby. Offers the two note
@@ -7,6 +9,36 @@ import './Notes.css'
 export function NotesHub() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const mobile = useIsMobileOrTablet()
+
+  if (mobile) {
+    return (
+      <MobileShell title="Notes">
+        <p style={{ color: 'var(--ms-text-dim)', marginTop: 4 }}>
+          Choose how you want to capture your study notes.
+        </p>
+        <div className="ms-list">
+          <button className="card-row" onClick={() => navigate('/notes/doc')}>
+            <span className="ms-row-icon"><img src="/icons/notes.png" width={22} height={22} alt="" /></span>
+            <span className="ms-row-body">
+              <strong>Notes</strong>
+              <span>A free-flow, Word-like page. Write, format and decorate.</span>
+            </span>
+            <span className="ms-row-arrow">›</span>
+          </button>
+
+          <div className="card-row" style={{ opacity: 0.6 }}>
+            <span className="ms-row-icon"><img src="/icons/notes.png" width={22} height={22} alt="" /></span>
+            <span className="ms-row-body">
+              <strong>Sticky Notes</strong>
+              <span>The visual board — best on a larger screen.</span>
+            </span>
+            <span className="ms-soon-tag">Desktop</span>
+          </div>
+        </div>
+      </MobileShell>
+    )
+  }
 
   return (
     <div className="notes-hub">

@@ -157,7 +157,10 @@ const CHARACTER_PROPORTIONS: Record<string, Partial<Proportions>> = {
   elephant: { headR: 0.19, shoulderW: 0.19, hipW: 0.1, chestW: 0.16, waistW: 0.135, hipBoneW: 0.15, torsoD: 0.12, shoulderR: 0.065, thighR: 0.07, kneeR: 0.052, ankleR: 0.044, handLen: 0.1, footLen: 0.2 },
 
   // monkey — agile but healthy: slim chest, firm waist, lively limbs
-  monkey: { headR: 0.17, shoulderW: 0.16, hipW: 0.085, chestW: 0.135, waistW: 0.105, hipBoneW: 0.115, torsoD: 0.095, shoulderR: 0.052, thighR: 0.062, kneeR: 0.045, ankleR: 0.035, handLen: 0.12, footLen: 0.15 },
+  // Arm LENGTHS are lengthened here on purpose: long arms relative to the
+  // torso are the single strongest primate cue. Leg lengths stay on the base
+  // so the monkey still grounds at exactly the same height as everyone else.
+  monkey: { headR: 0.183, shoulderW: 0.16, hipW: 0.085, chestW: 0.135, waistW: 0.105, hipBoneW: 0.115, torsoD: 0.095, shoulderR: 0.052, thighR: 0.062, kneeR: 0.045, ankleR: 0.035, handLen: 0.12, footLen: 0.155, upperArm: 0.195, lowerArm: 0.175 },
 
   // panda — cuddly chibi: rounded but not overblown, big head
   panda: { headR: 0.19, shoulderW: 0.175, hipW: 0.112, chestW: 0.148, waistW: 0.128, hipBoneW: 0.155, torsoD: 0.11, shoulderR: 0.058, thighR: 0.066, kneeR: 0.047, ankleR: 0.038, handLen: 0.09, footLen: 0.18 },

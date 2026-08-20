@@ -20,11 +20,13 @@ import { MusicWidget } from '../components/MusicWidget'
 import { useFriends } from '../store/friends'
 import { useChat } from '../store/chat'
 import { useIsDesktop } from '../components/DesktopOnly'
+import { MobileShell } from '../components/mobile/MobileShell'
 import { PendingDot } from '../components/pending/PendingDot'
 import { LuckyWheelModal } from '../components/focus/LuckyWheelModal'
 import { NewsModal } from '../components/focus/NewsModal'
 import { ComingSoonModal } from '../components/ComingSoonModal'
 import { featureData, type FeatureData } from './IndividualComingSoon'
+import { GREEN_LEAF_ICON, GOLD_LEAF_ICON } from '../lib/leafIcons'
 import { RankUpCelebration } from '../components/RankUpCelebration'
 import { MascotTour } from '../components/MascotTour'
 import { readTour, setTourStep as saveTourStep, completeTour as finishTour, isTourLive, type TourState } from '../lib/tour'
@@ -41,15 +43,14 @@ interface LobbyObject {
 }
 
 const OBJECTS: LobbyObject[] = [
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: true },
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose' },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet' },
+  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', soon: true },
   { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', soon: true },
 ]
 
 const MOBILE_WORLDS: LobbyObject[] = [
   { key: 'realm', labelKey: 'lobby.objRealm', captionKey: 'lobby.objRealmCaption', png: 'realm', route: '/lobby/realm/choose', accent: '#6bbf4f' },
-  { key: 'blueprint', labelKey: 'lobby.objBlueprint', captionKey: 'lobby.objBlueprintCaption', png: 'notes', route: '/blueprint', accent: '#caa84a', soon: true },
   { key: 'magnet', labelKey: 'lobby.objMagnet', captionKey: 'lobby.objMagnetCaption', png: 'tasks', route: '/magnet', accent: '#e88aaa' },
   { key: 'games', labelKey: 'lobby.objGames', captionKey: 'lobby.objGamesCaption', png: 'games', route: '/games', accent: '#8a6cff', soon: true },
 ]
@@ -93,6 +94,12 @@ export function Lobby() {
   const [guestBannerHidden, setGuestBannerHidden] = useState(false)
   const [showQuests, setShowQuests] = useState(false)
   const [soonFeature, setSoonFeature] = useState<FeatureData | null>(null)
+  // Hidden preview unlock: tap the "Coming Soon" Blueprint tile 10× on desktop
+  // to reveal it for THIS session only (cleared when you fully quit the web).
+  const [blueprintUnlocked, setBlueprintUnlocked] = useState(
+    () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fl_blueprint_unlocked') === '1',
+  )
+  const [blueprintClicks, setBlueprintClicks] = useState(0)
   // Max's guided tour for new players — starts on the lobby, walks into the Realm.
   // Keyed per-account (see lib/tour.ts), so every new user gets guided once.
   const [tourStep, setTourStepState] = useState<TourState | null>(() => readTour(user?.id))
@@ -226,7 +233,20 @@ export function Lobby() {
   }, [navigate, transition, rankTransition])
 
   const pick = useCallback((o: LobbyObject, idx: number, e: React.MouseEvent) => {
-    if (o.soon) {
+    if (o.key === 'blueprint' && !blueprintUnlocked) {
+      const n = blueprintClicks + 1
+      setBlueprintClicks(n)
+      if (n >= 10) {
+        setBlueprintUnlocked(true)
+        try { sessionStorage.setItem('fl_blueprint_unlocked', '1') } catch { /* ignore */ }
+        navigate('/blueprint')
+        return
+      }
+      const f = featureData[o.key]
+      if (f) { setSoonFeature(f); setPanel(null) }
+      return
+    }
+    if (o.soon && !(o.key === 'blueprint' && blueprintUnlocked)) {
       const f = featureData[o.key]
       if (f) { setSoonFeature(f); setPanel(null); }
       return
@@ -253,7 +273,7 @@ export function Lobby() {
     timersRef.current.push(setTimeout(() => {
       navigate(o.route!)
     }, 1200))
-  }, [navigate, transition, tourStep])
+  }, [navigate, transition, tourStep, blueprintUnlocked, blueprintClicks])
 
   const pickMobile = useCallback((o: LobbyObject) => {
     if (o.soon) {
@@ -394,6 +414,7 @@ export function Lobby() {
               const isSelected = isTransitioning && transition.index === i
               const isLeft = isTransitioning && transition.index > i
               const isRight = isTransitioning && transition.index < i
+              const isSoon = o.soon && !(o.key === 'blueprint' && blueprintUnlocked)
               let animClass = ''
               if (isSelected && transition.phase === 'emit') animClass = 'lobby-obj--emit'
               else if (isSelected && (transition.phase === 'center' || transition.phase === 'ultra')) animClass = 'lobby-obj--card-fade'
@@ -403,7 +424,7 @@ export function Lobby() {
                 <button
                   key={o.key}
                   data-tour-key={o.key}
-                  className={`lobby-object water-glass ${o.soon ? 'soon' : ''} ${animClass}`}
+                  className={`lobby-object water-glass ${isSoon ? 'soon' : ''} ${animClass}`}
                   style={{ animationDelay: `${i * 70}ms` }}
                   onClick={(e) => pick(o, i, e)}
                   disabled={transition?.active && !isSelected}
@@ -424,7 +445,7 @@ export function Lobby() {
                   </div>
                   <div className="lobby-object-label">{t(o.labelKey)}</div>
                   <div className="lobby-object-caption">{t(o.captionKey)}</div>
-                  {o.soon && <div className="lobby-soon-tag">{t('common.soon')}</div>}
+                  {isSoon && <div className="lobby-soon-tag">{t('common.soon')}</div>}
                 </button>
               )
             })}
@@ -485,75 +506,16 @@ export function Lobby() {
   }
 
   /* ═══════════════════════════════════════════════════════════════
-       MOBILE + TABLET — ENHANCED DESIGN
+       MOBILE + TABLET — unified MobileShell layout
      ═══════════════════════════════════════════════════════════════ */
   return (
-    <div className="lobby-mobile">
-      {/* Ambient background */}
-      <div className="lm-bg">
-        <div className="lm-bg-orb lm-bg-orb--1" />
-        <div className="lm-bg-orb lm-bg-orb--2" />
-        <div className="lm-bg-orb lm-bg-orb--3" />
-      </div>
-
+    <MobileShell title="Home">
         {user?.isGuest && (
           <div className={`lobby-guest-banner${guestBannerHidden ? ' lobby-guest-banner--hidden' : ''}`}>
             <span>You're browsing as a guest</span>
             <button className="sf-btn water" onClick={() => navigate('/guest')}>Guest Info</button>
           </div>
         )}
-
-      {/* Header */}
-      <div className="lm-header">
-        <div className="lm-logo">
-          <img src="/icons/focus-lily-logo.png" alt="FocusLily" width={28} height={28} />
-          <span className="lm-logo-text">FocusLily</span>
-        </div>
-        <div className="lm-header-actions">
-          <button className="lm-score-btn" onClick={() => setShowWheel(true)} title="Lucky Wheel">
-            🎡
-          </button>
-          <button className="lm-inbox-btn" onClick={() => setPanel(p => p === 'inbox' ? null : 'inbox')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-            {(incomingCount > 0 || unreadCount > 0) && <span className="lm-inbox-badge" />}
-          </button>
-          <button className="lm-bell" onClick={() => setPanel('friends')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-            {incomingCount > 0 && <span className="lm-bell-dot" />}
-          </button>
-          <button className="lm-score-btn" onClick={() => setPanel('score')} title="Focus Score">
-            <PendingDot size={8} />
-            <PngIcon name="streaks" size={26} />
-          </button>
-        </div>
-        {panel === 'inbox' && (
-          <div className="lm-inbox-dropdown">
-            <div className="lm-inbox-header">
-              <span>Inbox</span>
-              <button className="lm-inbox-close" onClick={() => setPanel(null)}>✕</button>
-            </div>
-            <div className="lm-inbox-list">
-              <button className="lm-inbox-item" onClick={() => { setPanel(null); navigate('/info'); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                <span>About</span>
-              </button>
-              <button className="lm-inbox-item" onClick={() => { setPanel(null); setPanel('friends'); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span>Friend Requests</span>
-                {incomingCount > 0 && <span className="lm-inbox-count">{incomingCount}</span>}
-              </button>
-              <button className="lm-inbox-item" onClick={() => { setPanel(null); setShowSupport(true); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                <span>Team Support</span>
-              </button>
-              <button className="lm-inbox-item" onClick={() => { setPanel(null); setShowNews(true); }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="lm-inbox-icon"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/><path d="M8 14h8"/><path d="M8 18h8"/><path d="M8 10h3"/></svg>
-                <span>News</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* User card */}
       <div className="lm-user-card">
@@ -569,7 +531,7 @@ export function Lobby() {
           </div>
         </button>
         <div className="lm-petals">
-          <span className="lm-petals-icon">🌸</span>
+          <img src={GREEN_LEAF_ICON} className="lm-petals-icon" width={16} height={16} alt="" />
           <span className="lm-petals-val">{totalXp.toLocaleString()}</span>
         </div>
       </div>
@@ -673,7 +635,7 @@ export function Lobby() {
                 <div className="lm-quest-body">
                   <div className="lm-quest-top">
                     <span className="lm-quest-label">{q.label}</span>
-                    <span className="lm-quest-reward">+{q.reward} 🌸</span>
+                    <span className="lm-quest-reward">+{q.reward} <img src={GREEN_LEAF_ICON} width={14} height={14} alt="" style={{ verticalAlign: '-2px' }} /></span>
                   </div>
                   <div className="lm-quest-bar">
                     <div className="lm-quest-fill" style={{ width: `${Math.min(100, (q.progress / q.total) * 100)}%` }} />
@@ -685,57 +647,6 @@ export function Lobby() {
           </div>
         )}
       </div>
-
-      {/* Your Worlds */}
-      <div className="lm-worlds">
-        <div className="lm-worlds-header">
-          <span className="lm-worlds-line" />
-          <span className="lm-worlds-title">YOUR WORLDS</span>
-          <span className="lm-worlds-line" />
-        </div>
-        <div className="lm-worlds-grid">
-          {MOBILE_WORLDS.map((o) => (
-            <button key={o.key} data-tour-key={o.key} className="lm-world-card" onClick={() => pickMobile(o)} style={{ '--card-accent': o.accent } as React.CSSProperties}>
-              <div className="lm-world-card-glow" />
-              <div className="lm-world-card-icon">
-                <PngIcon name={o.png} size={56} alt={t(o.labelKey)} />
-              </div>
-              <div className="lm-world-card-info">
-                <strong>{t(o.labelKey)}</strong>
-                <span>{t(o.captionKey)}</span>
-              </div>
-              <div className="lm-world-card-arrow">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Bottom nav */}
-      <nav className="lm-bottomnav">
-        <div className="lm-bottomnav-bg" />
-        {([
-          { id: 'home' as const, label: 'Home', path: '/', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
-          { id: 'realm' as const, label: 'Realm', path: '/lobby/realm/choose', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
-          { id: 'tasks' as const, label: 'Tasks', path: '/magnet', icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8' },
-          { id: 'games' as const, label: 'Games', path: '/games', icon: 'M6 12h4M8 10v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 00-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 003 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 019.828 16h4.344a2 2 0 011.414.586L17 18c.5.5 1 1 2 1a3 3 0 003-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0017.32 5z' },
-          { id: 'profile' as const, label: 'Profile', path: '/profile', icon: 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 3a4 4 0 100 8 4 4 0 000-8z' },
-        ]).map((item) => (
-          <button
-            key={item.id}
-            className={`lm-nav-item ${mobileNav === item.id ? 'active' : ''}`}
-            onClick={() => { setMobileNav(item.id); if (item.id !== 'home') navigate(item.path) }}
-          >
-            {mobileNav === item.id && <div className="lm-nav-indicator" />}
-            {item.id === 'profile' && <PendingDot size={7} />}
-            <svg className="lm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d={item.icon} />
-            </svg>
-            <span className="lm-nav-label">{item.label}</span>
-          </button>
-        ))}
-      </nav>
 
       {/* Panels */}
       {panel === 'friends' && <FriendsPanel onClose={() => setPanel(null)} />}
@@ -753,19 +664,7 @@ export function Lobby() {
         onClose={() => setSoonFeature(null)}
       />
       <RankUpCelebration />
-      <SocialHub />
-      <MusicWidget />
-      {tourStep === 'lobby-realm' && (
-        <MascotTour
-          target=".lm-world-card[data-tour-key='realm']"
-          hint="yo, welcome to the forest! first stop — the Realm, where everyone studies together. tap it and let's go."
-          side="top"
-          step={1}
-          total={3}
-          onSkip={skipTour}
-        />
-      )}
-    </div>
+    </MobileShell>
   )
 }
 

@@ -26,6 +26,8 @@ export interface Task {
   due: string | null // ISO date (yyyy-mm-dd)
   estimateMin: number // planned minutes (0 = unset)
   recurring: Recurrence
+  weeklyDays?: number[] // 0-6 for Sunday-Saturday, when recurring is 'weekly'
+  monthlyDay?: number // 1-31, when recurring is 'monthly'
   subtasks: SubTask[]
   icon: string
   color: string

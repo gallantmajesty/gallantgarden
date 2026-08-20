@@ -4,6 +4,7 @@ import { Color, Group, MeshStandardMaterial, CatmullRomCurve3, TubeGeometry, Vec
 import {
 boxGeo,
 sphereGeo,
+sphereCapGeo,
 circleGeo,
 coneGeo,
 taperGeo,
@@ -211,15 +212,67 @@ export function AvatarRig({
   // Monkey: a playful brown monkey — warm brown fur, lighter tan face/belly,
   // big round ears, dark hands/feet, a long curly tail and a cheeky grin.
   const isMonkey = config.characterId === 'monkey'
-  const monkeyFur = sharedMaterial('#8B5E3C', 0.62)
-  monkeyFur.bumpMap = monkeyFurTex()
-  monkeyFur.bumpScale = 0.45
+  const monkeyFur = sharedMaterial('#7A4B2F', 0.82)
+  const monkeyCoatTex = monkeyFurTex()
+  monkeyFur.bumpMap = monkeyCoatTex
+  monkeyFur.bumpScale = 0.28
+  monkeyFur.roughnessMap = monkeyCoatTex
+  monkeyFur.sheen = 0.55
+  monkeyFur.sheenColor = new Color('#d6a477')
+  monkeyFur.sheenRoughness = 0.72
   monkeyFur.needsUpdate = true
-  const monkeyFace = sharedMaterial('#F5D6B4', 0.68)
-  const monkeyFaceMask = rigMat('monkey-face-mask', () => new MeshStandardMaterial({ color: '#F5D6B4', roughness: 0.68, depthWrite: false, depthTest: true }))
-  const monkeyDark = sharedMaterial('#5C3A21', 0.6)
-  const monkeyBelly = sharedMaterial('#F0D5B8', 0.7)
-  const monkeyEarInner = sharedMaterial('#E8C4A0', 0.65)
+  const monkeyFace = sharedMaterial('#D9AE7D', 0.78)
+  const monkeyFaceMask = rigMat('monkey-face-mask', () => new MeshStandardMaterial({ color: '#D9AE7D', roughness: 0.78, depthWrite: false, depthTest: true }))
+  const monkeyDark = sharedMaterial('#52331F', 0.86)
+  monkeyDark.bumpMap = monkeyCoatTex
+  monkeyDark.bumpScale = 0.2
+  monkeyDark.roughnessMap = monkeyCoatTex
+  monkeyDark.needsUpdate = true
+  const monkeyBelly = sharedMaterial('#C99A69', 0.82)
+  const monkeyEarInner = sharedMaterial('#B77F67', 0.72)
+  // Monkey outfit — REAL clothes, not draped cloth plates: a nylon sports tee,
+  // matching nylon track pants and chunky sneakers. Nylon reads as nylon by
+  // being low-roughness with a bright white sheen sweep (technical fabric
+  // highlight) instead of the matte cotton look the other costumes use.
+  const monkeyTee = rigMat('monkey-tee', () => {
+    const m = new MeshStandardMaterial({ color: '#28A79C', roughness: 0.42, metalness: 0.05 })
+    m.sheen = 1
+    m.sheenColor = new Color('#ffffff')
+    m.sheenRoughness = 0.32
+    return m
+  })
+  const monkeyTeeDark = rigMat('monkey-tee-dark', () => {
+    const m = new MeshStandardMaterial({ color: '#17756D', roughness: 0.32, metalness: 0.06 })
+    m.sheen = 1
+    m.sheenColor = new Color('#ffffff')
+    m.sheenRoughness = 0.25
+    return m
+  })
+  const monkeyPants = rigMat('monkey-pants', () => {
+    const m = new MeshStandardMaterial({ color: '#2C3550', roughness: 0.34, metalness: 0.06 })
+    m.sheen = 1
+    m.sheenColor = new Color('#ffffff')
+    m.sheenRoughness = 0.24
+    return m
+  })
+  const monkeyPantsDark = rigMat('monkey-pants-dark', () => {
+    const m = new MeshStandardMaterial({ color: '#1D2437', roughness: 0.36, metalness: 0.06 })
+    m.sheen = 1
+    m.sheenColor = new Color('#ffffff')
+    m.sheenRoughness = 0.26
+    return m
+  })
+  const monkeyTrim = sharedMaterial('#F5A524', 0.4, 0.05)
+  const monkeyShoeWhite = sharedMaterial('#F3F0E8', 0.42, 0.03)
+  const monkeyShoeSole = sharedMaterial('#D9D3C6', 0.55)
+  const monkeyShoeUpper = rigMat('monkey-shoe-upper', () => {
+    const m = new MeshStandardMaterial({ color: '#1F2536', roughness: 0.35, metalness: 0.06 })
+    m.sheen = 1
+    m.sheenColor = new Color('#ffffff')
+    m.sheenRoughness = 0.24
+    return m
+  })
+  const monkeyLace = sharedMaterial('#F7F4EC', 0.6)
 
   // Panda: a cuddly chibi panda — warm cream-white wool coat, near-black fur
   // markings, glossy black nose and soft pink paw pads. Sheen gives the coat a
@@ -302,9 +355,9 @@ export function AvatarRig({
     pandaCheek.opacity = 0.45
     pandaCheek.roughness = 0.6
   }
-  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elNavy : isMonkey ? monkeyFur : isPanda ? pandaWhite : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
-  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyFur : isPanda ? pandaBlack : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
-  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : isMonkey ? monkeyDark : isPanda ? pandaBlack : sharedMaterial(config.shoeColor ?? shoeHex(config.shoes), 0.5)
+  const topM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfYellow : isGrim ? grimCloak : isElephant ? elNavy : isMonkey ? monkeyTee : isPanda ? pandaWhite : sharedMaterial(config.topColor ?? topHex(config.top), 0.82)
+  const botM = isDino ? dinoMain : isRabbit ? bunPink : isRobot ? robotDark : isAlien ? alienDark : isPig ? pigMain : isAngel ? angelRobe : isSunflower ? sfBrown : isGrim ? grimCloak : isElephant ? elMain : isMonkey ? monkeyPants : isPanda ? pandaBlack : sharedMaterial(config.bottomColor ?? bottomHex(config.bottom), 0.82)
+  const shoeM = isDino ? dinoDark : isRabbit ? bunFur : isPig ? pigDark : isAngel ? angelRobeShade : isSunflower ? sfBrown : isGrim ? grimRedBoot : isElephant ? elDark : isMonkey ? monkeyShoeUpper : isPanda ? pandaBlack : sharedMaterial(config.shoeColor ?? shoeHex(config.shoes), 0.5)
   const shoeAccent = sharedMaterial('#f2efe8', 0.5)
   const nailM = sharedMaterial(config.nailColor ?? '#e8b4b8', 0.42, 0.12)
   const glassesM = sharedMaterial(config.glassesColor ?? '#2a2f3a', 0.16, 0.92)
@@ -398,6 +451,58 @@ export function AvatarRig({
               { y: P.spineLen + P.chestLen, hw: P.shoulderW * 0.82, hd: P.torsoD * 0.92 },
               { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.2, hd: P.torsoD * 0.55 },
             ])} material={topM} castShadow />
+          ) : isMonkey ? (
+            /* Monkey: compact barrel chest, narrow waist and high shoulders.
+               This ape-like silhouette avoids the dressed-human body shape.
+               The fur body is the base layer; the nylon tee below is a real
+               garment shell that sits OVER it (offset outward everywhere), so
+               the chest reads as clothed fabric instead of a bare fur patch. */
+            <>
+              <mesh geometry={torsoGeo([
+                { y: -0.07, hw: P.hipBoneW * 1.08, hd: P.torsoD * 0.98 },
+                { y: -0.02, hw: P.hipBoneW * 1.04, hd: P.torsoD * 0.96 },
+                { y: P.spineLen * 0.5, hw: P.waistW * 1.04, hd: P.torsoD * 1.0 },
+                { y: P.spineLen, hw: P.chestW * 1.08, hd: P.torsoD * 1.1 },
+                { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW * 1.16, hd: P.torsoD * 1.18 },
+                { y: P.spineLen + P.chestLen * 0.8, hw: P.chestW * 1.2, hd: P.torsoD * 1.1 },
+                { y: P.spineLen + P.chestLen, hw: P.shoulderW * 0.98, hd: P.torsoD * 0.96 },
+                { y: P.spineLen + P.chestLen * 1.06, hw: P.neckR * 2.35, hd: P.torsoD * 0.62 },
+              ])} material={monkeyFur} castShadow />
+
+              {/* NYLON TEE — a shell that follows the same rings as the torso,
+                  scaled out by ~8% so it looks like fabric worn over fur, with
+                  a dropped hem below the waist and a ribbed neck opening. */}
+              <mesh geometry={torsoGeo([
+                { y: -0.05, hw: P.hipBoneW * 1.1, hd: P.torsoD * 1.02 },
+                { y: P.spineLen * 0.18, hw: P.waistW * 1.14, hd: P.torsoD * 1.08 },
+                { y: P.spineLen * 0.55, hw: P.waistW * 1.15, hd: P.torsoD * 1.12 },
+                { y: P.spineLen, hw: P.chestW * 1.17, hd: P.torsoD * 1.2 },
+                { y: P.spineLen + P.chestLen * 0.45, hw: P.chestW * 1.25, hd: P.torsoD * 1.28 },
+                { y: P.spineLen + P.chestLen * 0.82, hw: P.chestW * 1.28, hd: P.torsoD * 1.19 },
+                { y: P.spineLen + P.chestLen * 1.02, hw: P.shoulderW * 1.14, hd: P.torsoD * 1.02 },
+                { y: P.spineLen + P.chestLen * 1.1, hw: P.neckR * 2.05, hd: P.torsoD * 0.56 },
+              ])} material={monkeyTee} castShadow />
+
+              {/* ribbed crew collar around the neck opening */}
+              <group position={[0, P.spineLen + P.chestLen * 1.1, 0]} scale={[1, 1, 0.62]}>
+                <mesh geometry={torusGeo(P.neckR * 1.9, P.neckR * 0.22)} material={monkeyTeeDark}
+                  rotation={[Math.PI / 2, 0, 0]} />
+              </group>
+
+              {/* hem band at the bottom of the tee — the fabric edge */}
+              <group position={[0, -0.05, 0]} scale={[1, 1, (P.torsoD * 1.02) / (P.hipBoneW * 1.1)]}>
+                <mesh geometry={torusGeo(P.hipBoneW * 1.1, P.hipBoneW * 0.07)} material={monkeyTeeDark}
+                  rotation={[Math.PI / 2, 0, 0]} />
+              </group>
+
+              {/* sport stripe — wrapped all the way around the shell as a thin
+                  band so it reads as printed fabric, never a floating plank */}
+              {/* printed chest stripe — a wide shallow lens set just inside the
+                  shell so only the printed band shows on the curved front */}
+              <mesh geometry={sphereGeo(1)} material={monkeyTrim}
+                scale={[P.chestW * 1.02, P.chestLen * 0.075, P.torsoD * 0.34]}
+                position={[0, P.spineLen + P.chestLen * 0.36, P.torsoD * 0.98]} />
+            </>
           ) : isPanda ? (
             /* Panda: round plump torso — soft fur coat silhouette, balanced */
             <mesh geometry={torsoGeo([
@@ -582,8 +687,8 @@ export function AvatarRig({
           </group>
 
 
-        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isRobot ? robotGlowMat : isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} isMonkey={isMonkey} monkeyDark={monkeyDark} isPanda={isPanda} pandaBlack={pandaBlack} pandaInner={pandaInner} robotMetal={robotMetal} />
-        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isRobot ? robotGlowMat : isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} isMonkey={isMonkey} monkeyDark={monkeyDark} isPanda={isPanda} pandaBlack={pandaBlack} pandaInner={pandaInner} robotMetal={robotMetal} />
+        <Leg side="L" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isRobot ? robotGlowMat : isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} isMonkey={isMonkey} monkeyDark={monkeyDark} monkeyShoeWhite={monkeyShoeWhite} monkeyShoeSole={monkeyShoeSole} monkeyTrim={monkeyTrim} monkeyLace={monkeyLace} monkeyPantsDark={monkeyPantsDark} isPanda={isPanda} pandaBlack={pandaBlack} pandaInner={pandaInner} robotMetal={robotMetal} />
+        <Leg side="R" bind={bind} P={P} skin={skin} botM={botM} shoeM={shoeM} shoeAccent={shoeAccent} config={config} showShoes={!isAnimal} isRobot={isRobot} isAlien={isAlien} isAngel={isAngel} sashM={angelSash} glowM={isRobot ? robotGlowMat : isAngel ? glowGold : glowBlue} isHacker={isHacker} hackerGlow={hackerGlow} hackerAccent={hackerAccent} isSunflower={isSunflower} sfBrown={sfBrown} sfGreen={sfGreen} isGrim={isGrim} grimCloak={grimCloak} grimRedBoot={grimRedBoot} grimGold={grimGold} grimGoldDark={grimGoldDark} isElephant={isElephant} isMonkey={isMonkey} monkeyDark={monkeyDark} monkeyShoeWhite={monkeyShoeWhite} monkeyShoeSole={monkeyShoeSole} monkeyTrim={monkeyTrim} monkeyLace={monkeyLace} monkeyPantsDark={monkeyPantsDark} isPanda={isPanda} pandaBlack={pandaBlack} pandaInner={pandaInner} robotMetal={robotMetal} />
 
         {/* Dino tail — a thick tapering tail rooted at the lower back (overlapping
             the body so there's no gap), curving out and down, ridged with golden
@@ -730,25 +835,13 @@ export function AvatarRig({
           </group>
         )}
 
-        {/* Monkey costume — tan belly patch, darker hands/feet, and a long
-            curly tail on the lower back */}
+        {/* Monkey anatomy — one continuous prehensile tail. (No pale chest
+            marking: he wears a nylon tee now, and the old floating tan oval on
+            the chest was the single ugliest thing on the model.) */}
         {isMonkey && (
           <group>
-            {/* tan belly patch */}
-            <mesh geometry={sphereGeo(1)} material={monkeyBelly} scale={[P.chestW * 0.55, P.chestLen * 0.38, P.torsoD * 0.22]} position={[0, P.spineLen + P.chestLen * 0.15, P.torsoD * 0.86]} />
-            {/* long curling tail — a graceful spiral curve starting from lower back */}
-            <group position={[0, -0.02, -P.torsoD * 0.85]} rotation={[0.8, 0, 0]}>
-              {/* tail base — thick root */}
-              <mesh geometry={taperGeo(P.hipBoneW * 0.1, P.hipBoneW * 0.07, P.upperLeg * 0.4)} material={monkeyFur} position={[0, -P.upperLeg * 0.2, 0]} castShadow />
-              {/* first curl — torus ring */}
-              <mesh geometry={torusGeo(P.hipBoneW * 0.22, P.hipBoneW * 0.045, 8, 20)} material={monkeyFur}
-                position={[0, -P.upperLeg * 0.45, P.hipBoneW * 0.15]} rotation={[Math.PI / 2, 0, 0]} />
-              {/* second curl — slightly smaller */}
-              <mesh geometry={torusGeo(P.hipBoneW * 0.16, P.hipBoneW * 0.035, 8, 18)} material={monkeyDark}
-                position={[0, -P.upperLeg * 0.55, P.hipBoneW * 0.3]} rotation={[Math.PI / 2, 0, 0.3]} />
-              {/* tail tip — little curl */}
-              <mesh geometry={torusGeo(P.hipBoneW * 0.1, P.hipBoneW * 0.028, 8, 14)} material={monkeyBelly}
-                position={[P.hipBoneW * 0.04, -P.upperLeg * 0.58, P.hipBoneW * 0.4]} rotation={[Math.PI / 2.5, 0.3, 0.4]} />
+            <group position={[0, -P.spineLen * 0.08, -P.torsoD * 0.96]} rotation={[0.12, 0, 0]}>
+              <MonkeyTail P={P} fur={monkeyFur} />
             </group>
           </group>
         )}
@@ -2042,116 +2135,154 @@ function ElephantHead({ P, main, dark, belly, inner, tusk, glasses, lens, cheek,
 
 /* ================================================ MONKEY HEAD ================================================ */
 
-/** Cute monkey head: brown furry head, big tan face area like a mandrill,
- *  James-style anime eyes, James smile, small brown nose, and big round ears
- *  on the sides. Modeled after PigHead — features rendered at z values in front
- *  of the head sphere so depth sorting works correctly. */
+/** A single continuous prehensile tail. A tube curve reads far more naturally
+ *  than stacked torus rings and keeps a clean silhouette from every view. */
+function MonkeyTail({ P, fur }: { P: Proportions; fur: Mat }) {
+  const geometry = useMemo(() => {
+    const w = P.hipBoneW
+    const curve = new CatmullRomCurve3([
+      new Vector3(0, 0, 0),
+      new Vector3(0, -P.upperLeg * 0.28, -w * 0.35),
+      new Vector3(w * 0.3, -P.upperLeg * 0.72, -w * 0.48),
+      new Vector3(w * 0.86, -P.upperLeg * 1.05, -w * 0.16),
+      new Vector3(w * 1.02, -P.upperLeg * 0.76, w * 0.24),
+      new Vector3(w * 0.78, -P.upperLeg * 0.48, w * 0.5),
+      new Vector3(w * 0.46, -P.upperLeg * 0.56, w * 0.38),
+    ])
+    return new TubeGeometry(curve, 40, w * 0.075, 8, false)
+  }, [P.hipBoneW, P.upperLeg])
+  return <mesh geometry={geometry} material={fur} castShadow />
+}
+
+/** Chibi monkey head — one fur cranium carries the whole silhouette, and every
+ *  fur marking is a spherical CAP parented to a group scaled exactly like that
+ *  cranium, so the bare face is painted onto the surface instead of being a
+ *  stack of bulging spheres (which is what made the old head look like a pile
+ *  of polygons). Small features are thin lenses placed on the computed surface
+ *  point; the muzzle is the only piece allowed to protrude. */
 function MonkeyHead({ P, fur, face, dark, inner, belly }: { P: Proportions; fur: Mat; face: Mat; dark: Mat; inner: Mat; belly: Mat }) {
   const r = P.headR
   const cy = r * 0.92
 
-  // ---- PBR-style eye materials: warm sclera, gradient-textured amber iris,
-  //      dark pupil, bright glints (texture shading, not geometry) ----
   const sclera = sharedMaterial('#f7f1e4', 0.3)
   const irisM = sharedMaterial('#8a4f1c', 0.25)
   irisM.map = monkeyIrisTex()
   irisM.needsUpdate = true
   const pupil = sharedMaterial('#140a03', 0.4)
   const glint = sharedMaterial('#ffffff', 0.95)
-  // glossy dark nose pad (slightly wet look)
   const nosePad = sharedMaterial('#24140a', 0.32)
   const nostrilM = sharedMaterial('#0c0703', 0.25)
   const mouthM = sharedMaterial('#3a2416', 0.5)
   const blush = sharedMaterial('#f4a090', 0.55)
 
+  // cranium half-axes — every feature is positioned against these
+  const SX = r * 1.14
+  const SY = r * 1.12
+  const SZ = r * 1.06
+  /** z of the cranium surface above (x, y) — keeps lenses flush, never floating */
+  const zAt = (x: number, y: number) =>
+    SZ * Math.sqrt(Math.max(0.08, 1 - (x / SX) ** 2 - (y / SY) ** 2))
+
   return (
     <group position={[0, cy, 0]}>
-      {/* round furry head — slightly wider than tall; fur coat bump makes it
-          read as soft hair, not plastic */}
-      <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 1.1, r * 1.05, r * 1.02]} castShadow />
+      {/* cranial vault — the entire head shape, one smooth ellipsoid */}
+      <mesh geometry={sphereGeo(1)} material={fur} scale={[SX, SY, SZ]} castShadow />
 
-      {/* lighter tan face mask — heart/oval shaped, centred on the front.
-          Ellipsoid: center (0, -0.06r, 0.5r), half-axes (0.7r, 0.7r, 0.62r);
-          front at center = 0.5 + 0.62 = 1.12r. */}
-      <mesh geometry={sphereGeo(1)} material={face} scale={[r * 0.7, r * 0.7, r * 0.62]} position={[0, -r * 0.06, r * 0.5]} />
-
-      {/* big round ears on the sides — the classic monkey silhouette */}
+      {/* bare tan face — three surface caps that fuse into one heart-shaped
+          marking. Radii step outward slightly so coplanar caps never z-fight. */}
+      <group scale={[SX * 1.004, SY * 1.004, SZ * 1.004]}>
+        <mesh geometry={sphereCapGeo(0.62)} material={face} rotation={[0.2, 0, 0]} />
+      </group>
       {[-1, 1].map((sx) => (
-        <group key={`ear${sx}`} position={[sx * r * 1.0, r * 0.3, -r * 0.05]}>
-          {/* outer ear — big round disc */}
-          <mesh geometry={sphereGeo(1)} material={fur} scale={[r * 0.4, r * 0.5, r * 0.1]} />
-          {/* inner ear — lighter pinkish/tan */}
-          <mesh geometry={sphereGeo(1)} material={inner} scale={[r * 0.26, r * 0.34, r * 0.06]} position={[sx * -r * 0.02, -r * 0.02, r * 0.05]} />
+        <group key={`brow-lobe${sx}`} scale={[SX * 1.006, SY * 1.006, SZ * 1.006]}>
+          <mesh geometry={sphereCapGeo(0.34)} material={face} rotation={[-0.16, sx * 0.34, 0]} />
         </group>
       ))}
 
-      {/* big warm eyes — gradient iris + pupil + twin catchlights; bulge proudly
-          off the mask (mask front at eye height ≈ 1.046r, eye front 1.15r) */}
+      {/* Ears — built like a real ear instead of a lobe with a dot on it:
+          a fur-backed round shell, a raised helix RIM (torus) running around
+          its edge, a recessed bowl inside that rim, and a small lobe at the
+          bottom. Tilted back and out so the silhouette reads from the front. */}
       {[-1, 1].map((sx) => (
-        <group key={`eye${sx}`} position={[sx * r * 0.3, r * 0.13, r * 1.02]}>
-          {/* white-ish sclera */}
-          <mesh geometry={sphereGeo(1)} material={sclera} scale={[r * 0.22, r * 0.25, r * 0.13]} />
-          {/* gradient amber iris */}
-          <mesh geometry={sphereGeo(1)} material={irisM} scale={[r * 0.13, r * 0.15, r * 0.09]} position={[0, 0, r * 0.06]} />
-          {/* dark pupil */}
-          <mesh geometry={sphereGeo(1)} material={pupil} scale={[r * 0.06, r * 0.07, r * 0.05]} position={[0, 0, r * 0.1]} />
-          {/* big primary catchlight + small sparkle */}
-          <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.05, r * 0.05, r * 0.02]} position={[sx * -r * 0.03, r * 0.06, r * 0.13]} />
-          <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.03, r * 0.03, r * 0.02]} position={[sx * r * 0.02, -r * 0.04, r * 0.13]} />
+        <group key={`ear${sx}`} position={[sx * SX * 0.94, r * 0.15, -r * 0.02]}
+          rotation={[0, sx * 0.95, sx * 0.16]}>
+          {/* fur backing — the outside of the ear, thin front-to-back */}
+          <mesh geometry={sphereGeo(1)} material={fur}
+            scale={[r * 0.42, r * 0.44, r * 0.13]} castShadow />
+          {/* raised helix rim — gives the ear a real edge, not a flat disc */}
+          <mesh geometry={torusGeo(r * 0.34, r * 0.075)} material={fur}
+            position={[0, 0, sx * r * 0.03]} scale={[1, 1.08, 1]} castShadow />
+          {/* recessed skin bowl inside the rim */}
+          <mesh geometry={sphereGeo(1)} material={inner}
+            scale={[r * 0.25, r * 0.27, r * 0.06]} position={[0, r * 0.01, sx * r * 0.05]} />
+          {/* darker canal shadow so the bowl has depth */}
+          <mesh geometry={sphereGeo(1)} material={dark}
+            scale={[r * 0.11, r * 0.13, r * 0.035]} position={[-r * 0.02, -r * 0.03, sx * r * 0.07]} />
+          {/* small soft lobe at the bottom of the ear */}
+          <mesh geometry={sphereGeo(1)} material={fur}
+            scale={[r * 0.13, r * 0.11, r * 0.12]} position={[0, -r * 0.38, 0]} castShadow />
         </group>
       ))}
 
-      {/* two soft friendly brows — gentle outer-up tilt for a cute male
-          look (NOT angry): inner ends sit a touch high, outer ends drop */}
+      {/* eyes — thin lens stack sitting on the painted face */}
+      {[-1, 1].map((sx) => {
+        const ex = sx * r * 0.3
+        const ey = r * 0.12
+        const ez = zAt(ex, ey)
+        return (
+          <group key={`eye${sx}`} position={[ex, ey, ez]}>
+            <mesh geometry={sphereGeo(1)} material={sclera} scale={[r * 0.155, r * 0.165, r * 0.03]} />
+            <mesh geometry={sphereGeo(1)} material={irisM} scale={[r * 0.12, r * 0.13, r * 0.028]} position={[0, 0, r * 0.012]} />
+            <mesh geometry={sphereGeo(1)} material={pupil} scale={[r * 0.06, r * 0.068, r * 0.024]} position={[0, 0, r * 0.022]} />
+            <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.028, r * 0.03, r * 0.012]}
+              position={[sx * -r * 0.04, r * 0.045, r * 0.032]} />
+          </group>
+        )
+      })}
+
+      {/* brows — thin painted strokes, inner end lifted so he reads friendly */}
+      {[-1, 1].map((sx) => {
+        const bx = sx * r * 0.31
+        const by = r * 0.34
+        return (
+          <mesh key={`brow${sx}`} geometry={sphereGeo(1)} material={dark}
+            scale={[r * 0.19, r * 0.033, r * 0.022]}
+            position={[bx, by, zAt(bx, by) - r * 0.008]}
+            rotation={[0, 0, sx * -0.18]} />
+        )
+      })}
+
+      {/* muzzle — the one piece that protrudes: a soft tan snout */}
+      <mesh geometry={sphereGeo(1)} material={belly}
+        scale={[r * 0.4, r * 0.27, r * 0.28]} position={[0, -r * 0.34, zAt(0, -r * 0.34) - r * 0.12]} castShadow />
+
+      {/* glossy nose pad + nostrils, flush on the muzzle front */}
+      <mesh geometry={sphereGeo(1)} material={nosePad} scale={[r * 0.115, r * 0.075, r * 0.045]}
+        position={[0, -r * 0.28, zAt(0, -r * 0.34) + r * 0.14]} />
+      <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.024, r * 0.015, r * 0.01]}
+        position={[-r * 0.032, -r * 0.258, zAt(0, -r * 0.34) + r * 0.165]} />
       {[-1, 1].map((sx) => (
-        <mesh key={`brow${sx}`} geometry={sphereGeo(1)} material={dark}
-          scale={[r * 0.2, r * 0.05, r * 0.09]}
-          position={[sx * r * 0.3, r * 0.2, r * 1.07]}
-          rotation={[0, 0, -sx * 0.22]} />
+        <mesh key={`nos${sx}`} geometry={sphereGeo(1)} material={nostrilM}
+          scale={[r * 0.02, r * 0.013, r * 0.008]}
+          position={[sx * r * 0.038, -r * 0.31, zAt(0, -r * 0.34) + r * 0.165]} />
       ))}
 
-      {/* protruding tan muzzle — the classic monkey snout. An ellipsoid that
-          bulges past the face mask (mask front 1.12r, muzzle front 1.28r) so
-          the nose & mouth sit on a real snout instead of flat on the face */}
-      <mesh geometry={sphereGeo(1)} material={face} scale={[r * 0.46, r * 0.26, r * 0.22]} position={[0, -r * 0.34, r * 1.06]} />
-
-      {/* glossy dark-brown nose at the TOP of the muzzle (front 1.36r) */}
-      <mesh geometry={sphereGeo(1)} material={nosePad} scale={[r * 0.14, r * 0.09, r * 0.06]} position={[0, -r * 0.22, r * 1.32]} />
-      {/* nose glint — small wet highlight */}
-      <mesh geometry={sphereGeo(1)} material={glint} scale={[r * 0.03, r * 0.018, r * 0.01]} position={[-r * 0.035, -r * 0.18, r * 1.38]} />
-
-      {/* nostrils — two dark slits just under the nose (proud of muzzle front) */}
-      <mesh geometry={sphereGeo(1)} material={nostrilM} scale={[r * 0.024, r * 0.014, r * 0.008]} position={[-r * 0.045, -r * 0.28, r * 1.36]} />
-      <mesh geometry={sphereGeo(1)} material={nostrilM} scale={[r * 0.024, r * 0.014, r * 0.008]} position={[r * 0.045, -r * 0.28, r * 1.36]} />
-
-      {/* philtrum — the thin groove running nose → mouth, like real monkeys */}
-      <mesh geometry={boxGeo(r * 0.014, r * 0.09, r * 0.01)} material={mouthM} position={[0, -r * 0.33, r * 1.32]} />
-
-      {/* gentle upward smile — five small spheres tracing a soft curve with the
-          corners lifted (panda technique). Reads as a warm smile, not a ring */}
-      {[-0.09, -0.04, 0, 0.04, 0.09].map((dx, i) => (
+      {/* smile — thin painted arc with lifted corners, on the muzzle front */}
+      {[-0.1, -0.05, 0, 0.05, 0.1].map((dx, i) => (
         <mesh key={`sm${i}`} geometry={sphereGeo(1)} material={mouthM}
-          scale={[r * (i === 2 ? 0.045 : 0.035), r * 0.028, r * 0.012]}
-          position={[dx * r, -r * 0.42 + Math.abs(dx) * r * 0.22, r * 1.34]} />
-      ))}
-      {/* mouth corners accent — little dimple puffs at each end */}
-      {[-1, 1].map((sx) => (
-        <mesh key={`dm${sx}`} geometry={sphereGeo(1)} material={mouthM}
-          scale={[r * 0.045, r * 0.022, r * 0.012]} position={[sx * r * 0.1, -r * 0.39, r * 1.32]} />
+          scale={[r * (i === 2 ? 0.04 : 0.03), r * 0.024, r * 0.012]}
+          position={[dx * r, -r * 0.45 + Math.abs(dx) * r * 0.26, zAt(0, -r * 0.34) + r * 0.13]} />
       ))}
 
-      {/* lower lip — fuller, sitting right under the smile */}
-      <mesh geometry={sphereGeo(1)} material={belly} scale={[r * 0.16, r * 0.05, r * 0.07]} position={[0, -r * 0.52, r * 1.28]} />
-
-      {/* soft rosy cheeks — gentle blend onto the tan face (front 0.97r vs 0.913r) */}
-      {[-1, 1].map((sx) => (
-        <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush} scale={[r * 0.13, r * 0.09, r * 0.05]} position={[sx * r * 0.52, -r * 0.16, r * 0.94]} />
-      ))}
-
-      {/* little tuft of fur on top of the head */}
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.14, r * 0.14, r * 0.14]} position={[0, r * 1.0, r * 0.35]} />
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.1, r * 0.1]} position={[-r * 0.08, r * 1.05, r * 0.3]} />
-      <mesh geometry={sphereGeo(1)} material={dark} scale={[r * 0.1, r * 0.1, r * 0.1]} position={[r * 0.08, r * 1.05, r * 0.3]} />
+      {/* soft warm cheeks, flush against the fur just outside the face mask */}
+      {[-1, 1].map((sx) => {
+        const cx = sx * r * 0.58
+        const cyy = -r * 0.14
+        return (
+          <mesh key={`ch${sx}`} geometry={sphereGeo(1)} material={blush}
+            scale={[r * 0.1, r * 0.055, r * 0.02]} position={[cx, cyy, zAt(cx, cyy) - r * 0.006]} />
+        )
+      })}
     </group>
   )
 }
@@ -2548,6 +2679,9 @@ function Arm({ side, bind, P, skin, topM, isSleeved, isDino, isAngel, clawM, isR
   // Panda arms — gently rounded, not stub-mutant (kept in proportion)
 const pArmY = isPanda ? 0.95 : 1
    const pArmW = isPanda ? 1.15 : 1
+  // Monkey shoulder is slimmed so the nylon sleeve shell can sit OVER the fur
+  // deltoid without either poking through or ballooning into a shoulder pad.
+  const mArm = isMonkey ? 0.84 : 1
 
   return (
     <group ref={bind(upper)} position={[sign * P.shoulderW, 0.04 + P.spineLen + P.chestLen * 0.65, 0]}>
@@ -2589,15 +2723,41 @@ const pArmY = isPanda ? 0.95 : 1
          <mesh geometry={latheGeo([
            [P.elbowR, -P.upperArm],
            [P.elbowR * 1.08, -P.upperArm * 0.85],
-           [P.shoulderR * 1.3, -P.upperArm * 0.58],
-           [P.shoulderR * 1.6, -P.upperArm * 0.3],
-           [P.shoulderR * 1.8, -P.upperArm * 0.08],
-           [P.shoulderR * 1.7, P.upperArm * 0.06],
-           [P.shoulderR * 1.3, P.upperArm * 0.16],
-           [P.shoulderR * 0.7, P.upperArm * 0.24],
-           [P.shoulderR * 0.15, P.upperArm * 0.3],
+           [P.shoulderR * 1.3 * mArm, -P.upperArm * 0.58],
+           [P.shoulderR * 1.6 * mArm, -P.upperArm * 0.3],
+           [P.shoulderR * 1.8 * mArm, -P.upperArm * 0.08],
+           [P.shoulderR * 1.7 * mArm, P.upperArm * 0.06],
+           [P.shoulderR * 1.3 * mArm, P.upperArm * 0.16],
+           [P.shoulderR * 0.7 * mArm, P.upperArm * 0.24],
+           [P.shoulderR * 0.15 * mArm, P.upperArm * 0.3],
          ])} material={armM} castShadow />
        )}
+
+      {/* Monkey: short nylon tee sleeve — a real sleeve shell over the fur arm,
+          ending in a hem band partway down the upper arm (so the fur forearm
+          still reads as fur, not as painted-on clothing). */}
+      {isMonkey && (
+        <>
+          <mesh geometry={latheGeo([
+            [P.shoulderR * 1.22, -P.upperArm * 0.5],
+            [P.shoulderR * 1.36, -P.upperArm * 0.42],
+            [P.shoulderR * 1.5, -P.upperArm * 0.26],
+            [P.shoulderR * 1.6, -P.upperArm * 0.06],
+            [P.shoulderR * 1.56, P.upperArm * 0.08],
+            [P.shoulderR * 1.3, P.upperArm * 0.2],
+            [P.shoulderR * 0.7, P.upperArm * 0.3],
+            [P.shoulderR * 0.16, P.upperArm * 0.36],
+          ])} material={topM} castShadow />
+          {/* shoulder yoke — pushed inboard so the sleeve and the tee body meet
+              in one continuous piece of fabric instead of leaving an armpit gap */}
+          <mesh geometry={sphereGeo(1)} material={topM}
+            scale={[P.shoulderR * 1.78, P.shoulderR * 1.46, P.shoulderR * 1.5]}
+            position={[-sign * P.shoulderR * 0.8, P.upperArm * 0.04, 0]} castShadow />
+          {/* sleeve hem band */}
+          <mesh geometry={torusGeo(P.shoulderR * 1.24, P.shoulderR * 0.1)} material={sharedMaterial('#17756D', 0.32, 0.06)}
+            position={[0, -P.upperArm * 0.5, 0]} rotation={[Math.PI / 2, 0, 0]} />
+        </>
+      )}
 
 <group ref={bind(lower)} position={[0, -P.upperArm * (isPanda ? pArmY : eArmY), 0]}>
          {/* Elephant: smooth chunky forearm column. Human: clean taper with a
@@ -2653,8 +2813,8 @@ const pArmY = isPanda ? 0.95 : 1
             which otherwise made the hand read as "merged into the clothes"). */}
 <group position={[0, -P.lowerArm * (isPanda ? pArmY : eArmY) - P.wristR * 0.2, P.wristR * 0.3]}>
            {/* exposed wrist cuff between the sleeve end and the palm (gloved for hacker) */}
-           <mesh geometry={taperGeo(P.wristR * 1.12, P.wristR * 0.92, P.wristR * 1.35)} material={gloveM} position={[0, P.wristR * 0.55, 0]} castShadow />
-           <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 1.8 : isPanda ? 1.45 : isSunflower ? 1.6 : 1.3), P.handLen * (isElephant ? 0.55 : isSunflower ? 0.52 : 0.48), P.wristR * (isElephant ? 1.5 : isPanda ? 1.4 : isSunflower ? 1.4 : 1.1)]} position={[0, -P.handLen * 0.3, 0]} castShadow />
+           <mesh geometry={taperGeo(P.wristR * 1.12, P.wristR * 0.92, P.wristR * 1.35)} material={isMonkey ? skin : gloveM} position={[0, P.wristR * 0.55, 0]} castShadow />
+           <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 1.8 : isPanda ? 1.45 : isSunflower ? 1.6 : isMonkey ? 1.28 : 1.3), P.handLen * (isElephant ? 0.55 : isSunflower ? 0.52 : isMonkey ? 0.5 : 0.48), P.wristR * (isElephant ? 1.5 : isPanda ? 1.4 : isSunflower ? 1.4 : isMonkey ? 1.08 : 1.1)]} position={[0, -P.handLen * (isMonkey ? 0.22 : 0.3), 0]} castShadow />
           {/* Sunflower: leafy wrist cuff + a tiny green leaf bud */}
           {isSunflower && (
             <>
@@ -2671,7 +2831,11 @@ const pArmY = isPanda ? 0.95 : 1
               scale={[P.wristR * 1.0, P.handLen * 0.18, P.wristR * 0.7]}
               position={[0, -P.handLen * 0.14, P.wristR * 1.0]} />
           )}
-          <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 0.45 : 0.26), P.wristR * (isElephant ? 0.45 : 0.26), P.wristR * (isElephant ? 0.45 : 0.26)]} position={[sign * P.wristR * (isElephant ? 1.25 : 0.88), -P.handLen * 0.12, P.wristR * (isElephant ? 0.35 : 0.26)]} />
+          {/* small knuckle/thumb nub — the monkey mitt below carries its own
+              thumb swell, so it would read as a double bump here */}
+          {!isMonkey && (
+            <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * (isElephant ? 0.45 : 0.26), P.wristR * (isElephant ? 0.45 : 0.26), P.wristR * (isElephant ? 0.45 : 0.26)]} position={[sign * P.wristR * (isElephant ? 1.25 : 0.88), -P.handLen * 0.12, P.wristR * (isElephant ? 0.35 : 0.26)]} />
+          )}
           {isElephant || isSunflower ? (
             /* Elephant/sunflower hand — four chubby stubby fingers in a row */
             <>
@@ -2699,6 +2863,17 @@ const pArmY = isPanda ? 0.95 : 1
                ))}
                <mesh geometry={sphereGeo(1)} material={gloveM} scale={[P.wristR * 0.8, P.wristR * 0.5, P.wristR * 0.38]} position={[0, -P.handLen * 0.24, P.wristR * 1.02]} />
              </>
+           ) : isMonkey ? (
+             /* Mitten paw — NO separate fingers (this rig doesn't do fingers).
+                One rounded mitt with a soft thumb swell and a bare palm pad,
+                so it reads as a cartoon monkey hand at any distance. */
+             /* Plain rounded paw, exactly the language the other characters use:
+                one clean mitt volume in the character's own fur colour — no
+                digits and no contrasting palm patch (the tan pad is what made
+                this hand read as a mess). */
+             <mesh geometry={sphereGeo(1)} material={gloveM}
+               scale={[P.wristR * 1.3, P.handLen * 0.62, P.wristR * 1.12]}
+               position={[0, -P.handLen * 0.42, P.wristR * 0.06]} castShadow />
            ) : (
              [-P.wristR * 0.55, -P.wristR * 0.18, P.wristR * 0.18, P.wristR * 0.5].map((fx, i) => (
               <group key={i} position={[fx, -P.handLen * 0.45, 0]}>
@@ -2739,9 +2914,9 @@ const pArmY = isPanda ? 0.95 : 1
 
 /* ================================================ LEGS ================================================ */
 
-function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, isAngel, sashM, glowM, isHacker, hackerGlow, hackerAccent, isSunflower, sfBrown, sfGreen, isGrim, grimCloak, grimRedBoot, grimGold, grimGoldDark, isElephant, isMonkey, monkeyDark, isPanda, pandaBlack, pandaInner, robotMetal }: {
+function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, isRobot, isAlien, isAngel, sashM, glowM, isHacker, hackerGlow, hackerAccent, isSunflower, sfBrown, sfGreen, isGrim, grimCloak, grimRedBoot, grimGold, grimGoldDark, isElephant, isMonkey, monkeyDark, monkeyShoeWhite, monkeyShoeSole, monkeyTrim, monkeyLace, monkeyPantsDark, isPanda, pandaBlack, pandaInner, robotMetal }: {
    side: 'L' | 'R'; bind: (n: BoneName) => (g: Group | null) => void
-   P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; isAngel?: boolean; sashM?: Mat; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat; isSunflower?: boolean; sfBrown?: Mat; sfGreen?: Mat; isGrim?: boolean; grimCloak?: Mat; grimRedBoot?: Mat; grimGold?: Mat; grimGoldDark?: Mat; isElephant?: boolean; isMonkey?: boolean; monkeyDark?: Mat; isPanda?: boolean; pandaBlack?: Mat; pandaInner?: Mat; robotMetal?: Mat }) {
+   P: Proportions; skin: Mat; botM: Mat; shoeM: Mat; shoeAccent: Mat; config: AvatarConfig; showShoes: boolean; isRobot?: boolean; isAlien?: boolean; isAngel?: boolean; sashM?: Mat; glowM?: Mat; isHacker?: boolean; hackerGlow?: Mat; hackerAccent?: Mat; isSunflower?: boolean; sfBrown?: Mat; sfGreen?: Mat; isGrim?: boolean; grimCloak?: Mat; grimRedBoot?: Mat; grimGold?: Mat; grimGoldDark?: Mat; isElephant?: boolean; isMonkey?: boolean; monkeyDark?: Mat; monkeyShoeWhite?: Mat; monkeyShoeSole?: Mat; monkeyTrim?: Mat; monkeyLace?: Mat; monkeyPantsDark?: Mat; isPanda?: boolean; pandaBlack?: Mat; pandaInner?: Mat; robotMetal?: Mat }) {
    const sign = side === 'L' ? -1 : 1
    const upper: BoneName = side === 'L' ? 'legUpperL' : 'legUpperR'
    const lower: BoneName = side === 'L' ? 'legLowerL' : 'legLowerR'
@@ -2862,7 +3037,7 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
         )}
         <group ref={bind(foot)} position={[0, -P.lowerLeg * (isPanda ? pLegY : eLegY) - P.ankleR * 0.4, 0]}>
           {/* ankle / foot — skin when bare (animals), shoe colour when booted; hidden for alien + robot (robot has its own boot); dino + rabbit build their own custom feet below */}
-          {!isAlien && !isRobot && !isDino && !isRabbit && (
+          {!isAlien && !isRobot && !isDino && !isRabbit && !isMonkey && (
             <mesh geometry={sphereGeo(1)} material={showShoes && !isHacker ? shoeM : skin}
               scale={Array(3).fill(P.ankleR * 1.1) as [number, number, number]} />
           )}
@@ -2926,19 +3101,64 @@ function Leg({ side, bind, P, skin, botM, shoeM, shoeAccent, config, showShoes, 
                 position={[0, P.ankleR * 0.12, P.ankleR * 1.2]} />
             </group>
           )}
-          {/* Monkey: darker brown feet like a real monkey's dark hands/feet */}
+          {/* Monkey: an actual sneaker — rubber sole, white midsole, nylon
+              upper, padded collar, toe cap and laces. No bare toes: he's shod. */}
           {isMonkey && (
             <group>
-              <mesh geometry={sphereGeo(1)} material={monkeyDark}
-                scale={[P.ankleR * 1.15, P.ankleR * 0.9, P.footLen * 0.7]}
-                position={[0, -P.ankleR * 0.4, P.footLen * 0.25]} castShadow />
-              {/* toe bumps */}
-              {[-P.ankleR * 0.2, -P.ankleR * 0.07, P.ankleR * 0.07, P.ankleR * 0.2].map((tx, i) => (
-                <mesh key={'mt' + i} geometry={sphereGeo(1)} material={monkeyDark}
-                  scale={[P.ankleR * 0.12, P.ankleR * 0.1, P.footLen * 0.12]}
-                  position={[tx, -P.ankleR * 0.55, P.footLen * 0.55]} />
+              {/* nylon upper — the main shoe body */}
+              <mesh geometry={sphereGeo(1)} material={shoeM}
+                scale={[P.ankleR * 1.16, P.ankleR * 0.82, P.footLen * 0.62]}
+                position={[0, -P.ankleR * 0.3, P.footLen * 0.26]} castShadow />
+              {/* toe box — rounded front volume so the shoe has a real last */}
+              <mesh geometry={sphereGeo(1)} material={shoeM}
+                scale={[P.ankleR * 1.0, P.ankleR * 0.62, P.footLen * 0.34]}
+                position={[0, -P.ankleR * 0.46, P.footLen * 0.7]} castShadow />
+              {/* white rubber toe cap */}
+              <mesh geometry={sphereGeo(1)} material={monkeyShoeWhite}
+                scale={[P.ankleR * 0.94, P.ankleR * 0.42, P.footLen * 0.22]}
+                position={[0, -P.ankleR * 0.62, P.footLen * 0.82]} castShadow />
+              {/* white midsole wrapping the shoe — kept tight to the upper so it
+                  reads as a sneaker sole, not a platform flange */}
+              <mesh geometry={sphereGeo(1)} material={monkeyShoeWhite}
+                scale={[P.ankleR * 1.1, P.ankleR * 0.26, P.footLen * 0.68]}
+                position={[0, -P.ankleR * 0.86, P.footLen * 0.34]} castShadow />
+              {/* grey rubber outsole flat on the ground */}
+              <mesh geometry={sphereGeo(1)} material={monkeyShoeSole}
+                scale={[P.ankleR * 1.02, P.ankleR * 0.13, P.footLen * 0.62]}
+                position={[0, -P.ankleR * 1.04, P.footLen * 0.34]} castShadow />
+              {/* orange swoosh-style side flash on both sides */}
+              {[-1, 1].map((sx) => (
+                <mesh key={`msw${sx}`} geometry={sphereGeo(1)} material={monkeyTrim}
+                  scale={[P.ankleR * 0.06, P.ankleR * 0.2, P.footLen * 0.3]}
+                  position={[sx * P.ankleR * 1.1, -P.ankleR * 0.52, P.footLen * 0.4]}
+                  rotation={[0.25, 0, 0]} />
+              ))}
+              {/* padded ankle collar */}
+              <mesh geometry={torusGeo(P.ankleR * 0.98, P.ankleR * 0.24)} material={shoeM}
+                position={[0, P.ankleR * 0.16, P.footLen * 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+              {/* tongue */}
+              <mesh geometry={boxGeo(P.ankleR * 0.86, P.ankleR * 0.6, P.footLen * 0.06)} material={monkeyShoeWhite}
+                position={[0, -P.ankleR * 0.04, P.footLen * 0.42]} rotation={[0.42, 0, 0]} />
+              {/* three laces across the tongue */}
+              {[0, 1, 2].map((i) => (
+                <mesh key={`mlace${i}`} geometry={boxGeo(P.ankleR * 0.9, P.ankleR * 0.075, P.ankleR * 0.075)}
+                  material={monkeyLace}
+                  position={[0, -P.ankleR * (0.12 + i * 0.17), P.footLen * (0.46 - i * 0.06)]}
+                  rotation={[0, 0, i % 2 === 0 ? 0.1 : -0.1]} />
               ))}
             </group>
+          )}
+          {/* Monkey: elasticated nylon pant cuff gathered over the shoe collar */}
+          {isMonkey && (
+            <>
+              <mesh geometry={latheGeo([
+                [P.ankleR * 1.16, P.ankleR * 0.5],
+                [P.ankleR * 1.24, P.ankleR * 1.0],
+                [P.ankleR * 1.18, P.ankleR * 1.5],
+              ])} material={botM} castShadow />
+              <mesh geometry={torusGeo(P.ankleR * 1.14, P.ankleR * 0.13)} material={monkeyPantsDark}
+                position={[0, P.ankleR * 0.5, 0]} rotation={[Math.PI / 2, 0, 0]} />
+            </>
           )}
            {/* Panda: black paw foot with four rounded toes + a soft pink sole pad */}
            {isPanda && pandaBlack && (

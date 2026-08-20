@@ -667,6 +667,22 @@ export function detailSphereGeo(radius: number): BufferGeometry {
   return cachedGeo(key, () => new SphereGeometry(radius, 64, 48))
 }
 
+/**
+ * A spherical CAP on the unit sphere, centred on +Z, with angular half-width
+ * `angle` (radians). Because every vertex sits exactly on the unit sphere, a cap
+ * parented to a group scaled like a head ellipsoid lies flush on that head's
+ * surface — the clean way to paint a fur marking (bare face, patch, blaze)
+ * without stacking bulging blobs that produce visible intersection seams.
+ */
+export function sphereCapGeo(angle: number, seg = 64): BufferGeometry {
+  const key = `cap:${angle.toFixed(3)}:${seg}`
+  return cachedGeo(key, () => {
+    const g = new SphereGeometry(1, seg, Math.max(8, Math.round(seg * 0.5)), 0, Math.PI * 2, 0, angle)
+    g.rotateX(Math.PI / 2) // aim the cap down +Z instead of +Y
+    return g
+  })
+}
+
 /** Half-sphere (dome), opening downward — used for shoulders, hoods, shoe toes. */
 export function domeGeo(radius: number): BufferGeometry {
   const key = `dome:${radius}`

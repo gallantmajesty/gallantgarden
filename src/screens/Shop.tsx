@@ -186,7 +186,7 @@ export function Shop() {
   // pickers) and never appear in the shop. Free starters (owned from signup)
   // are therefore hidden too. Only the animal characters awaiting polish are
   // withheld entirely (owner releases them from the Owner panel → Pricing tab).
-  const HELD_CHARACTER_IDS = new Set(['monkey', 'panda', 'elephant', 'sunflower'])
+  const HELD_CHARACTER_IDS = new Set(['panda', 'elephant', 'sunflower'])
   const characters = useMemo(() => effectiveCharacters().filter((c) => !HELD_CHARACTER_IDS.has(c.id)), [])
   const banners = useMemo(() => effectiveBanners(), [])
   const logos = useMemo(() => effectiveLogos(), [])

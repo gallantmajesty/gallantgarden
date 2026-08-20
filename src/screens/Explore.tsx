@@ -5,8 +5,9 @@ import { TrainStationScene } from '../three/train/TrainStationScene'
 import { ChineseCafeScene } from '../three/chinese-cafe/ChineseCafeScene'
 import { useAudio } from '../audio/useAudio'
 import { joystick, isTypingFocused } from '../three/library/input'
-import { RealmFullscreenGate } from '../components/mobile/RealmFullscreenGate'
 import { RoomLoader } from '../components/RoomLoader'
+import { FullscreenButton } from '../components/mobile/FullscreenButton'
+import { RotatePrompt } from '../components/mobile/RotatePrompt'
 import {
   useSettings,
   MIN_BRIGHTNESS,
@@ -23,6 +24,7 @@ import { Section, Toggle, Slider, Stepper, Seg, FocusLength } from '../component
 import { usePomodoro, SESSION_OPTIONS, computeSegments, liveFocusLeaves, formatLiveLeaves, suggestBreakActivity } from '../store/pomodoro'
 import { hardcoreMultiplier, minWagerFor } from '../store/hardcore'
 import { useDeviceBoost } from '../lib/deviceBoost'
+import { useIsMobileOrTablet } from '../hooks/useDevice'
 import { enterRealmLowFirst } from '../three/realmQuality'
 import { getCachedDeviceProfile, onDeviceProfile, type DeviceProfile } from '../lib/deviceProfile'
 import { DeviceConnect } from '../components/focus/DeviceConnect'
@@ -86,6 +88,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
   const set = useSettings((s) => s.set)
   const hidden = useHud((s) => s.widgetsHidden)
   const perfMode = useHud((s) => s.perfMode)
+  const mobile = useIsMobileOrTablet()
   useExploreShortcuts()
 
 
@@ -284,8 +287,8 @@ export function Explore({ defaultWorld }: ExploreProps) {
 
   return (
     <div className="explore-root">
-      {/* Realm fullscreen enforcement — mobile/tablet only. Desktop is untouched. */}
-      <RealmFullscreenGate />
+      {/* Rotate nudge for portrait phones — the 3D worlds need landscape. */}
+      <RotatePrompt />
       {/* Room loader — doors stay closed until the scene signals ready.
           Shows the room name + logo riding the loading bar underneath.
           The loader holds for a generous minimum on EVERY entry (first sit or
@@ -354,7 +357,20 @@ export function Explore({ defaultWorld }: ExploreProps) {
           whole HUD; while the Cinematic Tour (key 9) runs we ALSO hide everything
           except the timer, so the glide is an unbroken full-screen "video". */}
       {!hidden && !cinematic && (
-        <>
+        mobile ? (
+          seatFlowStage !== 'selecting' && (
+            <MobileRealmHud
+              realm={realm}
+              navigate={navigate}
+              settingsOpen={settingsOpen}
+              setSettingsOpen={setSettingsOpen}
+              calcOpen={calcOpen}
+              setCalcOpen={setCalcOpen}
+              setFpOpen={setFpOpen}
+            />
+          )
+        ) : (
+          <>
           {/* top-left: clean realm identity + fps */}
           <div className="explore-topleft">
             <button className="explore-back" onClick={() => navigate('/lobby/realm/choose')} title="Back to realms">
@@ -391,6 +407,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
             >
               <GearGlyph />
             </button>
+            {mobile && <FullscreenButton />}
           </div>
 
           <RoomRoster />
@@ -432,6 +449,7 @@ export function Explore({ defaultWorld }: ExploreProps) {
             </>
           )}
         </>
+        )
       )}
 
       {/* The escape-hatch chip — the ONLY thing visible while widgets are hidden,
@@ -675,6 +693,14 @@ function RoomRoster() {
   const [open, setOpen] = useState(false)
   const [profileTarget, setProfileTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string } | null>(null)
   const [cardTarget, setCardTarget] = useState<{ name: string; playerId: string; country: string | null; rank: string; banner?: string; logo?: string } | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const rosterEntries = Object.entries(roster)
+  const total = rosterEntries.length + 1
+
+  useEffect(() => {
+    if (open && scrollRef.current) handleScroll()
+  }, [open, rosterEntries.length])
 
   if (!realm) return null
 
@@ -684,14 +710,6 @@ function RoomRoster() {
     country,
     rank,
   }
-  const rosterEntries = Object.entries(roster)
-  const total = rosterEntries.length + 1
-
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (open && scrollRef.current) handleScroll()
-  }, [open, rosterEntries.length])
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -1639,5 +1657,79 @@ function GearGlyph() {
       <circle cx="12" cy="12" r="3.2" />
       <path d="M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M19.1 4.9L17 7 M7 17l-2.1 2.1" />
     </svg>
+  )
+}
+
+/* --------------------------------------------------- mobile realm interior HUD */
+
+/**
+ * Mobile-only interior UI for the 3D realm. The desktop layout (top bars,
+ * roster, help mascot, seated panel, pomodoro chip) is far too dense and
+ * confusing on a phone, so on touch devices we swap it for a single clean
+ * bottom dock: Settings · Calc · Focus · Leave — plus the movement controls.
+ * Everything else (music, social, focus domain) stays reachable via their own
+ * always-on widgets.
+ */
+function MobileRealmHud({
+  realm,
+  navigate,
+  settingsOpen,
+  setSettingsOpen,
+  setCalcOpen,
+  setFpOpen,
+}: {
+  realm: ActiveRealm | null
+  navigate: (path: string) => void
+  settingsOpen: boolean
+  setSettingsOpen: (v: boolean | ((p: boolean) => boolean)) => void
+  calcOpen: boolean
+  setCalcOpen: (v: boolean | ((p: boolean) => boolean)) => void
+  setFpOpen: (v: boolean | ((p: boolean) => boolean)) => void
+}) {
+  const leave = () => {
+    useWorld.getState().stand()
+    navigate('/lobby/realm/choose')
+  }
+
+  return (
+    <>
+      <div className="explore-topleft">
+        <button className="explore-back" onClick={() => navigate('/lobby/realm/choose')} title="Back to realms">
+          ‹ Realms
+        </button>
+        <span className="sf-pill">{realm ? realm.name : 'Realm'}</span>
+      </div>
+
+      <Joystick />
+      <button
+        className="explore-jump"
+        onPointerDown={() => (joystick.jump = true)}
+        onPointerUp={() => (joystick.jump = false)}
+        onPointerCancel={() => (joystick.jump = false)}
+      >
+        Jump
+      </button>
+
+      <div className="mrh-dock">
+        <button className="mrh-btn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+          <GearGlyph />
+          <span>Settings</span>
+        </button>
+        <button className="mrh-btn" onClick={() => setCalcOpen((v) => !v)} aria-label="Calculator">
+          <CalcGlyph />
+          <span>Calc</span>
+        </button>
+        <button className="mrh-btn" onClick={() => setFpOpen(true)} aria-label="Focus timer">
+          <SunGlyph />
+          <span>Focus</span>
+        </button>
+        <button className="mrh-btn mrh-leave" onClick={leave} aria-label="Leave realm">
+          <span>Leave</span>
+        </button>
+      </div>
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {calcOpen && <LibraryCalc onClose={() => setCalcOpen(false)} />}
+    </>
   )
 }

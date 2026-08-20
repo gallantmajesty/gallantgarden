@@ -4,7 +4,8 @@
 .geMenubar,
 .geMenubarContainer,
 #geMenubar,
-.menubar {
+.menubar,
+.geMenubarHost {
   display: none !important;
 }
 
@@ -16,7 +17,9 @@
 a[href*="draw.io"],
 a[href*="diagrams.net"],
 a[href*="github.com/jgraph"],
-a[href*="github.com/drawio"] {
+a[href*="github.com/drawio"],
+.geToolbarButton[title*="draw.io"],
+.geToolbarButton[title*="diagrams.net"] {
   display: none !important;
 }
 

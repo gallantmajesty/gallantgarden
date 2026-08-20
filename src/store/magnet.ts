@@ -471,6 +471,8 @@ if (isEmpty) {
           due: partial.due ?? null,
           estimateMin: partial.estimateMin ?? 0,
           recurring: (partial.recurring as Recurrence) ?? 'none',
+          weeklyDays: partial.weeklyDays,
+          monthlyDay: partial.monthlyDay,
           subtasks: (partial.subtasks ?? []).map((s) => ({ ...s, done: false })),
           icon: partial.icon ?? 'check',
           color: partial.color ?? '',

@@ -7,6 +7,8 @@ import { HALL, windowZs } from '../../three/library/layout'
 import { seatAnchors, TABLE, groundShelves, upperShelves, balconyPlatforms, columns, staircases } from '../../three/library/furniture'
 import type { Seat } from '../../three/library/furniture'
 import { roomTheme } from '../../lib/roomThemes'
+import { useIsMobileOrTablet } from '../../hooks/useDevice'
+import { lockLandscape } from '../../lib/orientation'
 
 const ASPECT_W = HALL.halfW * 2
 const ASPECT_L = HALL.halfL * 2
@@ -60,6 +62,7 @@ export function SeatSelectionOverlay() {
   const cooldownS = cooldownSec % 60
 
   const seats = useMemo(() => seatAnchors(), [])
+  const mobile = useIsMobileOrTablet()
 
   const seatPositions = useMemo(() => seats.map((s) => ({
     ...s,
@@ -70,8 +73,13 @@ export function SeatSelectionOverlay() {
 
   const occupiedCount = useMemo(() => Object.keys(occupied).length, [occupied])
   const availableCount = seatPositions.length - occupiedCount
+  const selectedSeat = selected != null ? seatPositions.find((s) => s.id === selected) ?? null : null
 
   const sitDown = useCallback((seatId: number) => {
+    // The 3D library can't be used in portrait — try to flip the phone to
+    // landscape now (within this user gesture). Browsers only honor it in
+    // fullscreen / PWA, so RotatePrompt covers the rest.
+    lockLandscape()
     pickSeat(seatId)
     startWalk()
     useSeatFlow.getState().arrive(roomId ?? undefined)
@@ -140,7 +148,7 @@ export function SeatSelectionOverlay() {
           <div className="sso-header-illu" aria-hidden><IconHall /></div>
           <div className="sso-header-text">
             <h2 className="sso-title">Choose your seat <span className="sso-room-badge"><img src={theme.icon} alt="" draggable={false} /> {realm?.name ?? 'Library'}</span></h2>
-            <p className="sso-subtitle">Pick a place in the great hall — the whole library on one map.</p>
+            <p className="sso-subtitle">Tap any glowing seat on the map to claim your spot, then start your session.</p>
           </div>
         </div>
 
@@ -161,12 +169,21 @@ export function SeatSelectionOverlay() {
         )}
 
         <div className="sso-body">
-          <MapLayer
-            seats={seatPositions}
-            occupied={occupied}
-            selected={selected}
-            onSelect={handleSelect}
-          />
+          {mobile ? (
+            <MobileSeatList
+              seats={seatPositions}
+              occupied={occupied}
+              selected={selected}
+              onSelect={handleSelect}
+            />
+          ) : (
+            <MapLayer
+              seats={seatPositions}
+              occupied={occupied}
+              selected={selected}
+              onSelect={handleSelect}
+            />
+          )}
         </div>
 
         <div className="sso-actions">
@@ -176,16 +193,24 @@ export function SeatSelectionOverlay() {
             title={isRoomLocked ? 'Room is locked — wait or change rooms' : 'Pick a random available seat and sit down'}
             disabled={isRoomLocked}
           >
-            <span>Random Seat</span>
+            <span>Surprise me</span>
           </button>
-          {selected != null && (
-            <button
-              className="sso-btn-primary"
-              onClick={() => sitDown(selected)}
-              disabled={isRoomLocked}
-            >
-              <span>Join Study Session</span>
-            </button>
+          {selectedSeat ? (
+            <div className="sso-selected">
+              <div className="sso-selected-info">
+                <strong>Seat {selectedSeat.id + 1}</strong>
+                <span>{selectedSeat.meta.feature} · {selectedSeat.meta.quietness}</span>
+              </div>
+              <button
+                className="sso-btn-primary"
+                onClick={() => sitDown(selectedSeat.id)}
+                disabled={isRoomLocked}
+              >
+                <span>Join Study Session</span>
+              </button>
+            </div>
+          ) : (
+            <span className="sso-actions-hint">Tap a seat on the map to continue</span>
           )}
         </div>
       </div>
@@ -369,6 +394,56 @@ function MapLayer({ seats, occupied, selected, onSelect }: MapLayerProps) {
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+/* Mobile-only picker — the tiny top-down map is unreadable on a phone, so we
+   swap it for a big, grouped grid of seats: one row per area (window, fireplace,
+   upper gallery, central hall) with large tappable numbers. No zooming/panning,
+   no hunting for dots. */
+const FEATURE_ORDER = ['Near window', 'Near fireplace', 'Upper gallery view', 'Central hall']
+
+function MobileSeatList({ seats, occupied, selected, onSelect }: MapLayerProps) {
+  const groups = useMemo(() => {
+    const byFeature: Record<string, DisplaySeat[]> = {}
+    for (const s of seats) (byFeature[s.meta.feature] ??= []).push(s)
+    return FEATURE_ORDER.filter((f) => byFeature[f]?.length).map((f) => ({
+      feature: f,
+      seats: byFeature[f],
+      available: byFeature[f].filter((s) => !occupied[s.id]).length,
+    }))
+  }, [seats, occupied])
+
+  return (
+    <div className="sso-mobile-list">
+      {groups.map((g) => (
+        <section key={g.feature} className="sso-mgroup">
+          <div className="sso-mgroup-head">
+            <h3>{g.feature}</h3>
+            <span className="sso-mgroup-count">{g.available} open</span>
+          </div>
+          <div className="sso-mgroup-grid">
+            {g.seats.map((s) => {
+              const isOcc = !!occupied[s.id]
+              const isSel = selected === s.id
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`sso-mseat ${isOcc ? 'occupied' : ''} ${isSel ? 'selected' : ''}`}
+                  disabled={isOcc}
+                  onClick={() => onSelect(s.id)}
+                  aria-pressed={isSel}
+                  title={isOcc ? 'Occupied' : `Seat ${s.id + 1} · ${s.meta.quietness}`}
+                >
+                  {s.id + 1}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }

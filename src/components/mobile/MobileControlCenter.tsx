@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '../../store/settings'
 import { Toggle, Slider, Seg, Section } from '../settings/controls'
@@ -30,25 +30,18 @@ export function MobileControlCenter() {
   const [tab, setTab] = useState<Tab>('look')
   const { t } = useTranslation()
 
+  // Opened from the mobile shell's "More" sheet (Settings entry) instead of a
+  // floating handle, so it never collides with the top app bar / bottom nav.
+  useEffect(() => {
+    const onOpen = () => setOpen(true)
+    window.addEventListener('sf:open-control-center', onOpen)
+    return () => window.removeEventListener('sf:open-control-center', onOpen)
+  }, [])
+
   if (!isMobile) return null
 
   return (
     <>
-      {!open && (
-        <button
-          type="button"
-          className="mcc-handle"
-          onClick={() => setOpen(true)}
-          aria-label="Open controls"
-        >
-          <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
-          </svg>
-          <span className="mcc-handle-label">Controls</span>
-        </button>
-      )}
-
       {open && (
         <div className="mcc-scrim" onClick={() => setOpen(false)}>
           <aside

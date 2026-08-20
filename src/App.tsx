@@ -14,6 +14,8 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { IntroVeil } from './components/IntroVeil'
 import { MobileControlCenter } from './components/mobile/MobileControlCenter'
 import { MobileBlocker } from './components/MobileBlocker'
+import { SocialHub } from './features/social/SocialHub'
+import { useIsMobileOrTablet } from './hooks/useDevice'
 import GlobalClickSpark from './components/GlobalClickSpark'
 import './screens/Explore.css'
 import { AuthScreen } from './screens/AuthScreen'
@@ -42,6 +44,7 @@ const InventoryPanel = lazy(() => import('./components/focus/InventoryPanel').th
 const Store = lazy(() => import('./screens/Store').then(m => ({ default: m.Store })))
 const Shop = lazy(() => import('./screens/Shop').then(m => ({ default: m.Shop })))
 const Legal = lazy(() => import('./screens/Legal').then(m => ({ default: m.Legal })))
+const Blueprint = lazy(() => import('./screens/Blueprint').then(m => ({ default: m.Blueprint })))
 import { IndividualComingSoon } from './screens/IndividualComingSoon'
 
 export default function App() {
@@ -50,6 +53,7 @@ export default function App() {
   const onboarded = useProfile((s) => s.onboarded)
   const profileReady = useProfile((s) => s.ready)
   const location = useLocation()
+  const isMobile = useIsMobileOrTablet()
 
   // Lobby readiness — preload icons so the intro veil can stay until they're loaded
   const waitForLobby = useSettings((s) => s.waitForLobbyReady)
@@ -116,8 +120,14 @@ export default function App() {
   // Blueprint route is accessible on mobile — no MobileBlocker wrapper for it.
   const appReady = !loading && (!user || profileReady)
   const veilReady = appReady && (!waitForLobby || lobbyReady)
-  const isBlueprintRoute = location.pathname === '/blueprint'
   const isOwnerRoute = location.pathname === '/owner'
+
+  // Mobile gating — only the heavy desktop-only areas stay blocked on phones &
+  // tablets. Realms are now reachable on mobile (with a landscape/rotate prompt
+  // and touch controls). Still excluded: TaskMagnet, Blueprint and Games.
+  // `isMobile` is computed above at the top of the component (rules of hooks).
+  const MOBILE_BLOCKED = /^\/magnet(\/|$)|^\/blueprint(\/|$)|^\/games(\/|$)/
+  const isMobileBlockedRoute = isMobile && MOBILE_BLOCKED.test(location.pathname)
 
 // Owner route renders completely standalone — no WebBackground, no IntroVeil, no lobby chrome
 if (isOwnerRoute && !loading) {
@@ -135,8 +145,8 @@ if (isOwnerRoute && !loading) {
 
 const appContent = (
   <>
-    {user && <WebBackground />}
-    {user && <IntroVeil ready={veilReady} />}
+    {user && !isMobile && <WebBackground />}
+    {user && !isMobile && <IntroVeil ready={veilReady} />}
     {loading ? null : !user ? (
       isPublic ? (
         <AuthScreen />
@@ -171,7 +181,7 @@ const appContent = (
             <Route path="/lobby/realm/custom" element={<Realm />} />
             <Route path="/lobby/realm/custom/:code" element={<Realm />} />
             <Route path="/lobby/explore" element={<Explore />} />
-            <Route path="/blueprint/*" element={<IndividualComingSoon featureId="blueprint" />} />
+            <Route path="/blueprint/*" element={<Blueprint />} />
             <Route path="/notes" element={<NotesHub />} />
             <Route path="/notes/doc" element={<NotesEditor />} />
             <Route path="/realm/:code" element={<RealmInvite />} />
@@ -199,16 +209,19 @@ const appContent = (
       </ErrorBoundary>
     )}
     {user && <MobileControlCenter />}
+    {/* Chat hub mounted globally on mobile so the "Messages" entry in the
+        mobile shell's More sheet can open it from any interior screen.
+        On desktop the launcher lives inside Lobby, so we skip it here. */}
+    {isMobile && user && <SocialHub />}
     <GlobalClickSpark />
   </>
 )
 
-// Blueprint works on mobile — skip the blocker for that route
-if (isBlueprintRoute) return appContent
+// On mobile, only the excluded heavy areas stay behind the "Desktop Only"
+// blocker. Everything else renders its own touch-friendly layout (no MobileBlocker).
+if (isMobileBlockedRoute) {
+  return <MobileBlocker />
+}
 
-return (
-  <MobileBlocker>
-    {appContent}
-  </MobileBlocker>
-)
+return appContent
 }

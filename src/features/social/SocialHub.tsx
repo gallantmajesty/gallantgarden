@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../store/auth'
+import { useIsMobileOrTablet } from '../../hooks/useDevice'
 import { useChat } from '../../store/chat'
 import { useFriends } from '../../store/friends'
 import { searchUsers } from '../../lib/social'
@@ -479,9 +480,24 @@ export function SocialHub() {
   const { user } = useAuth()
   const open = useSocialOverlay((s) => s.open)
   const fullscreen = useSocialOverlay((s) => s.fullscreen)
+  const mobile = useIsMobileOrTablet()
   useEnsureHydrated()
 
+  // On mobile the floating launcher is hidden — chat opens from the mobile
+  // shell's "More" sheet (Messages) via this event, and renders full-screen.
+  useEffect(() => {
+    const onOpen = () => useSocialOverlay.getState().openHub({ fullscreen: true })
+    window.addEventListener('sf:open-chat', onOpen)
+    return () => window.removeEventListener('sf:open-chat', onOpen)
+  }, [])
+
   if (!user) return null
+
+  if (mobile) {
+    if (!open) return null
+    return <ExploreOverlay />
+  }
+
   if (!open) return <LauncherBar />
   return fullscreen ? <ExploreOverlay /> : <MiniDock />
 }

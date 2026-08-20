@@ -13,6 +13,10 @@ import { CharacterAvatar } from '../avatar/CharacterAvatar'
 import type { AvatarConfig } from '../avatar/config'
 import { CHINESE_CAFE_ROOMS, LIBRARY_ROOMS, TRAIN_ROOMS, UK_CAFE_ROOMS, ROOM_CAPACITIES, chineseCafeEnabled } from '../lib/realm'
 import { FlagshipUnavailable } from '../components/FlagshipUnavailable'
+import { MusicWidget } from '../components/MusicWidget'
+import { useIsMobileOrTablet } from '../hooks/useDevice'
+import { RotatePrompt } from '../components/mobile/RotatePrompt'
+import { FullscreenButton } from '../components/mobile/FullscreenButton'
 import { MascotTour } from '../components/MascotTour'
 import { readTour, setTourStep as saveTourStep, completeTour as finishTour, isTourLive, type TourState } from '../lib/tour'
 import { occupancy, totalOccupants, REALM_CAPACITY, type InstanceOccupancy } from '../lib/realmPresence'
@@ -684,6 +688,8 @@ function PublicRealm() {
     return () => window.clearInterval(t)
   }, [])
 
+  const mobile = useIsMobileOrTablet()
+
   async function create(e: React.FormEvent) {
     e.preventDefault()
     if (busy) return
@@ -774,6 +780,8 @@ function PublicRealm() {
 
   return (
     <>
+      {mobile && <RotatePrompt />}
+      {mobile && <FullscreenButton />}
       <header className="realm-head">
         <span className="sf-pill">Private Realm</span>
         <h1>Your own world</h1>
@@ -889,6 +897,7 @@ function PublicRealm() {
           </div>
         </div>
       )}
+      <MusicWidget />
     </>
   )
 }
