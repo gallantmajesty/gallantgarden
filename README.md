@@ -2,11 +2,11 @@
 
 **Focus Lily** is a calm, magical world for focused study — plant trees, grow your
 notes, and stay in flow inside a beautiful 3D realm. Built with React + TypeScript +
-Vite, with an [InsForge](https://insforge.dev) backend (database, auth, storage).
+Vite, with an Supabase backend (database, auth, storage).
 
 ## Authentication
 
-Sign-in uses InsForge OAuth (Google, GitHub, Microsoft) over the PKCE flow with
+Sign-in uses Supabase OAuth (Google, GitHub, Microsoft) over the PKCE flow with
 secure httpOnly-cookie sessions, plus an email/password fallback. Provider client
 IDs and secrets are configured server-side in InsForge — never in the client bundle.
 See [`docs/OAUTH_SETUP.md`](docs/OAUTH_SETUP.md) for the exact setup steps and the
@@ -18,8 +18,6 @@ This project uses Vite for dev/build with HMR and ESLint.
 
 Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
 ## React Compiler
 
